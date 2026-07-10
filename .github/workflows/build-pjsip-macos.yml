@@ -115,16 +115,16 @@ jobs:
             make lib -j$(sysctl -n hw.ncpu) > /dev/null
             
             # 聚合静态库到单个 dylib
-            # 使用 -Wl,-all_load 强制链接所有静态库中的符号，否则 dylib 会是空的
-            local libs=$(find . -name "*.a" | grep -v "third_party/lib")
-            local tp_libs=$(find third_party/lib -name "*webrtc*.a")
+            # 使用 -Wl,-all_load 强制链接所有静态库中的符号
+            # 必须包含 PJSIP 核心库以及 third_party 下的所有辅助库（如 srtp, resample, webrtc 等）
+            local all_static_libs=$(find . -name "*.a")
             
             echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
                 -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security \
                 -Wl,-all_load \
-                ${libs} ${tp_libs} \
+                ${all_static_libs} \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libopus.a"
