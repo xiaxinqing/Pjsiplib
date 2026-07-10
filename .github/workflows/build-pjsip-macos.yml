@@ -1,0 +1,121 @@
+name: Build PJSIP macOS Universal Lib
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Build Tools
+        run: |
+          brew install automake libtool nasm opus
+
+      - name: Build Universal PJSIP
+        run: |
+          set -e
+          
+          # 基础配置
+          MIN_MACOS_VERSION="10.13"
+          PJ_ROOT="${GITHUB_WORKSPACE}/third_path/pjproject"
+          OUTPUT_DIR="${GITHUB_WORKSPACE}/output"
+          OPENSSL_VERSION="3.0.13"
+          
+          mkdir -p ${OUTPUT_DIR}/include
+          mkdir -p ${OUTPUT_DIR}/lib
+          mkdir -p ${GITHUB_WORKSPACE}/deps/src
+
+          # --- 1. 编译 Universal OpenSSL ---
+          echo "Building Universal OpenSSL..."
+          cd ${GITHUB_WORKSPACE}/deps/src
+          curl -LO https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
+          tar -xzf openssl-${OPENSSL_VERSION}.tar.gz
+          
+          build_openssl() {
+            local arch=$1
+            local target=$2
+            echo "Building OpenSSL for $arch..."
+            cp -R openssl-${OPENSSL_VERSION} openssl-$arch
+            cd openssl-$arch
+            ./Configure $target no-shared --prefix=${GITHUB_WORKSPACE}/deps/$arch -mmacosx-version-min=${MIN_MACOS_VERSION}
+            make -j$(sysctl -n hw.ncpu) > /dev/null
+            make install_sw > /dev/null
+            cd ..
+          }
+
+          build_openssl "x86_64" "darwin64-x86_64-cc"
+          build_openssl "arm64" "darwin64-arm64-cc"
+
+          # --- 2. 配置 PJSIP config_site.h ---
+          echo "Configuring PJSIP..."
+          cat > "${PJ_ROOT}/pjlib/include/pj/config_site.h" << 'EOF'
+          #define PJSUA_MAX_CALLS                 32
+          #define PJSUA_MAX_ACC                   16
+          #define PJMEDIA_SOUND_CLOCK_RATE        44100
+          #define PJMEDIA_HAS_WEBRTC_AEC          1
+          #define PJMEDIA_HAS_OPUS_CODEC          1
+          #define PJMEDIA_HAS_SRTP                1
+          #define PJ_HAS_SSL_SOCK                 1
+          #define PJ_HAS_IPV6                     1
+          #define PJMEDIA_HAS_VIDEO               0
+          #define PJ_LOG_MAX_LEVEL                3
+          #define PJ_IOQUEUE_MAX_HANDLERS         256
+          EOF
+
+          # --- 3. 编译 PJSIP 各架构 ---
+          build_pjsip() {
+            local arch=$1
+            local host=$2
+            echo "Building PJSIP for $arch..."
+            cd ${PJ_ROOT}
+            make distclean || true
+            
+            export CFLAGS="-O2 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} -I${GITHUB_WORKSPACE}/deps/$arch/include"
+            export LDFLAGS="-arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} -L${GITHUB_WORKSPACE}/deps/$arch/lib"
+            
+            ./configure --host=$host --with-ssl=${GITHUB_WORKSPACE}/deps/$arch --enable-shared --disable-video --disable-sdl --disable-ffmpeg --with-webrtc
+            make dep -j$(sysctl -n hw.ncpu) > /dev/null
+            make lib -j$(sysctl -n hw.ncpu) > /dev/null
+            
+            # 聚合静态库到单个 dylib
+            local libs=$(find . -name "*.a" | grep -v "third_party/lib")
+            local tp_libs=$(find third_party/lib -name "*webrtc*.a" -o -name "*opus*.a")
+            
+            clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
+                -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
+                -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security \
+                ${libs} ${tp_libs} \
+                "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a"
+          }
+
+          build_pjsip "x86_64" "x86_64-apple-darwin"
+          build_pjsip "arm64" "aarch64-apple-darwin"
+
+          # --- 4. 合并为 Universal Binary ---
+          echo "Creating Universal Binary..."
+          lipo -create "${OUTPUT_DIR}/lib/libpjsip_x86_64.dylib" "${OUTPUT_DIR}/lib/libpjsip_arm64.dylib" -output "${OUTPUT_DIR}/lib/libpjsip.dylib"
+          
+          # 修改 rpath
+          install_name_tool -id "@rpath/libpjsip.dylib" "${OUTPUT_DIR}/lib/libpjsip.dylib"
+          
+          # 整理头文件
+          cd ${PJ_ROOT}
+          for dir in pjlib pjlib-util pjnath pjmedia pjsip; do
+              cp -R "${dir}/include/" "${OUTPUT_DIR}/include/"
+          done
+          
+          # 清理临时文件
+          rm "${OUTPUT_DIR}/lib/libpjsip_x86_64.dylib" "${OUTPUT_DIR}/lib/libpjsip_arm64.dylib"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjsip-macos-universal
+          path: output/
