@@ -20,12 +20,38 @@ class CallInfo {
   /// 通话接通 (进入 CONFIRMED) 的时间戳，用于计时。未接通时为 null。
   final DateTime? connectedAt;
 
+  /// 是否由本地发起的暂停 (Hold)
+  final bool isOnHold;
+
+  /// 是否由远端发起的暂停 (Remote Hold)
+  final bool isRemoteOnHold;
+
   CallInfo({
     required this.callId,
     required this.state,
     required this.remoteUri,
     this.connectedAt,
+    this.isOnHold = false,
+    this.isRemoteOnHold = false,
   });
+
+  CallInfo copyWith({
+    int? callId,
+    int? state,
+    String? remoteUri,
+    DateTime? connectedAt,
+    bool? isOnHold,
+    bool? isRemoteOnHold,
+  }) {
+    return CallInfo(
+      callId: callId ?? this.callId,
+      state: state ?? this.state,
+      remoteUri: remoteUri ?? this.remoteUri,
+      connectedAt: connectedAt ?? this.connectedAt,
+      isOnHold: isOnHold ?? this.isOnHold,
+      isRemoteOnHold: isRemoteOnHold ?? this.isRemoteOnHold,
+    );
+  }
 
   bool get isIncoming =>
       state == pjsip_inv_state.PJSIP_INV_STATE_INCOMING.value;
@@ -52,6 +78,9 @@ class CallInfo {
 
   /// 根据 pjsip_inv_state 给出可显示的通话状态文案。
   String get statusLabel {
+    if (isOnHold) return '⏸ 通话已暂停';
+    if (isRemoteOnHold) return '⏸ 对方已暂停通话';
+
     switch (state) {
       case 1: // CALLING
         return '📲 正在呼叫…';
@@ -324,6 +353,7 @@ class PjsipService extends Notifier<PjsipUIState> {
         // 不保留任何指向 Arena 的 enum/struct 包装，异步闭包只使用纯 Dart 值。
         final remoteUri = _pjString(info.ref.remote_info);
         final callState = info.ref.stateAsInt;
+        final mediaStatus = info.ref.media_statusAsInt;
         final snapshot = _callSnapshot(info.ref);
 
         scheduleMicrotask(() {
@@ -359,6 +389,10 @@ class PjsipService extends Notifier<PjsipUIState> {
                 state: callState,
                 remoteUri: remoteUri,
                 connectedAt: connectedAt,
+                isOnHold: mediaStatus ==
+                    pjsua_call_media_status.PJSUA_CALL_MEDIA_LOCAL_HOLD.value,
+                isRemoteOnHold: mediaStatus ==
+                    pjsua_call_media_status.PJSUA_CALL_MEDIA_REMOTE_HOLD.value,
               ),
             );
           }
@@ -381,8 +415,23 @@ class PjsipService extends Notifier<PjsipUIState> {
         if (!gotInfo) return;
 
         final mediaStatus = info.ref.media_status;
+        final mediaStatusInt = info.ref.media_statusAsInt;
         final confSlot = info.ref.conf_slot;
         const invalidId = -1; // PJSUA_INVALID_ID
+
+        scheduleMicrotask(() {
+          final current = state.currentCall;
+          if (current != null && current.callId == callId) {
+            state = state.copyWith(
+              currentCall: current.copyWith(
+                isOnHold: mediaStatusInt ==
+                    pjsua_call_media_status.PJSUA_CALL_MEDIA_LOCAL_HOLD.value,
+                isRemoteOnHold: mediaStatusInt ==
+                    pjsua_call_media_status.PJSUA_CALL_MEDIA_REMOTE_HOLD.value,
+              ),
+            );
+          }
+        });
 
         if (mediaStatus == pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE &&
             confSlot != invalidId) {
@@ -696,6 +745,28 @@ class PjsipService extends Notifier<PjsipUIState> {
       _addLog('挂断 API 调用成功，等待 DISCONNECTED: call=${call.callId}');
     } else {
       _addLog('❌ 挂断失败: call=${call.callId}, pj_status=$status');
+    }
+  }
+
+  Future<void> holdCall() async {
+    final call = state.currentCall;
+    if (call == null || !call.isConnected) return;
+    _addLog('⏹ 请求暂停通话: call=${call.callId}');
+    // pjsua_call_set_hold 发起 re-INVITE 将媒体置为 sendonly/inactive
+    final status = _bindings.pjsua_call_set_hold(call.callId, ffi.nullptr);
+    if (status != 0) {
+      _addLog('❌ 暂停失败: call=${call.callId}, pj_status=$status');
+    }
+  }
+
+  Future<void> unholdCall() async {
+    final call = state.currentCall;
+    if (call == null || !call.isConnected) return;
+    _addLog('▶️ 请求恢复通话: call=${call.callId}');
+    // pjsua_call_reinvite(callId, 1, ...) 发起 re-INVITE 恢复媒体 sendrecv
+    final status = _bindings.pjsua_call_reinvite(call.callId, 1, ffi.nullptr);
+    if (status != 0) {
+      _addLog('❌ 恢复失败: call=${call.callId}, pj_status=$status');
     }
   }
 

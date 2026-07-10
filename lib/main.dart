@@ -35,7 +35,7 @@ class MyHomePage extends ConsumerStatefulWidget {
 
 class _MyHomePageState extends ConsumerState<MyHomePage> {
   final TextEditingController _numberController = TextEditingController(
-    text: '6526',
+    text: '6529',
   );
 
   @override
@@ -210,6 +210,19 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   label: const Text('接听'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 20),
+              ],
+              if (call.isConnected) ...[
+                ElevatedButton.icon(
+                  onPressed: () => call.isOnHold
+                      ? service.unholdCall()
+                      : service.holdCall(),
+                  icon: Icon(call.isOnHold ? Icons.play_arrow : Icons.pause),
+                  label: Text(call.isOnHold ? '恢复' : '保持'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
                   ),
                 ),
                 const SizedBox(width: 20),
