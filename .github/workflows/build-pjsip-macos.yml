@@ -122,7 +122,7 @@ jobs:
             echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
-                -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security -framework Foundation \
+                -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security -framework Foundation -framework AppKit \
                 -lc++ -lobjc \
                 -Wl,-all_load \
                 ${all_static_libs} \
