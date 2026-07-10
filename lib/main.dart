@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:pjsip_lib/pjsip_test.dart';
 
 void main() {
   runApp(const MyApp());
@@ -65,6 +66,13 @@ class _MyHomePageState extends State<MyHomePage> {
       // called again, and so nothing would appear to happen.
       _counter++;
     });
+  }
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+    testPjsip();
   }
 
   @override

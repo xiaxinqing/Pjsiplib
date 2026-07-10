@@ -1,0 +1,11 @@
+#define PJSUA_MAX_CALLS                 32
+#define PJSUA_MAX_ACC                   16
+#define PJMEDIA_SOUND_CLOCK_RATE        44100
+#define PJMEDIA_HAS_WEBRTC_AEC          1
+#define PJMEDIA_HAS_OPUS_CODEC          1
+#define PJMEDIA_HAS_SRTP                1
+#define PJ_HAS_SSL_SOCK                 1
+#define PJ_HAS_IPV6                     1
+#define PJMEDIA_HAS_VIDEO               0
+#define PJ_LOG_MAX_LEVEL                3
+#define PJ_IOQUEUE_MAX_HANDLERS         256

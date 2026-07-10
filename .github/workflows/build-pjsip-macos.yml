@@ -115,16 +115,26 @@ jobs:
             make lib -j$(sysctl -n hw.ncpu) > /dev/null
             
             # 聚合静态库到单个 dylib
+            # 使用 -Wl,-all_load 强制链接所有静态库中的符号，否则 dylib 会是空的
             local libs=$(find . -name "*.a" | grep -v "third_party/lib")
             local tp_libs=$(find third_party/lib -name "*webrtc*.a")
             
+            echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
                 -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security \
+                -Wl,-all_load \
                 ${libs} ${tp_libs} \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libopus.a"
+            
+            # 验证符号是否存在
+            echo "Verifying symbols for $arch..."
+            if ! nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "pjsua_create"; then
+              echo "Error: No PJSIP symbols found in dylib!"
+              exit 1
+            fi
           }
 
           build_pjsip "x86_64" "x86_64-apple-darwin"
