@@ -102,14 +102,16 @@ class CallInfo {
 
 class PjsipUIState {
   final List<PjsipLog> logs;
-  final CallInfo? currentCall;
+  final Map<int, CallInfo> calls;
+  final int? activeCallId;
   final bool isInitialized;
   final int accId;
   final String host;
 
   PjsipUIState({
     required this.logs,
-    this.currentCall,
+    this.calls = const {},
+    this.activeCallId,
     this.isInitialized = false,
     this.accId = -1,
     this.host = '',
@@ -117,21 +119,28 @@ class PjsipUIState {
 
   PjsipUIState copyWith({
     List<PjsipLog>? logs,
-    CallInfo? currentCall,
+    Map<int, CallInfo>? calls,
+    Object? activeCallId = _unset,
     bool? isInitialized,
     int? accId,
     String? host,
-    bool clearCall = false,
   }) {
     return PjsipUIState(
       logs: logs ?? this.logs,
-      currentCall: clearCall ? null : (currentCall ?? this.currentCall),
+      calls: calls ?? this.calls,
+      activeCallId: identical(activeCallId, _unset)
+          ? this.activeCallId
+          : activeCallId as int?,
       isInitialized: isInitialized ?? this.isInitialized,
       accId: accId ?? this.accId,
       host: host ?? this.host,
     );
   }
+
+  CallInfo? get activeCall => activeCallId == null ? null : calls[activeCallId];
 }
+
+const Object _unset = Object();
 
 class PjsipService extends Notifier<PjsipUIState> {
   late PjsipBindings _bindings;
@@ -178,13 +187,12 @@ class PjsipService extends Notifier<PjsipUIState> {
   void _startCallTimer() {
     if (_callTimer != null) return; // 已在计时，避免重复启动
     _callTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      final call = state.currentCall;
-      if (call == null || !call.isConnected) {
+      if (!state.calls.values.any((call) => call.isConnected)) {
         _stopCallTimer();
         return;
       }
-      // 用同一份 CallInfo 触发一次通知即可，duration 是实时计算的。
-      state = state.copyWith(currentCall: call);
+      // 复制 Map 触发一次通知即可，duration 是实时计算的。
+      state = state.copyWith(calls: Map<int, CallInfo>.of(state.calls));
     });
   }
 
@@ -211,9 +219,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   // _trace 用 debugPrint 同步输出到控制台（不进 microtask、不进 UI 日志列表），
   // 保证时序尽可能贴近事件真实发生的顺序，避免被 scheduleMicrotask 打乱。
   void _trace(String stage, String msg) {
-    debugPrint(
-      '🧵 [$stage] t=${DateTime.now().toIso8601String()} | $msg',
-    );
+    debugPrint('🧵 [$stage] t=${DateTime.now().toIso8601String()} | $msg');
   }
 
   String _pjString(pj_str_t value) {
@@ -284,13 +290,9 @@ class PjsipService extends Notifier<PjsipUIState> {
           final callState = info.ref.stateAsInt;
           scheduleMicrotask(() {
             // [T3 handle] 真正更新状态
-            _trace('T3 handle', 'on_incoming_call: 设置 currentCall=$callId');
-            state = state.copyWith(
-              currentCall: CallInfo(
-                callId: callId,
-                state: callState,
-                remoteUri: remoteUri,
-              ),
+            _trace('T3 handle', 'on_incoming_call: 添加 call=$callId');
+            _putCall(
+              CallInfo(callId: callId, state: callState, remoteUri: remoteUri),
             );
           });
         }
@@ -340,12 +342,7 @@ class PjsipService extends Notifier<PjsipUIState> {
             // [T3 handle] 走“已释放 → 判定 DISCONNECTED”分支
             _trace('T3 handle', 'on_call_state: call=$callId 走“已释放”清理分支');
             _addLog('📞 通话已结束: call=$callId (info 已释放，判定为 DISCONNECTED)');
-            // 旧通话的延迟回调不能误清刚建立的新通话。
-            if (state.currentCall?.callId == callId) {
-              state = state.copyWith(clearCall: true);
-            }
-            _mediaConnectedCalls.remove(callId);
-            _stopCallTimer();
+            _removeCall(callId);
           });
           return;
         }
@@ -364,34 +361,31 @@ class PjsipService extends Notifier<PjsipUIState> {
             // 少数情况下 isolate 抢在 PJSIP 释放 call 之前执行，get_info 成功
             // 且状态就是 DISCONNECTED。与上面的失败分支做同样的清理。
             _addLog('通话已挂断: $callId');
-            if (state.currentCall?.callId == callId) {
-              state = state.copyWith(clearCall: true);
-            }
-            _mediaConnectedCalls.remove(callId);
-            _stopCallTimer();
+            _removeCall(callId);
           } else {
             _addLog('通话状态变更: $callId -> $callState');
             final isConfirmed =
                 callState == pjsip_inv_state.PJSIP_INV_STATE_CONFIRMED.value;
             // 进入 CONFIRMED 时记录接通时刻并启动计时。若已在通话中，保留原
             // connectedAt，避免中途的状态刷新把计时清零。
-            final prev = state.currentCall;
+            final prev = state.calls[callId];
             final connectedAt = isConfirmed
-                ? (prev?.callId == callId ? prev?.connectedAt : null) ??
-                      DateTime.now()
+                ? prev?.connectedAt ?? DateTime.now()
                 : null;
             if (isConfirmed) {
               _startCallTimer();
             }
-            state = state.copyWith(
-              currentCall: CallInfo(
+            _putCall(
+              CallInfo(
                 callId: callId,
                 state: callState,
                 remoteUri: remoteUri,
                 connectedAt: connectedAt,
-                isOnHold: mediaStatus ==
+                isOnHold:
+                    mediaStatus ==
                     pjsua_call_media_status.PJSUA_CALL_MEDIA_LOCAL_HOLD.value,
-                isRemoteOnHold: mediaStatus ==
+                isRemoteOnHold:
+                    mediaStatus ==
                     pjsua_call_media_status.PJSUA_CALL_MEDIA_REMOTE_HOLD.value,
               ),
             );
@@ -414,28 +408,38 @@ class PjsipService extends Notifier<PjsipUIState> {
         );
         if (!gotInfo) return;
 
-        final mediaStatus = info.ref.media_status;
         final mediaStatusInt = info.ref.media_statusAsInt;
         final confSlot = info.ref.conf_slot;
         const invalidId = -1; // PJSUA_INVALID_ID
 
         scheduleMicrotask(() {
-          final current = state.currentCall;
-          if (current != null && current.callId == callId) {
-            state = state.copyWith(
-              currentCall: current.copyWith(
-                isOnHold: mediaStatusInt ==
+          final current = state.calls[callId];
+          if (current != null) {
+            _putCall(
+              current.copyWith(
+                isOnHold:
+                    mediaStatusInt ==
                     pjsua_call_media_status.PJSUA_CALL_MEDIA_LOCAL_HOLD.value,
-                isRemoteOnHold: mediaStatusInt ==
+                isRemoteOnHold:
+                    mediaStatusInt ==
                     pjsua_call_media_status.PJSUA_CALL_MEDIA_REMOTE_HOLD.value,
               ),
             );
           }
         });
 
-        if (mediaStatus == pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE &&
+        if (mediaStatusInt ==
+                pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value &&
             confSlot != invalidId) {
-          // 媒体激活：把通话音频桥接到默认声卡 (Slot 0)。
+          // 只有 activeCallId 对应的通话可以占用默认声卡。其他通话即使
+          // 因协商时序短暂进入 ACTIVE，也不会和当前通话混音。
+          if (state.activeCallId != callId) {
+            _bindings.pjsua_conf_disconnect(confSlot, 0);
+            _bindings.pjsua_conf_disconnect(0, confSlot);
+            _mediaConnectedCalls.remove(callId);
+            _addLog('🎙️ call=$callId 非当前活动通话，保持声卡断开');
+            return;
+          }
           // 每次协商完成 (接通/hold 恢复/换编码) 都会触发本回调，且 conf_slot
           // 可能变化，因此每次都重连。pjsua_conf_connect 幂等，重复调用安全。
           _bindings.pjsua_conf_connect(confSlot, 0);
@@ -450,7 +454,7 @@ class PjsipService extends Notifier<PjsipUIState> {
             _bindings.pjsua_conf_disconnect(confSlot, 0);
             _bindings.pjsua_conf_disconnect(0, confSlot);
           }
-          _addLog('🎙️ 媒体状态=${mediaStatus.value}，音频桥接已断开');
+          _addLog('🎙️ 媒体状态=$mediaStatusInt，音频桥接已断开');
         }
       });
     });
@@ -476,6 +480,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
       uaCfg.ref.cb.on_call_media_state = _callMediaStateCallable.nativeFunction;
+
+      // 当前动态库的 PJSUA_MAX_CALLS 为 4；显式启用四路并发通话。
+      uaCfg.ref.max_calls = 4;
 
       // --- 关键修复：启用 SIP Session Timer (RFC 4028) ---
       //
@@ -665,6 +672,12 @@ class PjsipService extends Notifier<PjsipUIState> {
       _addLog('❌ 请先注册账号');
       return;
     }
+    if (state.calls.length >= 4) {
+      _addLog('❌ 已达到当前最大通话数（4 路）');
+      return;
+    }
+    // 发起新通话也遵循“单路激活”规则。
+    if (!await _holdActiveCallExcept(-1)) return;
     using((Arena arena) {
       // 注册及可正常工作的来电均使用 UDP。显式指定 UDP 可避免外呼因
       // 自动切换到 TCP 后，PBX 无法沿同一 dialog 路由远端 BYE。
@@ -691,12 +704,13 @@ class PjsipService extends Notifier<PjsipUIState> {
       );
       if (status == 0) {
         final callId = pCallId.value;
-        state = state.copyWith(
-          currentCall: CallInfo(
+        _putCall(
+          CallInfo(
             callId: callId,
             state: pjsip_inv_state.PJSIP_INV_STATE_CALLING.value,
             remoteUri: targetUri,
           ),
+          makeActive: true,
         );
         _addLog('拨打请求已接受: number=$number, call=$callId');
       } else {
@@ -705,33 +719,48 @@ class PjsipService extends Notifier<PjsipUIState> {
     });
   }
 
-  Future<void> answerCall() async {
-    final call = state.currentCall;
-    if (call == null) return;
+  Future<void> answerCall(int callId) async {
+    final call = state.calls[callId];
+    if (call == null || !call.isIncoming) return;
+    if (!await _holdActiveCallExcept(callId)) return;
     final status = _bindings.pjsua_call_answer(
-      call.callId,
+      callId,
       200,
       ffi.nullptr,
       ffi.nullptr,
     );
     if (status == 0) {
-      _addLog('✅ 已接听电话');
+      state = state.copyWith(activeCallId: callId);
+      _addLog('✅ 已接听电话: call=$callId');
     } else {
       _addLog('❌ 接听失败: $status');
     }
   }
 
-  Future<void> hangupCall() async {
-    final call = state.currentCall;
+  Future<void> rejectCall(int callId) async {
+    final call = state.calls[callId];
+    if (call == null || !call.isIncoming) return;
+    final status = _bindings.pjsua_call_answer(
+      callId,
+      486,
+      ffi.nullptr,
+      ffi.nullptr,
+    );
+    if (status == 0) {
+      _addLog('🚫 已拒绝来电: call=$callId');
+    } else {
+      _addLog('❌ 拒绝来电失败: call=$callId, pj_status=$status');
+    }
+  }
+
+  Future<void> hangupCall(int callId) async {
+    final call = state.calls[callId];
     if (call == null) return;
-    // 延迟到达的 DISCONNECTED microtask 可能尚未清除 currentCall，此时
+    // 延迟到达的 DISCONNECTED microtask 可能尚未清除本地记录，此时
     // callId 可能已失效。对死 id 调 hangup 无害但没意义，直接清理本地状态。
     if (_bindings.pjsua_call_is_active(call.callId) == 0) {
       _addLog('通话已不活跃，清理本地状态: call=${call.callId}');
-      if (state.currentCall?.callId == call.callId) {
-        state = state.copyWith(clearCall: true);
-      }
-      _mediaConnectedCalls.remove(call.callId);
+      _removeCall(callId);
       return;
     }
     _addLog('⏹ 请求挂断: call=${call.callId}');
@@ -748,25 +777,69 @@ class PjsipService extends Notifier<PjsipUIState> {
     }
   }
 
-  Future<void> holdCall() async {
-    final call = state.currentCall;
+  Future<void> holdCall(int callId) async {
+    final call = state.calls[callId];
     if (call == null || !call.isConnected) return;
     _addLog('⏹ 请求暂停通话: call=${call.callId}');
     // pjsua_call_set_hold 发起 re-INVITE 将媒体置为 sendonly/inactive
     final status = _bindings.pjsua_call_set_hold(call.callId, ffi.nullptr);
     if (status != 0) {
       _addLog('❌ 暂停失败: call=${call.callId}, pj_status=$status');
+    } else {
+      _putCall(call.copyWith(isOnHold: true));
+      if (state.activeCallId == callId) {
+        state = state.copyWith(activeCallId: null);
+      }
     }
   }
 
-  Future<void> unholdCall() async {
-    final call = state.currentCall;
+  Future<void> unholdCall(int callId) async {
+    final call = state.calls[callId];
     if (call == null || !call.isConnected) return;
+    if (!await _holdActiveCallExcept(callId)) return;
     _addLog('▶️ 请求恢复通话: call=${call.callId}');
     // pjsua_call_reinvite(callId, 1, ...) 发起 re-INVITE 恢复媒体 sendrecv
     final status = _bindings.pjsua_call_reinvite(call.callId, 1, ffi.nullptr);
     if (status != 0) {
       _addLog('❌ 恢复失败: call=${call.callId}, pj_status=$status');
+    } else {
+      _putCall(call.copyWith(isOnHold: false), makeActive: true);
+    }
+  }
+
+  Future<bool> _holdActiveCallExcept(int targetCallId) async {
+    final activeId = state.activeCallId;
+    if (activeId == null || activeId == targetCallId) return true;
+    final active = state.calls[activeId];
+    if (active == null || !active.isConnected || active.isOnHold) return true;
+
+    _addLog('⏸ 接听/恢复新通话前自动保持 call=$activeId');
+    final status = _bindings.pjsua_call_set_hold(activeId, ffi.nullptr);
+    if (status != 0) {
+      _addLog('❌ 自动保持失败: call=$activeId, pj_status=$status');
+      return false;
+    }
+    _putCall(active.copyWith(isOnHold: true));
+    return true;
+  }
+
+  void _putCall(CallInfo call, {bool makeActive = false}) {
+    final calls = Map<int, CallInfo>.of(state.calls)..[call.callId] = call;
+    state = state.copyWith(
+      calls: calls,
+      activeCallId: makeActive ? call.callId : _unset,
+    );
+  }
+
+  void _removeCall(int callId) {
+    final calls = Map<int, CallInfo>.of(state.calls)..remove(callId);
+    _mediaConnectedCalls.remove(callId);
+    state = state.copyWith(
+      calls: calls,
+      activeCallId: state.activeCallId == callId ? null : _unset,
+    );
+    if (!calls.values.any((call) => call.isConnected)) {
+      _stopCallTimer();
     }
   }
 
@@ -783,7 +856,11 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopCallTimer();
     _bindings.pjsua_destroy();
     _mediaConnectedCalls.clear();
-    state = state.copyWith(isInitialized: false, clearCall: true);
+    state = state.copyWith(
+      isInitialized: false,
+      calls: const {},
+      activeCallId: null,
+    );
     _addLog('⏹ 引擎已关闭');
   }
 

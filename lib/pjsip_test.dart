@@ -1,5 +1,6 @@
 import 'dart:ffi' as ffi;
 import 'package:ffi/ffi.dart';
+import 'package:flutter/foundation.dart';
 
 typedef PjsipGetVersionC = ffi.Pointer<Utf8> Function();
 typedef PjsipGetVersionDart = ffi.Pointer<Utf8> Function();
@@ -15,5 +16,5 @@ void testPjsip() {
 
   // 3. 调用并打印
   final version = pjGetVersion().toDartString();
-  print('PJSIP 编译成功！版本号为: $version');
+  debugPrint('PJSIP 编译成功！版本号为: $version');
 }

@@ -92,7 +92,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             const Divider(height: 32),
 
             // 2. 拨号盘
-            if (uiState.accId != -1 && uiState.currentCall == null)
+            if (uiState.accId != -1 && uiState.calls.length < 4)
               Row(
                 children: [
                   Expanded(
@@ -120,8 +120,36 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 ],
               ),
 
-            // 3. 通话状态展示 (拨出/通话中/来电)
-            if (uiState.currentCall != null) _buildCallUI(uiState, service),
+            // 3. 多路通话状态展示
+            if (uiState.calls.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.call, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '当前通话（${uiState.calls.length}/4）',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 310),
+                child: ListView(
+                  shrinkWrap: true,
+                  children: uiState.calls.values
+                      .map(
+                        (call) => _buildCallUI(
+                          call,
+                          isActive: uiState.activeCallId == call.callId,
+                          service: service,
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
 
             const SizedBox(height: 20),
             // 4. 日志
@@ -138,7 +166,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.black,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                 ),
                 child: ListView.builder(
                   padding: const EdgeInsets.all(8),
@@ -166,24 +194,47 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     );
   }
 
-  Widget _buildCallUI(PjsipUIState uiState, PjsipService service) {
-    final call = uiState.currentCall!;
+  Widget _buildCallUI(
+    CallInfo call, {
+    required bool isActive,
+    required PjsipService service,
+  }) {
     final isIncoming = call.isIncoming;
     // 已接通后不再显示“接听”按钮，只保留挂断。
     final showAnswer = isIncoming && !call.isConnected;
 
     return Container(
+      key: ValueKey(call.callId),
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.withOpacity(0.2),
+        color: Colors.blueGrey.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.blue),
+        border: Border.all(
+          color: isActive ? Colors.greenAccent : Colors.blueGrey,
+          width: isActive ? 2 : 1,
+        ),
       ),
       child: Column(
         children: [
-          Text(
-            call.statusLabel,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                call.statusLabel,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (isActive) ...[
+                const SizedBox(width: 8),
+                const Chip(
+                  label: Text('当前'),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 8),
           Text('号码: ${call.remoteUri}'),
@@ -205,7 +256,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             children: [
               if (showAnswer) ...[
                 ElevatedButton.icon(
-                  onPressed: () => service.answerCall(),
+                  onPressed: () => service.answerCall(call.callId),
                   icon: const Icon(Icons.call),
                   label: const Text('接听'),
                   style: ElevatedButton.styleFrom(
@@ -213,22 +264,30 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   ),
                 ),
                 const SizedBox(width: 20),
+                OutlinedButton.icon(
+                  onPressed: () => service.rejectCall(call.callId),
+                  icon: const Icon(Icons.call_end),
+                  label: const Text('拒接'),
+                ),
+                const SizedBox(width: 20),
               ],
               if (call.isConnected) ...[
                 ElevatedButton.icon(
                   onPressed: () => call.isOnHold
-                      ? service.unholdCall()
-                      : service.holdCall(),
+                      ? service.unholdCall(call.callId)
+                      : service.holdCall(call.callId),
                   icon: Icon(call.isOnHold ? Icons.play_arrow : Icons.pause),
                   label: Text(call.isOnHold ? '恢复' : '保持'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: call.isOnHold
+                        ? Colors.orange
+                        : Colors.green,
                   ),
                 ),
                 const SizedBox(width: 20),
               ],
               ElevatedButton.icon(
-                onPressed: () => service.hangupCall(),
+                onPressed: () => service.hangupCall(call.callId),
                 icon: const Icon(Icons.call_end),
                 label: const Text('挂断'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
