@@ -27,12 +27,34 @@ jobs:
           PJ_ROOT="${GITHUB_WORKSPACE}/third_path/pjproject"
           OUTPUT_DIR="${GITHUB_WORKSPACE}/output"
           OPENSSL_VERSION="3.0.13"
+          OPUS_VERSION="1.4"
           
           mkdir -p ${OUTPUT_DIR}/include
           mkdir -p ${OUTPUT_DIR}/lib
           mkdir -p ${GITHUB_WORKSPACE}/deps/src
 
-          # --- 1. 编译 Universal OpenSSL ---
+          # --- 1. 编译 Universal Opus ---
+          echo "Building Universal Opus..."
+          cd ${GITHUB_WORKSPACE}/deps/src
+          curl -LO https://downloads.xiph.org/releases/opus/opus-${OPUS_VERSION}.tar.gz
+          tar -xzf opus-${OPUS_VERSION}.tar.gz
+          
+          build_opus() {
+            local arch=$1
+            local host=$2
+            echo "Building Opus for $arch..."
+            cp -R opus-${OPUS_VERSION} opus-$arch
+            cd opus-$arch
+            ./configure --host=$host --prefix=${GITHUB_WORKSPACE}/deps/$arch --disable-shared --enable-static \
+                        CFLAGS="-arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION}"
+            make -j$(sysctl -n hw.ncpu) > /dev/null
+            make install > /dev/null
+            cd ..
+          }
+          build_opus "x86_64" "x86_64-apple-darwin"
+          build_opus "arm64" "aarch64-apple-darwin"
+
+          # --- 2. 编译 Universal OpenSSL ---
           echo "Building Universal OpenSSL..."
           cd ${GITHUB_WORKSPACE}/deps/src
           curl -LO https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz
@@ -49,11 +71,10 @@ jobs:
             make install_sw > /dev/null
             cd ..
           }
-
           build_openssl "x86_64" "darwin64-x86_64-cc"
           build_openssl "arm64" "darwin64-arm64-cc"
 
-          # --- 2. 配置 PJSIP config_site.h ---
+          # --- 3. 配置 PJSIP config_site.h ---
           echo "Configuring PJSIP..."
           cat > "${PJ_ROOT}/pjlib/include/pj/config_site.h" << 'EOF'
           #define PJSUA_MAX_CALLS                 32
@@ -69,7 +90,7 @@ jobs:
           #define PJ_IOQUEUE_MAX_HANDLERS         256
           EOF
 
-          # --- 3. 编译 PJSIP 各架构 ---
+          # --- 4. 编译 PJSIP 各架构 ---
           build_pjsip() {
             local arch=$1
             local host=$2
@@ -77,22 +98,33 @@ jobs:
             cd ${PJ_ROOT}
             make distclean || true
             
+            # 显式包含 deps 的 include 路径
             export CFLAGS="-O2 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} -I${GITHUB_WORKSPACE}/deps/$arch/include"
             export LDFLAGS="-arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} -L${GITHUB_WORKSPACE}/deps/$arch/lib"
             
-            ./configure --host=$host --with-ssl=${GITHUB_WORKSPACE}/deps/$arch --enable-shared --disable-video --disable-sdl --disable-ffmpeg --with-webrtc
+            ./configure --host=$host \
+                        --with-ssl=${GITHUB_WORKSPACE}/deps/$arch \
+                        --with-external-opus \
+                        --enable-shared \
+                        --disable-video --disable-sdl --disable-ffmpeg --with-webrtc
+            
+            # 注入依赖路径给 configure 识别
+            sed -i '' "s|-lopus|-L${GITHUB_WORKSPACE}/deps/$arch/lib -lopus|g" Makefile || true
+            
             make dep -j$(sysctl -n hw.ncpu) > /dev/null
             make lib -j$(sysctl -n hw.ncpu) > /dev/null
             
             # 聚合静态库到单个 dylib
             local libs=$(find . -name "*.a" | grep -v "third_party/lib")
-            local tp_libs=$(find third_party/lib -name "*webrtc*.a" -o -name "*opus*.a")
+            local tp_libs=$(find third_party/lib -name "*webrtc*.a")
             
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
                 -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security \
                 ${libs} ${tp_libs} \
-                "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a"
+                "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" \
+                "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a" \
+                "${GITHUB_WORKSPACE}/deps/$arch/lib/libopus.a"
           }
 
           build_pjsip "x86_64" "x86_64-apple-darwin"
