@@ -68,7 +68,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 ElevatedButton.icon(
                   onPressed: (uiState.isInitialized && uiState.accId == -1)
                       ? () => service.register(
-                          username: '6525',
+                          username: '6523',
                           password: 'veserve888',
                           host: '139.59.100.15',
                         )
@@ -77,7 +77,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   label: Text(
                     uiState.accId != -1
                         ? '已注册 (ID: ${uiState.accId})'
-                        : '手动注册 (6525)',
+                        : '手动注册 (6523)',
                   ),
                 ),
                 OutlinedButton.icon(
@@ -168,7 +168,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   Widget _buildCallUI(PjsipUIState uiState, PjsipService service) {
     final call = uiState.currentCall!;
-    final isIncoming = call.state == 2; // PJSIP_INV_STATE_INCOMING
+    final isIncoming = call.isIncoming;
+    // 已接通后不再显示“接听”按钮，只保留挂断。
+    final showAnswer = isIncoming && !call.isConnected;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -180,16 +182,28 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       child: Column(
         children: [
           Text(
-            isIncoming ? '🔔 收到来电' : '📞 正在通话',
+            call.statusLabel,
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text('号码: ${call.remoteUri}'),
+          // 接通后显示实时通话时长 (由 service 每秒刷新驱动)。
+          if (call.isConnected) ...[
+            const SizedBox(height: 8),
+            Text(
+              call.durationLabel,
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                fontFeatures: [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (isIncoming) ...[
+              if (showAnswer) ...[
                 ElevatedButton.icon(
                   onPressed: () => service.answerCall(),
                   icon: const Icon(Icons.call),
