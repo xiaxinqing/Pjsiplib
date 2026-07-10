@@ -116,8 +116,8 @@ jobs:
             
             # 聚合静态库到单个 dylib
             # 使用 -Wl,-all_load 强制链接所有静态库中的符号
-            # 必须包含 PJSIP 核心库以及 third_party 下的所有辅助库（如 srtp, resample, webrtc 等）
-            local all_static_libs=$(find . -name "*.a")
+            # 过滤掉已知的重复库（例如 libpjsdp 已经包含在 libpjmedia 中）
+            local all_static_libs=$(find . -name "*.a" | grep -v "libpjsdp")
             
             echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
