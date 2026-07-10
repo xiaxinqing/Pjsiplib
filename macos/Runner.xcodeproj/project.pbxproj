@@ -21,8 +21,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		142B61853000AB9E000E6BEA /* libpjsip.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 142B61843000AB9E000E6BEA /* libpjsip.dylib */; };
-		142B61863000ABAB000E6BEA /* libpjsip.dylib in Bundle Framework */ = {isa = PBXBuildFile; fileRef = 142B61843000AB9E000E6BEA /* libpjsip.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		142B61883000C09D000E6BEA /* libpjsip.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 142B61873000C09D000E6BEA /* libpjsip.dylib */; };
+		142B61893000C0B7000E6BEA /* libpjsip.dylib in Bundle Framework */ = {isa = PBXBuildFile; fileRef = 142B61873000C09D000E6BEA /* libpjsip.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
 		335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */ = {isa = PBXBuildFile; fileRef = 335BBD1A22A9A15E00E9071D /* GeneratedPluginRegistrant.swift */; };
 		33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC10F02044A3C60003C045 /* AppDelegate.swift */; };
@@ -55,7 +55,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				142B61863000ABAB000E6BEA /* libpjsip.dylib in Bundle Framework */,
+				142B61893000C0B7000E6BEA /* libpjsip.dylib in Bundle Framework */,
 			);
 			name = "Bundle Framework";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -63,7 +63,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		142B61843000AB9E000E6BEA /* libpjsip.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libpjsip.dylib; sourceTree = "<group>"; };
+		142B61873000C09D000E6BEA /* libpjsip.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libpjsip.dylib; sourceTree = "<group>"; };
 		331C80D5294CF71000263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		331C80D7294CF71000263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		333000ED22D3DE5D00554162 /* Warnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Warnings.xcconfig; sourceTree = "<group>"; };
@@ -96,7 +96,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				142B61853000AB9E000E6BEA /* libpjsip.dylib in Frameworks */,
+				142B61883000C09D000E6BEA /* libpjsip.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -180,7 +180,7 @@
 		D73912EC22F37F3D000D13A0 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				142B61843000AB9E000E6BEA /* libpjsip.dylib */,
+				142B61873000C09D000E6BEA /* libpjsip.dylib */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";

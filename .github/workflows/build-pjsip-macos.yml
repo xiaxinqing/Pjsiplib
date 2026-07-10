@@ -113,35 +113,18 @@ jobs:
             make dep -j$(sysctl -n hw.ncpu) > /dev/null
             make lib -j$(sysctl -n hw.ncpu) > /dev/null
             
-            # --- 核心改进：提取所有 .o 文件以避免重复符号冲突 ---
-            echo "Extracting object files for $arch to create a clean dylib..."
-            local OBJ_DIR="${GITHUB_WORKSPACE}/obj_$arch"
-            mkdir -p ${OBJ_DIR}
+            # 聚合静态库到单个 dylib
+            # 使用 -Wl,-all_load 强制链接所有静态库中的符号
+            # 过滤掉已知的重复库（例如 libpjsdp 已经包含在 libpjmedia 中）
+            local all_static_libs=$(find . -name "*.a" | grep -v "libpjsdp")
             
-            # 查找所有生成的 .a 文件（包括 PJSIP 核心和三方库）
-            # 排除 openssl 和 opus 的 .a，因为我们要手动链接它们
-            local static_libs=$(find . -name "*.a")
-            
-            for lib in ${static_libs}; do
-              echo "Extracting $lib..."
-              mkdir -p "${OBJ_DIR}/tmp"
-              cp "$lib" "${OBJ_DIR}/tmp/"
-              cd "${OBJ_DIR}/tmp"
-              ar -x $(basename "$lib")
-              rm $(basename "$lib")
-              # 将提取出的 .o 移动到统一目录，重复的会自动覆盖（同名 .o 通常是同一代码）
-              mv *.o "${OBJ_DIR}/" 2>/dev/null || true
-              cd "${PJ_ROOT}"
-              rm -rf "${OBJ_DIR}/tmp"
-            done
-            
-            echo "Linking final dylib for $arch..."
-            cd ${OBJ_DIR}
+            echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
                 -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security -framework Foundation -framework AppKit \
                 -lc++ -lobjc \
-                *.o \
+                -Wl,-all_load \
+                ${all_static_libs} \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libopus.a"
