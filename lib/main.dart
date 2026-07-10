@@ -1,129 +1,214 @@
 import 'package:flutter/material.dart';
-import 'package:pjsip_lib/pjsip_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'src/services/pjsip_service.dart';
+import 'package:intl/intl.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter PJSIP VoIP',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.blue,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const MyHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class MyHomePage extends ConsumerStatefulWidget {
+  const MyHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    testPjsip();
-  }
+class _MyHomePageState extends ConsumerState<MyHomePage> {
+  final TextEditingController _numberController = TextEditingController(
+    text: '6526',
+  );
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    final uiState = ref.watch(pjsipServiceProvider);
+    final service = ref.read(pjsipServiceProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
+        title: const Text('VoIP 调试终端 (PJSIP)'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
       ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
         child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
+            // 1. 初始化 & 注册
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: uiState.isInitialized
+                      ? null
+                      : () => service.init(),
+                  icon: const Icon(Icons.power_settings_new),
+                  label: const Text('初始化 PJSIP'),
+                ),
+                ElevatedButton.icon(
+                  onPressed: (uiState.isInitialized && uiState.accId == -1)
+                      ? () => service.register(
+                          username: '6525',
+                          password: 'veserve888',
+                          host: '139.59.100.15',
+                        )
+                      : null,
+                  icon: const Icon(Icons.login),
+                  label: Text(
+                    uiState.accId != -1
+                        ? '已注册 (ID: ${uiState.accId})'
+                        : '手动注册 (6525)',
+                  ),
+                ),
+                OutlinedButton.icon(
+                  onPressed: uiState.isInitialized
+                      ? () => service.stop()
+                      : null,
+                  icon: const Icon(Icons.stop),
+                  label: const Text('停止引擎'),
+                ),
+              ],
+            ),
+            const Divider(height: 32),
+
+            // 2. 拨号盘
+            if (uiState.accId != -1 && uiState.currentCall == null)
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _numberController,
+                      decoration: const InputDecoration(
+                        labelText: '输入分机号',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.dialpad),
+                      ),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  IconButton.filled(
+                    onPressed: () => service.makeCall(_numberController.text),
+                    icon: const Icon(Icons.call),
+                    iconSize: 32,
+                    // 使用 style 来配置颜色
+                    style: IconButton.styleFrom(
+                      foregroundColor: Colors.white, // 图标颜色 (对应你原先的 color)
+                      backgroundColor: Colors.green, // 背景颜色 (解决报错)
+                    ),
+                  ),
+                ],
+              ),
+
+            // 3. 通话状态展示 (拨出/通话中/来电)
+            if (uiState.currentCall != null) _buildCallUI(uiState, service),
+
+            const SizedBox(height: 20),
+            // 4. 日志
+            const Row(
+              children: [
+                Icon(Icons.terminal, size: 18),
+                SizedBox(width: 8),
+                Text('运行日志', style: TextStyle(fontWeight: FontWeight.bold)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                ),
+                child: ListView.builder(
+                  padding: const EdgeInsets.all(8),
+                  itemCount: uiState.logs.length,
+                  itemBuilder: (context, index) {
+                    final log = uiState.logs[index];
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Text(
+                        '[${DateFormat('HH:mm:ss').format(log.time)}] ${log.message}',
+                        style: const TextStyle(
+                          color: Colors.lightGreenAccent,
+                          fontFamily: 'Courier',
+                          fontSize: 12,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+    );
+  }
+
+  Widget _buildCallUI(PjsipUIState uiState, PjsipService service) {
+    final call = uiState.currentCall!;
+    final isIncoming = call.state == 2; // PJSIP_INV_STATE_INCOMING
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.blueGrey.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.blue),
+      ),
+      child: Column(
+        children: [
+          Text(
+            isIncoming ? '🔔 收到来电' : '📞 正在通话',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text('号码: ${call.remoteUri}'),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isIncoming) ...[
+                ElevatedButton.icon(
+                  onPressed: () => service.answerCall(),
+                  icon: const Icon(Icons.call),
+                  label: const Text('接听'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                ),
+                const SizedBox(width: 20),
+              ],
+              ElevatedButton.icon(
+                onPressed: () => service.hangupCall(),
+                icon: const Icon(Icons.call_end),
+                label: const Text('挂断'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

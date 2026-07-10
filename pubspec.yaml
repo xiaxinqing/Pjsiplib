@@ -34,7 +34,28 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  ffi: ^2.2.0
+  ffi: ^2.2.0 #调用C层
+  ffigen: ^20.1.1 #根据头文件自动生成PJSIP 有成千上万个函数。不需要手动写 Dart 绑定，只需要写一个配置文件指向你的 include 头文件，它会自动生成所有的 Dart 类和方法绑定
+  flutter_riverpod: ^3.3.2 #事件回调驱动
+  window_manager: ^0.5.2 #窗口管理
+  flutter_volume_controller: ^2.0.1 #音量管理
+  connectivity_plus: ^7.2.0 #网路监听
+  intl: ^0.19.0
+
+#生成Pjsip的绑定文件
+ffigen:
+  name: PjsipBindings
+  description: Auto-generated bindings for PJSIP
+  output: 'lib/src/generated/pjsip_bindings.g.dart'
+  compiler-opts:
+    - '-Ipjsip_success_output/include'
+  headers:
+    entry-points:
+      - 'pjsip_success_output/include/pjsua-lib/pjsua.h'
+    include-directives:
+      - 'pjsip_success_output/include/**'
+  preamble: |
+    // ignore_for_file: camel_case_types, non_constant_identifier_names, constant_identifier_names, unused_element, unused_field
 
 dev_dependencies:
   flutter_test:
