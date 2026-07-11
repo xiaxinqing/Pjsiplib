@@ -9,6 +9,16 @@ class FakePjsipService extends PjsipService {
 }
 
 void main() {
+  test('网络恢复状态可以独立记录', () {
+    final offline = PjsipUIState(logs: []).copyWith(
+      isNetworkAvailable: false,
+      networkState: PjsipNetworkState.offline,
+    );
+
+    expect(offline.isNetworkAvailable, isFalse);
+    expect(offline.networkState, PjsipNetworkState.offline);
+  });
+
   test('会议暂停时保留原会议成员和中断通话', () {
     final state = PjsipUIState(
       logs: [],

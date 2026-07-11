@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ffi' as ffi;
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ part 'pjsip_parts/pjsip_models.dart';
 part 'pjsip_parts/pjsip_callbacks.dart';
 part 'pjsip_parts/pjsip_engine.dart';
 part 'pjsip_parts/pjsip_calls.dart';
+part 'pjsip_parts/pjsip_network.dart';
 
 class PjsipService extends Notifier<PjsipUIState> {
   late PjsipBindings _bindings;
@@ -22,6 +24,16 @@ class PjsipService extends Notifier<PjsipUIState> {
   // 通话计时器：接通后每秒触发一次 state 刷新，让 UI 上的时长走动。
   // duration 本身由 CallInfo.connectedAt 实时算出，timer 只负责触发重建。
   Timer? _callTimer;
+  Timer? _networkChangeTimer;
+  Timer? _ipChangeTimeoutTimer;
+  bool _ipChangeInProgress = false;
+  bool _ipChangeHadError = false;
+  bool _pendingIpChange = false;
+  final Connectivity _connectivity = Connectivity();
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  Set<ConnectivityResult>? _lastConnectivityTypes;
+  bool _connectivityMonitorStarted = false;
+  bool _isDisposed = false;
 
   // 保持对 Callable 的引用，防止被 GC 回收
   late ffi.NativeCallable<
@@ -36,6 +48,14 @@ class PjsipService extends Notifier<PjsipUIState> {
   late ffi.NativeCallable<ffi.Void Function(ffi.Int, ffi.Pointer<pjsip_event>)>
   _callStateCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _callMediaStateCallable;
+  late ffi.NativeCallable<
+    ffi.Void Function(
+      ffi.UnsignedInt,
+      ffi.Int,
+      ffi.Pointer<pjsua_ip_change_op_info>,
+    )
+  >
+  _ipChangeProgressCallable;
 
   @override
   PjsipUIState build() {
@@ -45,6 +65,8 @@ class PjsipService extends Notifier<PjsipUIState> {
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable
     // 永远不会 close()，pjsua 也不会销毁。
     ref.onDispose(_cleanup);
+    // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
+    scheduleMicrotask(_startConnectivityMonitoring);
     return PjsipUIState(logs: []);
   }
 
@@ -85,6 +107,11 @@ class PjsipService extends Notifier<PjsipUIState> {
   void stop() {
     if (!state.isInitialized) return;
     _stopCallTimer();
+    _networkChangeTimer?.cancel();
+    _ipChangeTimeoutTimer?.cancel();
+    _ipChangeInProgress = false;
+    _ipChangeHadError = false;
+    _pendingIpChange = false;
     _bindings.pjsua_destroy();
     _mediaConnectedCalls.clear();
     state = state.copyWith(
@@ -94,12 +121,20 @@ class PjsipService extends Notifier<PjsipUIState> {
       conferenceCallIds: const {},
       isConferencePaused: false,
       conferenceInterruptionCallId: null,
+      networkState: PjsipNetworkState.idle,
     );
     _addLog('⏹ 引擎已关闭');
   }
 
   void _cleanup() {
+    _isDisposed = true;
+    _connectivitySubscription?.cancel();
+    _connectivitySubscription = null;
     _stopCallTimer();
+    _networkChangeTimer?.cancel();
+    _ipChangeTimeoutTimer?.cancel();
+    _ipChangeInProgress = false;
+    _pendingIpChange = false;
     if (state.isInitialized) {
       _bindings.pjsua_destroy();
       _mediaConnectedCalls.clear();
@@ -109,6 +144,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _incomingCallCallable.close();
     _callStateCallable.close();
     _callMediaStateCallable.close();
+    _ipChangeProgressCallable.close();
   }
 }
 

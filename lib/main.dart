@@ -197,6 +197,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                 ),
                 child: ListView.builder(
+                  reverse: true,
                   padding: const EdgeInsets.all(8),
                   itemCount: uiState.logs.length,
                   itemBuilder: (context, index) {

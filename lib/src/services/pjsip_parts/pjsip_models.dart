@@ -1,5 +1,13 @@
 part of '../pjsip_service.dart';
 
+enum PjsipNetworkState {
+  idle,
+  offline,
+  waitingForStableNetwork,
+  recovering,
+  failed,
+}
+
 class PjsipLog {
   final String message;
   final DateTime time;
@@ -102,6 +110,8 @@ class PjsipUIState {
   final Set<int> conferenceCallIds;
   final bool isConferencePaused;
   final int? conferenceInterruptionCallId;
+  final bool isNetworkAvailable;
+  final PjsipNetworkState networkState;
   final bool isInitialized;
   final int accId;
   final String host;
@@ -113,6 +123,8 @@ class PjsipUIState {
     this.conferenceCallIds = const {},
     this.isConferencePaused = false,
     this.conferenceInterruptionCallId,
+    this.isNetworkAvailable = true,
+    this.networkState = PjsipNetworkState.idle,
     this.isInitialized = false,
     this.accId = -1,
     this.host = '',
@@ -125,6 +137,8 @@ class PjsipUIState {
     Set<int>? conferenceCallIds,
     bool? isConferencePaused,
     Object? conferenceInterruptionCallId = _unset,
+    bool? isNetworkAvailable,
+    PjsipNetworkState? networkState,
     bool? isInitialized,
     int? accId,
     String? host,
@@ -141,6 +155,8 @@ class PjsipUIState {
           identical(conferenceInterruptionCallId, _unset)
           ? this.conferenceInterruptionCallId
           : conferenceInterruptionCallId as int?,
+      isNetworkAvailable: isNetworkAvailable ?? this.isNetworkAvailable,
+      networkState: networkState ?? this.networkState,
       isInitialized: isInitialized ?? this.isInitialized,
       accId: accId ?? this.accId,
       host: host ?? this.host,

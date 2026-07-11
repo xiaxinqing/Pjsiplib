@@ -3,6 +3,10 @@ part of '../pjsip_service.dart';
 /// 单路、多路及三方会议的通话控制与音频桥管理。
 extension PjsipCallOperations on PjsipService {
   Future<void> makeCall(String number) async {
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('❌ 当前网络不可用，无法发起呼叫');
+      return;
+    }
     if (_uiState.accId == -1) {
       _addLog('❌ 请先注册账号');
       return;

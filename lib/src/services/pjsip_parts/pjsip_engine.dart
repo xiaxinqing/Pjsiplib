@@ -22,6 +22,8 @@ extension PjsipEngineOperations on PjsipService {
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
       uaCfg.ref.cb.on_call_media_state = _callMediaStateCallable.nativeFunction;
+      uaCfg.ref.cb.on_ip_change_progress =
+          _ipChangeProgressCallable.nativeFunction;
 
       // 当前动态库的 PJSUA_MAX_CALLS 为 4；显式启用四路并发通话。
       uaCfg.ref.max_calls = 4;
@@ -178,6 +180,10 @@ extension PjsipEngineOperations on PjsipService {
     required String password,
     required String host,
   }) async {
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('❌ 当前网络不可用，暂不发起 SIP 注册');
+      return;
+    }
     if (!_uiState.isInitialized) await init();
     using((Arena arena) {
       final accCfg = arena<pjsua_acc_config>();

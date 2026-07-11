@@ -54,10 +54,19 @@ extension _PjsipNativeCallbacks on PjsipService {
       using((Arena arena) {
         final info = arena<pjsua_acc_info>();
         if (_bindings.pjsua_acc_get_info(accId, info) == 0) {
+          // pjsua_acc_info 属于 Arena，进入其他异步任务前只保留按值字段。
+          final sipStatus = info.ref.statusAsInt;
           final statusText = info.ref.status_text.ptr.cast<Utf8>().toDartString(
             length: info.ref.status_text.slen,
           );
-          _addLog('🔔 账号状态更新: ID $accId, 状态: ${info.ref.status} ($statusText)');
+          if (sipStatus == 200) {
+            _uiState = _uiState.copyWith(networkState: PjsipNetworkState.idle);
+          } else if (sipStatus >= 300 && _uiState.isNetworkAvailable) {
+            _uiState = _uiState.copyWith(
+              networkState: PjsipNetworkState.failed,
+            );
+          }
+          _addLog('🔔 账号状态更新: ID $accId, 状态: $sipStatus ($statusText)');
         }
       });
     });
@@ -261,6 +270,16 @@ extension _PjsipNativeCallbacks on PjsipService {
           _addLog('🎙️ 媒体状态=$mediaStatusInt，音频桥接已断开');
         }
       });
+    });
+
+    // info 指针只在原生回调期间有效，而 NativeCallable.listener 会异步投递到
+    // Dart isolate，所以这里刻意只使用按值复制的 op/status，不读取 info。
+    _ipChangeProgressCallable = ffi.NativeCallable.listener((
+      int op,
+      int status,
+      ffi.Pointer<pjsua_ip_change_op_info> info,
+    ) {
+      _handleIpChangeProgress(op, status);
     });
   }
 }
