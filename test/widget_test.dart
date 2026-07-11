@@ -9,6 +9,21 @@ class FakePjsipService extends PjsipService {
 }
 
 void main() {
+  test('会议暂停时保留原会议成员和中断通话', () {
+    final state = PjsipUIState(
+      logs: [],
+      conferenceCallIds: const {1, 2},
+      isConferencePaused: true,
+      conferenceInterruptionCallId: 3,
+      activeCallId: 3,
+    );
+
+    expect(state.hasConference, isTrue);
+    expect(state.isConferenceActive, isFalse);
+    expect(state.isInConference(1), isTrue);
+    expect(state.conferenceInterruptionCallId, 3);
+  });
+
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

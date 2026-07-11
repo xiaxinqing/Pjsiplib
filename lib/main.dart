@@ -92,7 +92,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             const Divider(height: 32),
 
             // 2. 拨号盘
-            if (uiState.accId != -1 && uiState.calls.length < 4)
+            if (uiState.accId != -1 &&
+                uiState.calls.length < 4 &&
+                !uiState.hasConference)
               Row(
                 children: [
                   Expanded(
@@ -131,6 +133,22 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                     '当前通话（${uiState.calls.length}/4）',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
+                  if (uiState.isConferencePaused) ...[
+                    const SizedBox(width: 12),
+                    const Chip(
+                      avatar: Icon(Icons.pause, size: 18),
+                      label: Text('三方通话已暂停'),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    if (uiState.activeCallId == null) ...[
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: service.resumeConference,
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('恢复三方通话'),
+                      ),
+                    ],
+                  ],
                 ],
               ),
               const SizedBox(height: 8),
@@ -143,6 +161,16 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                         (call) => _buildCallUI(
                           call,
                           isActive: uiState.activeCallId == call.callId,
+                          isConferenceMember: uiState.isInConference(
+                            call.callId,
+                          ),
+                          isConferencePaused: uiState.isConferencePaused,
+                          canMergeWithActive:
+                              !uiState.hasConference &&
+                              call.isConnected &&
+                              !call.isRemoteOnHold &&
+                              uiState.activeCallId != null &&
+                              uiState.activeCallId != call.callId,
                           service: service,
                         ),
                       )
@@ -197,6 +225,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   Widget _buildCallUI(
     CallInfo call, {
     required bool isActive,
+    required bool isConferenceMember,
+    required bool isConferencePaused,
+    required bool canMergeWithActive,
     required PjsipService service,
   }) {
     final isIncoming = call.isIncoming;
@@ -211,8 +242,10 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         color: Colors.blueGrey.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isActive ? Colors.greenAccent : Colors.blueGrey,
-          width: isActive ? 2 : 1,
+          color: isConferenceMember
+              ? Colors.purpleAccent
+              : (isActive ? Colors.greenAccent : Colors.blueGrey),
+          width: isActive || isConferenceMember ? 2 : 1,
         ),
       ),
       child: Column(
@@ -234,6 +267,17 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   visualDensity: VisualDensity.compact,
                 ),
               ],
+              if (isConferenceMember) ...[
+                const SizedBox(width: 8),
+                Chip(
+                  avatar: Icon(
+                    isConferencePaused ? Icons.pause : Icons.groups,
+                    size: 18,
+                  ),
+                  label: Text(isConferencePaused ? '会议成员（暂停）' : '三方通话中'),
+                  visualDensity: VisualDensity.compact,
+                ),
+              ],
             ],
           ),
           const SizedBox(height: 8),
@@ -251,8 +295,10 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             ),
           ],
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 12,
+            runSpacing: 8,
             children: [
               if (showAnswer) ...[
                 ElevatedButton.icon(
@@ -263,15 +309,13 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                     backgroundColor: Colors.green,
                   ),
                 ),
-                const SizedBox(width: 20),
                 OutlinedButton.icon(
                   onPressed: () => service.rejectCall(call.callId),
                   icon: const Icon(Icons.call_end),
                   label: const Text('拒接'),
                 ),
-                const SizedBox(width: 20),
               ],
-              if (call.isConnected) ...[
+              if (call.isConnected && !isConferenceMember) ...[
                 ElevatedButton.icon(
                   onPressed: () => call.isOnHold
                       ? service.unholdCall(call.callId)
@@ -284,7 +328,26 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                         : Colors.green,
                   ),
                 ),
-                const SizedBox(width: 20),
+              ],
+              if (canMergeWithActive) ...[
+                ElevatedButton.icon(
+                  onPressed: () => service.mergeWithActiveCall(call.callId),
+                  icon: const Icon(Icons.groups),
+                  label: const Text('与当前通话合并'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.purple,
+                  ),
+                ),
+              ],
+              if (isConferenceMember && !isConferencePaused) ...[
+                ElevatedButton.icon(
+                  onPressed: () => service.splitConference(call.callId),
+                  icon: const Icon(Icons.call),
+                  label: const Text('拆分并保留此路'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                  ),
+                ),
               ],
               ElevatedButton.icon(
                 onPressed: () => service.hangupCall(call.callId),

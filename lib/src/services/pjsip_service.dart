@@ -104,6 +104,9 @@ class PjsipUIState {
   final List<PjsipLog> logs;
   final Map<int, CallInfo> calls;
   final int? activeCallId;
+  final Set<int> conferenceCallIds;
+  final bool isConferencePaused;
+  final int? conferenceInterruptionCallId;
   final bool isInitialized;
   final int accId;
   final String host;
@@ -112,6 +115,9 @@ class PjsipUIState {
     required this.logs,
     this.calls = const {},
     this.activeCallId,
+    this.conferenceCallIds = const {},
+    this.isConferencePaused = false,
+    this.conferenceInterruptionCallId,
     this.isInitialized = false,
     this.accId = -1,
     this.host = '',
@@ -121,6 +127,9 @@ class PjsipUIState {
     List<PjsipLog>? logs,
     Map<int, CallInfo>? calls,
     Object? activeCallId = _unset,
+    Set<int>? conferenceCallIds,
+    bool? isConferencePaused,
+    Object? conferenceInterruptionCallId = _unset,
     bool? isInitialized,
     int? accId,
     String? host,
@@ -131,6 +140,12 @@ class PjsipUIState {
       activeCallId: identical(activeCallId, _unset)
           ? this.activeCallId
           : activeCallId as int?,
+      conferenceCallIds: conferenceCallIds ?? this.conferenceCallIds,
+      isConferencePaused: isConferencePaused ?? this.isConferencePaused,
+      conferenceInterruptionCallId:
+          identical(conferenceInterruptionCallId, _unset)
+          ? this.conferenceInterruptionCallId
+          : conferenceInterruptionCallId as int?,
       isInitialized: isInitialized ?? this.isInitialized,
       accId: accId ?? this.accId,
       host: host ?? this.host,
@@ -138,6 +153,13 @@ class PjsipUIState {
   }
 
   CallInfo? get activeCall => activeCallId == null ? null : calls[activeCallId];
+
+  /// 两路远端通话加上本机用户，即构成三方通话。
+  bool get hasConference => conferenceCallIds.length >= 2;
+
+  bool get isConferenceActive => hasConference && !isConferencePaused;
+
+  bool isInConference(int callId) => conferenceCallIds.contains(callId);
 }
 
 const Object _unset = Object();
@@ -431,6 +453,15 @@ class PjsipService extends Notifier<PjsipUIState> {
         if (mediaStatusInt ==
                 pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value &&
             confSlot != invalidId) {
+          // 会议成员不受“只能有一个 activeCallId”的限制。会议桥会把本机声卡、
+          // 客户和经理三方互相连接；后续任意一路媒体重新协商完成时都会重建桥。
+          if (state.isConferenceActive &&
+              state.conferenceCallIds.contains(callId)) {
+            _mediaConnectedCalls.add(callId);
+            _rebuildConferenceBridge();
+            _addLog('👥 会议媒体已就绪: call=$callId, slot=$confSlot');
+            return;
+          }
           // 只有 activeCallId 对应的通话可以占用默认声卡。其他通话即使
           // 因协商时序短暂进入 ACTIVE，也不会和当前通话混音。
           if (state.activeCallId != callId) {
@@ -676,6 +707,10 @@ class PjsipService extends Notifier<PjsipUIState> {
       _addLog('❌ 已达到当前最大通话数（4 路）');
       return;
     }
+    if (state.hasConference) {
+      _addLog('❌ 请先拆分当前三方通话，再发起新的呼叫');
+      return;
+    }
     // 发起新通话也遵循“单路激活”规则。
     if (!await _holdActiveCallExcept(-1)) return;
     using((Arena arena) {
@@ -807,7 +842,184 @@ class PjsipService extends Notifier<PjsipUIState> {
     }
   }
 
+  /// 把一条已接通且处于 Hold 的通话，与当前活动通话合并为三方会议。
+  ///
+  /// PJSUA 的 conference bridge 是有方向的，所以除了两路通话分别连接声卡，
+  /// 还必须建立 callA -> callB 和 callB -> callA，客户与经理才能互相听见。
+  Future<void> mergeWithActiveCall(int callId) async {
+    if (state.hasConference) return;
+    final activeId = state.activeCallId;
+    final active = activeId == null ? null : state.calls[activeId];
+    final target = state.calls[callId];
+    if (active == null ||
+        target == null ||
+        activeId == callId ||
+        !active.isConnected ||
+        !target.isConnected ||
+        target.isRemoteOnHold) {
+      _addLog('❌ 合并失败：需要一路当前通话和一路已接通的保持通话');
+      return;
+    }
+
+    final members = <int>{activeId!, callId};
+    // 先标记为会议成员，确保目标通话恢复媒体时的回调不会被单路模式断开。
+    state = state.copyWith(
+      conferenceCallIds: members,
+      isConferencePaused: false,
+      conferenceInterruptionCallId: null,
+      activeCallId: null,
+    );
+
+    if (target.isOnHold) {
+      final status = _bindings.pjsua_call_reinvite(callId, 1, ffi.nullptr);
+      if (status != 0) {
+        state = state.copyWith(
+          conferenceCallIds: const {},
+          isConferencePaused: false,
+          conferenceInterruptionCallId: null,
+          activeCallId: activeId,
+        );
+        _connectCallToSound(activeId);
+        _addLog('❌ 三方合并失败：恢复 call=$callId 失败，pj_status=$status');
+        return;
+      }
+      _putCall(target.copyWith(isOnHold: false));
+    }
+
+    _rebuildConferenceBridge();
+    _addLog('👥 三方通话已建立: calls=${members.toList()}');
+  }
+
+  /// 拆分三方通话，并保留 [keepCallId] 与本机继续通话；另一方自动 Hold。
+  Future<void> splitConference(int keepCallId) async {
+    if (state.isConferencePaused) {
+      _addLog('⚠️ 请先结束当前插入通话并恢复会议，再执行拆分');
+      return;
+    }
+    final members = Set<int>.of(state.conferenceCallIds);
+    if (!members.contains(keepCallId)) return;
+
+    _disconnectConferenceBridge(members);
+    final calls = Map<int, CallInfo>.of(state.calls);
+    for (final callId in members) {
+      final call = calls[callId];
+      if (call == null) continue;
+      if (callId == keepCallId) {
+        if (call.isOnHold) {
+          final status = _bindings.pjsua_call_reinvite(callId, 1, ffi.nullptr);
+          if (status != 0) {
+            _addLog('❌ 恢复保留通话失败: call=$callId, pj_status=$status');
+            continue;
+          }
+        }
+        calls[callId] = call.copyWith(isOnHold: false);
+      } else {
+        final status = _bindings.pjsua_call_set_hold(callId, ffi.nullptr);
+        if (status != 0) {
+          _addLog('❌ 拆分时保持失败: call=$callId, pj_status=$status');
+        } else {
+          calls[callId] = call.copyWith(isOnHold: true);
+        }
+      }
+    }
+
+    state = state.copyWith(
+      calls: calls,
+      conferenceCallIds: const {},
+      isConferencePaused: false,
+      conferenceInterruptionCallId: null,
+      activeCallId: keepCallId,
+    );
+    _connectCallToSound(keepCallId);
+    _addLog('👥 三方通话已拆分，继续通话: call=$keepCallId');
+  }
+
+  /// 恢复因接听其他来电而暂停的三方通话。
+  ///
+  /// 两个成员仍保存在 [PjsipUIState.conferenceCallIds] 中，因此这里只需分别
+  /// 解除 Hold；媒体 ACTIVE 回调到达后会自动重建三方音频矩阵。
+  Future<void> resumeConference() async {
+    if (!state.isConferencePaused || !state.hasConference) return;
+    final activeId = state.activeCallId;
+    if (activeId != null && !state.conferenceCallIds.contains(activeId)) {
+      _addLog('⚠️ 当前仍在处理其他通话，请结束后再恢复三方通话');
+      return;
+    }
+
+    final calls = Map<int, CallInfo>.of(state.calls);
+    var allResumed = true;
+    for (final callId in state.conferenceCallIds) {
+      final call = calls[callId];
+      if (call == null || !call.isConnected) {
+        allResumed = false;
+        continue;
+      }
+      if (call.isOnHold) {
+        final status = _bindings.pjsua_call_reinvite(callId, 1, ffi.nullptr);
+        if (status != 0) {
+          allResumed = false;
+          _addLog('❌ 恢复会议成员失败: call=$callId, pj_status=$status');
+          continue;
+        }
+        calls[callId] = call.copyWith(isOnHold: false);
+      }
+    }
+
+    if (!allResumed) {
+      state = state.copyWith(calls: calls);
+      _addLog('⚠️ 三方通话尚未完全恢复，可稍后手动重试');
+      return;
+    }
+
+    state = state.copyWith(
+      calls: calls,
+      isConferencePaused: false,
+      conferenceInterruptionCallId: null,
+      activeCallId: null,
+    );
+    _rebuildConferenceBridge();
+    _addLog('▶️ 三方通话已恢复');
+  }
+
   Future<bool> _holdActiveCallExcept(int targetCallId) async {
+    // 接听/恢复目标通话前的音频占用处理顺序：
+    //
+    // 1. 先检查是否有【正在进行的会议】。
+    //    如果有，则保留会议成员关系，但断开会议音频桥，并自动 Hold 除目标
+    //    以外的所有会议成员，把会议标记成“已暂停”。
+    //
+    // 2. 如果没有活动会议，或者会议本来就处于暂停状态，则继续检查当前是否
+    //    还有一条普通活动通话。如果有，先自动 Hold 当前通话，再处理目标通话。
+    //
+    // 3. 本方法只负责自动 Hold，绝不自动 Unhold。任何通话挂断后，原通话或
+    //    原会议都必须由用户手动点击“恢复”或“恢复三方通话”才能重新激活。
+    if (state.isConferenceActive) {
+      final members = Set<int>.of(state.conferenceCallIds);
+      _disconnectConferenceBridge(members);
+      final calls = Map<int, CallInfo>.of(state.calls);
+      for (final callId in members) {
+        if (callId == targetCallId) continue;
+        final call = calls[callId];
+        if (call == null || !call.isConnected) continue;
+        final status = _bindings.pjsua_call_set_hold(callId, ffi.nullptr);
+        if (status == 0) {
+          calls[callId] = call.copyWith(isOnHold: true);
+        } else {
+          _addLog('❌ 暂停会议时自动保持失败: call=$callId, pj_status=$status');
+        }
+      }
+      state = state.copyWith(
+        calls: calls,
+        isConferencePaused: true,
+        conferenceInterruptionCallId: targetCallId,
+        activeCallId: null,
+      );
+      _addLog('⏸ 三方通话已暂停，正在处理 call=$targetCallId');
+    } else if (state.isConferencePaused) {
+      // 暂停会议期间如果又切换到另一通来电，让最新通话成为恢复触发点。
+      state = state.copyWith(conferenceInterruptionCallId: targetCallId);
+    }
+
     final activeId = state.activeCallId;
     if (activeId == null || activeId == targetCallId) return true;
     final active = state.calls[activeId];
@@ -831,13 +1043,103 @@ class PjsipService extends Notifier<PjsipUIState> {
     );
   }
 
+  /// 查询通话在 PJSUA conference bridge 中的槽位。
+  int? _getConferenceSlot(int callId) {
+    return using((Arena arena) {
+      final info = arena<pjsua_call_info>();
+      if (_bindings.pjsua_call_get_info(callId, info) != 0) return null;
+      final slot = info.ref.conf_slot;
+      return slot < 0 ? null : slot;
+    });
+  }
+
+  void _connectCallToSound(int callId) {
+    final slot = _getConferenceSlot(callId);
+    if (slot == null) return;
+    _bindings.pjsua_conf_connect(slot, 0);
+    _bindings.pjsua_conf_connect(0, slot);
+    _mediaConnectedCalls.add(callId);
+  }
+
+  /// 重建三方音频矩阵：本机与每一路双向连接，两路远端之间也双向连接。
+  void _rebuildConferenceBridge() {
+    final slots = <int, int>{};
+    for (final callId in state.conferenceCallIds) {
+      final slot = _getConferenceSlot(callId);
+      if (slot != null) slots[callId] = slot;
+    }
+    for (final slot in slots.values) {
+      _bindings.pjsua_conf_connect(0, slot); // 本机麦克风 -> 远端
+      _bindings.pjsua_conf_connect(slot, 0); // 远端 -> 本机扬声器
+    }
+    final values = slots.values.toList();
+    for (var i = 0; i < values.length; i++) {
+      for (var j = i + 1; j < values.length; j++) {
+        _bindings.pjsua_conf_connect(values[i], values[j]);
+        _bindings.pjsua_conf_connect(values[j], values[i]);
+      }
+    }
+  }
+
+  /// 拆除会议中的所有声卡和成员间连接，防止拆分后残留串音。
+  void _disconnectConferenceBridge(Set<int> callIds) {
+    final slots = callIds.map(_getConferenceSlot).whereType<int>().toList();
+    for (final slot in slots) {
+      _bindings.pjsua_conf_disconnect(0, slot);
+      _bindings.pjsua_conf_disconnect(slot, 0);
+    }
+    for (var i = 0; i < slots.length; i++) {
+      for (var j = i + 1; j < slots.length; j++) {
+        _bindings.pjsua_conf_disconnect(slots[i], slots[j]);
+        _bindings.pjsua_conf_disconnect(slots[j], slots[i]);
+      }
+    }
+  }
+
   void _removeCall(int callId) {
     final calls = Map<int, CallInfo>.of(state.calls)..remove(callId);
     _mediaConnectedCalls.remove(callId);
+    final wasConferencePaused = state.isConferencePaused;
+    final wasConferenceMember = state.conferenceCallIds.contains(callId);
+    final wasConferenceInterruption =
+        wasConferencePaused && state.conferenceInterruptionCallId == callId;
+    final conferenceCallIds = Set<int>.of(state.conferenceCallIds)
+      ..remove(callId);
+    final keepConference = conferenceCallIds.length >= 2;
+    // 正常会议中任意一方挂断后，剩余一路自动回到普通活动通话。若会议正
+    // 暂停且中断通话仍在进行，则保留当前中断通话，剩余会议成员继续 Hold。
+    final remainingConferenceCallId = conferenceCallIds.length == 1
+        ? conferenceCallIds.first
+        : null;
+    final currentActiveId = state.activeCallId == callId
+        ? null
+        : state.activeCallId;
+    final activeCallId =
+        remainingConferenceCallId != null &&
+            !wasConferencePaused &&
+            currentActiveId == null
+        ? remainingConferenceCallId
+        : currentActiveId;
     state = state.copyWith(
       calls: calls,
-      activeCallId: state.activeCallId == callId ? null : _unset,
+      conferenceCallIds: keepConference ? conferenceCallIds : const {},
+      isConferencePaused: keepConference && wasConferencePaused,
+      conferenceInterruptionCallId: keepConference
+          ? state.conferenceInterruptionCallId
+          : null,
+      activeCallId: activeCallId,
     );
+    if (remainingConferenceCallId != null && !wasConferencePaused) {
+      _connectCallToSound(remainingConferenceCallId);
+      _addLog('👥 一名会议成员已离开，继续单路通话: call=$remainingConferenceCallId');
+    } else if (wasConferenceMember && !keepConference) {
+      _addLog('👥 一名会议成员已离开，原三方通话已结束');
+    }
+    if (wasConferenceInterruption && keepConference) {
+      _addLog('⏸ 插入通话已结束，三方会议保持暂停，请手动恢复');
+    }
+    // 注意：这里故意不恢复任何被 Hold 的通话或暂停会议。挂断后用户可能
+    // 需要处理记录、选择其他会话或暂时保持静音，恢复动作必须由用户发起。
     if (!calls.values.any((call) => call.isConnected)) {
       _stopCallTimer();
     }
@@ -860,6 +1162,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       isInitialized: false,
       calls: const {},
       activeCallId: null,
+      conferenceCallIds: const {},
+      isConferencePaused: false,
+      conferenceInterruptionCallId: null,
     );
     _addLog('⏹ 引擎已关闭');
   }
