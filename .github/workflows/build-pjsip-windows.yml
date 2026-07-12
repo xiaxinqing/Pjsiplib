@@ -85,14 +85,16 @@ jobs:
 
           $source = "${{ github.workspace }}\openssl-$env:OPENSSL_VERSION"
           $prefix = "${{ github.workspace }}\deps\openssl"
-          $commands = @(
-            "call `"$vsPath\VC\Auxiliary\Build\vcvars64.bat`"",
-            "cd /d `"$source`"",
-            "perl Configure VC-WIN64A shared no-tests --prefix=`"$prefix`" --openssldir=`"$prefix\ssl`"",
-            "nmake",
-            "nmake install_sw install_ssldirs"
-          ) -join ' && '
-          cmd.exe /d /s /c "`"$commands`""
+          $batchFile = "${{ github.workspace }}\build-openssl.cmd"
+          @(
+            '@echo off',
+            "call `"$vsPath\VC\Auxiliary\Build\vcvars64.bat`" || exit /b 1",
+            "cd /d `"$source`" || exit /b 1",
+            "perl Configure VC-WIN64A shared no-tests --prefix=`"$prefix`" --openssldir=`"$prefix\ssl`" || exit /b 1",
+            'nmake || exit /b 1',
+            'nmake install_sw install_ssldirs || exit /b 1'
+          ) | Set-Content -Path $batchFile -Encoding ascii
+          & cmd.exe /d /c $batchFile
           if ($LASTEXITCODE -ne 0) { throw "OpenSSL build failed with exit code $LASTEXITCODE" }
           & "$prefix\bin\openssl.exe" version
 
