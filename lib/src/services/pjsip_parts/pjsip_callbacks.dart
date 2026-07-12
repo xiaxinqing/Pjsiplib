@@ -29,6 +29,25 @@ extension _PjsipNativeCallbacks on PjsipService {
         'callId=${_pjString(info.call_id)}';
   }
 
+  /// 根据 PJSUA 媒体状态更新 Hold 标记。
+  ///
+  /// NONE/ERROR 常出现在媒体协商或网络异常的过渡阶段，不能据此判断已经
+  /// Unhold；REMOTE_HOLD 也不能否定本地已经发出的 Hold 请求。
+  ({bool local, bool remote}) _resolveHoldFlags(
+    int mediaStatus,
+    CallInfo? current,
+  ) {
+    final previousLocal = current?.isOnHold ?? false;
+    final previousRemote = current?.isRemoteOnHold ?? false;
+
+    return switch (mediaStatus) {
+      1 => (local: false, remote: false), // ACTIVE
+      2 => (local: true, remote: false), // LOCAL_HOLD
+      3 => (local: previousLocal, remote: true), // REMOTE_HOLD
+      _ => (local: previousLocal, remote: previousRemote), // NONE/ERROR
+    };
+  }
+
   void _setupCallables() {
     _logCallable = ffi.NativeCallable.listener((
       int level,
@@ -156,10 +175,7 @@ extension _PjsipNativeCallbacks on PjsipService {
 
         scheduleMicrotask(() {
           // [T3 handle] get_info 成功分支
-          _trace(
-            'T3 handle',
-            'on_call_state: call=$callId, _uiState =$callState',
-          );
+          _trace('T3 handle', 'on_call_state: call=$callId, state=$callState');
           _addLog('📞 通话状态回调: $snapshot');
           if (callState == pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value) {
             // 少数情况下 isolate 抢在 PJSIP 释放 call 之前执行，get_info 成功
@@ -173,6 +189,7 @@ extension _PjsipNativeCallbacks on PjsipService {
             // 进入 CONFIRMED 时记录接通时刻并启动计时。若已在通话中，保留原
             // connectedAt，避免中途的状态刷新把计时清零。
             final prev = _uiState.calls[callId];
+            final holdFlags = _resolveHoldFlags(mediaStatus, prev);
             final connectedAt = isConfirmed
                 ? prev?.connectedAt ?? DateTime.now()
                 : null;
@@ -185,12 +202,8 @@ extension _PjsipNativeCallbacks on PjsipService {
                 state: callState,
                 remoteUri: remoteUri,
                 connectedAt: connectedAt,
-                isOnHold:
-                    mediaStatus ==
-                    pjsua_call_media_status.PJSUA_CALL_MEDIA_LOCAL_HOLD.value,
-                isRemoteOnHold:
-                    mediaStatus ==
-                    pjsua_call_media_status.PJSUA_CALL_MEDIA_REMOTE_HOLD.value,
+                isOnHold: holdFlags.local,
+                isRemoteOnHold: holdFlags.remote,
               ),
             );
           }
@@ -205,10 +218,25 @@ extension _PjsipNativeCallbacks on PjsipService {
       using((Arena arena) {
         final info = arena<pjsua_call_info>();
         final gotInfo = _bindings.pjsua_call_get_info(callId, info) == 0;
+
+        // 增强诊断：明确显示媒体状态名称
+        String mediaStatusName = '';
+        if (gotInfo) {
+          final mediaStatus = info.ref.media_statusAsInt;
+          mediaStatusName = switch (mediaStatus) {
+            0 => 'NONE',
+            1 => 'ACTIVE',
+            2 => 'LOCAL_HOLD',
+            3 => 'REMOTE_HOLD',
+            4 => 'ERROR',
+            _ => 'UNKNOWN($mediaStatus)',
+          };
+        }
+
         _trace(
           'T2 enqueue',
           'on_call_media_state: call=$callId, get_info成功=$gotInfo'
-              '${gotInfo ? ', media=${info.ref.media_statusAsInt}, slot=${info.ref.conf_slot}' : ''}',
+              '${gotInfo ? ', media=$mediaStatusName(${info.ref.media_statusAsInt}), slot=${info.ref.conf_slot}' : ''}',
         );
         if (!gotInfo) return;
 
@@ -217,19 +245,31 @@ extension _PjsipNativeCallbacks on PjsipService {
         const invalidId = -1; // PJSUA_INVALID_ID
 
         scheduleMicrotask(() {
+          // [T3 handle] 更新 hold 状态
           final current = _uiState.calls[callId];
-          if (current != null) {
-            _putCall(
-              current.copyWith(
-                isOnHold:
-                    mediaStatusInt ==
-                    pjsua_call_media_status.PJSUA_CALL_MEDIA_LOCAL_HOLD.value,
-                isRemoteOnHold:
-                    mediaStatusInt ==
-                    pjsua_call_media_status.PJSUA_CALL_MEDIA_REMOTE_HOLD.value,
-              ),
-            );
+          if (current == null) {
+            _trace('T3 handle', 'on_call_media_state: call=$callId 不在列表中，跳过');
+            return;
           }
+
+          final holdFlags = _resolveHoldFlags(mediaStatusInt, current);
+
+          // 本地 Hold/Unhold 在按钮操作处已经记录“请求”日志；这里只记录
+          // 无法从本地操作预知的远端 Hold 状态变化。
+          if (holdFlags.remote && !current.isRemoteOnHold) {
+            _addLog('⏸️ 对方已暂停通话: call=$callId');
+            _trace('T3 handle', 'on_call_media_state: 检测到远程 HOLD');
+          } else if (!holdFlags.remote && current.isRemoteOnHold) {
+            _addLog('▶️ 对方已恢复通话: call=$callId');
+            _trace('T3 handle', 'on_call_media_state: 检测到远程 UNHOLD');
+          }
+
+          _putCall(
+            current.copyWith(
+              isOnHold: holdFlags.local,
+              isRemoteOnHold: holdFlags.remote,
+            ),
+          );
         });
 
         if (mediaStatusInt ==
