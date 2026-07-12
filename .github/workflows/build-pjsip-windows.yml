@@ -11,7 +11,9 @@ on:
 
 jobs:
   build-windows:
-    runs-on: windows-latest
+    # 2026 年使用 Windows Server 2025 + Visual Studio 2026，避免
+    # windows-latest 镜像迁移时与硬编码的 CMake 生成器不一致。
+    runs-on: windows-2025-vs2026
 
     steps:
       - name: Checkout code
@@ -21,6 +23,38 @@ jobs:
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
+        with:
+          # 与 CMake 的 “Visual Studio 18 2026” 生成器保持一致。
+          vs-version: '[18.0,19.0)'
+          msbuild-architecture: x64
+
+      - name: Verify Windows build tools
+        shell: pwsh
+        run: |
+          # CMake 的 VS 生成器依赖已注册的完整 Visual Studio 实例，只有
+          # PATH 中存在 MSBuild 并不足够。提前检查可以给出更明确的错误。
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (!(Test-Path $vswhere)) {
+            throw 'vswhere.exe was not found; Visual Studio Installer is unavailable'
+          }
+
+          $installationPath = & $vswhere `
+            -latest `
+            -version '[18.0,19.0)' `
+            -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (!$installationPath) {
+            throw 'Visual Studio 2026 with the MSVC x64 build tools was not found'
+          }
+          Write-Host "Using Visual Studio 2026: $installationPath"
+
+          # “Visual Studio 18 2026” 生成器从 CMake 4.2 开始提供。
+          $cmakeVersion = [version]((cmake --version | Select-Object -First 1) -replace '^cmake version ', '')
+          if ($cmakeVersion -lt [version]'4.2.0') {
+            throw "CMake 4.2 or newer is required for Visual Studio 2026; found $cmakeVersion"
+          }
+          cmake --version
 
       - name: Configure PJSIP features
         shell: pwsh
@@ -41,7 +75,7 @@ jobs:
           cmake `
             -S '${{ github.workspace }}/tool/windows_pjsip' `
             -B '${{ github.workspace }}/build/windows-pjsip' `
-            -G 'Visual Studio 17 2022' `
+            -G 'Visual Studio 18 2026' `
             -A x64 `
             -DPJPROJECT_ROOT='${{ github.workspace }}/third_path/pjproject' `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
