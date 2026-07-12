@@ -1,11 +1,14 @@
 # PJSIP Windows runtime
 
 Download the `pjsip-windows-x64` artifact produced by
-`.github/workflows/build-pjsip-windows.yml`, then copy:
+`.github/workflows/build-pjsip-windows.yml`, then copy every DLL from its
+`bin` directory:
 
 ```text
-bin/pjsip.dll -> windows/Frameworks/pjsip.dll
+bin/*.dll -> windows/Frameworks/
 ```
 
-The top-level Windows CMake file copies the DLL next to the Flutter executable.
-Do not rename it: `PjsipService` loads `pjsip.dll` on Windows.
+This includes `pjsip.dll` and any OpenSSL runtime required by bundled SRTP. The
+top-level Windows CMake file copies all these DLLs next to the Flutter
+executable, so customers do not need to install OpenSSL separately. Do not
+rename `pjsip.dll`: `PjsipService` loads that exact name on Windows.

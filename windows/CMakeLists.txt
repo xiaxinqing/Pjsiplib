@@ -72,11 +72,14 @@ endif()
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
-# PJSIP is loaded dynamically by Dart FFI, so it only needs to be copied next
-# to the executable. Download it from the pjsip-windows-x64 Actions artifact.
-set(PJSIP_DLL "${CMAKE_CURRENT_SOURCE_DIR}/Frameworks/pjsip.dll")
+# PJSIP is loaded dynamically by Dart FFI. Install it and all app-local native
+# dependencies from the pjsip-windows-x64 Actions artifact next to the exe.
+set(PJSIP_FRAMEWORKS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Frameworks")
+set(PJSIP_DLL "${PJSIP_FRAMEWORKS_DIR}/pjsip.dll")
 if(EXISTS "${PJSIP_DLL}")
-  install(FILES "${PJSIP_DLL}"
+  file(GLOB PJSIP_RUNTIME_DLLS CONFIGURE_DEPENDS
+    "${PJSIP_FRAMEWORKS_DIR}/*.dll")
+  install(FILES ${PJSIP_RUNTIME_DLLS}
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 else()

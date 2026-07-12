@@ -136,6 +136,40 @@ jobs:
           }
           $exports | Set-Content "$output/exports.txt"
 
+          # PJSIP uses SChannel for SIP TLS, but bundled SRTP may still link
+          # against OpenSSL's libcrypto. Ship every required OpenSSL runtime
+          # DLL app-locally so end users never need to install OpenSSL.
+          $dependents = & $dumpbin /nologo /dependents $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin /dependents failed with exit code $LASTEXITCODE" }
+          $openSslDlls = @($dependents |
+            Select-String -Pattern '^\s*(lib(?:crypto|ssl)[^\s]*\.dll)\s*$' |
+            ForEach-Object { $_.Matches[0].Groups[1].Value } |
+            Sort-Object -Unique)
+
+          foreach ($dllName in $openSslDlls) {
+            $searchRoots = @(
+              $env:VCPKG_INSTALLATION_ROOT,
+              'C:\Program Files\OpenSSL',
+              'C:\Program Files\OpenSSL-Win64'
+            ) | Where-Object { $_ -and (Test-Path $_) }
+            $dependency = $searchRoots |
+              ForEach-Object { Get-ChildItem -Path $_ -Filter $dllName -File -Recurse -ErrorAction SilentlyContinue } |
+              Select-Object -First 1
+            if (!$dependency) {
+              throw "Required runtime dependency $dllName was not found; refusing to publish an incomplete package"
+            }
+            Copy-Item $dependency.FullName (Join-Path "$output/bin" $dllName)
+          }
+
+          # Verify that every OpenSSL DLL named by pjsip.dll is now in the
+          # application-local bin directory.
+          foreach ($dllName in $openSslDlls) {
+            if (!(Test-Path (Join-Path "$output/bin" $dllName))) {
+              throw "Runtime package is missing $dllName"
+            }
+          }
+          $dependents | Set-Content "$output/dependencies.txt"
+
           foreach ($dir in @('pjlib', 'pjlib-util', 'pjnath', 'pjmedia', 'pjsip')) {
             Copy-Item "$pjRoot/$dir/include/*" "$output/include" -Recurse -Force
           }
@@ -146,6 +180,7 @@ jobs:
           TLS: Windows SChannel
           Media: audio only, G.711 enabled, bundled SRTP
           Flutter runtime file: bin/pjsip.dll
+          OpenSSL runtime: bundled app-locally in bin/ when required
           "@ | Set-Content "$output/BUILD-INFO.txt"
 
       - name: Upload artifact
