@@ -1,5 +1,10 @@
 name: Build PJSIP Windows x64
 
+env:
+  OPENSSL_VERSION: 3.5.7
+  OPENSSL_SHA256: a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8
+  APP_VERSION: 1.0.0
+
 on:
   workflow_dispatch:
   push:
@@ -8,6 +13,11 @@ on:
       - ".github/workflows/build-pjsip-windows.yml"
       - "tool/windows_pjsip/**"
       - "third_path/pjproject/**"
+      - "lib/**"
+      - "windows/**"
+      - "installer/**"
+      - "pubspec.yaml"
+      - "pubspec.lock"
 
 jobs:
   build-windows:
@@ -56,6 +66,36 @@ jobs:
           }
           cmake --version
 
+      - name: Build pinned OpenSSL LTS
+        shell: pwsh
+        run: |
+          $archive = "${{ github.workspace }}/openssl-$env:OPENSSL_VERSION.tar.gz"
+          $sourceUrl = "https://www.openssl.org/source/openssl-$env:OPENSSL_VERSION.tar.gz"
+          Invoke-WebRequest -Uri $sourceUrl -OutFile $archive
+          $actualHash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actualHash -ne $env:OPENSSL_SHA256) {
+            throw "OpenSSL source checksum mismatch: expected $env:OPENSSL_SHA256, got $actualHash"
+          }
+          tar -xzf $archive -C '${{ github.workspace }}'
+
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -version '[18.0,19.0)' -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (!$vsPath) { throw 'Unable to locate Visual Studio 2026' }
+
+          $source = "${{ github.workspace }}\openssl-$env:OPENSSL_VERSION"
+          $prefix = "${{ github.workspace }}\deps\openssl"
+          $commands = @(
+            "call `"$vsPath\VC\Auxiliary\Build\vcvars64.bat`"",
+            "cd /d `"$source`"",
+            "perl Configure VC-WIN64A shared no-tests --prefix=`"$prefix`" --openssldir=`"$prefix\ssl`"",
+            "nmake",
+            "nmake install_sw install_ssldirs"
+          ) -join ' && '
+          cmd.exe /d /s /c "`"$commands`""
+          if ($LASTEXITCODE -ne 0) { throw "OpenSSL build failed with exit code $LASTEXITCODE" }
+          & "$prefix\bin\openssl.exe" version
+
       - name: Configure PJSIP features
         shell: pwsh
         run: |
@@ -78,6 +118,8 @@ jobs:
             -G 'Visual Studio 18 2026' `
             -A x64 `
             -DPJPROJECT_ROOT='${{ github.workspace }}/third_path/pjproject' `
+            -DOPENSSL_ROOT_DIR='${{ github.workspace }}/deps/openssl' `
+            -DOPENSSL_USE_STATIC_LIBS=FALSE `
             -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
 
       - name: Build Release DLL
@@ -136,9 +178,9 @@ jobs:
           }
           $exports | Set-Content "$output/exports.txt"
 
-          # PJSIP uses SChannel for SIP TLS, but bundled SRTP may still link
-          # against OpenSSL's libcrypto. Ship every required OpenSSL runtime
-          # DLL app-locally so end users never need to install OpenSSL.
+          # PJSIP uses SChannel for SIP TLS, but bundled SRTP links against the
+          # pinned OpenSSL libcrypto build above. Never copy an arbitrary DLL
+          # from the mutable runner image.
           $dependents = & $dumpbin /nologo /dependents $dll.FullName
           if ($LASTEXITCODE -ne 0) { throw "dumpbin /dependents failed with exit code $LASTEXITCODE" }
           $openSslDlls = @($dependents |
@@ -147,14 +189,9 @@ jobs:
             Sort-Object -Unique)
 
           foreach ($dllName in $openSslDlls) {
-            $searchRoots = @(
-              $env:VCPKG_INSTALLATION_ROOT,
-              'C:\Program Files\OpenSSL',
-              'C:\Program Files\OpenSSL-Win64'
-            ) | Where-Object { $_ -and (Test-Path $_) }
-            $dependency = $searchRoots |
-              ForEach-Object { Get-ChildItem -Path $_ -Filter $dllName -File -Recurse -ErrorAction SilentlyContinue } |
-              Select-Object -First 1
+            $dependency = Get-Item `
+              "${{ github.workspace }}/deps/openssl/bin/$dllName" `
+              -ErrorAction SilentlyContinue
             if (!$dependency) {
               throw "Required runtime dependency $dllName was not found; refusing to publish an incomplete package"
             }
@@ -174,18 +211,94 @@ jobs:
             Copy-Item "$pjRoot/$dir/include/*" "$output/include" -Recurse -Force
           }
           Copy-Item "$pjRoot/COPYING" "$output/COPYING-pjproject.txt"
+          Copy-Item "${{ github.workspace }}/openssl-$env:OPENSSL_VERSION/LICENSE.txt" `
+            "$output/LICENSE-OpenSSL.txt"
           @"
           PJSIP 2.17-dev Windows x64
           Runtime: MSVC /MD
           TLS: Windows SChannel
           Media: audio only, G.711 enabled, bundled SRTP
           Flutter runtime file: bin/pjsip.dll
-          OpenSSL runtime: bundled app-locally in bin/ when required
+          OpenSSL: $env:OPENSSL_VERSION LTS, bundled app-locally in bin/
           "@ | Set-Content "$output/BUILD-INFO.txt"
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build Flutter Windows release
+        shell: pwsh
+        run: |
+          Copy-Item '${{ github.workspace }}/output/windows-x64/bin/*.dll' `
+            '${{ github.workspace }}/windows/Frameworks/' -Force
+          flutter config --enable-windows-desktop
+          flutter pub get
+          flutter build windows --release `
+            --build-name "$env:APP_VERSION" `
+            --build-number '${{ github.run_number }}'
+
+          $release = '${{ github.workspace }}/build/windows/x64/runner/Release'
+          foreach ($required in @('pjsip_lib.exe', 'flutter_windows.dll', 'pjsip.dll', 'libcrypto-3-x64.dll', 'data')) {
+            if (!(Test-Path (Join-Path $release $required))) {
+              throw "Flutter release is missing $required"
+            }
+          }
+
+      - name: Prepare installer prerequisites
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere -latest -version '[18.0,19.0)' -products * -property installationPath
+          $redist = Get-ChildItem "$vsPath\VC\Redist\MSVC" -Filter vc_redist.x64.exe -Recurse |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if (!$redist) { throw 'vc_redist.x64.exe was not found' }
+          New-Item -ItemType Directory -Force '${{ github.workspace }}/installer/prerequisites' | Out-Null
+          Copy-Item $redist.FullName '${{ github.workspace }}/installer/prerequisites/vc_redist.x64.exe'
+          New-Item -ItemType Directory -Force '${{ github.workspace }}/build/installer-licenses' | Out-Null
+          Copy-Item '${{ github.workspace }}/third_path/pjproject/COPYING' `
+            '${{ github.workspace }}/build/installer-licenses/PJSIP-COPYING.txt'
+          Copy-Item "${{ github.workspace }}/openssl-$env:OPENSSL_VERSION/LICENSE.txt" `
+            '${{ github.workspace }}/build/installer-licenses/OpenSSL-LICENSE.txt'
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $iscc = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if (!$iscc) {
+            $candidate = 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe'
+            if (Test-Path $candidate) { $iscc = $candidate }
+          }
+          if (!$iscc) { throw 'Inno Setup 6 was not found on the runner image' }
+          $isccPath = if ($iscc -is [string]) { $iscc } else { $iscc.Source }
+          & $isccPath `
+            "/DMyAppVersion=$env:APP_VERSION" `
+            "/DMyBuildNumber=${{ github.run_number }}" `
+            '${{ github.workspace }}/installer/pjsip_lib.iss'
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
+
+      - name: Verify installer artifact
+        shell: pwsh
+        run: |
+          $installer = Get-Item `
+            "${{ github.workspace }}/output/installer/PjsipLib-Setup-$env:APP_VERSION-x64.exe"
+          if (!$installer -or $installer.Length -lt 10MB) {
+            throw 'Installer is missing or unexpectedly small'
+          }
+          (Get-FileHash $installer.FullName -Algorithm SHA256).Hash.ToLowerInvariant() |
+            Set-Content "${{ github.workspace }}/output/installer/SHA256.txt"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: pjsip-windows-x64
           path: output/windows-x64/
+          if-no-files-found: error
+
+      - name: Upload customer installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: PjsipLib-Setup-${{ env.APP_VERSION }}-x64
+          path: output/installer/
           if-no-files-found: error
