@@ -108,7 +108,25 @@ jobs:
           Copy-Item $dll.FullName "$output/bin/pjsip.dll"
           Copy-Item $importLibPath "$output/lib/pjsip.lib"
 
-          $exports = & dumpbin /nologo /exports $dll.FullName
+          # setup-msbuild 只保证 MSBuild 可用，不保证 dumpbin 在后续步骤的
+          # PATH 中。根据 VS 2026 当前安装的 MSVC 版本定位对应的 x64 工具。
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $vsPath = & $vswhere `
+            -latest `
+            -version '[18.0,19.0)' `
+            -products * `
+            -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property installationPath
+          if (!$vsPath) { throw 'Unable to locate Visual Studio 2026' }
+
+          $toolVersionFile = Join-Path $vsPath 'VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt'
+          if (!(Test-Path $toolVersionFile)) { throw 'Unable to determine the installed MSVC tool version' }
+          $toolVersion = (Get-Content $toolVersionFile -Raw).Trim()
+          $dumpbin = Join-Path $vsPath "VC\Tools\MSVC\$toolVersion\bin\Hostx64\x64\dumpbin.exe"
+          if (!(Test-Path $dumpbin)) { throw "dumpbin.exe was not found at $dumpbin" }
+
+          $exports = & $dumpbin /nologo /exports $dll.FullName
+          if ($LASTEXITCODE -ne 0) { throw "dumpbin failed with exit code $LASTEXITCODE" }
           $defFile = '${{ github.workspace }}/tool/windows_pjsip/pjsip_ffi.def'
           $requiredSymbols = Get-Content $defFile |
             ForEach-Object { $_.Trim() } |
