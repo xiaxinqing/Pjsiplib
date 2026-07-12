@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ffi' as ffi;
+import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -157,7 +158,12 @@ class PjsipService extends Notifier<PjsipUIState> {
 
   @override
   PjsipUIState build() {
-    final dylib = ffi.DynamicLibrary.open('libpjsip.dylib');
+    final libraryName = Platform.isWindows
+        ? 'pjsip.dll'
+        : Platform.isLinux
+        ? 'libpjsip.so'
+        : 'libpjsip.dylib';
+    final dylib = ffi.DynamicLibrary.open(libraryName);
     _bindings = PjsipBindings(dylib);
     _setupCallables();
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable

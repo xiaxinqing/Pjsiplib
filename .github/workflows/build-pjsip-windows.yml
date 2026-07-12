@@ -1,0 +1,104 @@
+name: Build PJSIP Windows x64
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-pjsip-windows.yml"
+      - "tool/windows_pjsip/**"
+      - "third_path/pjproject/**"
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Configure PJSIP features
+        shell: pwsh
+        run: |
+          $configPath = Join-Path '${{ github.workspace }}' 'third_path/pjproject/pjlib/include/pj/config_site.h'
+          @'
+          #define PJSUA_MAX_CALLS          32
+          #define PJSUA_MAX_ACC            16
+          #define PJMEDIA_SOUND_CLOCK_RATE 44100
+          #define PJMEDIA_HAS_VIDEO        0
+          #define PJ_LOG_MAX_LEVEL         3
+          #define PJ_IOQUEUE_MAX_HANDLERS  256
+          '@ | Set-Content -Path $configPath -Encoding ascii
+
+      - name: Configure unified DLL
+        shell: pwsh
+        run: |
+          cmake `
+            -S '${{ github.workspace }}/tool/windows_pjsip' `
+            -B '${{ github.workspace }}/build/windows-pjsip' `
+            -G 'Visual Studio 17 2022' `
+            -A x64 `
+            -DPJPROJECT_ROOT='${{ github.workspace }}/third_path/pjproject' `
+            -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL
+
+      - name: Build Release DLL
+        shell: pwsh
+        run: |
+          cmake --build '${{ github.workspace }}/build/windows-pjsip' `
+            --config Release `
+            --target pjsip_ffi `
+            --parallel
+
+      - name: Verify exports and prepare artifact
+        shell: pwsh
+        run: |
+          $buildRoot = '${{ github.workspace }}/build/windows-pjsip'
+          $output = '${{ github.workspace }}/output/windows-x64'
+          $pjRoot = '${{ github.workspace }}/third_path/pjproject'
+          New-Item -ItemType Directory -Force -Path "$output/bin", "$output/lib", "$output/include" | Out-Null
+
+          $dll = Get-ChildItem -Path $buildRoot -Filter pjsip.dll -Recurse |
+            Where-Object { $_.FullName -match '[\\/]Release[\\/]' } |
+            Select-Object -First 1
+          if (!$dll) { throw 'pjsip.dll was not generated' }
+          # The PJSIP source also produces a static pjsip.lib. Select the import
+          # library adjacent to our wrapper DLL, not the unrelated static file.
+          $importLibPath = Join-Path $dll.DirectoryName 'pjsip.lib'
+          if (!(Test-Path $importLibPath)) { throw 'Wrapper import library was not generated' }
+
+          Copy-Item $dll.FullName "$output/bin/pjsip.dll"
+          Copy-Item $importLibPath "$output/lib/pjsip.lib"
+
+          $exports = & dumpbin /nologo /exports $dll.FullName
+          $defFile = '${{ github.workspace }}/tool/windows_pjsip/pjsip_ffi.def'
+          $requiredSymbols = Get-Content $defFile |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { $_ -and $_ -ne 'EXPORTS' -and $_ -notmatch '^LIBRARY' }
+          foreach ($symbol in $requiredSymbols) {
+            if (!($exports -match "\b$symbol\b")) { throw "Missing DLL export: $symbol" }
+          }
+          $exports | Set-Content "$output/exports.txt"
+
+          foreach ($dir in @('pjlib', 'pjlib-util', 'pjnath', 'pjmedia', 'pjsip')) {
+            Copy-Item "$pjRoot/$dir/include/*" "$output/include" -Recurse -Force
+          }
+          Copy-Item "$pjRoot/COPYING" "$output/COPYING-pjproject.txt"
+          @"
+          PJSIP 2.17-dev Windows x64
+          Runtime: MSVC /MD
+          TLS: Windows SChannel
+          Media: audio only, G.711 enabled, bundled SRTP
+          Flutter runtime file: bin/pjsip.dll
+          "@ | Set-Content "$output/BUILD-INFO.txt"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjsip-windows-x64
+          path: output/windows-x64/
+          if-no-files-found: error

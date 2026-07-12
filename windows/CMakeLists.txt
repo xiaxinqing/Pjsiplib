@@ -72,6 +72,18 @@ endif()
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
+# PJSIP is loaded dynamically by Dart FFI, so it only needs to be copied next
+# to the executable. Download it from the pjsip-windows-x64 Actions artifact.
+set(PJSIP_DLL "${CMAKE_CURRENT_SOURCE_DIR}/Frameworks/pjsip.dll")
+if(EXISTS "${PJSIP_DLL}")
+  install(FILES "${PJSIP_DLL}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+else()
+  message(WARNING
+    "PJSIP DLL not found at ${PJSIP_DLL}. The app will build, but VoIP initialization will fail at runtime.")
+endif()
+
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
