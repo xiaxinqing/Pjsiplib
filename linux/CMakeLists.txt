@@ -91,6 +91,23 @@ install(CODE "
 set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
 set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
+# PJSIP is loaded dynamically by Dart FFI. Install it and app-local native
+# dependencies from the pjsip-linux-x64 Actions artifact into the bundle lib
+# directory, which is already included via CMAKE_INSTALL_RPATH above.
+set(PJSIP_FRAMEWORKS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/Frameworks")
+set(PJSIP_SHARED_OBJECT "${PJSIP_FRAMEWORKS_DIR}/libpjsip.so")
+if(EXISTS "${PJSIP_SHARED_OBJECT}")
+  file(GLOB PJSIP_RUNTIME_LIBS CONFIGURE_DEPENDS
+    "${PJSIP_FRAMEWORKS_DIR}/*.so"
+    "${PJSIP_FRAMEWORKS_DIR}/*.so.*")
+  install(FILES ${PJSIP_RUNTIME_LIBS}
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+else()
+  message(WARNING
+    "PJSIP shared object not found at ${PJSIP_SHARED_OBJECT}. The app will build, but VoIP initialization will fail at runtime.")
+endif()
+
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
