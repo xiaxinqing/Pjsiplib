@@ -138,7 +138,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                 decoration: BoxDecoration(
                   color: Colors.black,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                 ),
                 child: ListView.builder(
                   padding: const EdgeInsets.all(8),
@@ -175,7 +175,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.blueGrey.withOpacity(0.2),
+        color: Colors.blueGrey.withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.blue),
       ),

@@ -118,6 +118,21 @@ jobs:
             exit 1
           fi
 
+          # Bundle app-local runtime libraries that are not guaranteed to be
+          # available on a customer's desktop Linux install. Do not bundle glibc,
+          # the dynamic loader, or virtual kernel-provided entries.
+          runtime_libs="$(ldd "${output}/lib/libpjsip.so" |
+            awk '/=>/ { print $3 }' |
+            grep -E '/lib(asound|stdc\\+\\+|gcc_s)\\.so' || true)"
+          for runtime_lib in ${runtime_libs}; do
+            cp -L "${runtime_lib}" "${output}/lib/"
+          done
+
+          # Re-check dependencies with bundled libraries visible in the local
+          # lib directory. glibc and libm remain system-level Linux base runtime.
+          LD_LIBRARY_PATH="${output}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
+            ldd "${output}/lib/libpjsip.so" | tee "${output}/bundled-dependencies.txt"
+
           for dir in pjlib pjlib-util pjnath pjmedia pjsip; do
             cp -R "${pj_root}/${dir}/include/"* "${output}/include/"
           done
@@ -129,7 +144,7 @@ jobs:
           Runtime: ELF shared object
           TLS/SRTP crypto: OpenSSL ${OPENSSL_VERSION} LTS, statically linked into libpjsip.so
           Media: audio only, ALSA audio device, G.711 enabled, bundled SRTP
-          Runtime files: lib/libpjsip.so
+          Runtime files: lib/libpjsip.so plus app-local Linux runtime libraries copied beside it
           EOF
 
       - name: Upload artifact

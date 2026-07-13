@@ -21,5 +21,6 @@ void testPjsip() {
 
   // 3. 调用并打印
   final version = pjGetVersion().toDartString();
+  // ignore: avoid_print
   print('PJSIP 编译成功！版本号为: $version');
 }
