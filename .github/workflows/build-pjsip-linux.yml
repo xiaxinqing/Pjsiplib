@@ -1,0 +1,155 @@
+name: Build PJSIP Linux x64
+
+env:
+  OPENSSL_VERSION: 3.5.7
+  OPENSSL_SHA256: a8c0d28a529ca480f9f36cf5792e2cd21984552a3c8e4aa11a24aa31aeac98e8
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build-pjsip-linux.yml"
+      - "tool/linux_pjsip/**"
+      - "tool/windows_pjsip/pjsip_ffi_stub.c"
+      - "third_path/pjproject/**"
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            cmake \
+            ninja-build \
+            perl \
+            nasm \
+            pkg-config \
+            libasound2-dev
+
+      - name: Build pinned OpenSSL LTS
+        run: |
+          set -euo pipefail
+          archive="${GITHUB_WORKSPACE}/openssl-${OPENSSL_VERSION}.tar.gz"
+          curl -fL "https://www.openssl.org/source/openssl-${OPENSSL_VERSION}.tar.gz" -o "${archive}"
+          echo "${OPENSSL_SHA256}  ${archive}" | sha256sum -c -
+          tar -xzf "${archive}" -C "${GITHUB_WORKSPACE}"
+
+          source_dir="${GITHUB_WORKSPACE}/openssl-${OPENSSL_VERSION}"
+          prefix="${GITHUB_WORKSPACE}/deps/openssl"
+          cd "${source_dir}"
+          CFLAGS="-fPIC" ./Configure linux-x86_64 no-shared no-tests \
+            --prefix="${prefix}" \
+            --openssldir="${prefix}/ssl"
+          make -j"$(nproc)"
+          make install_sw install_ssldirs
+          "${prefix}/bin/openssl" version
+
+      - name: Configure PJSIP features
+        run: |
+          cat > "${GITHUB_WORKSPACE}/third_path/pjproject/pjlib/include/pj/config_site.h" <<'EOF'
+          #define PJSUA_MAX_CALLS          32
+          #define PJSUA_MAX_ACC            16
+          #define PJMEDIA_SOUND_CLOCK_RATE 44100
+          #define PJMEDIA_HAS_VIDEO        0
+          #define PJ_LOG_MAX_LEVEL         3
+          #define PJ_IOQUEUE_MAX_HANDLERS  256
+          EOF
+
+      - name: Configure unified shared object
+        run: |
+          cmake \
+            -S "${GITHUB_WORKSPACE}/tool/linux_pjsip" \
+            -B "${GITHUB_WORKSPACE}/build/linux-pjsip" \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPJPROJECT_ROOT="${GITHUB_WORKSPACE}/third_path/pjproject" \
+            -DOPENSSL_ROOT_DIR="${GITHUB_WORKSPACE}/deps/openssl" \
+            -DOPENSSL_USE_STATIC_LIBS=TRUE
+
+      - name: Build Release shared object
+        run: |
+          cmake --build "${GITHUB_WORKSPACE}/build/linux-pjsip" \
+            --config Release \
+            --target pjsip_ffi \
+            --parallel
+
+      - name: Verify and prepare artifact
+        run: |
+          set -euo pipefail
+          build_root="${GITHUB_WORKSPACE}/build/linux-pjsip"
+          output="${GITHUB_WORKSPACE}/output/linux-x64"
+          pj_root="${GITHUB_WORKSPACE}/third_path/pjproject"
+          mkdir -p "${output}/lib" "${output}/include"
+
+          so_path="$(find "${build_root}" -name libpjsip.so -type f | head -n 1)"
+          if [ -z "${so_path}" ]; then
+            echo "libpjsip.so was not generated" >&2
+            exit 1
+          fi
+          cp "${so_path}" "${output}/lib/libpjsip.so"
+
+          readelf -Ws "${output}/lib/libpjsip.so" | tee "${output}/exports.txt"
+          required_symbols="$(awk '
+            /^[[:space:]]*$/ { next }
+            /^[[:space:]]*LIBRARY/ { next }
+            /^[[:space:]]*EXPORTS/ { next }
+            { print $1 }
+          ' "${GITHUB_WORKSPACE}/tool/windows_pjsip/pjsip_ffi.def")"
+          for symbol in ${required_symbols}; do
+            grep -q " ${symbol}$" "${output}/exports.txt" || {
+              echo "Missing shared object export: ${symbol}" >&2
+              exit 1
+            }
+          done
+
+          ldd "${output}/lib/libpjsip.so" | tee "${output}/dependencies.txt"
+          if grep -Eq 'lib(crypto|ssl)\.so' "${output}/dependencies.txt"; then
+            echo "OpenSSL must be statically linked into libpjsip.so" >&2
+            exit 1
+          fi
+
+          # Bundle app-local runtime libraries that are not guaranteed to be
+          # available on a customer's desktop Linux install. Do not bundle glibc,
+          # the dynamic loader, or virtual kernel-provided entries.
+          runtime_libs="$(ldd "${output}/lib/libpjsip.so" |
+            awk '/=>/ { print $3 }' |
+            grep -E '/lib(asound|stdc\\+\\+|gcc_s)\\.so' || true)"
+          for runtime_lib in ${runtime_libs}; do
+            cp -L "${runtime_lib}" "${output}/lib/"
+          done
+
+          # Re-check dependencies with bundled libraries visible in the local
+          # lib directory. glibc and libm remain system-level Linux base runtime.
+          LD_LIBRARY_PATH="${output}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}" \
+            ldd "${output}/lib/libpjsip.so" | tee "${output}/bundled-dependencies.txt"
+
+          for dir in pjlib pjlib-util pjnath pjmedia pjsip; do
+            cp -R "${pj_root}/${dir}/include/"* "${output}/include/"
+          done
+          cp "${pj_root}/COPYING" "${output}/COPYING-pjproject.txt"
+          cp "${GITHUB_WORKSPACE}/openssl-${OPENSSL_VERSION}/LICENSE.txt" \
+            "${output}/LICENSE-OpenSSL.txt"
+          cat > "${output}/BUILD-INFO.txt" <<EOF
+          PJSIP 2.17-dev Linux x64
+          Runtime: ELF shared object
+          TLS/SRTP crypto: OpenSSL ${OPENSSL_VERSION} LTS, statically linked into libpjsip.so
+          Media: audio only, ALSA audio device, G.711 enabled, bundled SRTP
+          Runtime files: lib/libpjsip.so plus app-local Linux runtime libraries copied beside it
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pjsip-linux-x64
+          path: output/linux-x64/
+          if-no-files-found: error
