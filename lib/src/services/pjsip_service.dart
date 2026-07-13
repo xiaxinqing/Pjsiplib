@@ -1,15 +1,20 @@
 import 'dart:async';
 import 'dart:ffi' as ffi;
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../generated/pjsip_bindings.g.dart';
 
 part 'pjsip_parts/pjsip_models.dart';
+
 part 'pjsip_parts/pjsip_callbacks.dart';
+
 part 'pjsip_parts/pjsip_engine.dart';
+
 part 'pjsip_parts/pjsip_calls.dart';
+
 part 'pjsip_parts/pjsip_network.dart';
 
 class PjsipService extends Notifier<PjsipUIState> {
@@ -19,6 +24,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   // 拆分文件通过这组私有访问器读写 Notifier 状态。这样既不把 state 暴露给
   // 业务层，也不会让 extension 直接访问 Riverpod 的 protected 成员。
   PjsipUIState get _uiState => state;
+
   set _uiState(PjsipUIState value) => state = value;
 
   // 通话计时器：接通后每秒触发一次 state 刷新，让 UI 上的时长走动。
@@ -59,7 +65,12 @@ class PjsipService extends Notifier<PjsipUIState> {
 
   @override
   PjsipUIState build() {
-    final dylib = ffi.DynamicLibrary.open('libpjsip.dylib');
+    final libraryName = Platform.isWindows
+        ? 'pjsip.dll'
+        : Platform.isLinux
+        ? 'libpjsip.so'
+        : 'libpjsip.dylib';
+    final dylib = ffi.DynamicLibrary.open(libraryName);
     _bindings = PjsipBindings(dylib);
     _setupCallables();
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable

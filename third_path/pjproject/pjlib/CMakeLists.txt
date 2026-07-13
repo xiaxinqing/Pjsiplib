@@ -307,7 +307,16 @@ elseif(PJLIB_WITH_SSL STREQUAL "darwin")
 elseif(PJLIB_WITH_SSL STREQUAL "apple")
   message(FATAL_ERROR "TODO")
 elseif(PJLIB_WITH_SSL STREQUAL "schannel")
-  message(FATAL_ERROR "TODO")
+  # PJSIP 2.17 已提供原生 Schannel 实现，但上游 CMake 的该分支仍是
+  # TODO。Windows 构建需要显式加入实现文件及其使用的系统安全库。
+  target_sources(pjlib PRIVATE src/pj/ssl_sock_schannel.c)
+  target_link_libraries(pjlib-ssl
+    INTERFACE
+      secur32
+      shlwapi
+      crypt32
+      bcrypt
+  )
 endif()
 target_link_libraries(pjlib PRIVATE pjlib-ssl)
 
