@@ -8,7 +8,15 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../generated/pjsip_bindings.g.dart';
 
-part 'pjsip_parts/pjsip_models.dart';
+part 'pjsip_parts/pjsip_log_model.dart';
+
+part 'pjsip_parts/pjsip_network_models.dart';
+
+part 'pjsip_parts/pjsip_audio_models.dart';
+
+part 'pjsip_parts/pjsip_call_models.dart';
+
+part 'pjsip_parts/pjsip_ui_state.dart';
 
 part 'pjsip_parts/pjsip_callbacks.dart';
 
@@ -22,6 +30,7 @@ part 'pjsip_parts/pjsip_network.dart';
 
 class PjsipService extends Notifier<PjsipUIState> {
   late PjsipBindings _bindings;
+  final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
 
   // 拆分文件通过这组私有访问器读写 Notifier 状态。这样既不把 state 暴露给
@@ -33,7 +42,6 @@ class PjsipService extends Notifier<PjsipUIState> {
   // 通话计时器：接通后每秒触发一次 state 刷新，让 UI 上的时长走动。
   // duration 本身由 CallInfo.connectedAt 实时算出，timer 只负责触发重建。
   Timer? _callTimer;
-  Timer? _audioLevelTimer;
   Timer? _networkChangeTimer;
   Timer? _ipChangeTimeoutTimer;
   bool _ipChangeInProgress = false;
@@ -76,6 +84,7 @@ class PjsipService extends Notifier<PjsipUIState> {
         : 'libpjsip.dylib';
     final dylib = ffi.DynamicLibrary.open(libraryName);
     _bindings = PjsipBindings(dylib);
+    _setupAudioRuntime(dylib);
     _setupCallables();
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable
     // 永远不会 close()，pjsua 也不会销毁。
@@ -90,6 +99,10 @@ class PjsipService extends Notifier<PjsipUIState> {
     scheduleMicrotask(() {
       state = state.copyWith(logs: [...state.logs, PjsipLog(msg)]);
     });
+  }
+
+  void clearLogs() {
+    state = state.copyWith(logs: const []);
   }
 
   // 每秒重建一次 state，驱动 UI 上的通话时长刷新。connectedAt 不变，因此
@@ -123,6 +136,8 @@ class PjsipService extends Notifier<PjsipUIState> {
     if (!state.isInitialized) return;
     _stopCallTimer();
     _stopAudioLevelTimer();
+    _stopAudioDeviceMonitoring();
+    _cancelPendingAudioBridgeReconnects();
     _networkChangeTimer?.cancel();
     _ipChangeTimeoutTimer?.cancel();
     _ipChangeInProgress = false;
@@ -146,6 +161,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       isSpeakerMuted: false,
       microphoneLevel: 0,
       speakerLevel: 0,
+      audioDeviceMode: PjsipAudioDeviceMode.automatic,
+      audioDeviceStatus: '设备监控已停止',
+      allowInCallAudioDeviceSwitch: false,
     );
     _addLog('⏹ 引擎已关闭');
   }
@@ -156,6 +174,8 @@ class PjsipService extends Notifier<PjsipUIState> {
     _connectivitySubscription = null;
     _stopCallTimer();
     _stopAudioLevelTimer();
+    _stopAudioDeviceMonitoring();
+    _cancelPendingAudioBridgeReconnects();
     _networkChangeTimer?.cancel();
     _ipChangeTimeoutTimer?.cancel();
     _ipChangeInProgress = false;

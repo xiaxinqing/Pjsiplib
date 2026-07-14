@@ -134,6 +134,7 @@ extension PjsipEngineOperations on PjsipService {
 
     if (_uiState.isInitialized) {
       await refreshAudioDevices();
+      _startAudioDeviceMonitoring();
       _startAudioLevelTimer();
     }
   }

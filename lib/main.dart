@@ -186,11 +186,20 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
             const SizedBox(height: 20),
             // 4. 日志
-            const Row(
+            Row(
               children: [
-                Icon(Icons.terminal, size: 18),
-                SizedBox(width: 8),
-                Text('运行日志', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Icon(Icons.terminal, size: 18),
+                const SizedBox(width: 8),
+                const Text(
+                  '运行日志',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const Spacer(),
+                OutlinedButton.icon(
+                  onPressed: uiState.logs.isEmpty ? null : service.clearLogs,
+                  icon: const Icon(Icons.delete_sweep),
+                  label: const Text('清空'),
+                ),
               ],
             ),
             const SizedBox(height: 10),
@@ -202,7 +211,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                 ),
                 child: ListView.builder(
-                  reverse: true,
+                  // reverse: true,
                   padding: const EdgeInsets.all(8),
                   itemCount: uiState.logs.length,
                   itemBuilder: (context, index) {
@@ -252,7 +261,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             const Icon(Icons.headphones, size: 18),
             const SizedBox(width: 8),
             const Text('音频设备', style: TextStyle(fontWeight: FontWeight.bold)),
-            const Spacer(),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                uiState.audioDeviceStatus,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
             OutlinedButton.icon(
               onPressed: service.refreshAudioDevices,
               icon: const Icon(Icons.refresh),
@@ -261,13 +277,51 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
           ],
         ),
         const SizedBox(height: 12),
+        Row(
+          children: [
+            Switch(
+              value: uiState.allowInCallAudioDeviceSwitch,
+              onChanged: service.setAllowInCallAudioDeviceSwitch,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '通话中检测并自动切换新音频设备',
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 12,
           runSpacing: 12,
           children: [
+            SegmentedButton<PjsipAudioDeviceMode>(
+              segments: const [
+                ButtonSegment(
+                  value: PjsipAudioDeviceMode.automatic,
+                  icon: Icon(Icons.auto_mode),
+                  label: Text('自动'),
+                ),
+                ButtonSegment(
+                  value: PjsipAudioDeviceMode.manual,
+                  icon: Icon(Icons.tune),
+                  label: Text('手动'),
+                ),
+              ],
+              selected: {uiState.audioDeviceMode},
+              onSelectionChanged: (values) {
+                service.setAutomaticAudioDeviceSelection(
+                  values.first == PjsipAudioDeviceMode.automatic,
+                );
+              },
+            ),
             SizedBox(
               width: 320,
               child: DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: captureValue,
                 decoration: const InputDecoration(
                   labelText: '麦克风',
@@ -285,6 +339,18 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                       ),
                     )
                     .toList(),
+                selectedItemBuilder: (context) => uiState.captureDevices
+                    .map(
+                      (device) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          device.label,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ),
+                    )
+                    .toList(),
                 onChanged: (value) {
                   if (value == null) return;
                   service.setAudioDevices(captureDeviceId: value);
@@ -294,6 +360,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             SizedBox(
               width: 320,
               child: DropdownButtonFormField<int>(
+                isExpanded: true,
                 initialValue: playbackValue,
                 decoration: const InputDecoration(
                   labelText: '扬声器',
@@ -307,6 +374,18 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
                         child: Text(
                           device.label,
                           overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                selectedItemBuilder: (context) => uiState.playbackDevices
+                    .map(
+                      (device) => Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          device.label,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     )
