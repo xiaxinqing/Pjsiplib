@@ -364,8 +364,12 @@ extension PjsipCallOperations on PjsipService {
   void _connectCallToSound(int callId) {
     final slot = _getConferenceSlot(callId);
     if (slot == null) return;
-    _bindings.pjsua_conf_connect(slot, 0);
-    _bindings.pjsua_conf_connect(0, slot);
+    if (!_uiState.isSpeakerMuted) {
+      _bindings.pjsua_conf_connect(slot, 0);
+    }
+    if (!_uiState.isMicrophoneMuted) {
+      _bindings.pjsua_conf_connect(0, slot);
+    }
     _mediaConnectedCalls.add(callId);
   }
 
@@ -377,8 +381,12 @@ extension PjsipCallOperations on PjsipService {
       if (slot != null) slots[callId] = slot;
     }
     for (final slot in slots.values) {
-      _bindings.pjsua_conf_connect(0, slot); // 本机麦克风 -> 远端
-      _bindings.pjsua_conf_connect(slot, 0); // 远端 -> 本机扬声器
+      if (!_uiState.isMicrophoneMuted) {
+        _bindings.pjsua_conf_connect(0, slot); // 本机麦克风 -> 远端
+      }
+      if (!_uiState.isSpeakerMuted) {
+        _bindings.pjsua_conf_connect(slot, 0); // 远端 -> 本机扬声器
+      }
     }
     final values = slots.values.toList();
     for (var i = 0; i < values.length; i++) {

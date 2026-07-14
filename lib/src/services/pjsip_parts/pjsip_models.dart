@@ -15,6 +15,39 @@ class PjsipLog {
   PjsipLog(this.message) : time = DateTime.now();
 }
 
+class PjsipAudioDevice {
+  final int id;
+  final String name;
+  final String driver;
+  final int inputCount;
+  final int outputCount;
+  final int defaultSampleRate;
+
+  const PjsipAudioDevice({
+    required this.id,
+    required this.name,
+    required this.driver,
+    required this.inputCount,
+    required this.outputCount,
+    required this.defaultSampleRate,
+  });
+
+  bool get canCapture => inputCount > 0;
+
+  bool get canPlayback => outputCount > 0;
+
+  String get signature => '$driver::$name::$inputCount::$outputCount';
+
+  String get label {
+    final io = [
+      if (canCapture) '输入$inputCount',
+      if (canPlayback) '输出$outputCount',
+    ].join('/');
+    final source = driver.isEmpty ? io : '$driver · $io';
+    return source.isEmpty ? name : '$name ($source)';
+  }
+}
+
 class CallInfo {
   final int callId;
   final int state; // pjsip_inv_state
@@ -115,6 +148,14 @@ class PjsipUIState {
   final bool isInitialized;
   final int accId;
   final String host;
+  final List<PjsipAudioDevice> captureDevices;
+  final List<PjsipAudioDevice> playbackDevices;
+  final int? selectedCaptureDeviceId;
+  final int? selectedPlaybackDeviceId;
+  final bool isMicrophoneMuted;
+  final bool isSpeakerMuted;
+  final int microphoneLevel;
+  final int speakerLevel;
 
   PjsipUIState({
     required this.logs,
@@ -128,6 +169,14 @@ class PjsipUIState {
     this.isInitialized = false,
     this.accId = -1,
     this.host = '',
+    this.captureDevices = const [],
+    this.playbackDevices = const [],
+    this.selectedCaptureDeviceId,
+    this.selectedPlaybackDeviceId,
+    this.isMicrophoneMuted = false,
+    this.isSpeakerMuted = false,
+    this.microphoneLevel = 0,
+    this.speakerLevel = 0,
   });
 
   PjsipUIState copyWith({
@@ -142,6 +191,14 @@ class PjsipUIState {
     bool? isInitialized,
     int? accId,
     String? host,
+    List<PjsipAudioDevice>? captureDevices,
+    List<PjsipAudioDevice>? playbackDevices,
+    Object? selectedCaptureDeviceId = _unset,
+    Object? selectedPlaybackDeviceId = _unset,
+    bool? isMicrophoneMuted,
+    bool? isSpeakerMuted,
+    int? microphoneLevel,
+    int? speakerLevel,
   }) {
     return PjsipUIState(
       logs: logs ?? this.logs,
@@ -160,6 +217,18 @@ class PjsipUIState {
       isInitialized: isInitialized ?? this.isInitialized,
       accId: accId ?? this.accId,
       host: host ?? this.host,
+      captureDevices: captureDevices ?? this.captureDevices,
+      playbackDevices: playbackDevices ?? this.playbackDevices,
+      selectedCaptureDeviceId: identical(selectedCaptureDeviceId, _unset)
+          ? this.selectedCaptureDeviceId
+          : selectedCaptureDeviceId as int?,
+      selectedPlaybackDeviceId: identical(selectedPlaybackDeviceId, _unset)
+          ? this.selectedPlaybackDeviceId
+          : selectedPlaybackDeviceId as int?,
+      isMicrophoneMuted: isMicrophoneMuted ?? this.isMicrophoneMuted,
+      isSpeakerMuted: isSpeakerMuted ?? this.isSpeakerMuted,
+      microphoneLevel: microphoneLevel ?? this.microphoneLevel,
+      speakerLevel: speakerLevel ?? this.speakerLevel,
     );
   }
 

@@ -131,6 +131,11 @@ extension PjsipEngineOperations on PjsipService {
       // 精简 codec，缩小 INVITE 的 SDP，避免超过 UDP MTU 后自动切换到 TCP。
       _configureCodecs();
     });
+
+    if (_uiState.isInitialized) {
+      await refreshAudioDevices();
+      _startAudioLevelTimer();
+    }
   }
 
   // 精简音频 codec 列表：只保留 PCMU / PCMA (G.711 μ/A-law)，禁用其余全部。

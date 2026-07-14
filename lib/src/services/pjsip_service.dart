@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'dart:io' show Platform;
@@ -15,6 +16,8 @@ part 'pjsip_parts/pjsip_engine.dart';
 
 part 'pjsip_parts/pjsip_calls.dart';
 
+part 'pjsip_parts/pjsip_audio_devices.dart';
+
 part 'pjsip_parts/pjsip_network.dart';
 
 class PjsipService extends Notifier<PjsipUIState> {
@@ -30,6 +33,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   // 通话计时器：接通后每秒触发一次 state 刷新，让 UI 上的时长走动。
   // duration 本身由 CallInfo.connectedAt 实时算出，timer 只负责触发重建。
   Timer? _callTimer;
+  Timer? _audioLevelTimer;
   Timer? _networkChangeTimer;
   Timer? _ipChangeTimeoutTimer;
   bool _ipChangeInProgress = false;
@@ -118,6 +122,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   void stop() {
     if (!state.isInitialized) return;
     _stopCallTimer();
+    _stopAudioLevelTimer();
     _networkChangeTimer?.cancel();
     _ipChangeTimeoutTimer?.cancel();
     _ipChangeInProgress = false;
@@ -133,6 +138,14 @@ class PjsipService extends Notifier<PjsipUIState> {
       isConferencePaused: false,
       conferenceInterruptionCallId: null,
       networkState: PjsipNetworkState.idle,
+      captureDevices: const [],
+      playbackDevices: const [],
+      selectedCaptureDeviceId: null,
+      selectedPlaybackDeviceId: null,
+      isMicrophoneMuted: false,
+      isSpeakerMuted: false,
+      microphoneLevel: 0,
+      speakerLevel: 0,
     );
     _addLog('⏹ 引擎已关闭');
   }
@@ -142,6 +155,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
     _stopCallTimer();
+    _stopAudioLevelTimer();
     _networkChangeTimer?.cancel();
     _ipChangeTimeoutTimer?.cancel();
     _ipChangeInProgress = false;

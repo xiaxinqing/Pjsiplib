@@ -295,8 +295,12 @@ extension _PjsipNativeCallbacks on PjsipService {
           }
           // 每次协商完成 (接通/hold 恢复/换编码) 都会触发本回调，且 conf_slot
           // 可能变化，因此每次都重连。pjsua_conf_connect 幂等，重复调用安全。
-          _bindings.pjsua_conf_connect(confSlot, 0);
-          _bindings.pjsua_conf_connect(0, confSlot);
+          if (!_uiState.isSpeakerMuted) {
+            _bindings.pjsua_conf_connect(confSlot, 0);
+          }
+          if (!_uiState.isMicrophoneMuted) {
+            _bindings.pjsua_conf_connect(0, confSlot);
+          }
           if (_mediaConnectedCalls.add(callId)) {
             _addLog('🎙️ 媒体通道已建立并连接到声卡 (slot=$confSlot)');
           }

@@ -91,6 +91,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
             ),
             const Divider(height: 32),
 
+            if (uiState.isInitialized) ...[
+              _buildAudioDevicePanel(uiState, service),
+              const Divider(height: 32),
+            ],
+
             // 2. 拨号盘
             if (uiState.accId != -1 &&
                 uiState.calls.length < 4 &&
@@ -220,6 +225,124 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildAudioDevicePanel(PjsipUIState uiState, PjsipService service) {
+    final captureValue =
+        uiState.captureDevices.any(
+          (device) => device.id == uiState.selectedCaptureDeviceId,
+        )
+        ? uiState.selectedCaptureDeviceId
+        : null;
+    final playbackValue =
+        uiState.playbackDevices.any(
+          (device) => device.id == uiState.selectedPlaybackDeviceId,
+        )
+        ? uiState.selectedPlaybackDeviceId
+        : null;
+    final micLevel = (uiState.microphoneLevel / 255.0).clamp(0.0, 1.0);
+    final speakerLevel = (uiState.speakerLevel / 255.0).clamp(0.0, 1.0);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.headphones, size: 18),
+            const SizedBox(width: 8),
+            const Text('音频设备', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Spacer(),
+            OutlinedButton.icon(
+              onPressed: service.refreshAudioDevices,
+              icon: const Icon(Icons.refresh),
+              label: const Text('刷新设备'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            SizedBox(
+              width: 320,
+              child: DropdownButtonFormField<int>(
+                initialValue: captureValue,
+                decoration: const InputDecoration(
+                  labelText: '麦克风',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.mic),
+                ),
+                items: uiState.captureDevices
+                    .map(
+                      (device) => DropdownMenuItem<int>(
+                        value: device.id,
+                        child: Text(
+                          device.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  service.setAudioDevices(captureDeviceId: value);
+                },
+              ),
+            ),
+            SizedBox(
+              width: 320,
+              child: DropdownButtonFormField<int>(
+                initialValue: playbackValue,
+                decoration: const InputDecoration(
+                  labelText: '扬声器',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.volume_up),
+                ),
+                items: uiState.playbackDevices
+                    .map(
+                      (device) => DropdownMenuItem<int>(
+                        value: device.id,
+                        child: Text(
+                          device.label,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value == null) return;
+                  service.setAudioDevices(playbackDeviceId: value);
+                },
+              ),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () =>
+                  service.setMicrophoneMuted(!uiState.isMicrophoneMuted),
+              icon: Icon(uiState.isMicrophoneMuted ? Icons.mic_off : Icons.mic),
+              label: Text(uiState.isMicrophoneMuted ? '取消麦克风静音' : '麦克风静音'),
+            ),
+            FilledButton.tonalIcon(
+              onPressed: () => service.setSpeakerMuted(!uiState.isSpeakerMuted),
+              icon: Icon(
+                uiState.isSpeakerMuted ? Icons.volume_off : Icons.volume_up,
+              ),
+              label: Text(uiState.isSpeakerMuted ? '取消扬声器静音' : '扬声器静音'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const SizedBox(width: 76, child: Text('麦克风电平')),
+            Expanded(child: LinearProgressIndicator(value: micLevel)),
+            const SizedBox(width: 16),
+            const SizedBox(width: 76, child: Text('扬声器电平')),
+            Expanded(child: LinearProgressIndicator(value: speakerLevel)),
+          ],
+        ),
+      ],
     );
   }
 
