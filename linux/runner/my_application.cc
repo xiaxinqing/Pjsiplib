@@ -10,9 +10,47 @@
 struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
+  FlMethodChannel* attention_channel;
+  GtkWindow* main_window;
 };
 
 G_DEFINE_TYPE(MyApplication, my_application, GTK_TYPE_APPLICATION)
+
+static void window_attention_method_call_cb(FlMethodChannel* channel,
+                                            FlMethodCall* method_call,
+                                            gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  if (self->main_window == nullptr) {
+    g_autoptr(FlMethodResponse) response = FL_METHOD_RESPONSE(
+        fl_method_error_response_new("no_window", "Main window is not ready",
+                                     nullptr));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  if (g_strcmp0(method, "requestAttention") == 0) {
+    gtk_window_set_urgency_hint(self->main_window, TRUE);
+    gtk_window_present(self->main_window);
+    g_autoptr(FlMethodResponse) response =
+        FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  if (g_strcmp0(method, "clearAttention") == 0) {
+    gtk_window_set_urgency_hint(self->main_window, FALSE);
+    g_autoptr(FlMethodResponse) response =
+        FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  g_autoptr(FlMethodResponse) response =
+      FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  fl_method_call_respond(method_call, response, nullptr);
+}
 
 // Called when first Flutter frame received.
 static void first_frame_cb(MyApplication* self, FlView* view) {
@@ -24,6 +62,7 @@ static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
+  self->main_window = window;
 
   // Use a header bar when running in GNOME as this is the common style used
   // by applications and is the setup most users will be using (e.g. Ubuntu
@@ -75,6 +114,18 @@ static void my_application_activate(GApplication* application) {
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
 
+  FlPluginRegistrar* attention_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(
+          FL_PLUGIN_REGISTRY(view), "VoipDeskWindowAttention");
+  g_autoptr(FlStandardMethodCodec) attention_codec =
+      fl_standard_method_codec_new();
+  self->attention_channel = fl_method_channel_new(
+      fl_plugin_registrar_get_messenger(attention_registrar),
+      "voip_desk/window_attention", FL_METHOD_CODEC(attention_codec));
+  fl_method_channel_set_method_call_handler(
+      self->attention_channel, window_attention_method_call_cb,
+      g_object_ref(self), g_object_unref);
+
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
 
@@ -121,6 +172,8 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  g_clear_object(&self->attention_channel);
+  self->main_window = nullptr;
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);
 }
 

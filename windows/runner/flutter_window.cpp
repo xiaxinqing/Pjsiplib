@@ -1,5 +1,7 @@
 #include "flutter_window.h"
 
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -25,6 +27,7 @@ bool FlutterWindow::OnCreate() {
     return false;
   }
   RegisterPlugins(flutter_controller_->engine());
+  ConfigureWindowAttentionChannel();
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
@@ -68,4 +71,53 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
+}
+
+void FlutterWindow::ConfigureWindowAttentionChannel() {
+  auto channel =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(),
+          "voip_desk/window_attention",
+          &flutter::StandardMethodCodec::GetInstance());
+
+  channel->SetMethodCallHandler(
+      [this](const flutter::MethodCall<flutter::EncodableValue>& call,
+             std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>>
+                 result) {
+        if (call.method_name() == "requestAttention") {
+          RequestUserAttention();
+          result->Success();
+          return;
+        }
+
+        if (call.method_name() == "clearAttention") {
+          ClearUserAttention();
+          result->Success();
+          return;
+        }
+
+        result->NotImplemented();
+      });
+
+  window_attention_channel_ = std::move(channel);
+}
+
+void FlutterWindow::RequestUserAttention() {
+  FLASHWINFO flash_info = {};
+  flash_info.cbSize = sizeof(FLASHWINFO);
+  flash_info.hwnd = GetHandle();
+  flash_info.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
+  flash_info.uCount = 0;
+  flash_info.dwTimeout = 0;
+  ::FlashWindowEx(&flash_info);
+}
+
+void FlutterWindow::ClearUserAttention() {
+  FLASHWINFO flash_info = {};
+  flash_info.cbSize = sizeof(FLASHWINFO);
+  flash_info.hwnd = GetHandle();
+  flash_info.dwFlags = FLASHW_STOP;
+  flash_info.uCount = 0;
+  flash_info.dwTimeout = 0;
+  ::FlashWindowEx(&flash_info);
 }
