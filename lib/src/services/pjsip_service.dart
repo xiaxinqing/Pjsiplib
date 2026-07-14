@@ -15,6 +15,8 @@ part 'pjsip_parts/pjsip_network_models.dart';
 
 part 'pjsip_parts/pjsip_audio_models.dart';
 
+part 'pjsip_parts/pjsip_account_models.dart';
+
 part 'pjsip_parts/pjsip_call_models.dart';
 
 part 'pjsip_parts/pjsip_ui_state.dart';
@@ -158,6 +160,8 @@ class PjsipService extends Notifier<PjsipUIState> {
       networkState: PjsipNetworkState.idle,
       accId: -1,
       host: '',
+      accounts: const {},
+      defaultAccountId: null,
       captureDevices: const [],
       playbackDevices: const [],
       selectedCaptureDeviceId: null,

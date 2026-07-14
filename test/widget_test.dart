@@ -47,6 +47,55 @@ void main() {
     expect(disconnected.host, isEmpty);
   });
 
+  test('多线路状态可以记录默认外呼线路', () {
+    final account6523 = SipAccountInfo(
+      accId: 0,
+      username: '6523',
+      host: '139.59.100.15',
+      registrationStatus: 200,
+      registrationStatusText: 'OK',
+    );
+    final account6529 = SipAccountInfo(
+      accId: 1,
+      username: '6529',
+      host: '139.59.100.15',
+      registrationStatus: 200,
+      registrationStatusText: 'OK',
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {0: account6523, 1: account6529},
+      defaultAccountId: 1,
+      accId: 1,
+      host: account6529.host,
+    );
+
+    expect(state.accounts.length, 2);
+    expect(state.defaultAccount?.username, '6529');
+    expect(state.hasRegisteredAccount, isTrue);
+  });
+
+  test('通话可以关联到具体线路', () {
+    final account = SipAccountInfo(
+      accId: 7,
+      username: '售后',
+      host: 'pbx.example.com',
+    );
+    final call = CallInfo(
+      callId: 3,
+      state: 2,
+      remoteUri: 'sip:10086@pbx.example.com',
+      accountId: 7,
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {7: account},
+      calls: {3: call},
+    );
+
+    expect(state.accountForCall(call)?.username, '售后');
+  });
+
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

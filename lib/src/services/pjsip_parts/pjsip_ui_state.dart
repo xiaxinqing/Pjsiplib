@@ -41,6 +41,12 @@ class PjsipUIState {
   /// 当前注册/连接的 SIP 服务器地址。
   final String host;
 
+  /// 坐席当前已添加的 SIP 线路。key 是 PJSIP accId。
+  final Map<int, SipAccountInfo> accounts;
+
+  /// 默认外呼线路。来电仍按 PJSIP 回调中的 accId 归属到具体线路。
+  final int? defaultAccountId;
+
   /// UI 可选的输入设备列表，已经过滤掉明显不适合通话的设备。
   final List<PjsipAudioDevice> captureDevices;
 
@@ -92,6 +98,8 @@ class PjsipUIState {
     this.isInitialized = false,
     this.accId = -1,
     this.host = '',
+    this.accounts = const {},
+    this.defaultAccountId,
     this.captureDevices = const [],
     this.playbackDevices = const [],
     this.selectedCaptureDeviceId,
@@ -119,6 +127,8 @@ class PjsipUIState {
     bool? isInitialized,
     int? accId,
     String? host,
+    Map<int, SipAccountInfo>? accounts,
+    Object? defaultAccountId = _unset,
     List<PjsipAudioDevice>? captureDevices,
     List<PjsipAudioDevice>? playbackDevices,
     Object? selectedCaptureDeviceId = _unset,
@@ -150,6 +160,10 @@ class PjsipUIState {
       isInitialized: isInitialized ?? this.isInitialized,
       accId: accId ?? this.accId,
       host: host ?? this.host,
+      accounts: accounts ?? this.accounts,
+      defaultAccountId: identical(defaultAccountId, _unset)
+          ? this.defaultAccountId
+          : defaultAccountId as int?,
       captureDevices: captureDevices ?? this.captureDevices,
       playbackDevices: playbackDevices ?? this.playbackDevices,
       selectedCaptureDeviceId: identical(selectedCaptureDeviceId, _unset)
@@ -173,6 +187,15 @@ class PjsipUIState {
 
   /// 当前主通话对象。没有 activeCallId 或已被移除时返回 null。
   CallInfo? get activeCall => activeCallId == null ? null : calls[activeCallId];
+
+  SipAccountInfo? get defaultAccount =>
+      defaultAccountId == null ? null : accounts[defaultAccountId];
+
+  bool get hasRegisteredAccount =>
+      accounts.values.any((account) => account.isRegistered) || accId != -1;
+
+  SipAccountInfo? accountForCall(CallInfo call) =>
+      call.accountId == null ? null : accounts[call.accountId];
 
   /// 两路远端通话加上本机用户，即构成三方通话。
   bool get hasConference => conferenceCallIds.length >= 2;

@@ -97,6 +97,19 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     service.hangupCall(callId);
   }
 
+  void _registerLine(PjsipService service) {
+    final username = _usernameController.text.trim();
+    final host = _hostController.text.trim();
+    if (username.isEmpty || host.isEmpty) return;
+    service.register(
+      username: username,
+      password: _passwordController.text,
+      host: host,
+    );
+    _usernameController.clear();
+    _passwordController.clear();
+  }
+
   void _selectSection(_WorkspaceSection section) {
     setState(() => _section = section);
   }

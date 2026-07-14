@@ -7,7 +7,8 @@ extension PjsipCallOperations on PjsipService {
       _addLog('❌ 当前网络不可用，无法发起呼叫');
       return;
     }
-    if (_uiState.accId == -1) {
+    final account = _uiState.defaultAccount;
+    if (account == null) {
       _addLog('❌ 请先注册账号');
       return;
     }
@@ -24,7 +25,7 @@ extension PjsipCallOperations on PjsipService {
     using((Arena arena) {
       // 注册及可正常工作的来电均使用 UDP。显式指定 UDP 可避免外呼因
       // 自动切换到 TCP 后，PBX 无法沿同一 dialog 路由远端 BYE。
-      final targetUri = 'sip:$number@${_uiState.host};transport=udp';
+      final targetUri = 'sip:$number@${account.host};transport=udp';
       final dstUri = targetUri.toNativeUtf8(allocator: arena);
       final pjUri = arena<pj_str_t>();
       final pCallId = arena<pjsua_call_id>();
@@ -36,9 +37,9 @@ extension PjsipCallOperations on PjsipService {
       callSetting.ref.vid_cnt = 0;
       callSetting.ref.txt_cnt = 0;
       _pjStr(pjUri.ref, dstUri);
-      _addLog('➡️ 发起 INVITE: $targetUri, acc=${_uiState.accId}');
+      _addLog('➡️ 发起 INVITE: $targetUri, acc=${account.accId}');
       final status = _bindings.pjsua_call_make_call(
-        _uiState.accId,
+        account.accId,
         pjUri,
         callSetting,
         ffi.nullptr,
@@ -52,6 +53,7 @@ extension PjsipCallOperations on PjsipService {
             callId: callId,
             state: pjsip_inv_state.PJSIP_INV_STATE_CALLING.value,
             remoteUri: targetUri,
+            accountId: account.accId,
           ),
           makeActive: true,
         );

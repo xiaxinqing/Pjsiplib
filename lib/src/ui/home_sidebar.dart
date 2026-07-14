@@ -58,6 +58,8 @@ extension _HomeSidebar on _MyHomePageState {
             section: _WorkspaceSection.history,
           ),
           const Spacer(),
+          _buildLineStatusPanel(uiState),
+          const SizedBox(height: 12),
           _buildAudioMiniStatus(uiState),
           const SizedBox(height: 12),
           OutlinedButton.icon(
@@ -71,7 +73,7 @@ extension _HomeSidebar on _MyHomePageState {
   }
 
   Widget _buildConnectionPill(PjsipUIState uiState) {
-    final isRegistered = uiState.accId != -1;
+    final isRegistered = uiState.hasRegisteredAccount;
     final color = !uiState.isNetworkAvailable
         ? Colors.orange.shade700
         : isRegistered
@@ -80,7 +82,7 @@ extension _HomeSidebar on _MyHomePageState {
     final label = !uiState.isNetworkAvailable
         ? '网络不可用'
         : isRegistered
-        ? '电话服务已连接'
+        ? '电话线路已连接'
         : uiState.isInitialized
         ? '等待账号连接'
         : '未连接';
@@ -103,6 +105,63 @@ extension _HomeSidebar on _MyHomePageState {
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLineStatusPanel(PjsipUIState uiState) {
+    final accounts = uiState.accounts.values.toList();
+    if (accounts.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            '线路',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 8),
+          for (final account in accounts.take(3))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 9,
+                    color: account.isRegistered
+                        ? _brandGreen
+                        : Colors.orange.shade700,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      account.displayName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  if (uiState.defaultAccountId == account.accId)
+                    const Icon(Icons.outbound, size: 14),
+                ],
+              ),
+            ),
+          if (accounts.length > 3)
+            Text(
+              '+${accounts.length - 3} 条线路',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
         ],
       ),
     );

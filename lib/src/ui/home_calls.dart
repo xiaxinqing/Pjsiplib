@@ -52,6 +52,7 @@ extension _HomeCalls on _MyHomePageState {
     final isConferenceMember = uiState.isInConference(primary.callId);
     final isConferencePaused = uiState.isConferencePaused;
     final isIncoming = primary.isIncoming && !primary.isConnected;
+    final account = uiState.accountForCall(primary);
 
     return Card(
       color: _panelBackground,
@@ -77,6 +78,10 @@ extension _HomeCalls on _MyHomePageState {
               primary.statusLabel,
               style: Theme.of(context).textTheme.titleMedium,
             ),
+            if (account != null) ...[
+              const SizedBox(height: 10),
+              _buildCallLineChip(account, isIncoming: isIncoming),
+            ],
             const SizedBox(height: 12),
             if (primary.isConnected)
               Text(
@@ -299,6 +304,7 @@ extension _HomeCalls on _MyHomePageState {
   ) {
     final isActive = uiState.activeCallId == call.callId;
     final isConferenceMember = uiState.isInConference(call.callId);
+    final account = uiState.accountForCall(call);
     final canMergeWithActive =
         !uiState.hasConference &&
         call.isConnected &&
@@ -341,6 +347,17 @@ extension _HomeCalls on _MyHomePageState {
                       call.isConnected ? call.durationLabel : call.statusLabel,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
+                    if (account != null) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        account.lineLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -399,6 +416,18 @@ extension _HomeCalls on _MyHomePageState {
     );
   }
 
+  Widget _buildCallLineChip(
+    SipAccountInfo account, {
+    required bool isIncoming,
+  }) {
+    return Chip(
+      avatar: Icon(isIncoming ? Icons.call_received : Icons.outbound),
+      label: Text(isIncoming ? '来电线路：${account.lineLabel}' : account.lineLabel),
+      side: const BorderSide(color: _softBorder),
+      backgroundColor: _subtlePanel,
+    );
+  }
+
   Widget _buildContactsPage(PjsipUIState uiState, PjsipService service) {
     final contacts = const [
       ('6529', '前台'),
@@ -420,7 +449,7 @@ extension _HomeCalls on _MyHomePageState {
             subtitle: Text(number),
             trailing: IconButton.filledTonal(
               tooltip: '呼叫',
-              onPressed: uiState.accId == -1
+              onPressed: uiState.defaultAccount == null
                   ? null
                   : () {
                       _numberController.text = number;

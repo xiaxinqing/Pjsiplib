@@ -85,6 +85,15 @@ extension _PjsipNativeCallbacks on PjsipService {
               networkState: PjsipNetworkState.failed,
             );
           }
+          final account = _uiState.accounts[accId];
+          if (account != null) {
+            final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+              ..[accId] = account.copyWith(
+                registrationStatus: sipStatus,
+                registrationStatusText: statusText,
+              );
+            _uiState = _uiState.copyWith(accounts: accounts);
+          }
           _addLog('🔔 账号状态更新: ID $accId, 状态: $sipStatus ($statusText)');
         }
       });
@@ -112,7 +121,12 @@ extension _PjsipNativeCallbacks on PjsipService {
             // [T3 handle] 真正更新状态
             _trace('T3 handle', 'on_incoming_call: 添加 call=$callId');
             _putCall(
-              CallInfo(callId: callId, state: callState, remoteUri: remoteUri),
+              CallInfo(
+                callId: callId,
+                state: callState,
+                remoteUri: remoteUri,
+                accountId: accId,
+              ),
             );
           });
         }
@@ -201,6 +215,7 @@ extension _PjsipNativeCallbacks on PjsipService {
                 callId: callId,
                 state: callState,
                 remoteUri: remoteUri,
+                accountId: prev?.accountId,
                 connectedAt: connectedAt,
                 isOnHold: holdFlags.local,
                 isRemoteOnHold: holdFlags.remote,

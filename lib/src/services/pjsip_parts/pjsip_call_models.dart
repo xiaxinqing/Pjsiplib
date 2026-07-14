@@ -16,6 +16,9 @@ class CallInfo {
   /// 远端 SIP URI，用于展示来电方/对端信息。
   final String remoteUri;
 
+  /// 这通电话归属的 SIP 账号/线路 ID。来电来自 PJSIP 回调 accId，外呼来自默认线路。
+  final int? accountId;
+
   /// 通话接通 (进入 CONFIRMED) 的时间戳，用于计时。未接通时为 null。
   final DateTime? connectedAt;
 
@@ -29,6 +32,7 @@ class CallInfo {
     required this.callId,
     required this.state,
     required this.remoteUri,
+    this.accountId,
     this.connectedAt,
     this.isOnHold = false,
     this.isRemoteOnHold = false,
@@ -38,6 +42,7 @@ class CallInfo {
     int? callId,
     int? state,
     String? remoteUri,
+    Object? accountId = _unset,
     DateTime? connectedAt,
     bool? isOnHold,
     bool? isRemoteOnHold,
@@ -46,6 +51,9 @@ class CallInfo {
       callId: callId ?? this.callId,
       state: state ?? this.state,
       remoteUri: remoteUri ?? this.remoteUri,
+      accountId: identical(accountId, _unset)
+          ? this.accountId
+          : accountId as int?,
       connectedAt: connectedAt ?? this.connectedAt,
       isOnHold: isOnHold ?? this.isOnHold,
       isRemoteOnHold: isRemoteOnHold ?? this.isRemoteOnHold,

@@ -211,13 +211,44 @@ extension PjsipEngineOperations on PjsipService {
       cred.data_type = 0;
       _pjStr(cred.data, password.toNativeUtf8(allocator: arena));
       final pAccId = arena<ffi.Int>();
-      final status = _bindings.pjsua_acc_add(accCfg, 1, pAccId);
+      final isDefault = _uiState.defaultAccountId == null ? 1 : 0;
+      final status = _bindings.pjsua_acc_add(accCfg, isDefault, pAccId);
       if (status != 0) {
         _addLog('❌ 添加 SIP 账号失败: pj_status=$status');
         return;
       }
-      _uiState = _uiState.copyWith(accId: pAccId.value, host: host);
-      _addLog('🚀 注册请求已发送');
+      final account = SipAccountInfo(
+        accId: pAccId.value,
+        username: username,
+        host: host,
+      );
+      final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+        ..[account.accId] = account;
+      final defaultAccountId = _uiState.defaultAccountId ?? account.accId;
+      final defaultAccount = accounts[defaultAccountId] ?? account;
+      _uiState = _uiState.copyWith(
+        accounts: accounts,
+        defaultAccountId: defaultAccountId,
+        accId: defaultAccount.accId,
+        host: defaultAccount.host,
+      );
+      _addLog('🚀 注册请求已发送: ${account.lineLabel}');
     });
+  }
+
+  void setDefaultAccount(int accId) {
+    final account = _uiState.accounts[accId];
+    if (account == null) return;
+    final status = _bindings.pjsua_acc_set_default(accId);
+    if (status != 0) {
+      _addLog('❌ 设置默认外呼线路失败: acc=$accId, pj_status=$status');
+      return;
+    }
+    _uiState = _uiState.copyWith(
+      defaultAccountId: accId,
+      accId: account.accId,
+      host: account.host,
+    );
+    _addLog('✅ 默认外呼线路已切换: ${account.lineLabel}');
   }
 }

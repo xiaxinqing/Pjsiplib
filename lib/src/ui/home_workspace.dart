@@ -77,37 +77,39 @@ extension _HomeWorkspace on _MyHomePageState {
   }
 
   Widget _buildHeaderAction(PjsipUIState uiState, PjsipService service) {
-    if (uiState.accId != -1) {
+    if (uiState.accounts.isNotEmpty) {
       return FilledButton.tonalIcon(
         onPressed: uiState.isInitialized ? service.stop : null,
         icon: const Icon(Icons.power_settings_new),
-        label: const Text('断开'),
+        label: const Text('断开全部'),
       );
     }
     return FilledButton.icon(
       onPressed: uiState.isNetworkAvailable
-          ? () => service.register(
-              username: _usernameController.text.trim(),
-              password: _passwordController.text,
-              host: _hostController.text.trim(),
-            )
+          ? () => _registerLine(service)
           : null,
       icon: const Icon(Icons.login),
-      label: const Text('连接'),
+      label: const Text('添加线路'),
       style: FilledButton.styleFrom(backgroundColor: _textPrimary),
     );
   }
 
   String _statusSubtitle(PjsipUIState uiState) {
     if (!uiState.isNetworkAvailable) return '当前网络不可用';
-    if (uiState.accId != -1) return '已连接到 ${uiState.host}';
+    if (uiState.accounts.isNotEmpty) {
+      final defaultAccount = uiState.defaultAccount;
+      final suffix = defaultAccount == null
+          ? ''
+          : '，默认外呼 ${defaultAccount.displayName}';
+      return '已接入 ${uiState.accounts.length} 条线路$suffix';
+    }
     if (uiState.isInitialized) return '引擎已就绪，账号尚未连接';
     return '连接电话服务后即可发起和接听通话';
   }
 
   Widget _buildDialpadPage(PjsipUIState uiState, PjsipService service) {
     final canCall =
-        uiState.accId != -1 &&
+        uiState.defaultAccount != null &&
         uiState.calls.length < 4 &&
         !uiState.hasConference;
     return Row(
@@ -161,6 +163,10 @@ extension _HomeWorkspace on _MyHomePageState {
               keyboardType: TextInputType.phone,
               onSubmitted: (_) => _callNumberIfPossible(canCall, service),
             ),
+            if (uiState.defaultAccount != null) ...[
+              const SizedBox(height: 12),
+              _buildDefaultLinePill(uiState.defaultAccount!),
+            ],
             const SizedBox(height: 18),
             _buildNumberPad(),
             const SizedBox(height: 20),
@@ -184,6 +190,32 @@ extension _HomeWorkspace on _MyHomePageState {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultLinePill(SipAccountInfo account) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.outbound, size: 16),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '默认外呼线路：${account.lineLabel}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
       ),
     );
   }

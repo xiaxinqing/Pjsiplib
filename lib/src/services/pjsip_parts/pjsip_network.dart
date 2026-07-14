@@ -130,9 +130,9 @@ extension PjsipNetworkOperations on PjsipService {
       return;
     }
 
-    if (_uiState.accId == -1) {
+    if (_uiState.accounts.isEmpty) {
       // PJSUA 已启动但账号尚未添加，不能调用 acc_set_registration；由登录
-      // 流程继续调用 register()，并且只能添加一次账号。
+      // 流程继续调用 register()。
       _pendingIpChange = false;
       _uiState = _uiState.copyWith(networkState: PjsipNetworkState.idle);
       _addLog('🌐 网络已恢复；SIP 账号尚未创建，等待 register()');
@@ -157,16 +157,23 @@ extension PjsipNetworkOperations on PjsipService {
   void retrySipRegistration() {
     if (!_uiState.isInitialized ||
         !_uiState.isNetworkAvailable ||
-        _uiState.accId == -1) {
+        _uiState.accounts.isEmpty) {
       return;
     }
-    final status = _bindings.pjsua_acc_set_registration(_uiState.accId, 1);
-    if (status == 0) {
+    var failed = false;
+    for (final account in _uiState.accounts.values) {
+      final status = _bindings.pjsua_acc_set_registration(account.accId, 1);
+      if (status == 0) {
+        _addLog('🌐 SIP 重新注册请求已发送: acc=${account.accId}');
+      } else {
+        failed = true;
+        _addLog('❌ SIP 重新注册失败: acc=${account.accId}, pj_status=$status');
+      }
+    }
+    if (!failed) {
       _uiState = _uiState.copyWith(networkState: PjsipNetworkState.recovering);
-      _addLog('🌐 SIP 重新注册请求已发送: acc=${_uiState.accId}');
     } else {
       _uiState = _uiState.copyWith(networkState: PjsipNetworkState.failed);
-      _addLog('❌ SIP 重新注册失败: pj_status=$status');
     }
   }
 

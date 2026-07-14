@@ -63,15 +63,33 @@ extension _HomeSettings on _MyHomePageState {
       padding: const EdgeInsets.all(20),
       children: [
         _buildSettingsSection(
-          title: '连接',
-          icon: Icons.cloud_done,
+          title: '线路状态',
+          icon: Icons.route,
           children: [
             _buildConnectionPill(uiState),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            if (uiState.accounts.isEmpty)
+              Text('尚未接入线路', style: Theme.of(context).textTheme.bodyMedium)
+            else
+              for (final account in uiState.accounts.values)
+                _buildAccountLineTile(uiState, service, account),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: uiState.isInitialized ? service.stop : null,
+              icon: const Icon(Icons.power_settings_new),
+              label: const Text('断开全部线路'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _buildSettingsSection(
+          title: '新增线路',
+          icon: Icons.add_call,
+          children: [
             TextField(
               controller: _usernameController,
               decoration: const InputDecoration(
-                labelText: '账号',
+                labelText: '线路账号',
                 prefixIcon: Icon(Icons.person),
               ),
             ),
@@ -105,21 +123,11 @@ extension _HomeSettings on _MyHomePageState {
                 Expanded(
                   child: FilledButton.icon(
                     onPressed: uiState.isNetworkAvailable
-                        ? () => service.register(
-                            username: _usernameController.text.trim(),
-                            password: _passwordController.text,
-                            host: _hostController.text.trim(),
-                          )
+                        ? () => _registerLine(service)
                         : null,
-                    icon: const Icon(Icons.login),
-                    label: Text(uiState.accId == -1 ? '连接' : '重新连接'),
+                    icon: const Icon(Icons.add),
+                    label: const Text('添加并注册线路'),
                   ),
-                ),
-                const SizedBox(width: 10),
-                OutlinedButton.icon(
-                  onPressed: uiState.isInitialized ? service.stop : null,
-                  icon: const Icon(Icons.power_settings_new),
-                  label: const Text('断开'),
                 ),
               ],
             ),
@@ -129,17 +137,65 @@ extension _HomeSettings on _MyHomePageState {
     );
   }
 
+  Widget _buildAccountLineTile(
+    PjsipUIState uiState,
+    PjsipService service,
+    SipAccountInfo account,
+  ) {
+    final isDefault = uiState.defaultAccountId == account.accId;
+    final color = account.isRegistered ? _brandGreen : Colors.orange.shade700;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.circle, size: 10, color: color),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  account.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${account.host} · ${account.registrationStatusText}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          if (isDefault)
+            const Chip(
+              visualDensity: VisualDensity.compact,
+              label: Text('默认外呼'),
+            )
+          else
+            TextButton(
+              onPressed: () => service.setDefaultAccount(account.accId),
+              child: const Text('设为默认'),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAudioSettingsTab(PjsipUIState uiState, PjsipService service) {
     if (!uiState.isInitialized) {
       return Center(
         child: FilledButton.icon(
-          onPressed: () => service.register(
-            username: _usernameController.text.trim(),
-            password: _passwordController.text,
-            host: _hostController.text.trim(),
-          ),
+          onPressed: () => _registerLine(service),
           icon: const Icon(Icons.login),
-          label: const Text('连接电话服务'),
+          label: const Text('添加电话线路'),
         ),
       );
     }
