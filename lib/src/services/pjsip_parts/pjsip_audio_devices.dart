@@ -44,10 +44,15 @@ class _PjsipAudioRuntime {
   Timer? levelTimer;
   Timer? devicePollTimer;
   Timer? deviceChangeDebounceTimer;
+  Timer? speakerTestTimer;
   final List<Timer> bridgeReconnectTimers = <Timer>[];
 
   /// 上一次“可用设备列表”的快照签名，用于判断设备是否真的发生变化。
   String? lastDeviceSnapshot;
+  int? speakerTestPlayerId;
+  int? speakerTestPlayerPort;
+  int? microphoneTestRecorderId;
+  int? microphoneTestRecorderPort;
 
   /// 手动模式下，用户选择的输入设备签名。
   ///
@@ -368,6 +373,202 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _uiState = _uiState.copyWith(isSpeakerMuted: muted);
     _applyAudioMuteState();
     _addLog(muted ? '🔈 扬声器已静音' : '🔊 扬声器已恢复');
+  }
+
+  /// 播放一段短测试音到当前 PJSIP 播放设备。
+  ///
+  /// 这里没有使用 Flutter 的系统提示音，因为系统提示音只走 macOS 当前默认输出，
+  /// 不一定等于 PJSIP 当前选择的 playback device。我们用 PJSIP file player：
+  ///
+  /// 1. 生成一个短 WAV 文件。
+  /// 2. `pjsua_player_create` 把 WAV 加入 conference bridge。
+  /// 3. `pjsua_player_get_conf_port` 拿到 player 的 bridge 端口。
+  /// 4. `pjsua_conf_connect(playerPort, 0)` 播放到本地声卡端口。
+  /// 5. 播放一小段时间后断开并销毁 player。
+  ///
+  /// 这样用户点“测试扬声器”时，听到的就是 PJSIP 当前输出设备，而不是系统默认声卡。
+  Future<void> testSpeakerOutput() async {
+    if (!_uiState.isInitialized) {
+      _addLog('⚠️ 请先初始化 PJSIP，再测试扬声器');
+      return;
+    }
+
+    _stopSpeakerTestPlayer();
+    _uiState = _uiState.copyWith(isSpeakerTesting: true, speakerLevel: 210);
+    final wavFile = await _ensureSpeakerTestWavFile();
+    using((Arena arena) {
+      final filename = arena<pj_str_t>();
+      final path = wavFile.path.toNativeUtf8(allocator: arena);
+      _pjStr(filename.ref, path);
+
+      final playerId = arena<pjsua_player_id>();
+      // 注意：不要使用 PJMEDIA_FILE_NO_LOOP。短音频播放完成后，PJSIP 可能已经把
+      // player 标记为不可销毁状态，Dart Timer 再调用 destroy 会触发原生 assert。
+      // 这里让文件循环播放，然后由我们在固定时间主动断开并销毁。
+      const loopPlayback = 0;
+      final status = _bindings.pjsua_player_create(
+        filename,
+        loopPlayback,
+        playerId,
+      );
+      if (status != 0) {
+        _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+        _addLog('❌ 扬声器测试音创建失败: pj_status=$status');
+        return;
+      }
+
+      final playerPort = _bindings.pjsua_player_get_conf_port(playerId.value);
+      if (playerPort < 0) {
+        _bindings.pjsua_player_destroy(playerId.value);
+        _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+        _addLog('❌ 扬声器测试音端口获取失败');
+        return;
+      }
+
+      final connectStatus = _bindings.pjsua_conf_connect(playerPort, 0);
+      if (connectStatus != 0) {
+        _bindings.pjsua_player_destroy(playerId.value);
+        _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+        _addLog('❌ 扬声器测试音连接失败: pj_status=$connectStatus');
+        return;
+      }
+
+      _audio.speakerTestPlayerId = playerId.value;
+      _audio.speakerTestPlayerPort = playerPort;
+      _addLog('🔊 正在播放扬声器测试音');
+      _audio.speakerTestTimer = Timer(
+        const Duration(milliseconds: 750),
+        _stopSpeakerTestPlayer,
+      );
+    });
+  }
+
+  /// 开启或关闭麦克风测试。
+  ///
+  /// 没有通话时，只读取 PJSIP 0 号声卡端口不一定会有变化，因为 conference bridge
+  /// 里没有任何“接收端”消费麦克风数据，底层可能不会持续拉取输入帧。
+  ///
+  /// 所以测试时会创建一个临时 WAV recorder，并执行：
+  ///
+  /// `pjsua_conf_connect(0, recorderPort)`
+  ///
+  /// 这相当于把“本地麦克风”接到“临时录音器”。录音器只是为了让 PJSIP 真正采集
+  /// 麦克风流，UI 读取 recorder 端口和声卡端口的电平后展示百分比。停止测试时会
+  /// 断开连接并销毁 recorder。
+  Future<void> setMicrophoneTesting(bool enabled) async {
+    if (!_uiState.isInitialized) {
+      _addLog('⚠️ 请先初始化 PJSIP，再测试麦克风');
+      return;
+    }
+
+    if (!enabled) {
+      _stopMicrophoneTestRecorder();
+      _uiState = _uiState.copyWith(
+        isMicrophoneTesting: false,
+        microphoneLevel: 0,
+      );
+      _addLog('🎙️ 麦克风测试已停止');
+      return;
+    }
+
+    await setAudioDevices(
+      captureDeviceId: _uiState.selectedCaptureDeviceId,
+      playbackDeviceId: _uiState.selectedPlaybackDeviceId,
+      markManual: false,
+      reason: '麦克风测试：打开当前音频设备',
+      forceReapply: true,
+    );
+
+    _stopMicrophoneTestRecorder();
+    final wavFile = await _prepareMicrophoneTestWavFile();
+    using((Arena arena) {
+      final filename = arena<pj_str_t>();
+      final path = wavFile.path.toNativeUtf8(allocator: arena);
+      _pjStr(filename.ref, path);
+
+      final recorderId = arena<pjsua_recorder_id>();
+      final status = _bindings.pjsua_recorder_create(
+        filename,
+        0,
+        ffi.nullptr,
+        0,
+        0,
+        recorderId,
+      );
+      if (status != 0) {
+        _uiState = _uiState.copyWith(
+          isMicrophoneTesting: false,
+          microphoneLevel: 0,
+        );
+        _addLog('❌ 麦克风测试录音器创建失败: pj_status=$status');
+        return;
+      }
+
+      final recorderPort = _bindings.pjsua_recorder_get_conf_port(
+        recorderId.value,
+      );
+      if (recorderPort < 0) {
+        _bindings.pjsua_recorder_destroy(recorderId.value);
+        _uiState = _uiState.copyWith(
+          isMicrophoneTesting: false,
+          microphoneLevel: 0,
+        );
+        _addLog('❌ 麦克风测试录音端口获取失败');
+        return;
+      }
+
+      final connectStatus = _bindings.pjsua_conf_connect(0, recorderPort);
+      if (connectStatus != 0) {
+        _bindings.pjsua_recorder_destroy(recorderId.value);
+        _uiState = _uiState.copyWith(
+          isMicrophoneTesting: false,
+          microphoneLevel: 0,
+        );
+        _addLog('❌ 麦克风测试音频连接失败: pj_status=$connectStatus');
+        return;
+      }
+
+      _audio.microphoneTestRecorderId = recorderId.value;
+      _audio.microphoneTestRecorderPort = recorderPort;
+      _uiState = _uiState.copyWith(
+        isMicrophoneTesting: true,
+        microphoneLevel: 0,
+      );
+      _startAudioLevelTimer();
+      _addLog('🎙️ 麦克风测试已开始，请对着麦克风说话');
+    });
+  }
+
+  /// 一键修复当前音频路径。
+  ///
+  /// 用户听不到声音时，不一定知道是设备列表过期、设备 ID 复用，还是 conference
+  /// bridge 没连上。这个方法做一组低风险恢复动作：
+  ///
+  /// - 刷新设备列表。
+  /// - 强制重新应用当前输入/输出设备。
+  /// - 通话中重新连接音频桥。
+  ///
+  /// 它不会改变用户选择，除非当前设备已经不可用，刷新流程里的策略会负责回退。
+  Future<void> repairAudioPath() async {
+    if (!_uiState.isInitialized) {
+      _addLog('⚠️ 请先初始化 PJSIP，再修复音频');
+      return;
+    }
+
+    await _refreshAudioDevices(
+      reason: '修复音频',
+      logResult: true,
+      allowAutomaticSwitch: true,
+    );
+    await setAudioDevices(
+      captureDeviceId: _uiState.selectedCaptureDeviceId,
+      playbackDeviceId: _uiState.selectedPlaybackDeviceId,
+      markManual: false,
+      reason: '修复音频：重新应用当前设备',
+      forceReapply: true,
+    );
+    _scheduleAudioBridgeReconnectAfterDeviceSwitch('修复音频');
+    _addLog('🛠️ 音频修复流程已执行');
   }
 
   /// 刷新音频设备列表，并根据需要执行自动切换。
@@ -958,7 +1159,11 @@ extension PjsipAudioDeviceOperations on PjsipService {
       final hasConnectedCall = _uiState.calls.values.any(
         (call) => call.isConnected,
       );
-      if (!hasConnectedCall) {
+      final shouldReadMicrophoneLevel =
+          hasConnectedCall || _uiState.isMicrophoneTesting;
+      final shouldReadSpeakerLevel =
+          hasConnectedCall || _uiState.isSpeakerTesting;
+      if (!shouldReadMicrophoneLevel && !shouldReadSpeakerLevel) {
         if (_uiState.microphoneLevel != 0 || _uiState.speakerLevel != 0) {
           _uiState = _uiState.copyWith(microphoneLevel: 0, speakerLevel: 0);
         }
@@ -971,9 +1176,34 @@ extension PjsipAudioDeviceOperations on PjsipService {
         final rx = arena<ffi.UnsignedInt>();
         final status = _bindings.pjsua_conf_get_signal_level(0, tx, rx);
         if (status != 0) return;
+        var microphoneLevel = tx.value;
+        final recorderPort = _audio.microphoneTestRecorderPort;
+        if (_uiState.isMicrophoneTesting &&
+            recorderPort != null &&
+            recorderPort >= 0) {
+          final recorderTx = arena<ffi.UnsignedInt>();
+          final recorderRx = arena<ffi.UnsignedInt>();
+          final recorderStatus = _bindings.pjsua_conf_get_signal_level(
+            recorderPort,
+            recorderTx,
+            recorderRx,
+          );
+          if (recorderStatus == 0) {
+            microphoneLevel = math.max(
+              microphoneLevel,
+              math.max(recorderTx.value, recorderRx.value),
+            );
+          }
+        }
+        final fallbackSpeakerLevel = _uiState.isSpeakerTesting ? 210 : 0;
         _uiState = _uiState.copyWith(
-          microphoneLevel: _uiState.isMicrophoneMuted ? 0 : tx.value,
-          speakerLevel: _uiState.isSpeakerMuted ? 0 : rx.value,
+          microphoneLevel:
+              shouldReadMicrophoneLevel && !_uiState.isMicrophoneMuted
+              ? microphoneLevel
+              : 0,
+          speakerLevel: shouldReadSpeakerLevel && !_uiState.isSpeakerMuted
+              ? math.max(rx.value, fallbackSpeakerLevel)
+              : 0,
         );
       });
     });
@@ -985,6 +1215,101 @@ extension PjsipAudioDeviceOperations on PjsipService {
   void _stopAudioLevelTimer() {
     _audio.levelTimer?.cancel();
     _audio.levelTimer = null;
+  }
+
+  void _stopMicrophoneTestRecorder() {
+    final recorderId = _audio.microphoneTestRecorderId;
+    final recorderPort = _audio.microphoneTestRecorderPort;
+    _audio.microphoneTestRecorderId = null;
+    _audio.microphoneTestRecorderPort = null;
+
+    if (!_uiState.isInitialized || recorderId == null) return;
+    if (recorderPort != null && recorderPort >= 0) {
+      _bindings.pjsua_conf_disconnect(0, recorderPort);
+    }
+    _bindings.pjsua_recorder_destroy(recorderId);
+  }
+
+  void _stopSpeakerTestPlayer() {
+    _audio.speakerTestTimer?.cancel();
+    _audio.speakerTestTimer = null;
+
+    final playerId = _audio.speakerTestPlayerId;
+    final playerPort = _audio.speakerTestPlayerPort;
+    _audio.speakerTestPlayerId = null;
+    _audio.speakerTestPlayerPort = null;
+
+    if (!_uiState.isInitialized || playerId == null) return;
+    if (playerPort != null && playerPort >= 0) {
+      _bindings.pjsua_conf_disconnect(playerPort, 0);
+    }
+    _bindings.pjsua_player_destroy(playerId);
+    _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+  }
+
+  Future<File> _prepareMicrophoneTestWavFile() async {
+    final file = File('${Directory.systemTemp.path}/pjsip_microphone_test.wav');
+    if (await file.exists()) {
+      await file.delete();
+    }
+    return file;
+  }
+
+  Future<File> _ensureSpeakerTestWavFile() async {
+    final file = File('${Directory.systemTemp.path}/pjsip_speaker_test.wav');
+    if (await file.exists()) return file;
+    await file.writeAsBytes(_speakerTestWavBytes(), flush: true);
+    return file;
+  }
+
+  List<int> _speakerTestWavBytes() {
+    const sampleRate = 16000;
+    const durationMs = 650;
+    const frequency = 880.0;
+    const channels = 1;
+    const bitsPerSample = 16;
+    final sampleCount = sampleRate * durationMs ~/ 1000;
+    final dataSize = sampleCount * channels * bitsPerSample ~/ 8;
+    final bytes = <int>[];
+
+    void addAscii(String value) => bytes.addAll(value.codeUnits);
+
+    void addUint16(int value) {
+      bytes.add(value & 0xff);
+      bytes.add((value >> 8) & 0xff);
+    }
+
+    void addUint32(int value) {
+      bytes.add(value & 0xff);
+      bytes.add((value >> 8) & 0xff);
+      bytes.add((value >> 16) & 0xff);
+      bytes.add((value >> 24) & 0xff);
+    }
+
+    addAscii('RIFF');
+    addUint32(36 + dataSize);
+    addAscii('WAVE');
+    addAscii('fmt ');
+    addUint32(16);
+    addUint16(1);
+    addUint16(channels);
+    addUint32(sampleRate);
+    addUint32(sampleRate * channels * bitsPerSample ~/ 8);
+    addUint16(channels * bitsPerSample ~/ 8);
+    addUint16(bitsPerSample);
+    addAscii('data');
+    addUint32(dataSize);
+
+    for (var i = 0; i < sampleCount; i++) {
+      final fadeIn = (i / (sampleRate * 0.04)).clamp(0.0, 1.0);
+      final fadeOut = ((sampleCount - i) / (sampleRate * 0.08)).clamp(0.0, 1.0);
+      final envelope = math.min(fadeIn, fadeOut);
+      final sample =
+          math.sin(2 * math.pi * frequency * i / sampleRate) * 0.35 * envelope;
+      final pcm = (sample * 32767).round();
+      addUint16(pcm & 0xffff);
+    }
+    return bytes;
   }
 }
 

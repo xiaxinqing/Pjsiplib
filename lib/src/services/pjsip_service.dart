@@ -1,8 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;
+import 'dart:io' show Directory, File, Platform;
+import 'dart:math' as math;
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'dart:io' show Platform;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -135,6 +136,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   void stop() {
     if (!state.isInitialized) return;
     _stopCallTimer();
+    _stopMicrophoneTestRecorder();
+    _stopSpeakerTestPlayer();
     _stopAudioLevelTimer();
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();
@@ -153,6 +156,8 @@ class PjsipService extends Notifier<PjsipUIState> {
       isConferencePaused: false,
       conferenceInterruptionCallId: null,
       networkState: PjsipNetworkState.idle,
+      accId: -1,
+      host: '',
       captureDevices: const [],
       playbackDevices: const [],
       selectedCaptureDeviceId: null,
@@ -161,6 +166,8 @@ class PjsipService extends Notifier<PjsipUIState> {
       isSpeakerMuted: false,
       microphoneLevel: 0,
       speakerLevel: 0,
+      isMicrophoneTesting: false,
+      isSpeakerTesting: false,
       audioDeviceMode: PjsipAudioDeviceMode.automatic,
       audioDeviceStatus: '设备监控已停止',
       allowInCallAudioDeviceSwitch: false,
@@ -173,6 +180,8 @@ class PjsipService extends Notifier<PjsipUIState> {
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
     _stopCallTimer();
+    _stopMicrophoneTestRecorder();
+    _stopSpeakerTestPlayer();
     _stopAudioLevelTimer();
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();

@@ -150,6 +150,33 @@ extension PjsipCallOperations on PjsipService {
     }
   }
 
+  /// 通话中发送 DTMF 按键。
+  ///
+  /// DTMF 是用户在 IVR 菜单里按 1/2/3、输入分机号时用到的“电话按键音”。
+  /// 这里使用 PJSIP 默认的 RFC2833 方式发送，适合大多数 SIP/PBX 场景。
+  Future<void> sendDtmf(int callId, String digit) async {
+    final call = _uiState.calls[callId];
+    if (call == null || !call.isConnected) {
+      _addLog('⚠️ 当前没有可发送 DTMF 的已接通通话');
+      return;
+    }
+    if (digit.length != 1 || !'0123456789*#'.contains(digit)) {
+      _addLog('⚠️ 无效 DTMF 按键: $digit');
+      return;
+    }
+
+    using((Arena arena) {
+      final digits = arena<pj_str_t>();
+      _pjStr(digits.ref, digit.toNativeUtf8(allocator: arena));
+      final status = _bindings.pjsua_call_dial_dtmf(callId, digits);
+      if (status == 0) {
+        _addLog('☎️ 已发送 DTMF: $digit, call=$callId');
+      } else {
+        _addLog('❌ DTMF 发送失败: $digit, call=$callId, pj_status=$status');
+      }
+    });
+  }
+
   /// 把一条已接通且处于 Hold 的通话，与当前活动通话合并为三方会议。
   ///
   /// PJSUA 的 conference bridge 是有方向的，所以除了两路通话分别连接声卡，

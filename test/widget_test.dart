@@ -34,6 +34,19 @@ void main() {
     expect(state.conferenceInterruptionCallId, 3);
   });
 
+  test('断开连接时账号状态应回到未登录', () {
+    final disconnected = PjsipUIState(
+      logs: [],
+      isInitialized: true,
+      accId: 0,
+      host: '139.59.100.15',
+    ).copyWith(isInitialized: false, accId: -1, host: '');
+
+    expect(disconnected.isInitialized, isFalse);
+    expect(disconnected.accId, -1);
+    expect(disconnected.host, isEmpty);
+  });
+
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(
@@ -42,8 +55,8 @@ void main() {
       ),
     );
 
-    expect(find.text('VoIP 调试终端 (PJSIP)'), findsOneWidget);
-    expect(find.text('初始化 PJSIP'), findsOneWidget);
-    expect(find.text('运行日志'), findsOneWidget);
+    expect(find.text('VoIP Desk'), findsOneWidget);
+    expect(find.text('拨号'), findsWidgets);
+    expect(find.text('设置'), findsOneWidget);
   });
 }

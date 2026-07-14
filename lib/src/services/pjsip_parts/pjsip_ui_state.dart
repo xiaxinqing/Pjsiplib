@@ -65,6 +65,12 @@ class PjsipUIState {
   /// 扬声器电平，来自 PJSIP conference bridge signal level。
   final int speakerLevel;
 
+  /// 是否正在进行麦克风测试。开启后即使没有通话，也会显示输入电平。
+  final bool isMicrophoneTesting;
+
+  /// 是否正在播放扬声器测试音。
+  final bool isSpeakerTesting;
+
   /// 自动/手动音频设备选择模式。
   final PjsipAudioDeviceMode audioDeviceMode;
 
@@ -94,6 +100,8 @@ class PjsipUIState {
     this.isSpeakerMuted = false,
     this.microphoneLevel = 0,
     this.speakerLevel = 0,
+    this.isMicrophoneTesting = false,
+    this.isSpeakerTesting = false,
     this.audioDeviceMode = PjsipAudioDeviceMode.automatic,
     this.audioDeviceStatus = '自动选择设备',
     this.allowInCallAudioDeviceSwitch = false,
@@ -119,6 +127,8 @@ class PjsipUIState {
     bool? isSpeakerMuted,
     int? microphoneLevel,
     int? speakerLevel,
+    bool? isMicrophoneTesting,
+    bool? isSpeakerTesting,
     PjsipAudioDeviceMode? audioDeviceMode,
     String? audioDeviceStatus,
     bool? allowInCallAudioDeviceSwitch,
@@ -152,6 +162,8 @@ class PjsipUIState {
       isSpeakerMuted: isSpeakerMuted ?? this.isSpeakerMuted,
       microphoneLevel: microphoneLevel ?? this.microphoneLevel,
       speakerLevel: speakerLevel ?? this.speakerLevel,
+      isMicrophoneTesting: isMicrophoneTesting ?? this.isMicrophoneTesting,
+      isSpeakerTesting: isSpeakerTesting ?? this.isSpeakerTesting,
       audioDeviceMode: audioDeviceMode ?? this.audioDeviceMode,
       audioDeviceStatus: audioDeviceStatus ?? this.audioDeviceStatus,
       allowInCallAudioDeviceSwitch:
