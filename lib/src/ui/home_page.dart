@@ -26,6 +26,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   );
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
   int? _selectedOutgoingAccountId;
+  int _settingsInitialTabIndex = 0;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   bool _hidePassword = true;
@@ -145,5 +146,10 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   void _selectOutgoingAccount(int? accountId) {
     setState(() => _selectedOutgoingAccountId = accountId);
+  }
+
+  void _openSettingsDrawer({int tabIndex = 0}) {
+    setState(() => _settingsInitialTabIndex = tabIndex);
+    _scaffoldKey.currentState?.openEndDrawer();
   }
 }

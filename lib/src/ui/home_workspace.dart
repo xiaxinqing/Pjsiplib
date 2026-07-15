@@ -68,7 +68,7 @@ extension _HomeWorkspace on _MyHomePageState {
           const SizedBox(width: 8),
           IconButton(
             tooltip: '设置',
-            onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+            onPressed: _openSettingsDrawer,
             icon: const Icon(Icons.settings),
           ),
         ],

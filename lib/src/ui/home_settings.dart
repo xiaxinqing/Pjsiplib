@@ -6,7 +6,9 @@ extension _HomeSettings on _MyHomePageState {
       width: 460,
       child: SafeArea(
         child: DefaultTabController(
+          key: ValueKey(_settingsInitialTabIndex),
           length: 4,
+          initialIndex: _settingsInitialTabIndex,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

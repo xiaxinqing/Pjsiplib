@@ -71,11 +71,10 @@ extension _HomeSidebar on _MyHomePageState {
                     const Spacer(),
                     _buildLineStatusPanel(uiState, service),
                     const SizedBox(height: 12),
-                    _buildAudioMiniStatus(uiState),
+                    _buildAudioMiniStatus(uiState, service),
                     const SizedBox(height: 12),
                     OutlinedButton.icon(
-                      onPressed: () =>
-                          _scaffoldKey.currentState?.openEndDrawer(),
+                      onPressed: _openSettingsDrawer,
                       icon: const Icon(Icons.settings),
                       label: const Text('设置'),
                     ),
@@ -342,7 +341,7 @@ extension _HomeSidebar on _MyHomePageState {
         }
       case 'add_line':
       case 'open_settings':
-        _scaffoldKey.currentState?.openEndDrawer();
+        _openSettingsDrawer();
     }
   }
 
@@ -546,7 +545,7 @@ extension _HomeSidebar on _MyHomePageState {
     );
   }
 
-  Widget _buildAudioMiniStatus(PjsipUIState uiState) {
+  Widget _buildAudioMiniStatus(PjsipUIState uiState, PjsipService service) {
     final mic = _deviceLabelById(
       uiState.captureDevices,
       uiState.selectedCaptureDeviceId,
@@ -555,22 +554,131 @@ extension _HomeSidebar on _MyHomePageState {
       uiState.playbackDevices,
       uiState.selectedPlaybackDeviceId,
     );
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: _panelBackground,
+    return Material(
+      color: _panelBackground,
+      borderRadius: BorderRadius.circular(10),
+      child: InkWell(
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _softBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildTinyDeviceLine(Icons.mic, mic),
-          const SizedBox(height: 8),
-          _buildTinyDeviceLine(Icons.volume_up, speaker),
-        ],
+        onTapDown: (details) =>
+            _showAudioStatusMenu(uiState, service, details.globalPosition),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: _softBorder),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      '音频',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 16, color: _textSecondary),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildTinyDeviceLine(Icons.mic, mic),
+              const SizedBox(height: 8),
+              _buildTinyDeviceLine(Icons.volume_up, speaker),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Future<void> _showAudioStatusMenu(
+    PjsipUIState uiState,
+    PjsipService service,
+    Offset position,
+  ) async {
+    final mic = _deviceLabelById(
+      uiState.captureDevices,
+      uiState.selectedCaptureDeviceId,
+    );
+    final speaker = _deviceLabelById(
+      uiState.playbackDevices,
+      uiState.selectedPlaybackDeviceId,
+    );
+    final isAutomatic =
+        uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
+    final action = await showMenu<String>(
+      context: context,
+      position: _popupMenuPosition(position),
+      constraints: const BoxConstraints(minWidth: 292, maxWidth: 340),
+      items: [
+        PopupMenuItem<String>(
+          enabled: false,
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                '音频设备',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: _textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildStatusSummaryRow(icon: Icons.mic, label: '输入', value: mic),
+              _buildStatusSummaryRow(
+                icon: Icons.volume_up,
+                label: '输出',
+                value: speaker,
+              ),
+              _buildStatusSummaryRow(
+                icon: Icons.auto_awesome,
+                label: '模式',
+                value: isAutomatic ? '自动选择' : '手动选择',
+              ),
+              _buildStatusSummaryRow(
+                icon: Icons.info_outline,
+                label: '状态',
+                value: uiState.audioDeviceStatus,
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuDivider(height: 1),
+        PopupMenuItem<String>(
+          value: 'toggle_auto',
+          enabled: uiState.isInitialized,
+          child: _buildPopupActionRow(
+            isAutomatic ? Icons.tune : Icons.auto_awesome,
+            isAutomatic ? '切换为手动选择' : '切换为自动选择',
+          ),
+        ),
+        PopupMenuItem<String>(
+          value: 'refresh',
+          enabled: uiState.isInitialized,
+          child: _buildPopupActionRow(Icons.refresh, '刷新设备'),
+        ),
+        PopupMenuItem<String>(
+          value: 'open_settings',
+          child: _buildPopupActionRow(Icons.settings, '打开音频设置'),
+        ),
+      ],
+    );
+
+    if (!mounted || action == null) return;
+    switch (action) {
+      case 'toggle_auto':
+        unawaited(service.setAutomaticAudioDeviceSelection(!isAutomatic));
+      case 'refresh':
+        unawaited(service.refreshAudioDevices());
+      case 'open_settings':
+        _openSettingsDrawer(tabIndex: 1);
+    }
   }
 
   Widget _buildTinyDeviceLine(IconData icon, String value) {

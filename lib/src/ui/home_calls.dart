@@ -189,7 +189,7 @@ extension _HomeCalls on _MyHomePageState {
           icon: Icons.tune,
           label: '音频',
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
-          onPressed: () => _scaffoldKey.currentState?.openEndDrawer(),
+          onPressed: () => _openSettingsDrawer(tabIndex: 1),
         ),
         _roundCallButton(
           icon: Icons.call_end,
