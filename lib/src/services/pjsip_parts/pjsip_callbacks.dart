@@ -80,7 +80,8 @@ extension _PjsipNativeCallbacks on PjsipService {
           );
           if (sipStatus == 200) {
             _uiState = _uiState.copyWith(networkState: PjsipNetworkState.idle);
-          } else if (sipStatus >= 300 && _uiState.isNetworkAvailable) {
+          } else if (_isNetworkRegistrationFailure(sipStatus) &&
+              _uiState.isNetworkAvailable) {
             _uiState = _uiState.copyWith(
               networkState: PjsipNetworkState.failed,
             );
@@ -93,6 +94,11 @@ extension _PjsipNativeCallbacks on PjsipService {
                 registrationStatusText: statusText,
               );
             _uiState = _uiState.copyWith(accounts: accounts);
+          }
+          if (sipStatus == 200) {
+            _promoteDefaultAccountIfNeeded(accId);
+          } else if (sipStatus >= 300) {
+            _clearDefaultAccountIfUnavailable(accId);
           }
           _addLog('🔔 账号状态更新: ID $accId, 状态: $sipStatus ($statusText)');
         }
@@ -340,5 +346,9 @@ extension _PjsipNativeCallbacks on PjsipService {
     ) {
       _handleIpChangeProgress(op, status);
     });
+  }
+
+  bool _isNetworkRegistrationFailure(int sipStatus) {
+    return sipStatus == 408 || sipStatus == 503 || sipStatus >= 500;
   }
 }

@@ -97,10 +97,10 @@ extension _HomeWorkspace on _MyHomePageState {
   String _statusSubtitle(PjsipUIState uiState) {
     if (!uiState.isNetworkAvailable) return '当前网络不可用';
     if (uiState.accounts.isNotEmpty) {
-      final defaultAccount = uiState.defaultAccount;
-      final suffix = defaultAccount == null
-          ? ''
-          : '，默认外呼 ${defaultAccount.displayName}';
+      final outgoingAccount = uiState.bestOutgoingAccount;
+      final suffix = outgoingAccount == null
+          ? '，暂无可外呼线路'
+          : '，默认外呼 ${outgoingAccount.displayName}';
       return '已接入 ${uiState.accounts.length} 条线路$suffix';
     }
     if (uiState.isInitialized) return '引擎已就绪，账号尚未连接';
@@ -108,8 +108,13 @@ extension _HomeWorkspace on _MyHomePageState {
   }
 
   Widget _buildDialpadPage(PjsipUIState uiState, PjsipService service) {
+    final selectedAccountId =
+        _selectedOutgoingAccountId ?? uiState.bestOutgoingAccount?.accId;
+    final selectedAccount = selectedAccountId == null
+        ? null
+        : uiState.accounts[selectedAccountId];
     final canCall =
-        uiState.defaultAccount != null &&
+        selectedAccount?.isRegistered == true &&
         uiState.calls.length < 4 &&
         !uiState.hasConference;
     return Row(
@@ -120,7 +125,12 @@ extension _HomeWorkspace on _MyHomePageState {
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 430),
-              child: _buildDialpadCard(uiState, service, canCall),
+              child: _buildDialpadCard(
+                uiState,
+                service,
+                canCall,
+                selectedAccountId,
+              ),
             ),
           ),
         ),
@@ -134,6 +144,7 @@ extension _HomeWorkspace on _MyHomePageState {
     PjsipUIState uiState,
     PjsipService service,
     bool canCall,
+    int? selectedAccountId,
   ) {
     return Card(
       color: _panelBackground,
@@ -161,11 +172,12 @@ extension _HomeWorkspace on _MyHomePageState {
                 ),
               ),
               keyboardType: TextInputType.phone,
-              onSubmitted: (_) => _callNumberIfPossible(canCall, service),
+              onSubmitted: (_) =>
+                  _callNumberIfPossible(canCall, service, selectedAccountId),
             ),
-            if (uiState.defaultAccount != null) ...[
+            if (uiState.accounts.isNotEmpty) ...[
               const SizedBox(height: 12),
-              _buildDefaultLinePill(uiState.defaultAccount!),
+              _buildOutgoingLineSelector(uiState),
             ],
             const SizedBox(height: 18),
             _buildNumberPad(),
@@ -174,7 +186,11 @@ extension _HomeWorkspace on _MyHomePageState {
               height: 54,
               child: FilledButton.icon(
                 onPressed: canCall
-                    ? () => _callNumberIfPossible(canCall, service)
+                    ? () => _callNumberIfPossible(
+                        canCall,
+                        service,
+                        selectedAccountId,
+                      )
                     : null,
                 icon: const Icon(Icons.call),
                 label: const Text('呼叫'),
@@ -194,7 +210,14 @@ extension _HomeWorkspace on _MyHomePageState {
     );
   }
 
-  Widget _buildDefaultLinePill(SipAccountInfo account) {
+  Widget _buildOutgoingLineSelector(PjsipUIState uiState) {
+    final accounts = uiState.accounts.values.toList();
+    final selectedCandidate =
+        _selectedOutgoingAccountId ?? uiState.bestOutgoingAccount?.accId;
+    final selectedId =
+        accounts.any((account) => account.accId == selectedCandidate)
+        ? selectedCandidate
+        : accounts.first.accId;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
@@ -203,16 +226,28 @@ extension _HomeWorkspace on _MyHomePageState {
         border: Border.all(color: _softBorder),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(Icons.outbound, size: 16),
           const SizedBox(width: 8),
+          const Text('外呼线路', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(width: 12),
           Expanded(
-            child: Text(
-              '默认外呼线路：${account.lineLabel}',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w600),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<int>(
+                value: selectedId,
+                isExpanded: true,
+                items: [
+                  for (final account in accounts)
+                    DropdownMenuItem<int>(
+                      value: account.accId,
+                      child: Text(
+                        '${account.lineLabel} · ${account.registrationStatusText}',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: _selectOutgoingAccount,
+              ),
             ),
           ),
         ],
@@ -258,10 +293,14 @@ extension _HomeWorkspace on _MyHomePageState {
     );
   }
 
-  void _callNumberIfPossible(bool canCall, PjsipService service) {
+  void _callNumberIfPossible(
+    bool canCall,
+    PjsipService service,
+    int? accountId,
+  ) {
     final number = _numberController.text.trim();
     if (!canCall || number.isEmpty) return;
-    service.makeCall(number);
+    service.makeCallFromAccount(number, accountId);
     _selectSection(_WorkspaceSection.calls);
   }
 }

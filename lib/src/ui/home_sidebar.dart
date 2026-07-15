@@ -23,7 +23,7 @@ extension _HomeSidebar on _MyHomePageState {
               const SizedBox(width: 10),
               const Expanded(
                 child: Text(
-                  'VoIP Desk',
+                  'Thruv',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
@@ -74,6 +74,7 @@ extension _HomeSidebar on _MyHomePageState {
 
   Widget _buildConnectionPill(PjsipUIState uiState) {
     final isRegistered = uiState.hasRegisteredAccount;
+    final outgoingAccount = uiState.bestOutgoingAccount;
     final color = !uiState.isNetworkAvailable
         ? Colors.orange.shade700
         : isRegistered
@@ -82,7 +83,7 @@ extension _HomeSidebar on _MyHomePageState {
     final label = !uiState.isNetworkAvailable
         ? '网络不可用'
         : isRegistered
-        ? '电话线路已连接'
+        ? '已连接 · 默认 ${outgoingAccount?.displayName ?? '--'}'
         : uiState.isInitialized
         ? '等待账号连接'
         : '未连接';
@@ -112,6 +113,13 @@ extension _HomeSidebar on _MyHomePageState {
 
   Widget _buildLineStatusPanel(PjsipUIState uiState) {
     final accounts = uiState.accounts.values.toList();
+    accounts.sort((a, b) {
+      final defaultId = uiState.defaultAccountId;
+      if (a.accId == defaultId) return -1;
+      if (b.accId == defaultId) return 1;
+      if (a.isRegistered != b.isRegistered) return a.isRegistered ? -1 : 1;
+      return a.displayName.compareTo(b.displayName);
+    });
     if (accounts.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -133,7 +141,7 @@ extension _HomeSidebar on _MyHomePageState {
           const SizedBox(height: 8),
           for (final account in accounts.take(3))
             Padding(
-              padding: const EdgeInsets.only(bottom: 6),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Row(
                 children: [
                   Icon(
@@ -145,11 +153,24 @@ extension _HomeSidebar on _MyHomePageState {
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      account.displayName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          account.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        Text(
+                          uiState.defaultAccountId == account.accId
+                              ? '默认外呼'
+                              : account.registrationStatusText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
                     ),
                   ),
                   if (uiState.defaultAccountId == account.accId)

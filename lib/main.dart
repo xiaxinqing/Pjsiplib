@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
       brightness: Brightness.light,
     );
     return MaterialApp(
-      title: 'VoIP Desk',
+      title: 'Thruv',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: base.copyWith(

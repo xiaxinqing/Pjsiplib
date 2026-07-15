@@ -152,38 +152,68 @@ extension _HomeSettings on _MyHomePageState {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _softBorder),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Icon(Icons.circle, size: 10, color: color),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  account.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+          Row(
+            children: [
+              Icon(Icons.circle, size: 10, color: color),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      account.displayName,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${account.host} · ${account.registrationStatusText}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${account.host} · ${account.registrationStatusText}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall,
+              ),
+              if (isDefault)
+                const Chip(
+                  visualDensity: VisualDensity.compact,
+                  label: Text('默认外呼'),
+                )
+              else
+                TextButton(
+                  onPressed: account.isRegistered
+                      ? () => service.setDefaultAccount(account.accId)
+                      : null,
+                  child: const Text('设为默认'),
                 ),
-              ],
-            ),
+            ],
           ),
-          if (isDefault)
-            const Chip(
-              visualDensity: VisualDensity.compact,
-              label: Text('默认外呼'),
-            )
-          else
-            TextButton(
-              onPressed: () => service.setDefaultAccount(account.accId),
-              child: const Text('设为默认'),
-            ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              TextButton.icon(
+                onPressed: () =>
+                    service.setAccountRegistration(account.accId, true),
+                icon: const Icon(Icons.refresh),
+                label: const Text('重连'),
+              ),
+              const SizedBox(width: 6),
+              TextButton.icon(
+                onPressed: () =>
+                    service.setAccountRegistration(account.accId, false),
+                icon: const Icon(Icons.pause_circle_outline),
+                label: const Text('暂停'),
+              ),
+              const Spacer(),
+              IconButton(
+                tooltip: '删除线路',
+                onPressed: () => service.removeAccount(account.accId),
+                icon: const Icon(Icons.delete_outline),
+              ),
+            ],
+          ),
         ],
       ),
     );

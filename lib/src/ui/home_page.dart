@@ -25,6 +25,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     text: '139.59.100.15',
   );
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
+  int? _selectedOutgoingAccountId;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   bool _hidePassword = true;
@@ -61,6 +62,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   }
 
   void _handleCallWindowAttention(PjsipUIState? previous, PjsipUIState next) {
+    _syncSelectedOutgoingAccount(next);
+
     final previousIncomingIds = previous?._ringingCallIds ?? const <int>{};
     final nextIncomingIds = next._ringingCallIds;
     final hasNewIncomingCall = nextIncomingIds
@@ -80,6 +83,20 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     if (previousIncomingIds.isNotEmpty && nextIncomingIds.isEmpty) {
       _windowController.clearIncomingCallAttention();
     }
+  }
+
+  void _syncSelectedOutgoingAccount(PjsipUIState state) {
+    if (state.accounts.isEmpty) {
+      if (_selectedOutgoingAccountId != null) {
+        setState(() => _selectedOutgoingAccountId = null);
+      }
+      return;
+    }
+    final nextId = state.bestOutgoingAccount?.accId;
+    if (_selectedOutgoingAccountId == nextId) {
+      return;
+    }
+    setState(() => _selectedOutgoingAccountId = nextId);
   }
 
   void _answerCall(PjsipService service, int callId) {
@@ -124,5 +141,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   void _setDiagnosticLogsVisible(bool value) {
     setState(() => _showDiagnosticLogs = value);
+  }
+
+  void _selectOutgoingAccount(int? accountId) {
+    setState(() => _selectedOutgoingAccountId = accountId);
   }
 }

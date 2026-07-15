@@ -190,15 +190,41 @@ extension PjsipEngineOperations on PjsipService {
       _addLog('❌ 当前网络不可用，暂不发起 SIP 注册');
       return;
     }
+    final normalizedUsername = username.trim();
+    final normalizedHost = host.trim();
+    final duplicate = _uiState.accounts.values.any(
+      (account) =>
+          account.username == normalizedUsername &&
+          account.host == normalizedHost,
+    );
+    if (duplicate) {
+      final account = _uiState.accounts.values.firstWhere(
+        (account) =>
+            account.username == normalizedUsername &&
+            account.host == normalizedHost,
+      );
+      if (account.isRegistered) {
+        _addLog('⚠️ 线路已在线，跳过重复添加: ${account.lineLabel}');
+        return;
+      }
+      _addLog('🌐 线路已存在但未在线，重新发起注册: ${account.lineLabel}');
+      setAccountRegistration(account.accId, true);
+      return;
+    }
     if (!_uiState.isInitialized) await init();
     using((Arena arena) {
       final accCfg = arena<pjsua_acc_config>();
       _bindings.pjsua_acc_config_default(accCfg);
       _pjStr(
         accCfg.ref.id,
-        'sip:$username@$host'.toNativeUtf8(allocator: arena),
+        'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
+          allocator: arena,
+        ),
       );
-      _pjStr(accCfg.ref.reg_uri, 'sip:$host'.toNativeUtf8(allocator: arena));
+      _pjStr(
+        accCfg.ref.reg_uri,
+        'sip:$normalizedHost'.toNativeUtf8(allocator: arena),
+      );
 
       // 开启地址重写，对 NAT 更有好
       accCfg.ref.allow_contact_rewrite = 1;
@@ -207,11 +233,11 @@ extension PjsipEngineOperations on PjsipService {
       final cred = accCfg.ref.cred_info[0];
       _pjStr(cred.realm, '*'.toNativeUtf8(allocator: arena));
       _pjStr(cred.scheme, 'digest'.toNativeUtf8(allocator: arena));
-      _pjStr(cred.username, username.toNativeUtf8(allocator: arena));
+      _pjStr(cred.username, normalizedUsername.toNativeUtf8(allocator: arena));
       cred.data_type = 0;
       _pjStr(cred.data, password.toNativeUtf8(allocator: arena));
       final pAccId = arena<ffi.Int>();
-      final isDefault = _uiState.defaultAccountId == null ? 1 : 0;
+      final isDefault = _uiState.accounts.isEmpty ? 1 : 0;
       final status = _bindings.pjsua_acc_add(accCfg, isDefault, pAccId);
       if (status != 0) {
         _addLog('❌ 添加 SIP 账号失败: pj_status=$status');
@@ -219,18 +245,20 @@ extension PjsipEngineOperations on PjsipService {
       }
       final account = SipAccountInfo(
         accId: pAccId.value,
-        username: username,
-        host: host,
+        username: normalizedUsername,
+        host: normalizedHost,
       );
       final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
         ..[account.accId] = account;
-      final defaultAccountId = _uiState.defaultAccountId ?? account.accId;
-      final defaultAccount = accounts[defaultAccountId] ?? account;
+      final defaultAccountId = _uiState.bestOutgoingAccount?.accId;
+      final defaultAccount = defaultAccountId == null
+          ? null
+          : accounts[defaultAccountId];
       _uiState = _uiState.copyWith(
         accounts: accounts,
         defaultAccountId: defaultAccountId,
-        accId: defaultAccount.accId,
-        host: defaultAccount.host,
+        accId: defaultAccount?.accId ?? -1,
+        host: defaultAccount?.host ?? '',
       );
       _addLog('🚀 注册请求已发送: ${account.lineLabel}');
     });
@@ -239,6 +267,10 @@ extension PjsipEngineOperations on PjsipService {
   void setDefaultAccount(int accId) {
     final account = _uiState.accounts[accId];
     if (account == null) return;
+    if (!account.isRegistered) {
+      _addLog('⚠️ 线路尚未注册成功，不能设为默认外呼: ${account.lineLabel}');
+      return;
+    }
     final status = _bindings.pjsua_acc_set_default(accId);
     if (status != 0) {
       _addLog('❌ 设置默认外呼线路失败: acc=$accId, pj_status=$status');
@@ -250,5 +282,105 @@ extension PjsipEngineOperations on PjsipService {
       host: account.host,
     );
     _addLog('✅ 默认外呼线路已切换: ${account.lineLabel}');
+  }
+
+  void setAccountRegistration(int accId, bool enabled) {
+    final account = _uiState.accounts[accId];
+    if (account == null || !_uiState.isInitialized) return;
+    final status = _bindings.pjsua_acc_set_registration(accId, enabled ? 1 : 0);
+    if (status != 0) {
+      _addLog(
+        '❌ ${enabled ? '重新注册' : '暂停注册'}线路失败: ${account.lineLabel}, pj_status=$status',
+      );
+      return;
+    }
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+      ..[accId] = account.copyWith(
+        registrationStatus: enabled ? null : 0,
+        registrationStatusText: enabled ? '注册中' : '已暂停',
+      );
+    _uiState = _uiState.copyWith(accounts: accounts);
+    _addLog('${enabled ? '🌐 重新注册线路' : '⏸ 暂停线路注册'}: ${account.lineLabel}');
+  }
+
+  void removeAccount(int accId) {
+    final account = _uiState.accounts[accId];
+    if (account == null || !_uiState.isInitialized) return;
+    final hasActiveCalls = _uiState.calls.values.any(
+      (call) => call.accountId == accId,
+    );
+    if (hasActiveCalls) {
+      _addLog('⚠️ 线路仍有通话，不能删除: ${account.lineLabel}');
+      return;
+    }
+
+    final status = using((Arena arena) {
+      final param = arena<pjsua_acc_del_param>();
+      _bindings.pjsua_acc_del_param_default(param);
+      param.ref.force = 1;
+      return _bindings.pjsua_acc_del2(accId, param);
+    });
+    if (status != 0) {
+      _addLog('❌ 删除线路失败: ${account.lineLabel}, pj_status=$status（请先结束该线路通话）');
+      return;
+    }
+
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+      ..remove(accId);
+    final nextDefaultId = _uiState.defaultAccountId == accId
+        ? _firstRegisteredAccountId(accounts)
+        : _uiState.defaultAccountId;
+    final nextDefault = nextDefaultId == null ? null : accounts[nextDefaultId];
+    if (nextDefaultId != null) {
+      _bindings.pjsua_acc_set_default(nextDefaultId);
+    }
+    _uiState = _uiState.copyWith(
+      accounts: accounts,
+      defaultAccountId: nextDefaultId,
+      accId: nextDefault?.accId ?? -1,
+      host: nextDefault?.host ?? '',
+    );
+    _addLog('🗑 已删除线路: ${account.lineLabel}');
+  }
+
+  int? _firstRegisteredAccountId(Map<int, SipAccountInfo> accounts) {
+    for (final account in accounts.values) {
+      if (account.isRegistered) return account.accId;
+    }
+    return null;
+  }
+
+  void _promoteDefaultAccountIfNeeded(int accId) {
+    final account = _uiState.accounts[accId];
+    if (account == null || !account.isRegistered) return;
+    final currentDefault = _uiState.defaultAccount;
+    if (currentDefault?.isRegistered == true) return;
+    final status = _bindings.pjsua_acc_set_default(accId);
+    if (status != 0) {
+      _addLog('❌ 自动切换默认外呼线路失败: ${account.lineLabel}, pj_status=$status');
+      return;
+    }
+    _uiState = _uiState.copyWith(
+      defaultAccountId: accId,
+      accId: account.accId,
+      host: account.host,
+    );
+    _addLog('✅ 已自动选择可用外呼线路: ${account.lineLabel}');
+  }
+
+  void _clearDefaultAccountIfUnavailable(int accId) {
+    if (_uiState.defaultAccountId != accId) return;
+    final nextDefaultId = _firstRegisteredAccountId(_uiState.accounts);
+    final nextDefault = nextDefaultId == null
+        ? null
+        : _uiState.accounts[nextDefaultId];
+    if (nextDefaultId != null) {
+      _bindings.pjsua_acc_set_default(nextDefaultId);
+    }
+    _uiState = _uiState.copyWith(
+      defaultAccountId: nextDefaultId,
+      accId: nextDefault?.accId ?? -1,
+      host: nextDefault?.host ?? '',
+    );
   }
 }

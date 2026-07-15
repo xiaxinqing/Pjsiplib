@@ -429,6 +429,7 @@ extension _HomeCalls on _MyHomePageState {
   }
 
   Widget _buildContactsPage(PjsipUIState uiState, PjsipService service) {
+    final outgoingAccount = uiState.bestOutgoingAccount;
     final contacts = const [
       ('6529', '前台'),
       ('6530', '客服一组'),
@@ -449,11 +450,14 @@ extension _HomeCalls on _MyHomePageState {
             subtitle: Text(number),
             trailing: IconButton.filledTonal(
               tooltip: '呼叫',
-              onPressed: uiState.defaultAccount == null
+              onPressed: outgoingAccount == null
                   ? null
                   : () {
                       _numberController.text = number;
-                      service.makeCall(number);
+                      service.makeCallFromAccount(
+                        number,
+                        outgoingAccount.accId,
+                      );
                       _selectSection(_WorkspaceSection.calls);
                     },
               icon: const Icon(Icons.call),

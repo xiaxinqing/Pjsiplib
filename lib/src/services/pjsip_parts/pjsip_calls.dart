@@ -3,13 +3,21 @@ part of '../pjsip_service.dart';
 /// 单路、多路及三方会议的通话控制与音频桥管理。
 extension PjsipCallOperations on PjsipService {
   Future<void> makeCall(String number) async {
+    return makeCallFromAccount(number, _uiState.defaultAccountId);
+  }
+
+  Future<void> makeCallFromAccount(String number, int? accountId) async {
     if (!_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，无法发起呼叫');
       return;
     }
-    final account = _uiState.defaultAccount;
+    final account = accountId == null ? null : _uiState.accounts[accountId];
     if (account == null) {
-      _addLog('❌ 请先注册账号');
+      _addLog('❌ 请先选择可用线路');
+      return;
+    }
+    if (!account.isRegistered) {
+      _addLog('❌ 线路尚未注册成功，不能外呼: ${account.lineLabel}');
       return;
     }
     if (_uiState.calls.length >= 4) {

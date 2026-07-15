@@ -23,14 +23,16 @@ class SipAccountInfo {
     int? accId,
     String? username,
     String? host,
-    int? registrationStatus,
+    Object? registrationStatus = _unset,
     String? registrationStatusText,
   }) {
     return SipAccountInfo(
       accId: accId ?? this.accId,
       username: username ?? this.username,
       host: host ?? this.host,
-      registrationStatus: registrationStatus ?? this.registrationStatus,
+      registrationStatus: identical(registrationStatus, _unset)
+          ? this.registrationStatus
+          : registrationStatus as int?,
       registrationStatusText:
           registrationStatusText ?? this.registrationStatusText,
     );

@@ -26,7 +26,7 @@ class AppWindowController {
       size: Size(1280, 780),
       minimumSize: minimumSize,
       center: true,
-      title: 'VoIP Desk',
+      title: 'Thruv',
       titleBarStyle: TitleBarStyle.hidden,
     );
 

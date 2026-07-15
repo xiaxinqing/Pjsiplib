@@ -191,8 +191,19 @@ class PjsipUIState {
   SipAccountInfo? get defaultAccount =>
       defaultAccountId == null ? null : accounts[defaultAccountId];
 
-  bool get hasRegisteredAccount =>
-      accounts.values.any((account) => account.isRegistered) || accId != -1;
+  Iterable<SipAccountInfo> get registeredAccounts =>
+      accounts.values.where((account) => account.isRegistered);
+
+  SipAccountInfo? get bestOutgoingAccount {
+    final currentDefault = defaultAccount;
+    if (currentDefault?.isRegistered == true) return currentDefault;
+    for (final account in registeredAccounts) {
+      return account;
+    }
+    return null;
+  }
+
+  bool get hasRegisteredAccount => registeredAccounts.isNotEmpty;
 
   SipAccountInfo? accountForCall(CallInfo call) =>
       call.accountId == null ? null : accounts[call.accountId];

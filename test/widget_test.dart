@@ -75,6 +75,51 @@ void main() {
     expect(state.hasRegisteredAccount, isTrue);
   });
 
+  test('注册失败线路不能被当成在线或外呼默认线路', () {
+    final failedAccount = SipAccountInfo(
+      accId: 1,
+      username: '65299',
+      host: '139.59.100.15',
+      registrationStatus: 401,
+      registrationStatusText: 'Unauthorized',
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {1: failedAccount},
+      defaultAccountId: 1,
+      accId: 1,
+      host: failedAccount.host,
+    );
+
+    expect(state.hasRegisteredAccount, isFalse);
+    expect(state.bestOutgoingAccount, isNull);
+  });
+
+  test('默认线路失败时优先选择已注册线路外呼', () {
+    final failedAccount = SipAccountInfo(
+      accId: 1,
+      username: '65299',
+      host: '139.59.100.15',
+      registrationStatus: 401,
+      registrationStatusText: 'Unauthorized',
+    );
+    final registeredAccount = SipAccountInfo(
+      accId: 2,
+      username: '6529',
+      host: '139.59.100.15',
+      registrationStatus: 200,
+      registrationStatusText: 'OK',
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {1: failedAccount, 2: registeredAccount},
+      defaultAccountId: 1,
+    );
+
+    expect(state.bestOutgoingAccount?.username, '6529');
+    expect(state.hasRegisteredAccount, isTrue);
+  });
+
   test('通话可以关联到具体线路', () {
     final account = SipAccountInfo(
       accId: 7,
@@ -104,7 +149,7 @@ void main() {
       ),
     );
 
-    expect(find.text('VoIP Desk'), findsOneWidget);
+    expect(find.text('Thruv'), findsOneWidget);
     expect(find.text('拨号'), findsWidgets);
     expect(find.text('设置'), findsOneWidget);
   });
