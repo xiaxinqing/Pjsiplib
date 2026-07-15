@@ -26,12 +26,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     text: '139.59.100.15',
   );
   late final TabController _settingsTabController;
+  Timer? _settingsPrewarmTimer;
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
   int? _selectedOutgoingAccountId;
   int _settingsTabIndex = 0;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   bool _hidePassword = true;
+  bool _settingsPrewarmVisible = false;
   SipTransport _selectedLineTransport = SipTransport.udp;
 
   @override
@@ -39,10 +41,17 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     super.initState();
     _settingsTabController = TabController(length: 4, vsync: this)
       ..addListener(_handleSettingsTabChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _settingsPrewarmTimer = Timer(const Duration(milliseconds: 600), () {
+        if (!mounted) return;
+        setState(() => _settingsPrewarmVisible = true);
+      });
+    });
   }
 
   @override
   void dispose() {
+    _settingsPrewarmTimer?.cancel();
     _settingsTabController
       ..removeListener(_handleSettingsTabChanged)
       ..dispose();
@@ -63,13 +72,41 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     return Scaffold(
       key: _scaffoldKey,
       endDrawer: _buildSettingsDrawer(uiState, service),
-      body: SafeArea(
-        child: Row(
-          children: [
-            _buildSidebar(uiState, service),
-            const VerticalDivider(width: 1, color: _softBorder),
-            Expanded(child: _buildWorkspace(uiState, service)),
-          ],
+      body: Stack(
+        children: [
+          SafeArea(
+            child: Row(
+              children: [
+                _buildSidebar(uiState, service),
+                const VerticalDivider(width: 1, color: _softBorder),
+                Expanded(child: _buildWorkspace(uiState, service)),
+              ],
+            ),
+          ),
+          if (_settingsPrewarmVisible)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              child: _buildSettingsPrewarm(uiState, service),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSettingsPrewarm(PjsipUIState uiState, PjsipService service) {
+    return Offstage(
+      offstage: true,
+      child: IgnorePointer(
+        child: ExcludeSemantics(
+          child: TickerMode(
+            enabled: false,
+            child: SizedBox(
+              width: 460,
+              child: _buildSettingsDrawer(uiState, service),
+            ),
+          ),
         ),
       ),
     );
@@ -172,6 +209,13 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     }
     if (_settingsTabIndex != tabIndex) {
       setState(() => _settingsTabIndex = tabIndex);
+    }
+    if (_settingsPrewarmVisible) {
+      setState(() => _settingsPrewarmVisible = false);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _scaffoldKey.currentState?.openEndDrawer();
+      });
+      return;
     }
     _scaffoldKey.currentState?.openEndDrawer();
   }

@@ -33,6 +33,7 @@ enum SipTransport {
 class SipAccountInfo {
   final int accId;
   final String username;
+  final String password;
   final String host;
   final SipTransport transport;
   final int? registrationStatus;
@@ -44,6 +45,7 @@ class SipAccountInfo {
   SipAccountInfo({
     required this.accId,
     required this.username,
+    this.password = '',
     required this.host,
     this.transport = SipTransport.udp,
     this.registrationStatus,
@@ -56,6 +58,7 @@ class SipAccountInfo {
   SipAccountInfo copyWith({
     int? accId,
     String? username,
+    String? password,
     String? host,
     SipTransport? transport,
     Object? registrationStatus = _unset,
@@ -67,6 +70,7 @@ class SipAccountInfo {
     return SipAccountInfo(
       accId: accId ?? this.accId,
       username: username ?? this.username,
+      password: password ?? this.password,
       host: host ?? this.host,
       transport: transport ?? this.transport,
       registrationStatus: identical(registrationStatus, _unset)

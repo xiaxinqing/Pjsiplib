@@ -188,6 +188,8 @@ extension PjsipEngineOperations on PjsipService {
     required String password,
     required String host,
     SipTransport transport = SipTransport.udp,
+    bool registrationEnabled = true,
+    bool fromRestore = false,
   }) async {
     if (!_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，暂不发起 SIP 注册');
@@ -222,7 +224,9 @@ extension PjsipEngineOperations on PjsipService {
         return;
       }
       _addLog('🌐 线路已存在但未在线，重新发起注册: ${account.lineLabel}');
-      setAccountRegistration(account.accId, true);
+      if (registrationEnabled) {
+        setAccountRegistration(account.accId, true);
+      }
       return;
     }
     if (!_uiState.isInitialized) await init();
@@ -236,6 +240,7 @@ extension PjsipEngineOperations on PjsipService {
       final accCfg = arena<pjsua_acc_config>();
       _bindings.pjsua_acc_config_default(accCfg);
       accCfg.ref.transport_id = transportId;
+      accCfg.ref.register_on_acc_add = registrationEnabled ? 1 : 0;
       _pjStr(
         accCfg.ref.id,
         'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
@@ -260,7 +265,9 @@ extension PjsipEngineOperations on PjsipService {
       cred.data_type = 0;
       _pjStr(cred.data, password.toNativeUtf8(allocator: arena));
       final pAccId = arena<ffi.Int>();
-      final isDefault = _uiState.accounts.isEmpty ? 1 : 0;
+      final isDefault = _uiState.accounts.isEmpty && registrationEnabled
+          ? 1
+          : 0;
       final status = _bindings.pjsua_acc_add(accCfg, isDefault, pAccId);
       if (status != 0) {
         _addLog('❌ 添加 SIP 账号失败: pj_status=$status');
@@ -270,9 +277,14 @@ extension PjsipEngineOperations on PjsipService {
       final account = SipAccountInfo(
         accId: pAccId.value,
         username: normalizedUsername,
+        password: password,
         host: normalizedHost,
         transport: transport,
-        registrationActionInProgress: true,
+        registrationStatus: registrationEnabled ? null : 0,
+        registrationStatusText: registrationEnabled ? '注册中' : '已暂停',
+        registrationExpires: registrationEnabled ? null : 0,
+        registrationEnabled: registrationEnabled,
+        registrationActionInProgress: registrationEnabled,
       );
       final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
         ..[account.accId] = account;
@@ -286,7 +298,14 @@ extension PjsipEngineOperations on PjsipService {
         accId: defaultAccount?.accId ?? -1,
         host: defaultAccount?.host ?? '',
       );
-      _addLog('🚀 注册请求已发送: ${account.lineLabel} (${transport.label})');
+      _addLog(
+        registrationEnabled
+            ? '🚀 注册请求已发送: ${account.lineLabel} (${transport.label})'
+            : '⏸ 已恢复暂停线路: ${account.lineLabel} (${transport.label})',
+      );
+      if (!fromRestore) {
+        unawaited(_persistSeatEnvironment());
+      }
     });
   }
 
@@ -401,6 +420,8 @@ extension PjsipEngineOperations on PjsipService {
       accId: account.accId,
       host: account.host,
     );
+    _preferredDefaultLineKey = _lineKey(account.username, account.host);
+    unawaited(_persistSeatEnvironment());
     _addLog('✅ 默认外呼线路已切换: ${account.lineLabel}');
     ToastUtil.showSuccess('默认外呼已切换');
   }
@@ -440,12 +461,14 @@ extension PjsipEngineOperations on PjsipService {
         registrationActionInProgress: true,
       );
     _uiState = _uiState.copyWith(accounts: accounts);
+    unawaited(_persistSeatEnvironment());
 
     final status = _bindings.pjsua_acc_set_registration(accId, enabled ? 1 : 0);
     if (status != 0) {
       final rollbackAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
         ..[accId] = account.copyWith(registrationActionInProgress: false);
       _uiState = _uiState.copyWith(accounts: rollbackAccounts);
+      unawaited(_persistSeatEnvironment());
       _addLog(
         '❌ ${enabled ? '重新注册' : '暂停注册'}线路失败: ${account.lineLabel}, pj_status=$status',
       );
@@ -484,12 +507,23 @@ extension PjsipEngineOperations on PjsipService {
 
     final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
       ..remove(accId);
+    final removedPreferredLine =
+        _preferredDefaultLineKey == _lineKey(account.username, account.host);
+    if (removedPreferredLine) {
+      _preferredDefaultLineKey = null;
+    }
     final nextDefaultId = _uiState.defaultAccountId == accId
         ? _firstRegisteredAccountId(accounts)
         : _uiState.defaultAccountId;
     final nextDefault = nextDefaultId == null ? null : accounts[nextDefaultId];
     if (nextDefaultId != null) {
       _bindings.pjsua_acc_set_default(nextDefaultId);
+      if (removedPreferredLine && nextDefault != null) {
+        _preferredDefaultLineKey = _lineKey(
+          nextDefault.username,
+          nextDefault.host,
+        );
+      }
     }
     _uiState = _uiState.copyWith(
       accounts: accounts,
@@ -497,6 +531,7 @@ extension PjsipEngineOperations on PjsipService {
       accId: nextDefault?.accId ?? -1,
       host: nextDefault?.host ?? '',
     );
+    unawaited(_persistSeatEnvironment());
     _addLog('🗑 已删除线路: ${account.lineLabel}');
     ToastUtil.showSuccess('线路已删除');
   }
@@ -524,6 +559,7 @@ extension PjsipEngineOperations on PjsipService {
       accId: account.accId,
       host: account.host,
     );
+    unawaited(_persistSeatEnvironment());
     _addLog('✅ 已自动选择可用外呼线路: ${account.lineLabel}');
   }
 
@@ -541,5 +577,6 @@ extension PjsipEngineOperations on PjsipService {
       accId: nextDefault?.accId ?? -1,
       host: nextDefault?.host ?? '',
     );
+    unawaited(_persistSeatEnvironment());
   }
 }

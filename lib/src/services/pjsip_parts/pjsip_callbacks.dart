@@ -124,10 +124,12 @@ extension _PjsipNativeCallbacks on PjsipService {
             }
           }
           if (sipStatus == 200) {
+            _applyPreferredDefaultAccount();
             _promoteDefaultAccountIfNeeded(accId);
           } else if (sipStatus >= 300) {
             _clearDefaultAccountIfUnavailable(accId);
           }
+          unawaited(_persistSeatEnvironment());
           _addLog('🔔 账号状态更新: ID $accId, 状态: $sipStatus ($statusText)');
         }
       });

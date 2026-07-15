@@ -7,6 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../generated/pjsip_bindings.g.dart';
 import '../../utils/toast_util.dart';
 
@@ -32,11 +33,14 @@ part 'pjsip_parts/pjsip_audio_devices.dart';
 
 part 'pjsip_parts/pjsip_network.dart';
 
+part 'pjsip_parts/pjsip_persistence.dart';
+
 class PjsipService extends Notifier<PjsipUIState> {
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   // 拆分文件通过这组私有访问器读写 Notifier 状态。这样既不把 state 暴露给
   // 业务层，也不会让 extension 直接访问 Riverpod 的 protected 成员。
@@ -52,6 +56,10 @@ class PjsipService extends Notifier<PjsipUIState> {
   bool _ipChangeInProgress = false;
   bool _ipChangeHadError = false;
   bool _pendingIpChange = false;
+  bool _seatRestoreInProgress = false;
+  bool _loggedMacOsFallbackRead = false;
+  bool _loggedMacOsFallbackWrite = false;
+  String? _preferredDefaultLineKey;
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Set<ConnectivityResult>? _lastConnectivityTypes;
@@ -96,6 +104,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     ref.onDispose(_cleanup);
     // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
     scheduleMicrotask(_startConnectivityMonitoring);
+    scheduleMicrotask(_restoreSeatEnvironment);
     return PjsipUIState(logs: []);
   }
 
