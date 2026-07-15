@@ -66,7 +66,7 @@ extension _HomeSettings on _MyHomePageState {
           title: '线路状态',
           icon: Icons.route,
           children: [
-            _buildConnectionPill(uiState),
+            _buildConnectionPill(uiState, service),
             const SizedBox(height: 12),
             if (uiState.accounts.isEmpty)
               Text('尚未接入线路', style: Theme.of(context).textTheme.bodyMedium)
@@ -194,15 +194,23 @@ extension _HomeSettings on _MyHomePageState {
           Row(
             children: [
               TextButton.icon(
-                onPressed: () =>
-                    service.setAccountRegistration(account.accId, true),
+                onPressed:
+                    account.registrationActionInProgress ||
+                        (account.registrationEnabled &&
+                            account.registrationStatus == null)
+                    ? null
+                    : () => service.setAccountRegistration(account.accId, true),
                 icon: const Icon(Icons.refresh),
                 label: const Text('重连'),
               ),
               const SizedBox(width: 6),
               TextButton.icon(
-                onPressed: () =>
-                    service.setAccountRegistration(account.accId, false),
+                onPressed:
+                    account.registrationActionInProgress ||
+                        !account.registrationEnabled
+                    ? null
+                    : () =>
+                          service.setAccountRegistration(account.accId, false),
                 icon: const Icon(Icons.pause_circle_outline),
                 label: const Text('暂停'),
               ),

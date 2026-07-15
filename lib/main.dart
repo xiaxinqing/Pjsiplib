@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 
 import 'src/services/app_window_controller.dart';
 import 'src/services/pjsip_service.dart';
+import 'src/ui/app_colors.dart';
+import 'utils/toast_util.dart';
 
 part 'src/ui/app_theme.dart';
 part 'src/ui/home_page.dart';
@@ -32,6 +34,7 @@ class MyApp extends StatelessWidget {
     );
     return MaterialApp(
       title: 'Thruv',
+      navigatorKey: ToastUtil.navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: base.copyWith(

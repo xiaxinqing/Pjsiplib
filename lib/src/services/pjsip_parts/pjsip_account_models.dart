@@ -10,6 +10,9 @@ class SipAccountInfo {
   final String host;
   final int? registrationStatus;
   final String registrationStatusText;
+  final int? registrationExpires;
+  final bool registrationEnabled;
+  final bool registrationActionInProgress;
 
   SipAccountInfo({
     required this.accId,
@@ -17,6 +20,9 @@ class SipAccountInfo {
     required this.host,
     this.registrationStatus,
     this.registrationStatusText = '注册中',
+    this.registrationExpires,
+    this.registrationEnabled = true,
+    this.registrationActionInProgress = false,
   });
 
   SipAccountInfo copyWith({
@@ -25,6 +31,9 @@ class SipAccountInfo {
     String? host,
     Object? registrationStatus = _unset,
     String? registrationStatusText,
+    Object? registrationExpires = _unset,
+    bool? registrationEnabled,
+    bool? registrationActionInProgress,
   }) {
     return SipAccountInfo(
       accId: accId ?? this.accId,
@@ -35,10 +44,19 @@ class SipAccountInfo {
           : registrationStatus as int?,
       registrationStatusText:
           registrationStatusText ?? this.registrationStatusText,
+      registrationExpires: identical(registrationExpires, _unset)
+          ? this.registrationExpires
+          : registrationExpires as int?,
+      registrationEnabled: registrationEnabled ?? this.registrationEnabled,
+      registrationActionInProgress:
+          registrationActionInProgress ?? this.registrationActionInProgress,
     );
   }
 
-  bool get isRegistered => registrationStatus == 200;
+  bool get isRegistered =>
+      registrationEnabled &&
+      registrationStatus == 200 &&
+      registrationExpires != 0;
 
   String get displayName => username;
 

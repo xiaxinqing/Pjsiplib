@@ -148,64 +148,79 @@ extension _HomeWorkspace on _MyHomePageState {
   ) {
     return Card(
       color: _panelBackground,
-      child: Padding(
-        padding: const EdgeInsets.all(22),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextField(
-              controller: _numberController,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 30,
-                fontWeight: FontWeight.w700,
-                fontFeatures: [FontFeature.tabularFigures()],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(22),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight > 44
+                    ? constraints.maxHeight - 44
+                    : 0,
               ),
-              decoration: InputDecoration(
-                hintText: '输入号码',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: IconButton(
-                  tooltip: '清空',
-                  onPressed: () => _numberController.clear(),
-                  icon: const Icon(Icons.backspace_outlined),
-                ),
-              ),
-              keyboardType: TextInputType.phone,
-              onSubmitted: (_) =>
-                  _callNumberIfPossible(canCall, service, selectedAccountId),
-            ),
-            if (uiState.accounts.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              _buildOutgoingLineSelector(uiState),
-            ],
-            const SizedBox(height: 18),
-            _buildNumberPad(),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 54,
-              child: FilledButton.icon(
-                onPressed: canCall
-                    ? () => _callNumberIfPossible(
-                        canCall,
-                        service,
-                        selectedAccountId,
-                      )
-                    : null,
-                icon: const Icon(Icons.call),
-                label: const Text('呼叫'),
-                style: FilledButton.styleFrom(
-                  backgroundColor: _callGreen,
-                  foregroundColor: Colors.white,
-                  textStyle: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _numberController,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                    decoration: InputDecoration(
+                      hintText: '输入号码',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: IconButton(
+                        tooltip: '清空',
+                        onPressed: () => _numberController.clear(),
+                        icon: const Icon(Icons.backspace_outlined),
+                      ),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    onSubmitted: (_) => _callNumberIfPossible(
+                      canCall,
+                      service,
+                      selectedAccountId,
+                    ),
                   ),
-                ),
+                  if (uiState.accounts.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    _buildOutgoingLineSelector(uiState),
+                  ],
+                  const SizedBox(height: 18),
+                  _buildNumberPad(),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    height: 54,
+                    child: FilledButton.icon(
+                      onPressed: canCall
+                          ? () => _callNumberIfPossible(
+                              canCall,
+                              service,
+                              selectedAccountId,
+                            )
+                          : null,
+                      icon: const Icon(Icons.call),
+                      label: const Text('呼叫'),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _callGreen,
+                        foregroundColor: Colors.white,
+                        textStyle: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pjsip_lib/main.dart';
@@ -120,6 +122,69 @@ void main() {
     expect(state.hasRegisteredAccount, isTrue);
   });
 
+  test('注销成功的线路即使返回 200 也不应算在线', () {
+    final pausedAccount = SipAccountInfo(
+      accId: 1,
+      username: '6529',
+      host: '139.59.100.15',
+      registrationStatus: 200,
+      registrationStatusText: 'OK',
+      registrationExpires: 0,
+      registrationEnabled: false,
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {1: pausedAccount},
+      defaultAccountId: 1,
+    );
+
+    expect(pausedAccount.isRegistered, isFalse);
+    expect(state.bestOutgoingAccount, isNull);
+    expect(state.hasRegisteredAccount, isFalse);
+  });
+
+  test('暂停确认中的线路不能因为旧 expires 被当成在线', () {
+    final pausingAccount = SipAccountInfo(
+      accId: 1,
+      username: '6529',
+      host: '139.59.100.15',
+      registrationStatus: 200,
+      registrationStatusText: 'OK',
+      registrationExpires: 299,
+      registrationEnabled: false,
+      registrationActionInProgress: true,
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {1: pausingAccount},
+      defaultAccountId: 1,
+    );
+
+    expect(pausingAccount.isRegistered, isFalse);
+    expect(state.bestOutgoingAccount, isNull);
+    expect(state.hasRegisteredAccount, isFalse);
+  });
+
+  test('注册操作中线路不应被当成在线', () {
+    final registeringAccount = SipAccountInfo(
+      accId: 1,
+      username: '6529',
+      host: '139.59.100.15',
+      registrationStatus: null,
+      registrationStatusText: '注册中',
+      registrationActionInProgress: true,
+    );
+    final state = PjsipUIState(
+      logs: [],
+      accounts: {1: registeringAccount},
+      defaultAccountId: 1,
+    );
+
+    expect(registeringAccount.isRegistered, isFalse);
+    expect(state.bestOutgoingAccount, isNull);
+    expect(state.hasRegisteredAccount, isFalse);
+  });
+
   test('通话可以关联到具体线路', () {
     final account = SipAccountInfo(
       accId: 7,
@@ -152,5 +217,22 @@ void main() {
     expect(find.text('Thruv'), findsOneWidget);
     expect(find.text('拨号'), findsWidgets);
     expect(find.text('设置'), findsOneWidget);
+  });
+
+  testWidgets('VoIP 主界面在矮窗口下可以滚动布局', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(900, 620);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [pjsipServiceProvider.overrideWith(FakePjsipService.new)],
+        child: const MyApp(),
+      ),
+    );
+
+    expect(find.text('Thruv'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

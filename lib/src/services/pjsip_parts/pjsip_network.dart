@@ -162,6 +162,10 @@ extension PjsipNetworkOperations on PjsipService {
     }
     var failed = false;
     for (final account in _uiState.accounts.values) {
+      if (!account.registrationEnabled) {
+        _addLog('⏸ 跳过已暂停线路的自动重注册: ${account.lineLabel}');
+        continue;
+      }
       if (account.registrationStatus == 401 ||
           account.registrationStatus == 403) {
         _addLog('⚠️ 跳过认证失败线路的自动重注册: ${account.lineLabel}');

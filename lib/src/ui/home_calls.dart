@@ -56,61 +56,80 @@ extension _HomeCalls on _MyHomePageState {
 
     return Card(
       color: _panelBackground,
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            _CallAvatar(
-              label: _avatarText(primary.remoteUri),
-              isIncoming: isIncoming,
-            ),
-            const SizedBox(height: 18),
-            Text(
-              _displayRemote(primary.remoteUri),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              primary.statusLabel,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            if (account != null) ...[
-              const SizedBox(height: 10),
-              _buildCallLineChip(account, isIncoming: isIncoming),
-            ],
-            const SizedBox(height: 12),
-            if (primary.isConnected)
-              Text(
-                primary.durationLabel,
-                style: const TextStyle(
-                  fontSize: 42,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: [FontFeature.tabularFigures()],
-                ),
-              )
-            else
-              const SizedBox(height: 50),
-            const SizedBox(height: 20),
-            if (isConferenceMember)
-              Chip(
-                avatar: Icon(isConferencePaused ? Icons.pause : Icons.groups),
-                label: Text(isConferencePaused ? '会议已暂停' : '三方通话'),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxHeight < 620;
+          final avatarSize = compact ? 118.0 : _incomingHaloBoxSize;
+          return SingleChildScrollView(
+            padding: EdgeInsets.all(compact ? 20 : 28),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: constraints.maxHeight > (compact ? 40 : 56)
+                    ? constraints.maxHeight - (compact ? 40 : 56)
+                    : 0,
               ),
-            const SizedBox(height: 22),
-            _buildPrimaryCallControls(primary, uiState, service),
-            if (_showInCallDialpad && primary.isConnected) ...[
-              const SizedBox(height: 22),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 320),
-                child: _buildDtmfPad(primary, service),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _CallAvatar(
+                    label: _avatarText(primary.remoteUri),
+                    isIncoming: isIncoming,
+                    size: avatarSize,
+                  ),
+                  SizedBox(height: compact ? 12 : 18),
+                  Text(
+                    _displayRemote(primary.remoteUri),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: compact ? 24 : 28,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    primary.statusLabel,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (account != null) ...[
+                    const SizedBox(height: 10),
+                    _buildCallLineChip(account, isIncoming: isIncoming),
+                  ],
+                  SizedBox(height: compact ? 8 : 12),
+                  if (primary.isConnected)
+                    Text(
+                      primary.durationLabel,
+                      style: TextStyle(
+                        fontSize: compact ? 34 : 42,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    )
+                  else
+                    SizedBox(height: compact ? 32 : 50),
+                  SizedBox(height: compact ? 14 : 20),
+                  if (isConferenceMember)
+                    Chip(
+                      avatar: Icon(
+                        isConferencePaused ? Icons.pause : Icons.groups,
+                      ),
+                      label: Text(isConferencePaused ? '会议已暂停' : '三方通话'),
+                    ),
+                  SizedBox(height: compact ? 16 : 22),
+                  _buildPrimaryCallControls(primary, uiState, service),
+                  if (_showInCallDialpad && primary.isConnected) ...[
+                    SizedBox(height: compact ? 16 : 22),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 320),
+                      child: _buildDtmfPad(primary, service),
+                    ),
+                  ],
+                ],
               ),
-            ],
-          ],
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -530,10 +549,15 @@ extension _HomeCalls on _MyHomePageState {
 }
 
 class _CallAvatar extends StatefulWidget {
-  const _CallAvatar({required this.label, required this.isIncoming});
+  const _CallAvatar({
+    required this.label,
+    required this.isIncoming,
+    required this.size,
+  });
 
   final String label;
   final bool isIncoming;
+  final double size;
 
   @override
   State<_CallAvatar> createState() => _CallAvatarState();
@@ -571,15 +595,17 @@ class _CallAvatarState extends State<_CallAvatar>
 
   @override
   Widget build(BuildContext context) {
+    final avatarRadius = widget.size <= 120 ? 34.0 : 42.0;
+    final fontSize = widget.size <= 120 ? 23.0 : 28.0;
     final avatar = CircleAvatar(
-      radius: 42,
+      radius: avatarRadius,
       backgroundColor: widget.isIncoming
           ? _callGreen
           : Theme.of(context).colorScheme.primary,
       child: Text(
         widget.label,
-        style: const TextStyle(
-          fontSize: 28,
+        style: TextStyle(
+          fontSize: fontSize,
           fontWeight: FontWeight.w800,
           color: Colors.white,
         ),
@@ -588,13 +614,13 @@ class _CallAvatarState extends State<_CallAvatar>
 
     if (!widget.isIncoming) {
       return SizedBox.square(
-        dimension: _incomingHaloBoxSize,
+        dimension: widget.size,
         child: Center(child: avatar),
       );
     }
 
     return SizedBox.square(
-      dimension: _incomingHaloBoxSize,
+      dimension: widget.size,
       child: AnimatedBuilder(
         animation: _shakeController,
         builder: (context, child) {

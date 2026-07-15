@@ -75,6 +75,7 @@ extension _PjsipNativeCallbacks on PjsipService {
         if (_bindings.pjsua_acc_get_info(accId, info) == 0) {
           // pjsua_acc_info 属于 Arena，进入其他异步任务前只保留按值字段。
           final sipStatus = info.ref.statusAsInt;
+          final expires = info.ref.expires;
           final statusText = info.ref.status_text.ptr.cast<Utf8>().toDartString(
             length: info.ref.status_text.slen,
           );
@@ -87,13 +88,40 @@ extension _PjsipNativeCallbacks on PjsipService {
             );
           }
           final account = _uiState.accounts[accId];
+          final wasActionInProgress =
+              account?.registrationActionInProgress ?? false;
           if (account != null) {
+            final wasRegistered = account.isRegistered;
+            final isPauseAck =
+                wasActionInProgress &&
+                !account.registrationEnabled &&
+                sipStatus == 200;
+            final isPaused =
+                !account.registrationEnabled && (expires == 0 || isPauseAck);
             final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
               ..[accId] = account.copyWith(
-                registrationStatus: sipStatus,
-                registrationStatusText: statusText,
+                registrationStatus: isPaused ? 0 : sipStatus,
+                registrationStatusText: isPaused ? '已暂停' : statusText,
+                registrationExpires: isPaused ? 0 : expires,
+                registrationActionInProgress: false,
               );
             _uiState = _uiState.copyWith(accounts: accounts);
+            if (isPaused && wasActionInProgress) {
+              ToastUtil.showSuccess('线路已暂停');
+            } else if (sipStatus == 200 &&
+                expires != 0 &&
+                account.registrationEnabled &&
+                (wasActionInProgress || !wasRegistered)) {
+              ToastUtil.showSuccess('线路注册成功');
+            } else if (sipStatus >= 300 &&
+                account.registrationEnabled &&
+                (wasActionInProgress || wasRegistered)) {
+              ToastUtil.showError('线路注册失败：$statusText', longTime: true);
+            } else if (sipStatus >= 300 &&
+                !account.registrationEnabled &&
+                wasActionInProgress) {
+              ToastUtil.showError('暂停线路失败：$statusText', longTime: true);
+            }
           }
           if (sipStatus == 200) {
             _promoteDefaultAccountIfNeeded(accId);

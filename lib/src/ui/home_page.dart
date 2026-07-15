@@ -52,7 +52,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       body: SafeArea(
         child: Row(
           children: [
-            _buildSidebar(uiState),
+            _buildSidebar(uiState, service),
             const VerticalDivider(width: 1, color: _softBorder),
             Expanded(child: _buildWorkspace(uiState, service)),
           ],
