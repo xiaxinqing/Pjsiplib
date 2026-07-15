@@ -218,7 +218,9 @@ extension _HomeSidebar on _MyHomePageState {
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       Text(
-                        isDefault ? '默认外呼' : account.registrationStatusText,
+                        isDefault
+                            ? '默认外呼 · ${account.transportLabel}'
+                            : '${account.registrationStatusText} · ${account.transportLabel}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodySmall,
@@ -305,7 +307,9 @@ extension _HomeSidebar on _MyHomePageState {
               _buildStatusSummaryRow(
                 icon: Icons.outbound,
                 label: '默认外呼',
-                value: uiState.bestOutgoingAccount?.lineLabel ?? '暂无',
+                value: uiState.bestOutgoingAccount == null
+                    ? '暂无'
+                    : '${uiState.bestOutgoingAccount!.lineLabel} · ${uiState.bestOutgoingAccount!.transportLabel}',
               ),
               _buildStatusSummaryRow(
                 icon: Icons.account_tree_outlined,
@@ -376,8 +380,8 @@ extension _HomeSidebar on _MyHomePageState {
               const SizedBox(height: 4),
               Text(
                 isDefault
-                    ? '默认外呼 · ${account.registrationStatusText}'
-                    : account.registrationStatusText,
+                    ? '默认外呼 · ${account.registrationStatusText} · ${account.transportLabel}'
+                    : '${account.registrationStatusText} · ${account.transportLabel}',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

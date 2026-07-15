@@ -98,6 +98,7 @@ extension PjsipEngineOperations on PjsipService {
         _addLog('❌ 创建 UDP transport 失败: pj_status=$transportStatus');
         return;
       }
+      _sipTransportIds[SipTransport.udp] = pTransportId.value;
       _addLog('UDP transport 创建成功: id=${pTransportId.value}, localPort=系统分配');
 
       // PJSIP 可能因为带 SDP 的 INVITE 超过 UDP 阈值而自动选择 TCP。
@@ -116,6 +117,7 @@ extension PjsipEngineOperations on PjsipService {
         _addLog('❌ 创建 TCP transport 失败: pj_status=$tcpTransportStatus');
         return;
       }
+      _sipTransportIds[SipTransport.tcp] = pTcpTransportId.value;
       _addLog(
         'TCP transport 创建成功: id=${pTcpTransportId.value}, localPort=系统分配',
       );
@@ -185,6 +187,7 @@ extension PjsipEngineOperations on PjsipService {
     required String username,
     required String password,
     required String host,
+    SipTransport transport = SipTransport.udp,
   }) async {
     if (!_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，暂不发起 SIP 注册');
@@ -192,18 +195,27 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     final normalizedUsername = username.trim();
-    final normalizedHost = host.trim();
+    final normalizedHost = _normalizeSipHost(host, transport);
+    final normalizedHostKey = _sipHostIdentityKey(normalizedHost);
     final duplicate = _uiState.accounts.values.any(
       (account) =>
           account.username == normalizedUsername &&
-          account.host == normalizedHost,
+          _sipHostIdentityKey(account.host) == normalizedHostKey,
     );
     if (duplicate) {
       final account = _uiState.accounts.values.firstWhere(
         (account) =>
             account.username == normalizedUsername &&
-            account.host == normalizedHost,
+            _sipHostIdentityKey(account.host) == normalizedHostKey,
       );
+      if (account.transport != transport) {
+        _addLog(
+          '⚠️ 线路已存在，不能直接切换传输协议: ${account.lineLabel} '
+          '${account.transport.label} -> ${transport.label}',
+        );
+        ToastUtil.showWarning('线路已存在，如需切换协议请先删除后重新添加');
+        return;
+      }
       if (account.isRegistered) {
         _addLog('⚠️ 线路已在线，跳过重复添加: ${account.lineLabel}');
         ToastUtil.showWarning('线路已在线');
@@ -214,9 +226,16 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     if (!_uiState.isInitialized) await init();
+    if (!_uiState.isInitialized) return;
+    final transportId = _ensureSipTransport(transport);
+    if (transportId == null) {
+      ToastUtil.showError('${transport.label} 传输初始化失败');
+      return;
+    }
     using((Arena arena) {
       final accCfg = arena<pjsua_acc_config>();
       _bindings.pjsua_acc_config_default(accCfg);
+      accCfg.ref.transport_id = transportId;
       _pjStr(
         accCfg.ref.id,
         'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
@@ -225,7 +244,9 @@ extension PjsipEngineOperations on PjsipService {
       );
       _pjStr(
         accCfg.ref.reg_uri,
-        'sip:$normalizedHost'.toNativeUtf8(allocator: arena),
+        'sip:$normalizedHost;transport=${transport.uriParam}'.toNativeUtf8(
+          allocator: arena,
+        ),
       );
 
       // 开启地址重写，对 NAT 更有好
@@ -250,6 +271,7 @@ extension PjsipEngineOperations on PjsipService {
         accId: pAccId.value,
         username: normalizedUsername,
         host: normalizedHost,
+        transport: transport,
         registrationActionInProgress: true,
       );
       final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
@@ -264,8 +286,100 @@ extension PjsipEngineOperations on PjsipService {
         accId: defaultAccount?.accId ?? -1,
         host: defaultAccount?.host ?? '',
       );
-      _addLog('🚀 注册请求已发送: ${account.lineLabel}');
+      _addLog('🚀 注册请求已发送: ${account.lineLabel} (${transport.label})');
     });
+  }
+
+  String _normalizeSipHost(String host, SipTransport transport) {
+    final strippedScheme = host.trim().replaceFirst(
+      RegExp(r'^sips?:', caseSensitive: false),
+      '',
+    );
+    if (strippedScheme.isEmpty) return strippedScheme;
+
+    final paramIndex = strippedScheme.indexOf(';');
+    final hostPart = paramIndex == -1
+        ? strippedScheme
+        : strippedScheme.substring(0, paramIndex);
+    final params = paramIndex == -1 ? '' : strippedScheme.substring(paramIndex);
+    if (_sipHostHasPort(hostPart)) return '$hostPart$params';
+
+    // SIP URI 中 IPv6 地址需要加方括号。这里顺手规范化，避免补端口后 URI 非法。
+    final normalizedHostPart = _looksLikeUnbracketedIpv6(hostPart)
+        ? '[$hostPart]'
+        : hostPart;
+    return '$normalizedHostPart:${transport.defaultPort}$params';
+  }
+
+  bool _sipHostHasPort(String host) {
+    if (host.startsWith('[')) {
+      final closingBracket = host.indexOf(']');
+      return closingBracket != -1 &&
+          closingBracket + 1 < host.length &&
+          host[closingBracket + 1] == ':';
+    }
+    return ':'.allMatches(host).length == 1;
+  }
+
+  bool _looksLikeUnbracketedIpv6(String host) {
+    return ':'.allMatches(host).length > 1;
+  }
+
+  String _sipHostIdentityKey(String host) {
+    final withoutParams = host.split(';').first;
+    if (withoutParams.startsWith('[')) {
+      final closingBracket = withoutParams.indexOf(']');
+      if (closingBracket != -1) {
+        return withoutParams.substring(1, closingBracket).toLowerCase();
+      }
+    }
+    final parts = withoutParams.split(':');
+    if (parts.length == 2) return parts.first.toLowerCase();
+    return withoutParams.toLowerCase();
+  }
+
+  int? _ensureSipTransport(SipTransport transport) {
+    final existing = _sipTransportIds[transport];
+    if (existing != null) return existing;
+
+    final statusAndId = using<(int, int?)>((Arena arena) {
+      final cfg = arena<pjsua_transport_config>();
+      _bindings.pjsua_transport_config_default(cfg);
+      cfg.ref.port = 0;
+      if (transport == SipTransport.tls) {
+        // 这里先启用 TLS 信令加密，证书校验后续再通过高级设置接入。
+        // verify_server=0 可兼容自签名 PBX；它仍会加密，但不防中间人攻击。
+        cfg.ref.tls_setting.verify_server = 0;
+      }
+
+      final pTransportId = arena<pjsua_transport_id>();
+      final status = _bindings.pjsua_transport_create(
+        _pjsipTransportType(transport),
+        cfg,
+        pTransportId,
+      );
+      return (status, status == 0 ? pTransportId.value : null);
+    });
+
+    final status = statusAndId.$1;
+    final transportId = statusAndId.$2;
+    if (status != 0 || transportId == null) {
+      _addLog('❌ 创建 ${transport.label} transport 失败: pj_status=$status');
+      return null;
+    }
+    _sipTransportIds[transport] = transportId;
+    _addLog(
+      '${transport.label} transport 创建成功: id=$transportId, localPort=系统分配',
+    );
+    return transportId;
+  }
+
+  pjsip_transport_type_e _pjsipTransportType(SipTransport transport) {
+    return switch (transport) {
+      SipTransport.udp => pjsip_transport_type_e.PJSIP_TRANSPORT_UDP,
+      SipTransport.tcp => pjsip_transport_type_e.PJSIP_TRANSPORT_TCP,
+      SipTransport.tls => pjsip_transport_type_e.PJSIP_TRANSPORT_TLS,
+    };
   }
 
   void setDefaultAccount(int accId) {

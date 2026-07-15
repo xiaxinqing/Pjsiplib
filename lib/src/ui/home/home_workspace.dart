@@ -256,7 +256,7 @@ extension _HomeWorkspace on _MyHomePageState {
                     DropdownMenuItem<int>(
                       value: account.accId,
                       child: Text(
-                        '${account.lineLabel} · ${account.registrationStatusText}',
+                        '${account.lineLabel} · ${account.transportLabel} · ${account.registrationStatusText}',
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),

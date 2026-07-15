@@ -32,6 +32,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   bool _hidePassword = true;
+  SipTransport _selectedLineTransport = SipTransport.udp;
 
   @override
   void initState() {
@@ -135,6 +136,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
       username: username,
       password: _passwordController.text,
       host: host,
+      transport: _selectedLineTransport,
     );
     _usernameController.clear();
     _passwordController.clear();
@@ -150,6 +152,10 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
 
   void _togglePasswordVisibility() {
     setState(() => _hidePassword = !_hidePassword);
+  }
+
+  void _selectLineTransport(SipTransport transport) {
+    setState(() => _selectedLineTransport = transport);
   }
 
   void _setDiagnosticLogsVisible(bool value) {

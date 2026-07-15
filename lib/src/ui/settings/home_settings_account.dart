@@ -57,9 +57,12 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
               controller: _hostController,
               decoration: const InputDecoration(
                 labelText: '服务器',
+                helperText: '未填写端口时：UDP/TCP 默认 5060，TLS 默认 5061',
                 prefixIcon: Icon(Icons.dns),
               ),
             ),
+            const SizedBox(height: 16),
+            _buildTransportSelector(),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -111,7 +114,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${account.host} · ${account.registrationStatusText}',
+                      '${account.host} · ${account.transportLabel} · ${account.registrationStatusText}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -167,6 +170,46 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTransportSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('传输协议', style: TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<SipTransport>(
+            selected: {_selectedLineTransport},
+            showSelectedIcon: false,
+            onSelectionChanged: (selected) =>
+                _selectLineTransport(selected.first),
+            segments: [
+              for (final transport in SipTransport.values)
+                ButtonSegment<SipTransport>(
+                  value: transport,
+                  icon: Icon(
+                    transport.isSecure
+                        ? Icons.enhanced_encryption_outlined
+                        : Icons.lan_outlined,
+                    size: 18,
+                  ),
+                  label: Text(transport.label),
+                  tooltip: transport.displayName,
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _selectedLineTransport.isSecure
+              ? 'TLS 会加密 SIP 注册和呼叫信令；语音加密需后续开启 SRTP。'
+              : '${_selectedLineTransport.displayName}，默认建议使用 UDP。',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ],
     );
   }
 }

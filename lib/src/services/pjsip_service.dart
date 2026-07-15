@@ -36,6 +36,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
+  final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
 
   // 拆分文件通过这组私有访问器读写 Notifier 状态。这样既不把 state 暴露给
   // 业务层，也不会让 extension 直接访问 Riverpod 的 protected 成员。
@@ -151,6 +152,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _pendingIpChange = false;
     _bindings.pjsua_destroy();
     _mediaConnectedCalls.clear();
+    _sipTransportIds.clear();
     state = state.copyWith(
       isInitialized: false,
       calls: const {},
@@ -197,6 +199,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     if (state.isInitialized) {
       _bindings.pjsua_destroy();
       _mediaConnectedCalls.clear();
+      _sipTransportIds.clear();
     }
     _logCallable.close();
     _regStateCallable.close();

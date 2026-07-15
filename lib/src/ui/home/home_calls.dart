@@ -369,7 +369,7 @@ extension _HomeCalls on _MyHomePageState {
                     if (account != null) ...[
                       const SizedBox(height: 3),
                       Text(
-                        account.lineLabel,
+                        '${account.lineLabel} · ${account.transportLabel}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(
@@ -441,7 +441,11 @@ extension _HomeCalls on _MyHomePageState {
   }) {
     return Chip(
       avatar: Icon(isIncoming ? Icons.call_received : Icons.outbound),
-      label: Text(isIncoming ? '来电线路：${account.lineLabel}' : account.lineLabel),
+      label: Text(
+        isIncoming
+            ? '来电线路：${account.lineLabel} · ${account.transportLabel}'
+            : '${account.lineLabel} · ${account.transportLabel}',
+      ),
       side: const BorderSide(color: _softBorder),
       backgroundColor: _subtlePanel,
     );

@@ -31,9 +31,10 @@ extension PjsipCallOperations on PjsipService {
     // 发起新通话也遵循“单路激活”规则。
     if (!await _holdActiveCallExcept(-1)) return;
     using((Arena arena) {
-      // 注册及可正常工作的来电均使用 UDP。显式指定 UDP 可避免外呼因
-      // 自动切换到 TCP 后，PBX 无法沿同一 dialog 路由远端 BYE。
-      final targetUri = 'sip:$number@${account.host};transport=udp';
+      // 外呼必须和线路注册使用同一种传输协议，避免 dialog 中的 INVITE/BYE
+      // 被 PBX 按不同 transport 路由，导致对端挂断本端收不到。
+      final targetUri =
+          'sip:$number@${account.host};transport=${account.transport.uriParam}';
       final dstUri = targetUri.toNativeUtf8(allocator: arena);
       final pjUri = arena<pj_str_t>();
       final pCallId = arena<pjsua_call_id>();
@@ -45,7 +46,9 @@ extension PjsipCallOperations on PjsipService {
       callSetting.ref.vid_cnt = 0;
       callSetting.ref.txt_cnt = 0;
       _pjStr(pjUri.ref, dstUri);
-      _addLog('➡️ 发起 INVITE: $targetUri, acc=${account.accId}');
+      _addLog(
+        '➡️ 发起 INVITE: $targetUri, acc=${account.accId}, transport=${account.transport.label}',
+      );
       final status = _bindings.pjsua_call_make_call(
         account.accId,
         pjUri,
