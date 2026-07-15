@@ -15,6 +15,10 @@ part 'src/ui/home_sidebar.dart';
 part 'src/ui/home_workspace.dart';
 part 'src/ui/home_calls.dart';
 part 'src/ui/home_settings.dart';
+part 'src/ui/home_settings_account.dart';
+part 'src/ui/home_settings_audio.dart';
+part 'src/ui/home_settings_call.dart';
+part 'src/ui/home_settings_diagnostics.dart';
 part 'src/ui/home_helpers.dart';
 
 Future<void> main() async {

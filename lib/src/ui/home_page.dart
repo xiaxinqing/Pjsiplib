@@ -9,7 +9,8 @@ class MyHomePage extends ConsumerStatefulWidget {
   ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends ConsumerState<MyHomePage> {
+class _MyHomePageState extends ConsumerState<MyHomePage>
+    with SingleTickerProviderStateMixin {
   final AppWindowController _windowController = AppWindowController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _numberController = TextEditingController(
@@ -24,15 +25,26 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   final TextEditingController _hostController = TextEditingController(
     text: '139.59.100.15',
   );
+  late final TabController _settingsTabController;
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
   int? _selectedOutgoingAccountId;
-  int _settingsInitialTabIndex = 0;
+  int _settingsTabIndex = 0;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   bool _hidePassword = true;
 
   @override
+  void initState() {
+    super.initState();
+    _settingsTabController = TabController(length: 4, vsync: this)
+      ..addListener(_handleSettingsTabChanged);
+  }
+
+  @override
   void dispose() {
+    _settingsTabController
+      ..removeListener(_handleSettingsTabChanged)
+      ..dispose();
     _numberController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
@@ -149,7 +161,19 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   }
 
   void _openSettingsDrawer({int tabIndex = 0}) {
-    setState(() => _settingsInitialTabIndex = tabIndex);
+    if (_settingsTabController.index != tabIndex) {
+      _settingsTabController.index = tabIndex;
+    }
+    if (_settingsTabIndex != tabIndex) {
+      setState(() => _settingsTabIndex = tabIndex);
+    }
     _scaffoldKey.currentState?.openEndDrawer();
+  }
+
+  void _handleSettingsTabChanged() {
+    if (_settingsTabController.indexIsChanging) return;
+    final nextIndex = _settingsTabController.index;
+    if (_settingsTabIndex == nextIndex) return;
+    setState(() => _settingsTabIndex = nextIndex);
   }
 }
