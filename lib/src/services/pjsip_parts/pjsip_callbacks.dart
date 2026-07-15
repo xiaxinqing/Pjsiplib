@@ -19,6 +19,67 @@ extension _PjsipNativeCallbacks on PjsipService {
     return value.ptr.cast<Utf8>().toDartString(length: value.slen);
   }
 
+  String _sdpAttrLine(ffi.Pointer<pjmedia_sdp_attr> attr) {
+    if (attr == ffi.nullptr) return '';
+    final name = _pjString(attr.ref.name);
+    final value = _pjString(attr.ref.value);
+    return value.isEmpty ? 'a=$name' : 'a=$name:$value';
+  }
+
+  String _sdpSummary(ffi.Pointer<pjmedia_sdp_session> sdp) {
+    if (sdp == ffi.nullptr) return '<null>';
+    final lines = <String>[];
+    final session = sdp.ref;
+    final sessionAttrCount = math.min(session.attr_count, 68);
+    for (var i = 0; i < sessionAttrCount; i++) {
+      final line = _sdpAttrLine(session.attr[i]);
+      if (line.isNotEmpty) lines.add(line);
+    }
+
+    final mediaCount = math.min(session.media_count, 16);
+    for (var mediaIndex = 0; mediaIndex < mediaCount; mediaIndex++) {
+      final mediaPtr = session.media[mediaIndex];
+      if (mediaPtr == ffi.nullptr) continue;
+      final media = mediaPtr.ref;
+      final mediaType = _pjString(media.desc.media);
+      if (mediaType != 'audio') continue;
+
+      final formats = <String>[];
+      final fmtCount = math.min(media.desc.fmt_count, 32);
+      for (var i = 0; i < fmtCount; i++) {
+        final fmt = _pjString(media.desc.fmt[i]);
+        if (fmt.isNotEmpty) formats.add(fmt);
+      }
+      lines.add(
+        'm=$mediaType ${media.desc.port} '
+        '${_pjString(media.desc.transport)} ${formats.join(' ')}',
+      );
+
+      final attrCount = math.min(media.attr_count, 68);
+      for (var i = 0; i < attrCount; i++) {
+        final line = _sdpAttrLine(media.attr[i]);
+        if (line.isNotEmpty) lines.add(line);
+      }
+    }
+    return lines.isEmpty ? '<empty>' : lines.join('\n');
+  }
+
+  void _addNativeLog(int level, String msg) {
+    final normalized = msg.trimRight();
+    if (normalized.trim().isEmpty) return;
+
+    // SIP/SDP 报文可能很长。分段写入可以避免终端或 UI 单条日志过长时
+    // 看起来像“后半段丢失”，排查 TLS/SRTP 协商时尤其重要。
+    const chunkSize = 1600;
+    final total = (normalized.length / chunkSize).ceil();
+    for (var i = 0; i < normalized.length; i += chunkSize) {
+      final end = math.min(i + chunkSize, normalized.length);
+      final chunk = normalized.substring(i, end);
+      final part = total > 1 ? ' ${i ~/ chunkSize + 1}/$total' : '';
+      _addLog('[PJSIP Native L$level$part] $chunk');
+    }
+  }
+
   String _callSnapshot(pjsua_call_info info) {
     return 'call=${info.id}, _uiState =${info.state.value}(${_pjString(info.state_text)}), '
         'lastSip=${info.last_status.value}(${_pjString(info.last_status_text)}), '
@@ -56,13 +117,39 @@ extension _PjsipNativeCallbacks on PjsipService {
     ) {
       if (!_uiState.isInitialized) return;
       if (data != ffi.nullptr) {
-        final msg = data.cast<Utf8>().toDartString(length: len);
+        final bytes = data.cast<ffi.Uint8>().asTypedList(len);
+        final msg = utf8.decode(bytes, allowMalformed: true);
         // [T1 native] PJSIP 报文/日志。虽然 listener 是异步的，但这条能反映
         // 工作线程侧发生了什么。收到 BYE 时额外高亮，便于对照后续 T2/T3。
         if (msg.contains('BYE')) {
           _trace('T1 native', '⬅️ 检测到 BYE 报文: ${msg.trim()}');
         }
-        _addLog('[PJSIP Native] $msg'.trim());
+        _addNativeLog(level, msg);
+      }
+    });
+
+    _callSdpCreatedCallable = ffi.NativeCallable.listener((
+      int callId,
+      ffi.Pointer<pjmedia_sdp_session> sdp,
+      ffi.Pointer<pj_pool_t> pool,
+      ffi.Pointer<pjmedia_sdp_session> remSdp,
+    ) {
+      if (!_uiState.isInitialized) return;
+      final summary = _sdpSummary(sdp);
+      _addLog(
+        '🧾 本地 SDP 已生成: call=$callId, remoteSdp=${remSdp != ffi.nullptr}\n'
+        '$summary',
+      );
+      if (summary.contains('RTP/SAVP') &&
+          !summary.contains('a=fingerprint') &&
+          !summary.contains('a=setup')) {
+        _addLog(
+          '⚠️ 本地 SDP 未包含 DTLS-SRTP fingerprint/setup，'
+          '请确认 libpjsip 已使用 PJMEDIA_SRTP_HAS_DTLS=1 重新编译',
+        );
+      }
+      if (remSdp != ffi.nullptr) {
+        _addLog('🧾 远端 SDP 摘要: call=$callId\n${_sdpSummary(remSdp)}');
       }
     });
 

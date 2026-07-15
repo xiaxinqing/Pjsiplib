@@ -22,6 +22,7 @@ extension PjsipEngineOperations on PjsipService {
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
       uaCfg.ref.cb.on_call_media_state = _callMediaStateCallable.nativeFunction;
+      uaCfg.ref.cb.on_call_sdp_created = _callSdpCreatedCallable.nativeFunction;
       uaCfg.ref.cb.on_ip_change_progress =
           _ipChangeProgressCallable.nativeFunction;
 
@@ -56,6 +57,7 @@ extension PjsipEngineOperations on PjsipService {
       logCfg.ref.msg_logging = 1;
       logCfg.ref.level = 6;
       logCfg.ref.console_level = 6;
+      logCfg.ref.cb = _logCallable.nativeFunction;
 
       // --- 关键改进：添加 STUN 服务器解决 NAT 问题 ---
       ///STUN 的作用和影响：
@@ -199,6 +201,13 @@ extension PjsipEngineOperations on PjsipService {
     final normalizedUsername = username.trim();
     final normalizedHost = _normalizeSipHost(host, transport);
     final normalizedHostKey = _sipHostIdentityKey(normalizedHost);
+    if (fromRestore) {
+      _removeRestoringPlaceholder(
+        username: normalizedUsername,
+        hostKey: normalizedHostKey,
+        transport: transport,
+      );
+    }
     final duplicate = _uiState.accounts.values.any(
       (account) =>
           account.username == normalizedUsername &&
@@ -241,6 +250,7 @@ extension PjsipEngineOperations on PjsipService {
       _bindings.pjsua_acc_config_default(accCfg);
       accCfg.ref.transport_id = transportId;
       accCfg.ref.register_on_acc_add = registrationEnabled ? 1 : 0;
+      _configureAccountMediaSecurity(accCfg, transport);
       _pjStr(
         accCfg.ref.id,
         'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
@@ -303,10 +313,38 @@ extension PjsipEngineOperations on PjsipService {
             ? '🚀 注册请求已发送: ${account.lineLabel} (${transport.label})'
             : '⏸ 已恢复暂停线路: ${account.lineLabel} (${transport.label})',
       );
+      if (transport == SipTransport.tls) {
+        _addLog('🔐 TLS 线路已启用 DTLS-SRTP 媒体加密');
+      }
       if (!fromRestore) {
         unawaited(_persistSeatEnvironment());
       }
     });
+  }
+
+  void _configureAccountMediaSecurity(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    SipTransport transport,
+  ) {
+    if (transport != SipTransport.tls) {
+      accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_DISABLED.value;
+      return;
+    }
+
+    // TLS 只加密 SIP 信令。Asterisk `media_encryption=dtls` 还要求媒体使用
+    // DTLS-SRTP，否则服务端会因 SDP 媒体协商失败而拒绝音频流。
+    accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
+    // 1 = SRTP 需要安全信令即可（TLS 满足）；2 会要求 SIPS 端到端信令。
+    accCfg.ref.srtp_secure_signaling = 1;
+    // Asterisk `media_encryption=dtls` 要求 SDP 里出现 fingerprint/setup。
+    // 这里使用 DTLS-only，避免底层在 DTLS 不可用时退回 SDES 并发出 a=crypto。
+    accCfg.ref.srtp_opt.keying_count = 1;
+    accCfg.ref.srtp_opt.keying[0] =
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP.value;
+    // 当前 Asterisk endpoint 配置为 `use_avpf=no`，MicroSIP 也按传统
+    // SRTP profile 工作。因此这里保持 SAVP，不启用 AVPF/RTCP mux。
+    accCfg.ref.rtcp_fb_cfg.dont_use_avpf = 1;
+    accCfg.ref.enable_rtcp_mux = 0;
   }
 
   String _normalizeSipHost(String host, SipTransport transport) {
@@ -355,6 +393,39 @@ extension PjsipEngineOperations on PjsipService {
     final parts = withoutParams.split(':');
     if (parts.length == 2) return parts.first.toLowerCase();
     return withoutParams.toLowerCase();
+  }
+
+  void _removeRestoringPlaceholder({
+    required String username,
+    required String hostKey,
+    required SipTransport transport,
+  }) {
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts);
+    final placeholders = accounts.entries
+        .where(
+          (entry) =>
+              entry.value.isRestoringPlaceholder &&
+              entry.value.username == username &&
+              _sipHostIdentityKey(entry.value.host) == hostKey &&
+              entry.value.transport == transport,
+        )
+        .map((entry) => entry.key)
+        .toList();
+    if (placeholders.isEmpty) return;
+    for (final accId in placeholders) {
+      accounts.remove(accId);
+    }
+    final currentDefaultWasPlaceholder =
+        _uiState.defaultAccountId != null &&
+        placeholders.contains(_uiState.defaultAccountId);
+    _uiState = _uiState.copyWith(
+      accounts: accounts,
+      defaultAccountId: currentDefaultWasPlaceholder
+          ? null
+          : _uiState.defaultAccountId,
+      accId: currentDefaultWasPlaceholder ? -1 : _uiState.accId,
+      host: currentDefaultWasPlaceholder ? '' : _uiState.host,
+    );
   }
 
   int? _ensureSipTransport(SipTransport transport) {

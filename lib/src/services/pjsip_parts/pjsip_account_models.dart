@@ -92,6 +92,8 @@ class SipAccountInfo {
       registrationStatus == 200 &&
       registrationExpires != 0;
 
+  bool get isRestoringPlaceholder => accId < 0;
+
   String get displayName => username;
 
   String get lineLabel => '$username@$host';

@@ -60,6 +60,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   bool _loggedMacOsFallbackRead = false;
   bool _loggedMacOsFallbackWrite = false;
   String? _preferredDefaultLineKey;
+  Future<void> _seatPersistQueue = Future<void>.value();
   final Connectivity _connectivity = Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Set<ConnectivityResult>? _lastConnectivityTypes;
@@ -79,6 +80,15 @@ class PjsipService extends Notifier<PjsipUIState> {
   late ffi.NativeCallable<ffi.Void Function(ffi.Int, ffi.Pointer<pjsip_event>)>
   _callStateCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _callMediaStateCallable;
+  late ffi.NativeCallable<
+    ffi.Void Function(
+      ffi.Int,
+      ffi.Pointer<pjmedia_sdp_session>,
+      ffi.Pointer<pj_pool_t>,
+      ffi.Pointer<pjmedia_sdp_session>,
+    )
+  >
+  _callSdpCreatedCallable;
   late ffi.NativeCallable<
     ffi.Void Function(
       ffi.UnsignedInt,
@@ -215,6 +225,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _incomingCallCallable.close();
     _callStateCallable.close();
     _callMediaStateCallable.close();
+    _callSdpCreatedCallable.close();
     _ipChangeProgressCallable.close();
   }
 }

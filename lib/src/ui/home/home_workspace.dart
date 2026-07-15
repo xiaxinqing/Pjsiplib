@@ -96,6 +96,12 @@ extension _HomeWorkspace on _MyHomePageState {
 
   String _statusSubtitle(PjsipUIState uiState) {
     if (!uiState.isNetworkAvailable) return '当前网络不可用';
+    if (uiState.seatEnvironmentState == SeatEnvironmentState.checking) {
+      return '正在检查上次坐席环境';
+    }
+    if (uiState.seatEnvironmentState == SeatEnvironmentState.restoring) {
+      return '正在恢复上次线路配置';
+    }
     if (uiState.accounts.isNotEmpty) {
       final outgoingAccount = uiState.bestOutgoingAccount;
       final suffix = outgoingAccount == null

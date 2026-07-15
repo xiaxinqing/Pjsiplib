@@ -1,5 +1,7 @@
 part of '../pjsip_service.dart';
 
+enum SeatEnvironmentState { checking, restoring, ready }
+
 /// PJSIP 页面/服务暴露给 Flutter UI 的完整状态。
 ///
 /// 这个项目用 Riverpod `Notifier` 管理状态。服务层每次调用 `copyWith` 生成一个
@@ -31,6 +33,9 @@ class PjsipUIState {
 
   /// PJSIP 网络恢复流程状态，比 `isNetworkAvailable` 更细。
   final PjsipNetworkState networkState;
+
+  /// 启动时恢复上次坐席环境的阶段，用于给首页显示更明确的 loading/恢复状态。
+  final SeatEnvironmentState seatEnvironmentState;
 
   /// PJSIP 引擎是否已经初始化。
   final bool isInitialized;
@@ -95,6 +100,7 @@ class PjsipUIState {
     this.conferenceInterruptionCallId,
     this.isNetworkAvailable = true,
     this.networkState = PjsipNetworkState.idle,
+    this.seatEnvironmentState = SeatEnvironmentState.checking,
     this.isInitialized = false,
     this.accId = -1,
     this.host = '',
@@ -124,6 +130,7 @@ class PjsipUIState {
     Object? conferenceInterruptionCallId = _unset,
     bool? isNetworkAvailable,
     PjsipNetworkState? networkState,
+    SeatEnvironmentState? seatEnvironmentState,
     bool? isInitialized,
     int? accId,
     String? host,
@@ -157,6 +164,7 @@ class PjsipUIState {
           : conferenceInterruptionCallId as int?,
       isNetworkAvailable: isNetworkAvailable ?? this.isNetworkAvailable,
       networkState: networkState ?? this.networkState,
+      seatEnvironmentState: seatEnvironmentState ?? this.seatEnvironmentState,
       isInitialized: isInitialized ?? this.isInitialized,
       accId: accId ?? this.accId,
       host: host ?? this.host,

@@ -87,17 +87,31 @@ extension PjsipPersistenceOperations on PjsipService {
     var shouldPersistAfterRestore = false;
     try {
       final stored = await _readSeatEnvironmentPayload();
-      if (_isDisposed || stored == null || stored.isEmpty) return;
+      if (_isDisposed || stored == null || stored.isEmpty) {
+        _uiState = _uiState.copyWith(
+          seatEnvironmentState: SeatEnvironmentState.ready,
+        );
+        return;
+      }
 
-      final decoded = jsonDecode(stored);
-      if (decoded is! Map) return;
+      final decoded = _decodeSeatEnvironmentPayload(stored);
+      if (decoded == null) {
+        _uiState = _uiState.copyWith(
+          seatEnvironmentState: SeatEnvironmentState.ready,
+        );
+        return;
+      }
 
-      final environment = _PersistedSeatEnvironment.fromJson(
-        Map<String, Object?>.from(decoded),
-      );
-      if (environment.lines.isEmpty) return;
+      final environment = _PersistedSeatEnvironment.fromJson(decoded);
+      if (environment.lines.isEmpty) {
+        _uiState = _uiState.copyWith(
+          seatEnvironmentState: SeatEnvironmentState.ready,
+        );
+        return;
+      }
 
       _preferredDefaultLineKey = environment.defaultLineKey;
+      _showRestoringSeatEnvironment(environment);
       _addLog('🧩 正在恢复上次坐席环境: ${environment.lines.length} 条线路');
 
       for (final line in environment.lines) {
@@ -116,9 +130,18 @@ extension PjsipPersistenceOperations on PjsipService {
       _addLog('✅ 坐席环境恢复完成');
       shouldPersistAfterRestore = true;
     } catch (error) {
+      _uiState = _uiState.copyWith(
+        seatEnvironmentState: SeatEnvironmentState.ready,
+      );
       _addLog('❌ 恢复坐席环境失败: $error');
     } finally {
       _seatRestoreInProgress = false;
+      if (!_isDisposed &&
+          _uiState.seatEnvironmentState != SeatEnvironmentState.ready) {
+        _uiState = _uiState.copyWith(
+          seatEnvironmentState: SeatEnvironmentState.ready,
+        );
+      }
       if (shouldPersistAfterRestore) {
         unawaited(_persistSeatEnvironment());
       }
@@ -127,6 +150,14 @@ extension PjsipPersistenceOperations on PjsipService {
 
   Future<void> _persistSeatEnvironment() async {
     if (_isDisposed || _seatRestoreInProgress) return;
+    _seatPersistQueue = _seatPersistQueue.then((_) {
+      if (_isDisposed || _seatRestoreInProgress) return Future<void>.value();
+      return _persistSeatEnvironmentNow();
+    });
+    return _seatPersistQueue;
+  }
+
+  Future<void> _persistSeatEnvironmentNow() async {
     try {
       final accounts = _uiState.accounts.values.toList()
         ..sort((a, b) => a.lineLabel.compareTo(b.lineLabel));
@@ -147,6 +178,45 @@ extension PjsipPersistenceOperations on PjsipService {
     } catch (error) {
       _addLog('❌ 保存坐席环境失败: $error');
     }
+  }
+
+  void _showRestoringSeatEnvironment(_PersistedSeatEnvironment environment) {
+    var nextPlaceholderId = -1;
+    final accounts = <int, SipAccountInfo>{};
+    int? defaultAccountId;
+
+    for (final line in environment.lines) {
+      final normalizedHost = _normalizeSipHost(line.host, line.transport);
+      final account = SipAccountInfo(
+        accId: nextPlaceholderId,
+        username: line.username,
+        password: line.password,
+        host: normalizedHost,
+        transport: line.transport,
+        registrationStatus: line.registrationEnabled ? null : 0,
+        registrationStatusText: line.registrationEnabled ? '恢复中' : '已暂停',
+        registrationExpires: line.registrationEnabled ? null : 0,
+        registrationEnabled: line.registrationEnabled,
+        registrationActionInProgress: line.registrationEnabled,
+      );
+      accounts[account.accId] = account;
+      if (environment.defaultLineKey ==
+          _lineKey(account.username, account.host)) {
+        defaultAccountId = account.accId;
+      }
+      nextPlaceholderId--;
+    }
+
+    final defaultAccount = defaultAccountId == null
+        ? null
+        : accounts[defaultAccountId];
+    _uiState = _uiState.copyWith(
+      accounts: accounts,
+      defaultAccountId: defaultAccountId,
+      accId: defaultAccount?.accId ?? -1,
+      host: defaultAccount?.host ?? '',
+      seatEnvironmentState: SeatEnvironmentState.restoring,
+    );
   }
 
   Future<String?> _readSeatEnvironmentPayload() async {
@@ -172,7 +242,12 @@ extension PjsipPersistenceOperations on PjsipService {
       final fallback = _macOsDevelopmentFallbackFile();
       if (fallback == null) rethrow;
       await fallback.parent.create(recursive: true);
-      await fallback.writeAsString(value);
+      final tempFile = File('${fallback.path}.tmp');
+      await tempFile.writeAsString(value, flush: true);
+      if (fallback.existsSync()) {
+        await fallback.delete();
+      }
+      await tempFile.rename(fallback.path);
       if (!_loggedMacOsFallbackWrite) {
         _loggedMacOsFallbackWrite = true;
         _addLog('⚠️ macOS Keychain 不可用，已使用本地开发配置保存坐席环境');
@@ -187,6 +262,50 @@ extension PjsipPersistenceOperations on PjsipService {
       _addLog('⚠️ macOS Keychain 不可用，使用本地开发配置恢复坐席环境');
     }
     return fallback.readAsString();
+  }
+
+  Map<String, Object?>? _decodeSeatEnvironmentPayload(String payload) {
+    try {
+      final decoded = jsonDecode(payload);
+      return decoded is Map ? Map<String, Object?>.from(decoded) : null;
+    } on FormatException {
+      final repaired = _balancedJsonPrefix(payload);
+      if (repaired == null || repaired == payload) rethrow;
+      final decoded = jsonDecode(repaired);
+      if (decoded is! Map) return null;
+      _addLog('⚠️ 坐席环境配置存在尾部脏数据，已自动修复');
+      return Map<String, Object?>.from(decoded);
+    }
+  }
+
+  String? _balancedJsonPrefix(String payload) {
+    var depth = 0;
+    var inString = false;
+    var escaping = false;
+    for (var i = 0; i < payload.length; i++) {
+      final char = payload.codeUnitAt(i);
+      if (inString) {
+        if (escaping) {
+          escaping = false;
+        } else if (char == 0x5C) {
+          escaping = true;
+        } else if (char == 0x22) {
+          inString = false;
+        }
+        continue;
+      }
+      if (char == 0x22) {
+        inString = true;
+      } else if (char == 0x7B || char == 0x5B) {
+        depth++;
+      } else if (char == 0x7D || char == 0x5D) {
+        depth--;
+        if (depth == 0) {
+          return payload.substring(0, i + 1);
+        }
+      }
+    }
+    return null;
   }
 
   File? _macOsDevelopmentFallbackFile() {

@@ -91,12 +91,22 @@ extension _HomeSidebar on _MyHomePageState {
   Widget _buildConnectionPill(PjsipUIState uiState, PjsipService service) {
     final isRegistered = uiState.hasRegisteredAccount;
     final outgoingAccount = uiState.bestOutgoingAccount;
-    final color = !uiState.isNetworkAvailable
+    final isCheckingSeat =
+        uiState.seatEnvironmentState == SeatEnvironmentState.checking;
+    final isRestoringSeat =
+        uiState.seatEnvironmentState == SeatEnvironmentState.restoring;
+    final color = isCheckingSeat || isRestoringSeat
+        ? _brandGreen
+        : !uiState.isNetworkAvailable
         ? Colors.orange.shade700
         : isRegistered
         ? _brandGreen
         : Theme.of(context).colorScheme.outline;
-    final label = !uiState.isNetworkAvailable
+    final label = isCheckingSeat
+        ? '正在检查坐席环境'
+        : isRestoringSeat
+        ? '正在恢复线路'
+        : !uiState.isNetworkAvailable
         ? '网络不可用'
         : isRegistered
         ? '已连接 · 默认 ${outgoingAccount?.displayName ?? '--'}'
@@ -119,7 +129,17 @@ extension _HomeSidebar on _MyHomePageState {
           ),
           child: Row(
             children: [
-              Icon(Icons.circle, size: 10, color: color),
+              if (isCheckingSeat || isRestoringSeat)
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: color,
+                  ),
+                )
+              else
+                Icon(Icons.circle, size: 10, color: color),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(

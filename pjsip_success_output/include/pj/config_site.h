@@ -4,6 +4,7 @@
 #define PJMEDIA_HAS_WEBRTC_AEC          1
 #define PJMEDIA_HAS_OPUS_CODEC          1
 #define PJMEDIA_HAS_SRTP                1
+#define PJMEDIA_SRTP_HAS_DTLS           1
 #define PJ_HAS_SSL_SOCK                 1
 #define PJ_HAS_IPV6                     1
 #define PJMEDIA_HAS_VIDEO               0

@@ -95,12 +95,14 @@ The app expects Windows native DLLs here:
 
 ```text
 windows\Frameworks\pjsip.dll
+windows\Frameworks\libssl-3-x64.dll
 windows\Frameworks\libcrypto-3-x64.dll
 ```
 
 The top-level Windows CMake file copies every DLL from `windows\Frameworks\`
 next to `pjsip_lib.exe` during build/install. Do not rename `pjsip.dll`; Dart
-loads that exact filename on Windows.
+loads that exact filename on Windows. TLS media encryption uses DTLS-SRTP, so
+the OpenSSL runtime DLLs must be shipped with `pjsip.dll`.
 
 Run the project doctor from PowerShell:
 
