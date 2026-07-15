@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeSettings on _MyHomePageState {
   Widget _buildSettingsDrawer(PjsipUIState uiState, PjsipService service) {

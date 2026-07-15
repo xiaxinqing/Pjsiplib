@@ -6,20 +6,20 @@ import 'package:intl/intl.dart';
 
 import 'src/services/app_window_controller.dart';
 import 'src/services/pjsip_service.dart';
-import 'src/ui/app_colors.dart';
+import 'src/ui/core/app_colors.dart';
 import 'utils/toast_util.dart';
 
-part 'src/ui/app_theme.dart';
-part 'src/ui/home_page.dart';
-part 'src/ui/home_sidebar.dart';
-part 'src/ui/home_workspace.dart';
-part 'src/ui/home_calls.dart';
-part 'src/ui/home_settings.dart';
-part 'src/ui/home_settings_account.dart';
-part 'src/ui/home_settings_audio.dart';
-part 'src/ui/home_settings_call.dart';
-part 'src/ui/home_settings_diagnostics.dart';
-part 'src/ui/home_helpers.dart';
+part 'src/ui/core/app_theme.dart';
+part 'src/ui/home/home_page.dart';
+part 'src/ui/home/home_sidebar.dart';
+part 'src/ui/home/home_workspace.dart';
+part 'src/ui/home/home_calls.dart';
+part 'src/ui/home/home_helpers.dart';
+part 'src/ui/settings/home_settings.dart';
+part 'src/ui/settings/home_settings_account.dart';
+part 'src/ui/settings/home_settings_audio.dart';
+part 'src/ui/settings/home_settings_call.dart';
+part 'src/ui/settings/home_settings_diagnostics.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

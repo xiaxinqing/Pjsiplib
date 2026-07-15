@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 const _appBackground = AppColors.appBackground;
 const _sidebarBackground = AppColors.sidebarBackground;

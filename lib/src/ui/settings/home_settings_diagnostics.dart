@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeSettingsDiagnosticsTab on _MyHomePageState {
   Widget _buildDiagnosticsTab(PjsipUIState uiState, PjsipService service) {

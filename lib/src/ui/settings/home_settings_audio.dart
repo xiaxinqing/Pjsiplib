@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeSettingsAudioTab on _MyHomePageState {
   Widget _buildAudioSettingsTab(PjsipUIState uiState, PjsipService service) {

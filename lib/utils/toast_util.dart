@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../src/ui/app_colors.dart';
+import '../src/ui/core/app_colors.dart';
 
 enum ToastType { info, success, error, warning }
 

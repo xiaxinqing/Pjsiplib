@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeWorkspace on _MyHomePageState {
   Widget _buildWorkspace(PjsipUIState uiState, PjsipService service) {

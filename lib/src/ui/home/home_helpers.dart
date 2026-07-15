@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeHelpers on _MyHomePageState {
   CallInfo? _primaryCall(PjsipUIState uiState) {

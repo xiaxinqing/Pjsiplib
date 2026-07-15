@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeSidebar on _MyHomePageState {
   Widget _buildSidebar(PjsipUIState uiState, PjsipService service) {

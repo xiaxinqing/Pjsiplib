@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 // 来电头像动效参数。
 // - haloBoxSize: 光圈动画可用区域；调大 = 扩散范围更大，但会占更多垂直空间。

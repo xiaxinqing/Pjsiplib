@@ -1,4 +1,4 @@
-part of '../../main.dart';
+part of '../../../main.dart';
 
 extension _HomeSettingsAccountTab on _MyHomePageState {
   Widget _buildAccountSettingsTab(PjsipUIState uiState, PjsipService service) {
