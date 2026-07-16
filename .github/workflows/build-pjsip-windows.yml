@@ -15,9 +15,8 @@ on:
 
 jobs:
   build-windows:
-    # 2026 年使用 Windows Server 2025 + Visual Studio 2026，避免
-    # windows-latest 镜像迁移时与硬编码的 CMake 生成器不一致。
-    runs-on: windows-2025-vs2026
+    # 使用 Windows Server 2022 + Visual Studio 2022
+    runs-on: windows-2022
 
     steps:
       - name: Checkout code
@@ -28,8 +27,8 @@ jobs:
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
         with:
-          # 与 CMake 的 “Visual Studio 18 2026” 生成器保持一致。
-          vs-version: '[18.0,19.0)'
+          # Visual Studio 2022
+          vs-version: '[17.0,18.0)'
           msbuild-architecture: x64
 
       - name: Verify Windows build tools
@@ -44,20 +43,16 @@ jobs:
 
           $installationPath = & $vswhere `
             -latest `
-            -version '[18.0,19.0)' `
+            -version '[17.0,18.0)' `
             -products * `
             -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
             -property installationPath
           if (!$installationPath) {
-            throw 'Visual Studio 2026 with the MSVC x64 build tools was not found'
+            throw 'Visual Studio 2022 with the MSVC x64 build tools was not found'
           }
-          Write-Host "Using Visual Studio 2026: $installationPath"
+          Write-Host “Using Visual Studio 2022: $installationPath”
 
-          # “Visual Studio 18 2026” 生成器从 CMake 4.2 开始提供。
-          $cmakeVersion = [version]((cmake --version | Select-Object -First 1) -replace '^cmake version ', '')
-          if ($cmakeVersion -lt [version]'4.2.0') {
-            throw "CMake 4.2 or newer is required for Visual Studio 2026; found $cmakeVersion"
-          }
+          # Visual Studio 2022 使用 CMake 3.14+
           cmake --version
 
       - name: Build pinned OpenSSL LTS
@@ -73,9 +68,9 @@ jobs:
           tar -xzf $archive -C '${{ github.workspace }}'
 
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-          $vsPath = & $vswhere -latest -version '[18.0,19.0)' -products * `
+          $vsPath = & $vswhere -latest -version '[17.0,18.0)' -products * `
             -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-          if (!$vsPath) { throw 'Unable to locate Visual Studio 2026' }
+          if (!$vsPath) { throw 'Unable to locate Visual Studio 2022' }
 
           $source = "${{ github.workspace }}\openssl-$env:OPENSSL_VERSION"
           $prefix = "${{ github.workspace }}\deps\openssl"
@@ -111,7 +106,7 @@ jobs:
           cmake `
             -S '${{ github.workspace }}/tool/windows_pjsip' `
             -B '${{ github.workspace }}/build/windows-pjsip' `
-            -G 'Visual Studio 18 2026' `
+            -G 'Visual Studio 17 2022' `
             -A x64 `
             -DPJPROJECT_ROOT='${{ github.workspace }}/third_path/pjproject' `
             -DOPENSSL_ROOT_DIR='${{ github.workspace }}/deps/openssl' `
@@ -147,15 +142,15 @@ jobs:
           Copy-Item $importLibPath "$output/lib/pjsip.lib"
 
           # setup-msbuild 只保证 MSBuild 可用，不保证 dumpbin 在后续步骤的
-          # PATH 中。根据 VS 2026 当前安装的 MSVC 版本定位对应的 x64 工具。
+          # PATH 中。根据 VS 2022 当前安装的 MSVC 版本定位对应的 x64 工具。
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vsPath = & $vswhere `
             -latest `
-            -version '[18.0,19.0)' `
+            -version '[17.0,18.0)' `
             -products * `
             -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
             -property installationPath
-          if (!$vsPath) { throw 'Unable to locate Visual Studio 2026' }
+          if (!$vsPath) { throw 'Unable to locate Visual Studio 2022' }
 
           $toolVersionFile = Join-Path $vsPath 'VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt'
           if (!(Test-Path $toolVersionFile)) { throw 'Unable to determine the installed MSVC tool version' }
