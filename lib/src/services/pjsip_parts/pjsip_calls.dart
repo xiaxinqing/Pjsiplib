@@ -45,6 +45,11 @@ extension PjsipCallOperations on PjsipService {
       callSetting.ref.aud_cnt = 1;
       callSetting.ref.vid_cnt = 0;
       callSetting.ref.txt_cnt = 0;
+
+      // Enable SRTP for TLS accounts
+      if (account.transport == SipTransport.tls) {
+        callSetting.ref.req_keyframe_method = 0; // Placeholder for future use
+      }
       _pjStr(pjUri.ref, dstUri);
       _addLog(
         '➡️ 发起 INVITE: $targetUri, acc=${account.accId}, transport=${account.transport.label}',

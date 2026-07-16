@@ -18,6 +18,10 @@ extension PjsipEngineOperations on PjsipService {
       _bindings.pjsua_logging_config_default(logCfg);
       _bindings.pjsua_media_config_default(mediaCfg);
 
+      // Enable SRTP support at media layer
+      mediaCfg.ref.enable_ice = 0; // Disable ICE for now
+      mediaCfg.ref.enable_turn = 0; // Disable TURN for now
+
       uaCfg.ref.cb.on_reg_state = _regStateCallable.nativeFunction;
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;

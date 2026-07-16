@@ -63,6 +63,15 @@ jobs:
           #define PJMEDIA_HAS_VIDEO        0
           #define PJ_LOG_MAX_LEVEL         3
           #define PJ_IOQUEUE_MAX_HANDLERS  256
+
+          /* Enable SSL/TLS support */
+          #define PJ_HAS_SSL_SOCK          1
+
+          /* Enable SRTP support */
+          #define PJMEDIA_HAS_SRTP         1
+
+          /* Enable DTLS-SRTP support */
+          #define PJMEDIA_SRTP_HAS_DTLS    1
           EOF
 
       - name: Configure unified shared object
