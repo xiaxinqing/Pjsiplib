@@ -44,6 +44,7 @@ class _PersistedSipLine {
     required this.password,
     required this.host,
     required this.transport,
+    required this.turnConfig,
     required this.registrationEnabled,
   });
 
@@ -51,6 +52,7 @@ class _PersistedSipLine {
   final String password;
   final String host;
   final SipTransport transport;
+  final TurnConfig turnConfig;
   final bool registrationEnabled;
 
   bool get isValid => username.isNotEmpty && host.isNotEmpty;
@@ -61,12 +63,24 @@ class _PersistedSipLine {
       'password': password,
       'host': host,
       'transport': transport.name,
+      'turn': {
+        'enabled': turnConfig.enabled,
+        'server': turnConfig.server,
+        'username': turnConfig.username,
+        'password': turnConfig.password,
+        'transport': turnConfig.transport.storageKey,
+      },
       'registrationEnabled': registrationEnabled,
     };
   }
 
   static _PersistedSipLine fromJson(Map<String, Object?> json) {
     final transportName = json['transport'] as String?;
+    final rawTurn = json['turn'];
+    final turnJson = rawTurn is Map
+        ? Map<String, Object?>.from(rawTurn)
+        : const <String, Object?>{};
+    final turnTransportName = turnJson['transport'] as String?;
     return _PersistedSipLine(
       username: (json['username'] as String?)?.trim() ?? '',
       password: json['password'] as String? ?? '',
@@ -74,6 +88,16 @@ class _PersistedSipLine {
       transport: SipTransport.values.firstWhere(
         (transport) => transport.name == transportName,
         orElse: () => SipTransport.udp,
+      ),
+      turnConfig: TurnConfig(
+        enabled: turnJson['enabled'] as bool? ?? false,
+        server: (turnJson['server'] as String?)?.trim() ?? '',
+        username: turnJson['username'] as String? ?? '',
+        password: turnJson['password'] as String? ?? '',
+        transport: TurnTransport.values.firstWhere(
+          (transport) => transport.storageKey == turnTransportName,
+          orElse: () => TurnTransport.udp,
+        ),
       ),
       registrationEnabled: json['registrationEnabled'] as bool? ?? true,
     );
@@ -121,6 +145,7 @@ extension PjsipPersistenceOperations on PjsipService {
           password: line.password,
           host: line.host,
           transport: line.transport,
+          turnConfig: line.turnConfig,
           registrationEnabled: line.registrationEnabled,
           fromRestore: true,
         );
@@ -170,6 +195,7 @@ extension PjsipPersistenceOperations on PjsipService {
               password: account.password,
               host: account.host,
               transport: account.transport,
+              turnConfig: account.turnConfig,
               registrationEnabled: account.registrationEnabled,
             ),
         ],
@@ -193,6 +219,7 @@ extension PjsipPersistenceOperations on PjsipService {
         password: line.password,
         host: normalizedHost,
         transport: line.transport,
+        turnConfig: line.turnConfig,
         registrationStatus: line.registrationEnabled ? null : 0,
         registrationStatusText: line.registrationEnabled ? '恢复中' : '已暂停',
         registrationExpires: line.registrationEnabled ? null : 0,

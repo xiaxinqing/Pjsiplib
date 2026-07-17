@@ -25,6 +25,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
   final TextEditingController _hostController = TextEditingController(
     text: '139.59.100.15',
   );
+  final TextEditingController _turnServerController = TextEditingController();
+  final TextEditingController _turnUsernameController = TextEditingController();
+  final TextEditingController _turnPasswordController = TextEditingController();
   late final TabController _settingsTabController;
   Timer? _settingsPrewarmTimer;
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
@@ -33,8 +36,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   bool _hidePassword = true;
+  bool _hideTurnPassword = true;
+  bool _turnEnabled = false;
   bool _settingsPrewarmVisible = false;
   SipTransport _selectedLineTransport = SipTransport.udp;
+  TurnTransport _selectedTurnTransport = TurnTransport.udp;
 
   @override
   void initState() {
@@ -59,6 +65,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     _usernameController.dispose();
     _passwordController.dispose();
     _hostController.dispose();
+    _turnServerController.dispose();
+    _turnUsernameController.dispose();
+    _turnPasswordController.dispose();
     super.dispose();
   }
 
@@ -174,6 +183,13 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
       password: _passwordController.text,
       host: host,
       transport: _selectedLineTransport,
+      turnConfig: TurnConfig(
+        enabled: _turnEnabled && _selectedLineTransport == SipTransport.tls,
+        server: _turnServerController.text.trim(),
+        username: _turnUsernameController.text.trim(),
+        password: _turnPasswordController.text,
+        transport: _selectedTurnTransport,
+      ),
     );
     _usernameController.clear();
     _passwordController.clear();
@@ -191,8 +207,20 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     setState(() => _hidePassword = !_hidePassword);
   }
 
+  void _toggleTurnPasswordVisibility() {
+    setState(() => _hideTurnPassword = !_hideTurnPassword);
+  }
+
+  void _setTurnEnabled(bool value) {
+    setState(() => _turnEnabled = value);
+  }
+
   void _selectLineTransport(SipTransport transport) {
     setState(() => _selectedLineTransport = transport);
+  }
+
+  void _selectTurnTransport(TurnTransport transport) {
+    setState(() => _selectedTurnTransport = transport);
   }
 
   void _setDiagnosticLogsVisible(bool value) {

@@ -26,10 +26,19 @@ extension _PjsipNativeCallbacks on PjsipService {
     return value.isEmpty ? 'a=$name' : 'a=$name:$value';
   }
 
+  String _sdpConnLine(ffi.Pointer<pjmedia_sdp_conn> conn) {
+    if (conn == ffi.nullptr) return '';
+    return 'c=${_pjString(conn.ref.net_type)} '
+        '${_pjString(conn.ref.addr_type)} '
+        '${_pjString(conn.ref.addr)}';
+  }
+
   String _sdpSummary(ffi.Pointer<pjmedia_sdp_session> sdp) {
     if (sdp == ffi.nullptr) return '<null>';
     final lines = <String>[];
     final session = sdp.ref;
+    final sessionConn = _sdpConnLine(session.conn);
+    if (sessionConn.isNotEmpty) lines.add(sessionConn);
     final sessionAttrCount = math.min(session.attr_count, 68);
     for (var i = 0; i < sessionAttrCount; i++) {
       final line = _sdpAttrLine(session.attr[i]);
@@ -44,6 +53,8 @@ extension _PjsipNativeCallbacks on PjsipService {
       final mediaType = _pjString(media.desc.media);
       if (mediaType != 'audio') continue;
 
+      final mediaConn = _sdpConnLine(media.conn);
+      if (mediaConn.isNotEmpty) lines.add(mediaConn);
       final formats = <String>[];
       final fmtCount = math.min(media.desc.fmt_count, 32);
       for (var i = 0; i < fmtCount; i++) {
@@ -62,6 +73,40 @@ extension _PjsipNativeCallbacks on PjsipService {
       }
     }
     return lines.isEmpty ? '<empty>' : lines.join('\n');
+  }
+
+  void _logCallMediaDump(int callId, String reason) {
+    if (!_uiState.isInitialized) return;
+    using((Arena arena) {
+      final buffer = arena<ffi.Char>(16000);
+      final indent = ''.toNativeUtf8(allocator: arena).cast<ffi.Char>();
+      final status = _bindings.pjsua_call_dump(
+        callId,
+        1,
+        buffer,
+        16000,
+        indent,
+      );
+      if (status != 0) {
+        _addLog('📊 媒体诊断获取失败: call=$callId, reason=$reason, pj_status=$status');
+        return;
+      }
+      final dump = buffer.cast<Utf8>().toDartString();
+      _addLog('📊 媒体诊断: call=$callId, reason=$reason\n$dump');
+    });
+  }
+
+  String _mediaEventName(int type) {
+    return switch (type) {
+      0 => 'NONE',
+      1212370246 => 'FMT_CHANGED',
+      1111905362 => 'RX_RTCP_FB',
+      1381123393 => 'AUD_DEV_ERROR',
+      1381123414 => 'VID_DEV_ERROR',
+      1381123412 => 'MEDIA_TP_ERR',
+      538985027 => 'CALLBACK',
+      _ => 'UNKNOWN($type)',
+    };
   }
 
   void _addNativeLog(int level, String msg) {
@@ -120,9 +165,21 @@ extension _PjsipNativeCallbacks on PjsipService {
         final bytes = data.cast<ffi.Uint8>().asTypedList(len);
         final msg = utf8.decode(bytes, allowMalformed: true);
         // [T1 native] PJSIP 报文/日志。虽然 listener 是异步的，但这条能反映
-        // 工作线程侧发生了什么。收到 BYE 时额外高亮，便于对照后续 T2/T3。
-        if (msg.contains('BYE')) {
-          _trace('T1 native', '⬅️ 检测到 BYE 报文: ${msg.trim()}');
+        // 工作线程侧发生了什么。挂断相关 SIP 报文额外高亮，便于对照后续 T2/T3。
+        final trimmed = msg.trim();
+        final isIncoming = trimmed.contains('<--- Received');
+        final isOutgoing = trimmed.contains('---> Transmitting');
+        final direction = isIncoming
+            ? '收到远端'
+            : isOutgoing
+            ? '本端发出'
+            : 'PJSIP';
+        if (msg.contains('BYE') ||
+            msg.contains('CANCEL') ||
+            msg.contains('SIP/2.0 487') ||
+            msg.contains('SIP/2.0 408')) {
+          _trace('T1 native', '$direction 挂断相关 SIP: $trimmed');
+          _addLog('🧾 $direction 挂断相关 SIP\n$trimmed');
         }
         _addNativeLog(level, msg);
       }
@@ -151,6 +208,27 @@ extension _PjsipNativeCallbacks on PjsipService {
       if (remSdp != ffi.nullptr) {
         _addLog('🧾 远端 SDP 摘要: call=$callId\n${_sdpSummary(remSdp)}');
       }
+    });
+
+    _callMediaEventCallable = ffi.NativeCallable.listener((
+      int callId,
+      int mediaIndex,
+      ffi.Pointer<pjmedia_event> event,
+    ) {
+      if (!_uiState.isInitialized || event == ffi.nullptr) return;
+      final type = event.ref.typeAsInt;
+      final eventName = _mediaEventName(type);
+      if (type == pjmedia_event_type.PJMEDIA_EVENT_MEDIA_TP_ERR.value) {
+        final err = event.ref.data.med_tp_err;
+        _addLog(
+          '⚠️ 媒体传输错误: call=$callId, media=$mediaIndex, '
+          'event=$eventName, mediaType=${err.typeAsInt}, '
+          'isRtp=${err.is_rtp}, dir=${err.dirAsInt}, pj_status=${err.status}',
+        );
+        _logCallMediaDump(callId, 'media-transport-error');
+        return;
+      }
+      _addLog('📡 媒体事件: call=$callId, media=$mediaIndex, event=$eventName');
     });
 
     _regStateCallable = ffi.NativeCallable.listener((int accId) {
@@ -298,7 +376,12 @@ extension _PjsipNativeCallbacks on PjsipService {
           scheduleMicrotask(() {
             // [T3 handle] 走“已释放 → 判定 DISCONNECTED”分支
             _trace('T3 handle', 'on_call_state: call=$callId 走“已释放”清理分支');
-            _addLog('📞 通话已结束: call=$callId (info 已释放，判定为 DISCONNECTED)');
+            _addLog(
+              '📞 通话已结束: call=$callId\n'
+              '原因: info 已释放，判定为 DISCONNECTED\n'
+              '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
+              'PJSIP 原生日志: $_nativeLogFilePath',
+            );
             _removeCall(callId);
           });
           return;
@@ -308,6 +391,8 @@ extension _PjsipNativeCallbacks on PjsipService {
         final remoteUri = _pjString(info.ref.remote_info);
         final callState = info.ref.stateAsInt;
         final mediaStatus = info.ref.media_statusAsInt;
+        final lastStatus = info.ref.last_status.value;
+        final lastStatusText = _pjString(info.ref.last_status_text);
         final snapshot = _callSnapshot(info.ref);
 
         scheduleMicrotask(() {
@@ -317,7 +402,12 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (callState == pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value) {
             // 少数情况下 isolate 抢在 PJSIP 释放 call 之前执行，get_info 成功
             // 且状态就是 DISCONNECTED。与上面的失败分支做同样的清理。
-            _addLog('通话已挂断: $callId');
+            _addLog(
+              '📞 通话已挂断: call=$callId\n'
+              'lastSip=$lastStatus${lastStatusText.isEmpty ? '' : ' ($lastStatusText)'}\n'
+              '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
+              'PJSIP 原生日志: $_nativeLogFilePath',
+            );
             _removeCall(callId);
           } else {
             _addLog('通话状态变更: $callId -> $callState');
@@ -442,6 +532,9 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (_mediaConnectedCalls.add(callId)) {
             _addLog('🎙️ 媒体通道已建立并连接到声卡 (slot=$confSlot)');
           }
+          Future<void>.delayed(const Duration(seconds: 2), () {
+            _logCallMediaDump(callId, 'media-active+2s');
+          });
         } else {
           // 非激活 (远端/本地 hold、inactive、error)：断开桥接，避免向
           // 无效 slot 连接或残留旧的音频通路。

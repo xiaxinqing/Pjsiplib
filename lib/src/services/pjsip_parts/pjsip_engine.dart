@@ -26,6 +26,7 @@ extension PjsipEngineOperations on PjsipService {
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
       uaCfg.ref.cb.on_call_media_state = _callMediaStateCallable.nativeFunction;
+      uaCfg.ref.cb.on_call_media_event = _callMediaEventCallable.nativeFunction;
       uaCfg.ref.cb.on_call_sdp_created = _callSdpCreatedCallable.nativeFunction;
       uaCfg.ref.cb.on_ip_change_progress =
           _ipChangeProgressCallable.nativeFunction;
@@ -48,33 +49,30 @@ extension PjsipEngineOperations on PjsipService {
       // 刷新会话。一旦刷新得不到响应（对端已挂断或传输已断），本端会在会话到期后
       // 【自行拆除通话】并触发 DISCONNECTED，不再依赖那条可能已失效的入站链路。
       //
-      // REQUIRED：强制双方都协商 timer，确保刷新机制一定生效。
+      // 先关闭 Session Timer，避免部分 PBX 的 200 OK 未完整满足 RFC 4028 时，
+      // PJSIP 以 421 "Failed processing session timer response" 主动挂断。
       uaCfg.ref.use_timerAsInt =
-          pjsua_sip_timer_use.PJSUA_SIP_TIMER_REQUIRED.value;
-      // 会话过期时间（秒）。到期前会自动刷新；若刷新失败，最迟约 90s 内拆除通话。
-      // 90 是 RFC 4028 允许的最小值，取较小值可让“对端消失”尽快被发现。
-      uaCfg.ref.timer_setting.sess_expires = 90;
-      uaCfg.ref.timer_setting.min_se = 90;
+          pjsua_sip_timer_use.PJSUA_SIP_TIMER_INACTIVE.value;
 
-      // 原生日志直接输出到运行终端。FFI listener 回调是异步的，而日志字符
-      // 指针只在原生回调期间有效，因此控制台日志也是最可靠的 SIP 抓取方式。
+      // PJSIP 原生日志写到文件最可靠。log callback 传入的是短生命周期字符
+      // 指针，而 NativeCallable.listener 会异步投递到 Dart，直接读取容易出现
+      // 空白/乱码。SIP 抓包时优先查看这个文件。
+      try {
+        Directory(_nativeLogDirectoryPath).createSync(recursive: true);
+        File(_nativeLogFilePath).writeAsStringSync('');
+      } catch (_) {}
       logCfg.ref.msg_logging = 1;
       logCfg.ref.level = 6;
       logCfg.ref.console_level = 6;
-      logCfg.ref.cb = _logCallable.nativeFunction;
+      _pjStr(
+        logCfg.ref.log_filename,
+        _nativeLogFilePath.toNativeUtf8(allocator: arena),
+      );
+      logCfg.ref.log_file_flags = 0;
+      logCfg.ref.cb = ffi.nullptr;
 
-      // --- 关键改进：添加 STUN 服务器解决 NAT 问题 ---
-      ///STUN 的作用和影响：
-      // 1.
-      // 做什么：它让位于局域网内的 App 能够获知自己的公网出口 IP 和端口。
-      // 2.
-      // 为什么重要：SIP 协议默认会在报文中包含本地 IP。如果报文里写的是内网 IP（如 192.168.x.x），公网服务器的回包就无法送达你的 Mac。STUN 解决了这个问题，把报文里的地址改成了真实的公网地址。
-      // 3.
-      // 影响：
-      // ◦
-      // 优点：大幅提高外网通话的成功率，解决“有去无回”或者“单向语音”的问题。
-      // ◦
-      // 缺点：初始化时会多一次 DNS 解析和网络请求（约几十毫秒），但在现代网络下几乎无感。
+      // STUN 只作为 ICE 候选采集使用。真正的媒体路径由 ICE 连通性检查决定，
+      // 不再依赖“把某个公网 IP 直接写进 SDP 后等待对端打进来”的脆弱方式。
       uaCfg.ref.stun_srv_cnt = 1;
       _pjStr(
         uaCfg.ref.stun_srv[0],
@@ -86,6 +84,7 @@ extension PjsipEngineOperations on PjsipService {
         _addLog('❌ pjsua_init 失败: pj_status=$initStatus');
         return;
       }
+      _addLog('🧾 PJSIP 原生日志文件: $_nativeLogFilePath');
 
       final transportCfg = arena<pjsua_transport_config>();
       _bindings.pjsua_transport_config_default(transportCfg);
@@ -194,6 +193,7 @@ extension PjsipEngineOperations on PjsipService {
     required String password,
     required String host,
     SipTransport transport = SipTransport.udp,
+    TurnConfig turnConfig = const TurnConfig(),
     bool registrationEnabled = true,
     bool fromRestore = false,
   }) async {
@@ -254,7 +254,14 @@ extension PjsipEngineOperations on PjsipService {
       _bindings.pjsua_acc_config_default(accCfg);
       accCfg.ref.transport_id = transportId;
       accCfg.ref.register_on_acc_add = registrationEnabled ? 1 : 0;
-      _configureAccountMediaSecurity(accCfg, transport);
+      // 禁用接通后自动 UPDATE 锁定单 codec，避免 DTLS-SRTP 握手期重协商媒体。
+      accCfg.ref.lock_codec = 0;
+      // PJSIP #2963: DTLS-SRTP 在 IP change re-INVITE 重建媒体后可能卡在
+      // EKEYNOTREADY。保留 Contact/Via 更新，但避免默认 REINIT_MEDIA 重建媒体。
+      accCfg.ref.ip_change_cfg.reinvite_flags &=
+          ~pjsua_call_flag.PJSUA_CALL_REINIT_MEDIA.value;
+      _configureAccountMediaTransport(accCfg);
+      _configureAccountMediaSecurity(accCfg, transport, turnConfig, arena);
       _pjStr(
         accCfg.ref.id,
         'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
@@ -270,6 +277,13 @@ extension PjsipEngineOperations on PjsipService {
 
       // 开启地址重写，对 NAT 更有好
       accCfg.ref.allow_contact_rewrite = 1;
+      // 使用 REGISTER 响应里看到的公网地址重写 SDP 作为无 STUN 时的兜底。
+      accCfg.ref.allow_sdp_nat_rewrite = 1;
+      accCfg.ref.sip_stun_useAsInt =
+          pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
+      accCfg.ref.media_stun_useAsInt = transport == SipTransport.tls
+          ? pjsua_stun_use.PJSUA_STUN_RETRY_ON_FAILURE.value
+          : pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
 
       accCfg.ref.cred_count = 1;
       final cred = accCfg.ref.cred_info[0];
@@ -294,6 +308,7 @@ extension PjsipEngineOperations on PjsipService {
         password: password,
         host: normalizedHost,
         transport: transport,
+        turnConfig: turnConfig,
         registrationStatus: registrationEnabled ? null : 0,
         registrationStatusText: registrationEnabled ? '注册中' : '已暂停',
         registrationExpires: registrationEnabled ? null : 0,
@@ -319,6 +334,13 @@ extension PjsipEngineOperations on PjsipService {
       );
       if (transport == SipTransport.tls) {
         _addLog('🔐 TLS 线路已启用 DTLS-SRTP 媒体加密');
+        if (turnConfig.isUsable) {
+          _addLog(
+            '🧊 ICE/TURN 中继已启用: ${turnConfig.server} (${turnConfig.transport.label})',
+          );
+        } else {
+          _addLog('🧊 ICE/TURN 未启用，使用基础 DTLS-SRTP 媒体路径');
+        }
       }
       if (!fromRestore) {
         unawaited(_persistSeatEnvironment());
@@ -326,29 +348,107 @@ extension PjsipEngineOperations on PjsipService {
     });
   }
 
+  void _configureAccountMediaTransport(ffi.Pointer<pjsua_acc_config> accCfg) {
+    // 桌面客服端会同时存在多条线路/多路通话。PJSIP 默认从 4000 端口开始
+    // 分配 RTP，两个账号在同一进程内互打时容易撞端口，导致通话接通但无媒体。
+    // 设为 0 表示交给系统选择可用端口，避免多线路场景互相抢占。
+    accCfg.ref.rtp_cfg.port = 0;
+    accCfg.ref.rtp_cfg.port_range = 0;
+    accCfg.ref.rtp_cfg.randomize_port = 0;
+  }
+
   void _configureAccountMediaSecurity(
     ffi.Pointer<pjsua_acc_config> accCfg,
     SipTransport transport,
+    TurnConfig turnConfig,
+    Arena arena,
   ) {
     if (transport != SipTransport.tls) {
       accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_DISABLED.value;
       return;
     }
 
+
+
+
     // TLS 只加密 SIP 信令。Asterisk `media_encryption=dtls` 还要求媒体使用
     // DTLS-SRTP，否则服务端会因 SDP 媒体协商失败而拒绝音频流。
     accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
+    // accCfg.ref.use_srtp=pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
     // 1 = SRTP 需要安全信令即可（TLS 满足）；2 会要求 SIPS 端到端信令。
     accCfg.ref.srtp_secure_signaling = 1;
     // Asterisk `media_encryption=dtls` 要求 SDP 里出现 fingerprint/setup。
     // 这里使用 DTLS-only，避免底层在 DTLS 不可用时退回 SDES 并发出 a=crypto。
     accCfg.ref.srtp_opt.keying_count = 1;
+
+    // srtpOpt.ref.keyingPriority[0] = PjMediaSrtpKeying.dtlsSrtp;
+    // srtpOpt.ref.keyingPriority[1] = PjMediaSrtpKeying.sdes;
     accCfg.ref.srtp_opt.keying[0] =
         pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP.value;
-    // 当前 Asterisk endpoint 配置为 `use_avpf=no`，MicroSIP 也按传统
-    // SRTP profile 工作。因此这里保持 SAVP，不启用 AVPF/RTCP mux。
-    accCfg.ref.rtcp_fb_cfg.dont_use_avpf = 1;
-    accCfg.ref.enable_rtcp_mux = 0;
+
+    // accCfg.ref.dtls_setup.setup= 1;
+
+
+    accCfg.ref.ice_cfg_useAsInt =
+        pjsua_ice_config_use.PJSUA_ICE_CONFIG_USE_CUSTOM.value;
+    accCfg.ref.turn_cfg_useAsInt =
+        pjsua_turn_config_use.PJSUA_TURN_CONFIG_USE_CUSTOM.value;
+
+
+    if (turnConfig.isUsable) {
+      // 只有配置 TURN 时才启用 ICE。否则 VPN/虚拟网卡容易被采集成错误候选，
+      // 反而破坏基础 DTLS-SRTP 通话。
+      accCfg.ref.ice_cfg.enable_ice = 1;
+      accCfg.ref.ice_cfg.ice_max_host_cands = -1;
+      accCfg.ref.ice_cfg.ice_no_rtcp = 0;
+      accCfg.ref.ice_cfg.ice_always_update = 1;
+      accCfg.ref.ice_cfg.ice_opt.trickleAsInt =
+          pj_ice_sess_trickle.PJ_ICE_SESS_TRICKLE_DISABLED.value;
+      _configureTurnRelay(accCfg, turnConfig, arena);
+    } else {
+      accCfg.ref.ice_cfg.enable_ice = 0;
+      accCfg.ref.turn_cfg.enable_turn = 0;
+    }
+    // 与 MicroSIP 的正常链路对齐：offer 中带 a=rtcp-mux，让 RTP/RTCP 复用
+    // 同一个媒体端口，避免 DTLS-SRTP 同时卡在两条独立通道上。
+    accCfg.ref.rtcp_fb_cfg.dont_use_avpf = 0;
+
+    accCfg.ref.enable_rtcp_mux = 1;
+
+  }
+
+  void _configureTurnRelay(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    TurnConfig turnConfig,
+    Arena arena,
+  ) {
+    if (!turnConfig.isUsable) {
+      accCfg.ref.turn_cfg.enable_turn = 0;
+      return;
+    }
+    accCfg.ref.turn_cfg.enable_turn = 1;
+    _pjStr(
+      accCfg.ref.turn_cfg.turn_server,
+      turnConfig.server.trim().toNativeUtf8(allocator: arena),
+    );
+    accCfg.ref.turn_cfg.turn_conn_typeAsInt = switch (turnConfig.transport) {
+      TurnTransport.udp => pj_turn_tp_type.PJ_TURN_TP_UDP.value,
+      TurnTransport.tcp => pj_turn_tp_type.PJ_TURN_TP_TCP.value,
+      TurnTransport.tls => pj_turn_tp_type.PJ_TURN_TP_TLS.value,
+    };
+    final cred = accCfg.ref.turn_cfg.turn_auth_cred;
+    cred.typeAsInt = pj_stun_auth_cred_type.PJ_STUN_AUTH_CRED_STATIC.value;
+    _pjStr(cred.data.static_cred.realm, '*'.toNativeUtf8(allocator: arena));
+    _pjStr(
+      cred.data.static_cred.username,
+      turnConfig.username.toNativeUtf8(allocator: arena),
+    );
+    cred.data.static_cred.data_typeAsInt =
+        pj_stun_passwd_type.PJ_STUN_PASSWD_PLAIN.value;
+    _pjStr(
+      cred.data.static_cred.data,
+      turnConfig.password.toNativeUtf8(allocator: arena),
+    );
   }
 
   String _normalizeSipHost(String host, SipTransport transport) {

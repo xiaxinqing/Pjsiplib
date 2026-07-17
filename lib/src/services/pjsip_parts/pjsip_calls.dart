@@ -124,7 +124,10 @@ extension PjsipCallOperations on PjsipService {
       _removeCall(callId);
       return;
     }
-    _addLog('⏹ 请求挂断: call=${call.callId}');
+    _addLog(
+      '⏹ 本地用户请求挂断: call=${call.callId}, '
+      'remote=${call.remoteUri}, state=${call.state}',
+    );
     final status = _bindings.pjsua_call_hangup(
       call.callId,
       0,
@@ -132,7 +135,7 @@ extension PjsipCallOperations on PjsipService {
       ffi.nullptr,
     );
     if (status == 0) {
-      _addLog('挂断 API 调用成功，等待 DISCONNECTED: call=${call.callId}');
+      _addLog('挂断 API 调用成功，等待 PJSIP DISCONNECTED 回调: call=${call.callId}');
     } else {
       _addLog('❌ 挂断失败: call=${call.callId}, pj_status=$status');
     }

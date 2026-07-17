@@ -66,6 +66,14 @@ class PjsipService extends Notifier<PjsipUIState> {
   Set<ConnectivityResult>? _lastConnectivityTypes;
   bool _connectivityMonitorStarted = false;
   bool _isDisposed = false;
+  late final String _nativeLogDirectoryPath = Platform.isWindows
+      ? '${Platform.environment['APPDATA'] ?? Directory.systemTemp.path}\\pjsip_lib'
+      : Platform.isLinux
+      ? '${Platform.environment['HOME'] ?? Directory.systemTemp.path}/.local/state/pjsip_lib'
+      : '${Platform.environment['HOME'] ?? Directory.systemTemp.path}/Library/Logs/pjsip_lib';
+  late final String _nativeLogFilePath = Platform.isWindows
+      ? '$_nativeLogDirectoryPath\\pjsip_lib_native.log'
+      : '$_nativeLogDirectoryPath/pjsip_lib_native.log';
 
   // 保持对 Callable 的引用，防止被 GC 回收
   late ffi.NativeCallable<
@@ -80,6 +88,10 @@ class PjsipService extends Notifier<PjsipUIState> {
   late ffi.NativeCallable<ffi.Void Function(ffi.Int, ffi.Pointer<pjsip_event>)>
   _callStateCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _callMediaStateCallable;
+  late ffi.NativeCallable<
+    ffi.Void Function(ffi.Int, ffi.UnsignedInt, ffi.Pointer<pjmedia_event>)
+  >
+  _callMediaEventCallable;
   late ffi.NativeCallable<
     ffi.Void Function(
       ffi.Int,
@@ -225,6 +237,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _incomingCallCallable.close();
     _callStateCallable.close();
     _callMediaStateCallable.close();
+    _callMediaEventCallable.close();
     _callSdpCreatedCallable.close();
     _ipChangeProgressCallable.close();
   }

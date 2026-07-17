@@ -63,6 +63,10 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
             ),
             const SizedBox(height: 16),
             _buildTransportSelector(),
+            if (_selectedLineTransport == SipTransport.tls) ...[
+              const SizedBox(height: 16),
+              _buildTurnSettings(),
+            ],
             const SizedBox(height: 16),
             Row(
               children: [
@@ -114,7 +118,9 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      '${account.host} · ${account.transportLabel} · ${account.registrationStatusText}',
+                      '${account.host} · ${account.transportLabel}'
+                      '${account.turnConfig.isUsable ? ' · TURN' : ''}'
+                      ' · ${account.registrationStatusText}',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall,
@@ -205,11 +211,104 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         const SizedBox(height: 6),
         Text(
           _selectedLineTransport.isSecure
-              ? 'TLS 会加密 SIP 注册和呼叫信令；语音加密需后续开启 SRTP。'
+              ? 'TLS 会加密 SIP 注册和呼叫信令；语音媒体使用 DTLS-SRTP。'
               : '${_selectedLineTransport.displayName}，默认建议使用 UDP。',
           style: Theme.of(context).textTheme.bodySmall,
         ),
       ],
+    );
+  }
+
+  Widget _buildTurnSettings() {
+    return Container(
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          leading: const Icon(Icons.tune_outlined),
+          title: const Text(
+            '高级网络设置',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          subtitle: const Text('默认使用基础 DTLS-SRTP；需要中继时再开启 TURN'),
+          children: [
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              value: _turnEnabled,
+              onChanged: _setTurnEnabled,
+              title: const Text(
+                'TURN 媒体中继',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: const Text('复杂企业网络下用于兜底打通语音媒体'),
+            ),
+            if (_turnEnabled) ...[
+              const SizedBox(height: 8),
+              TextField(
+                controller: _turnServerController,
+                decoration: const InputDecoration(
+                  labelText: 'TURN 服务器',
+                  helperText:
+                      '例如 turn.example.com:3478 或 turn.example.com:5349',
+                  prefixIcon: Icon(Icons.hub_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SegmentedButton<TurnTransport>(
+                selected: {_selectedTurnTransport},
+                showSelectedIcon: false,
+                onSelectionChanged: (selected) =>
+                    _selectTurnTransport(selected.first),
+                segments: [
+                  for (final transport in TurnTransport.values)
+                    ButtonSegment<TurnTransport>(
+                      value: transport,
+                      icon: Icon(
+                        transport == TurnTransport.tls
+                            ? Icons.enhanced_encryption_outlined
+                            : Icons.lan_outlined,
+                        size: 18,
+                      ),
+                      label: Text(transport.label),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _turnUsernameController,
+                decoration: const InputDecoration(
+                  labelText: 'TURN 用户名',
+                  prefixIcon: Icon(Icons.person_outline),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _turnPasswordController,
+                obscureText: _hideTurnPassword,
+                decoration: InputDecoration(
+                  labelText: 'TURN 密码',
+                  prefixIcon: const Icon(Icons.key_outlined),
+                  suffixIcon: IconButton(
+                    tooltip: _hideTurnPassword ? '显示 TURN 密码' : '隐藏 TURN 密码',
+                    onPressed: _toggleTurnPasswordVisibility,
+                    icon: Icon(
+                      _hideTurnPassword
+                          ? Icons.visibility
+                          : Icons.visibility_off,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
