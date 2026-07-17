@@ -87,7 +87,7 @@ jobs:
           #define PJ_HAS_SSL_SOCK                 1
           #define PJ_HAS_IPV6                     1
           #define PJMEDIA_HAS_VIDEO               0
-          #define PJ_LOG_MAX_LEVEL                3
+          #define PJ_LOG_MAX_LEVEL                6
           #define PJ_IOQUEUE_MAX_HANDLERS         256
           EOF
 

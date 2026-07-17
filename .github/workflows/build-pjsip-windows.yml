@@ -96,8 +96,17 @@ jobs:
           #define PJSUA_MAX_ACC            16
           #define PJMEDIA_SOUND_CLOCK_RATE 44100
           #define PJMEDIA_HAS_VIDEO        0
-          #define PJ_LOG_MAX_LEVEL         3
+          #define PJ_LOG_MAX_LEVEL         6
           #define PJ_IOQUEUE_MAX_HANDLERS  256
+
+          /* Enable SSL/TLS support */
+          #define PJ_HAS_SSL_SOCK          1
+
+          /* Enable SRTP support */
+          #define PJMEDIA_HAS_SRTP         1
+
+          /* Enable DTLS-SRTP support */
+          #define PJMEDIA_SRTP_HAS_DTLS    1
           '@ | Set-Content -Path $configPath -Encoding ascii
 
       - name: Configure unified DLL
@@ -209,7 +218,7 @@ jobs:
           Runtime: MSVC /MD
           TLS: Windows SChannel
           Media: audio only, G.711 enabled, bundled SRTP
-          Runtime files: bin/pjsip.dll and bin/libcrypto-3-x64.dll
+          Runtime files: bin/pjsip.dll and any OpenSSL DLLs reported by dumpbin
           OpenSSL: $env:OPENSSL_VERSION LTS, bundled app-locally in bin/
           "@ | Set-Content "$output/BUILD-INFO.txt"
 

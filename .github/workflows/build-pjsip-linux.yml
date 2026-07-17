@@ -61,7 +61,7 @@ jobs:
           #define PJSUA_MAX_ACC            16
           #define PJMEDIA_SOUND_CLOCK_RATE 44100
           #define PJMEDIA_HAS_VIDEO        0
-          #define PJ_LOG_MAX_LEVEL         3
+          #define PJ_LOG_MAX_LEVEL         6
           #define PJ_IOQUEUE_MAX_HANDLERS  256
 
           /* Enable SSL/TLS support */
