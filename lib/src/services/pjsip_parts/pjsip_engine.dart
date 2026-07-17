@@ -71,8 +71,7 @@ extension PjsipEngineOperations on PjsipService {
       logCfg.ref.log_file_flags = 0;
       logCfg.ref.cb = ffi.nullptr;
 
-      // STUN 只作为 ICE 候选采集使用。真正的媒体路径由 ICE 连通性检查决定，
-      // 不再依赖“把某个公网 IP 直接写进 SDP 后等待对端打进来”的脆弱方式。
+      // STUN 用于发现媒体公网地址，避免 SDP 只带内网地址。
       uaCfg.ref.stun_srv_cnt = 1;
       _pjStr(
         uaCfg.ref.stun_srv[0],
@@ -254,6 +253,8 @@ extension PjsipEngineOperations on PjsipService {
       _bindings.pjsua_acc_config_default(accCfg);
       accCfg.ref.transport_id = transportId;
       accCfg.ref.register_on_acc_add = registrationEnabled ? 1 : 0;
+      // MicroSIP 默认账号 keep-alive 是 15 秒，用于维持 SIP/NAT 信令通道。
+      accCfg.ref.ka_interval = 15;
       // 禁用接通后自动 UPDATE 锁定单 codec，避免 DTLS-SRTP 握手期重协商媒体。
       accCfg.ref.lock_codec = 0;
       // PJSIP #2963: DTLS-SRTP 在 IP change re-INVITE 重建媒体后可能卡在
@@ -275,9 +276,8 @@ extension PjsipEngineOperations on PjsipService {
         ),
       );
 
-      // 开启地址重写，对 NAT 更有好
+      // 开启地址重写，对 NAT 更友好。
       accCfg.ref.allow_contact_rewrite = 1;
-      // 使用 REGISTER 响应里看到的公网地址重写 SDP 作为无 STUN 时的兜底。
       accCfg.ref.allow_sdp_nat_rewrite = 1;
       accCfg.ref.sip_stun_useAsInt =
           pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
@@ -368,13 +368,9 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
 
-
-
-
     // TLS 只加密 SIP 信令。Asterisk `media_encryption=dtls` 还要求媒体使用
     // DTLS-SRTP，否则服务端会因 SDP 媒体协商失败而拒绝音频流。
     accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
-    // accCfg.ref.use_srtp=pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
     // 1 = SRTP 需要安全信令即可（TLS 满足）；2 会要求 SIPS 端到端信令。
     accCfg.ref.srtp_secure_signaling = 1;
     // Asterisk `media_encryption=dtls` 要求 SDP 里出现 fingerprint/setup。
@@ -386,14 +382,10 @@ extension PjsipEngineOperations on PjsipService {
     accCfg.ref.srtp_opt.keying[0] =
         pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP.value;
 
-    // accCfg.ref.dtls_setup.setup= 1;
-
-
     accCfg.ref.ice_cfg_useAsInt =
         pjsua_ice_config_use.PJSUA_ICE_CONFIG_USE_CUSTOM.value;
     accCfg.ref.turn_cfg_useAsInt =
         pjsua_turn_config_use.PJSUA_TURN_CONFIG_USE_CUSTOM.value;
-
 
     if (turnConfig.isUsable) {
       // 只有配置 TURN 时才启用 ICE。否则 VPN/虚拟网卡容易被采集成错误候选，
@@ -414,7 +406,6 @@ extension PjsipEngineOperations on PjsipService {
     accCfg.ref.rtcp_fb_cfg.dont_use_avpf = 0;
 
     accCfg.ref.enable_rtcp_mux = 1;
-
   }
 
   void _configureTurnRelay(
