@@ -71,12 +71,13 @@ extension PjsipEngineOperations on PjsipService {
       logCfg.ref.log_file_flags = 0;
       logCfg.ref.cb = ffi.nullptr;
 
-      // STUN 用于发现媒体公网地址，避免 SDP 只带内网地址。
-      uaCfg.ref.stun_srv_cnt = 1;
-      _pjStr(
-        uaCfg.ref.stun_srv[0],
-        'stun.l.google.com:19302'.toNativeUtf8(allocator: arena),
-      );
+      // 与 MicroSIP 当前测试配置对齐：不使用 Google STUN，避免把与 Asterisk
+      // 信令出口不一致的公网地址写进媒体 SDP。
+      uaCfg.ref.stun_srv_cnt = 0;
+      // X-nat 是 PJSIP 的非标准 NAT 诊断字段，关闭后 SDP 更接近 MicroSIP。
+      uaCfg.ref.nat_type_in_sdp = 0;
+      // MicroSIP 全局默认是 0；账号层仍会显式配置 DTLS-SRTP。
+      uaCfg.ref.srtp_secure_signaling = 0;
 
       final initStatus = _bindings.pjsua_init(uaCfg, logCfg, mediaCfg);
       if (initStatus != 0) {
@@ -276,14 +277,19 @@ extension PjsipEngineOperations on PjsipService {
         ),
       );
 
-      // 开启地址重写，对 NAT 更友好。
-      accCfg.ref.allow_contact_rewrite = 1;
+      // 与 MicroSIP 对齐：Via/Contact/SDP 都允许按服务器看到的公网地址重写。
+      accCfg.ref.allow_via_rewrite = 1;
+      accCfg.ref.allow_contact_rewrite = 2;
+      accCfg.ref.contact_rewrite_method =
+          pjsua_contact_rewrite_method.PJSUA_CONTACT_REWRITE_UNREGISTER.value |
+          pjsua_contact_rewrite_method
+              .PJSUA_CONTACT_REWRITE_ALWAYS_UPDATE
+              .value;
       accCfg.ref.allow_sdp_nat_rewrite = 1;
       accCfg.ref.sip_stun_useAsInt =
           pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
-      accCfg.ref.media_stun_useAsInt = transport == SipTransport.tls
-          ? pjsua_stun_use.PJSUA_STUN_RETRY_ON_FAILURE.value
-          : pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
+      accCfg.ref.media_stun_useAsInt =
+          pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
 
       accCfg.ref.cred_count = 1;
       final cred = accCfg.ref.cred_info[0];
@@ -349,11 +355,10 @@ extension PjsipEngineOperations on PjsipService {
   }
 
   void _configureAccountMediaTransport(ffi.Pointer<pjsua_acc_config> accCfg) {
-    // 桌面客服端会同时存在多条线路/多路通话。PJSIP 默认从 4000 端口开始
-    // 分配 RTP，两个账号在同一进程内互打时容易撞端口，导致通话接通但无媒体。
-    // 设为 0 表示交给系统选择可用端口，避免多线路场景互相抢占。
-    accCfg.ref.rtp_cfg.port = 0;
-    accCfg.ref.rtp_cfg.port_range = 0;
+    // 与 MicroSIP 的媒体端口行为对齐做验证：固定从 4000 附近分配 RTP/RTCP，
+    // 避免系统随机高端口在部分 NAT/防火墙下无法完成 DTLS-SRTP 回包。
+    accCfg.ref.rtp_cfg.port = 4000;
+    accCfg.ref.rtp_cfg.port_range = 200;
     accCfg.ref.rtp_cfg.randomize_port = 0;
   }
 
@@ -371,8 +376,8 @@ extension PjsipEngineOperations on PjsipService {
     // TLS 只加密 SIP 信令。Asterisk `media_encryption=dtls` 还要求媒体使用
     // DTLS-SRTP，否则服务端会因 SDP 媒体协商失败而拒绝音频流。
     accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
-    // 1 = SRTP 需要安全信令即可（TLS 满足）；2 会要求 SIPS 端到端信令。
-    accCfg.ref.srtp_secure_signaling = 1;
+    // MicroSIP 设置为 0；DTLS-SRTP 自己保护媒体，不再额外要求信令安全等级。
+    accCfg.ref.srtp_secure_signaling = 0;
     // Asterisk `media_encryption=dtls` 要求 SDP 里出现 fingerprint/setup。
     // 这里使用 DTLS-only，避免底层在 DTLS 不可用时退回 SDES 并发出 a=crypto。
     accCfg.ref.srtp_opt.keying_count = 1;

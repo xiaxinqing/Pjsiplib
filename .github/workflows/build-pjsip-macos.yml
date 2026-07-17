@@ -90,6 +90,7 @@ jobs:
           #define PJ_LOG_MAX_LEVEL                6
           #define PJ_IOQUEUE_MAX_HANDLERS         256
           EOF
+          sed -i '' 's/#define DTLS_DEBUG  0/#define DTLS_DEBUG  1/' "${PJ_ROOT}/pjmedia/src/pjmedia/transport_srtp_dtls.c"
 
           # --- 4. 编译 PJSIP 各架构 ---
           build_pjsip() {

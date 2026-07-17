@@ -108,6 +108,9 @@ jobs:
           /* Enable DTLS-SRTP support */
           #define PJMEDIA_SRTP_HAS_DTLS    1
           '@ | Set-Content -Path $configPath -Encoding ascii
+          $dtlsPath = Join-Path '${{ github.workspace }}' 'third_path/pjproject/pjmedia/src/pjmedia/transport_srtp_dtls.c'
+          (Get-Content -Raw $dtlsPath).Replace('#define DTLS_DEBUG  0', '#define DTLS_DEBUG  1') |
+            Set-Content -Path $dtlsPath -Encoding ascii
 
       - name: Configure unified DLL
         shell: pwsh

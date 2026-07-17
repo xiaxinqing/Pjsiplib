@@ -73,6 +73,7 @@ jobs:
           /* Enable DTLS-SRTP support */
           #define PJMEDIA_SRTP_HAS_DTLS    1
           EOF
+          sed -i 's/#define DTLS_DEBUG  0/#define DTLS_DEBUG  1/' "${GITHUB_WORKSPACE}/third_path/pjproject/pjmedia/src/pjmedia/transport_srtp_dtls.c"
 
       - name: Configure unified shared object
         run: |
