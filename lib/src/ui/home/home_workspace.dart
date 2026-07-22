@@ -79,14 +79,14 @@ extension _HomeWorkspace on _MyHomePageState {
   Widget _buildHeaderAction(PjsipUIState uiState, PjsipService service) {
     if (uiState.accounts.isNotEmpty) {
       return FilledButton.tonalIcon(
-        onPressed: uiState.isInitialized ? service.stop : null,
+        onPressed: uiState.isInitialized ? service.disconnectAllAccounts : null,
         icon: const Icon(Icons.power_settings_new),
         label: const Text('断开全部'),
       );
     }
     return FilledButton.icon(
       onPressed: uiState.isNetworkAvailable
-          ? () => _registerLine(service)
+          ? () => _showAddAccountDialog(uiState, service)
           : null,
       icon: const Icon(Icons.login),
       label: const Text('添加线路'),
@@ -261,9 +261,8 @@ extension _HomeWorkspace on _MyHomePageState {
                   for (final account in accounts)
                     DropdownMenuItem<int>(
                       value: account.accId,
-                      child: Text(
+                      child: _buildTooltipText(
                         '${account.lineLabel} · ${account.transportLabel} · ${account.registrationStatusText}',
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                 ],

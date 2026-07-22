@@ -32,7 +32,7 @@ extension _HomeSidebar on _MyHomePageState {
                         const SizedBox(width: 10),
                         const Expanded(
                           child: Text(
-                            'Thruv',
+                            'VPhone',
                             style: TextStyle(
                               fontSize: 17,
                               fontWeight: FontWeight.w700,
@@ -208,6 +208,9 @@ extension _HomeSidebar on _MyHomePageState {
   ) {
     final isDefault = uiState.defaultAccountId == account.accId;
     final color = account.isRegistered ? _brandGreen : Colors.orange.shade700;
+    final status = isDefault
+        ? '默认外呼 · ${account.transportLabel}'
+        : '${account.registrationStatusText} · ${account.transportLabel}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -231,18 +234,12 @@ extension _HomeSidebar on _MyHomePageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      _buildTooltipText(
                         account.displayName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
-                      Text(
-                        isDefault
-                            ? '默认外呼 · ${account.transportLabel}'
-                            : '${account.registrationStatusText} · ${account.transportLabel}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      _buildTooltipText(
+                        status,
                         style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ],
@@ -376,6 +373,9 @@ extension _HomeSidebar on _MyHomePageState {
     Offset position,
   ) async {
     final isDefault = uiState.defaultAccountId == account.accId;
+    final status = isDefault
+        ? '默认外呼 · ${account.registrationStatusText} · ${account.transportLabel}'
+        : '${account.registrationStatusText} · ${account.transportLabel}';
     final action = await showMenu<String>(
       context: context,
       position: _popupMenuPosition(position),
@@ -387,10 +387,8 @@ extension _HomeSidebar on _MyHomePageState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              _buildTooltipText(
                 account.lineLabel,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w800,
@@ -398,13 +396,7 @@ extension _HomeSidebar on _MyHomePageState {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                isDefault
-                    ? '默认外呼 · ${account.registrationStatusText} · ${account.transportLabel}'
-                    : '${account.registrationStatusText} · ${account.transportLabel}',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              _buildTooltipText(status),
             ],
           ),
         ),
@@ -476,13 +468,7 @@ extension _HomeSidebar on _MyHomePageState {
           const SizedBox(width: 10),
           Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          Expanded(child: _buildTooltipText(value, textAlign: TextAlign.right)),
         ],
       ),
     );
@@ -499,9 +485,8 @@ extension _HomeSidebar on _MyHomePageState {
         Icon(icon, size: 19, color: color),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
+          child: _buildTooltipText(
             label,
-            overflow: TextOverflow.ellipsis,
             style: TextStyle(color: color, fontWeight: FontWeight.w600),
           ),
         ),
@@ -710,9 +695,7 @@ extension _HomeSidebar on _MyHomePageState {
       children: [
         Icon(icon, size: 16),
         const SizedBox(width: 8),
-        Expanded(
-          child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
-        ),
+        Expanded(child: _buildTooltipText(value)),
       ],
     );
   }

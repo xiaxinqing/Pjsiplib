@@ -67,6 +67,9 @@ class _PjsipAudioRuntime {
 
   /// 当前真正应用到 PJSIP 的输出设备签名，用来发现 ID 复用。
   String? activePlaybackDeviceSignature;
+
+  /// 最近一次为了避免空闲占用系统声卡而释放的状态，用来减少重复日志。
+  bool soundDeviceReleasedForIdle = false;
 }
 
 /// 音频设备枚举、切换、静音、电平监测和轻量热插拔轮询。
@@ -262,16 +265,55 @@ extension PjsipAudioDeviceOperations on PjsipService {
       using((Arena arena) {
         // 先读取 PJSIP 当前声卡设置。调用方可以只传输入或只传输出，另一侧沿用当前值。
         final current = _currentSoundDeviceIds(arena);
+        final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
+        final currentCaptureId = current.captureId == noDevice
+            ? null
+            : current.captureId;
+        final currentPlaybackId = current.playbackId == noDevice
+            ? null
+            : current.playbackId;
         final captureId =
             captureDeviceId ??
             _uiState.selectedCaptureDeviceId ??
-            current.captureId ??
+            currentCaptureId ??
             pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value;
         final playbackId =
             playbackDeviceId ??
             _uiState.selectedPlaybackDeviceId ??
-            current.playbackId ??
+            currentPlaybackId ??
             pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
+
+        if (!_shouldKeepSoundDeviceOpen) {
+          final selectedSystemDefaults =
+              captureId ==
+                  pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value &&
+              playbackId ==
+                  pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
+          _uiState = _uiState.copyWith(
+            selectedCaptureDeviceId: captureId,
+            selectedPlaybackDeviceId: playbackId,
+            audioDeviceMode: selectedSystemDefaults
+                ? PjsipAudioDeviceMode.automatic
+                : markManual
+                ? PjsipAudioDeviceMode.manual
+                : _uiState.audioDeviceMode,
+            audioDeviceStatus: markManual && selectedSystemDefaults
+                ? '使用系统默认音频设备；空闲时不占用声卡'
+                : markManual
+                ? '已记住手动设备；空闲时不占用声卡'
+                : '空闲中：已释放系统音频设备',
+          );
+          if (markManual && selectedSystemDefaults) {
+            _audio.preferredCaptureDeviceSignature = null;
+            _audio.preferredPlaybackDeviceSignature = null;
+          } else if (markManual) {
+            _rememberManualAudioDevices(captureId, playbackId);
+          }
+          _audio.activeCaptureDeviceSignature = null;
+          _audio.activePlaybackDeviceSignature = null;
+          _releaseSoundDeviceIfIdle(reason);
+          return;
+        }
 
         // 有些场景看起来“设备 ID 没变”，但我们仍然需要更新 UI 状态或重连音频桥。
         // 例如手动重新选择默认设备，或者 PJSIP 当前就是 -1/-2 但通话桥需要补偿恢复。
@@ -304,6 +346,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
             _rememberManualAudioDevices(captureId, playbackId);
           }
           _rememberActiveAudioDevices(captureId, playbackId);
+          _audio.soundDeviceReleasedForIdle = false;
+          _startAudioLevelTimer();
           _scheduleAudioBridgeReconnectAfterDeviceSwitch(
             '当前设备重新应用: capture=$captureId, playback=$playbackId',
           );
@@ -344,6 +388,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
           _rememberManualAudioDevices(captureId, playbackId);
         }
         _rememberActiveAudioDevices(captureId, playbackId);
+        _audio.soundDeviceReleasedForIdle = false;
+        _startAudioLevelTimer();
         _scheduleAudioBridgeReconnectAfterDeviceSwitch(
           'capture=$captureId, playback=$playbackId',
         );
@@ -395,6 +441,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
     _stopSpeakerTestPlayer();
     _uiState = _uiState.copyWith(isSpeakerTesting: true, speakerLevel: 210);
+    if (!_ensureSoundDeviceOpen('扬声器测试')) {
+      _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+      return;
+    }
     final wavFile = await _ensureSpeakerTestWavFile();
     using((Arena arena) {
       final filename = arena<pj_str_t>();
@@ -413,6 +463,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
       );
       if (status != 0) {
         _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+        _releaseSoundDeviceIfIdle('扬声器测试创建失败');
+        _stopAudioLevelTimerIfIdle();
         _addLog('❌ 扬声器测试音创建失败: pj_status=$status');
         return;
       }
@@ -421,6 +473,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
       if (playerPort < 0) {
         _bindings.pjsua_player_destroy(playerId.value);
         _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+        _releaseSoundDeviceIfIdle('扬声器测试端口获取失败');
+        _stopAudioLevelTimerIfIdle();
         _addLog('❌ 扬声器测试音端口获取失败');
         return;
       }
@@ -429,12 +483,15 @@ extension PjsipAudioDeviceOperations on PjsipService {
       if (connectStatus != 0) {
         _bindings.pjsua_player_destroy(playerId.value);
         _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+        _releaseSoundDeviceIfIdle('扬声器测试连接失败');
+        _stopAudioLevelTimerIfIdle();
         _addLog('❌ 扬声器测试音连接失败: pj_status=$connectStatus');
         return;
       }
 
       _audio.speakerTestPlayerId = playerId.value;
       _audio.speakerTestPlayerPort = playerPort;
+      _startAudioLevelTimer();
       _addLog('🔊 正在播放扬声器测试音');
       _audio.speakerTestTimer = Timer(
         const Duration(milliseconds: 750),
@@ -468,9 +525,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
         microphoneLevel: 0,
       );
       _addLog('🎙️ 麦克风测试已停止');
+      _releaseSoundDeviceIfIdle('麦克风测试停止');
+      _stopAudioLevelTimerIfIdle();
       return;
     }
 
+    _uiState = _uiState.copyWith(isMicrophoneTesting: true, microphoneLevel: 0);
     await setAudioDevices(
       captureDeviceId: _uiState.selectedCaptureDeviceId,
       playbackDeviceId: _uiState.selectedPlaybackDeviceId,
@@ -500,6 +560,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
           isMicrophoneTesting: false,
           microphoneLevel: 0,
         );
+        _releaseSoundDeviceIfIdle('麦克风测试创建失败');
+        _stopAudioLevelTimerIfIdle();
         _addLog('❌ 麦克风测试录音器创建失败: pj_status=$status');
         return;
       }
@@ -513,6 +575,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
           isMicrophoneTesting: false,
           microphoneLevel: 0,
         );
+        _releaseSoundDeviceIfIdle('麦克风测试端口获取失败');
+        _stopAudioLevelTimerIfIdle();
         _addLog('❌ 麦克风测试录音端口获取失败');
         return;
       }
@@ -524,16 +588,14 @@ extension PjsipAudioDeviceOperations on PjsipService {
           isMicrophoneTesting: false,
           microphoneLevel: 0,
         );
+        _releaseSoundDeviceIfIdle('麦克风测试连接失败');
+        _stopAudioLevelTimerIfIdle();
         _addLog('❌ 麦克风测试音频连接失败: pj_status=$connectStatus');
         return;
       }
 
       _audio.microphoneTestRecorderId = recorderId.value;
       _audio.microphoneTestRecorderPort = recorderPort;
-      _uiState = _uiState.copyWith(
-        isMicrophoneTesting: true,
-        microphoneLevel: 0,
-      );
       _startAudioLevelTimer();
       _addLog('🎙️ 麦克风测试已开始，请对着麦克风说话');
     });
@@ -693,13 +755,28 @@ extension PjsipAudioDeviceOperations on PjsipService {
         .toList(growable: false);
 
     final current = _currentSoundDeviceIds(arena);
+    final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
+    final selectedCaptureId = _uiState.selectedCaptureDeviceId == noDevice
+        ? null
+        : _uiState.selectedCaptureDeviceId;
+    final selectedPlaybackId = _uiState.selectedPlaybackDeviceId == noDevice
+        ? null
+        : _uiState.selectedPlaybackDeviceId;
+    final currentCaptureId = current.captureId == noDevice
+        ? selectedCaptureId ??
+              pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value
+        : current.captureId;
+    final currentPlaybackId = current.playbackId == noDevice
+        ? selectedPlaybackId ??
+              pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value
+        : current.playbackId;
     return _AudioDeviceSnapshot(
       rawCaptureDevices: rawCaptureDevices,
       rawPlaybackDevices: rawPlaybackDevices,
       captureDevices: captureDevices,
       playbackDevices: playbackDevices,
-      currentCaptureId: current.captureId,
-      currentPlaybackId: current.playbackId,
+      currentCaptureId: currentCaptureId,
+      currentPlaybackId: currentPlaybackId,
     );
   }
 
@@ -784,6 +861,20 @@ extension PjsipAudioDeviceOperations on PjsipService {
       hasAnyCall: hasAnyCall,
       allowInCallAutomaticSwitch: _uiState.allowInCallAudioDeviceSwitch,
     );
+
+    if (!_shouldKeepSoundDeviceOpen) {
+      // 空闲时仍然要实时执行自动选择策略，用来响应耳机插拔并更新下一次通话
+      // 应该使用的设备；只是不能在这里调用 pjsua_set_snd_dev 打开系统声卡。
+      _uiState = _uiState.copyWith(
+        selectedCaptureDeviceId: choice.captureDeviceId,
+        selectedPlaybackDeviceId: choice.playbackDeviceId,
+        audioDeviceStatus: '${choice.status}；空闲时不占用声卡',
+      );
+      _audio.activeCaptureDeviceSignature = null;
+      _audio.activePlaybackDeviceSignature = null;
+      _releaseSoundDeviceIfIdle(reason);
+      return false;
+    }
 
     _uiState = _uiState.copyWith(audioDeviceStatus: choice.status);
     if (!choice.shouldSwitch) return false;
@@ -942,6 +1033,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _AudioDeviceSnapshot snapshot,
     String reason,
   ) {
+    if (!_shouldKeepSoundDeviceOpen) return false;
+
     final captureId = snapshot.currentCaptureId;
     final playbackId = snapshot.currentPlaybackId;
     if (captureId == null || playbackId == null) return false;
@@ -1095,6 +1188,84 @@ extension PjsipAudioDeviceOperations on PjsipService {
     return (captureId: capture.value, playbackId: playback.value);
   }
 
+  bool get _shouldKeepSoundDeviceOpen =>
+      _uiState.calls.isNotEmpty ||
+      _uiState.isMicrophoneTesting ||
+      _uiState.isSpeakerTesting;
+
+  bool _isNoSoundDevice(({int? captureId, int? playbackId}) current) {
+    final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
+    return current.captureId == noDevice || current.playbackId == noDevice;
+  }
+
+  void _releaseSoundDeviceIfIdle(String reason) {
+    if (!_uiState.isInitialized || _shouldKeepSoundDeviceOpen) return;
+    final current = using(_currentSoundDeviceIds);
+    if (_isNoSoundDevice(current)) {
+      _audio.soundDeviceReleasedForIdle = true;
+      return;
+    }
+
+    // 关键：账号注册成功不代表正在通话。空闲时让 PJSIP 回到 no-sound，
+    // 否则 macOS/Windows 可能把本 App 当成通讯音频占用方，压低视频/音乐音量。
+    _bindings.pjsua_set_no_snd_dev();
+    _audio.activeCaptureDeviceSignature = null;
+    _audio.activePlaybackDeviceSignature = null;
+    if (!_audio.soundDeviceReleasedForIdle) {
+      _addLog('🎧 空闲释放系统音频设备: $reason');
+    }
+    _audio.soundDeviceReleasedForIdle = true;
+  }
+
+  bool _ensureSoundDeviceOpen(String reason) {
+    if (!_uiState.isInitialized) return false;
+    final current = using(_currentSoundDeviceIds);
+    if (!_isNoSoundDevice(current)) {
+      _audio.soundDeviceReleasedForIdle = false;
+      _startAudioLevelTimer();
+      return true;
+    }
+
+    // 从空闲 no-sound 切回真实声卡。这里使用空闲监控阶段预选好的设备，
+    // 所以首次通话会直接走耳机/蓝牙，而不是等通话中再重新枚举选择。
+    final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
+    final selectedCaptureId = _uiState.selectedCaptureDeviceId == noDevice
+        ? null
+        : _uiState.selectedCaptureDeviceId;
+    final selectedPlaybackId = _uiState.selectedPlaybackDeviceId == noDevice
+        ? null
+        : _uiState.selectedPlaybackDeviceId;
+    final captureId =
+        selectedCaptureId ??
+        pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value;
+    final playbackId =
+        selectedPlaybackId ??
+        pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
+    final status = _bindings.pjsua_set_snd_dev(captureId, playbackId);
+    if (status != 0) {
+      _addLog(
+        '❌ 打开音频设备失败: capture=$captureId, playback=$playbackId, pj_status=$status',
+      );
+      return false;
+    }
+
+    _uiState = _uiState.copyWith(
+      selectedCaptureDeviceId: captureId,
+      selectedPlaybackDeviceId: playbackId,
+      audioDeviceStatus: '音频设备已打开：$reason',
+    );
+    _rememberActiveAudioDevices(captureId, playbackId);
+    _audio.soundDeviceReleasedForIdle = false;
+    _startAudioLevelTimer();
+    _addLog('🎧 音频设备已按需打开: capture=$captureId, playback=$playbackId ($reason)');
+    return true;
+  }
+
+  void _stopAudioLevelTimerIfIdle() {
+    if (_shouldKeepSoundDeviceOpen) return;
+    _stopAudioLevelTimer();
+  }
+
   /// 把 PJSIP C 结构里的固定长度 char 数组转成 Dart 字符串。
   ///
   /// PJSIP 的设备名/驱动名是 C char 数组，以 0 结尾。Dart 不能直接当字符串用，
@@ -1245,6 +1416,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
     _bindings.pjsua_player_destroy(playerId);
     _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
+    _releaseSoundDeviceIfIdle('扬声器测试停止');
+    _stopAudioLevelTimerIfIdle();
   }
 
   Future<File> _prepareMicrophoneTestWavFile() async {

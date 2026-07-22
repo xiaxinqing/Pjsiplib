@@ -32,6 +32,27 @@ extension _HomeHelpers on _MyHomePageState {
     if (value.isEmpty) return '?';
     return value.characters.first.toUpperCase();
   }
+
+  Widget _buildTooltipText(
+    String value, {
+    TextStyle? style,
+    int maxLines = 1,
+    TextAlign? textAlign,
+  }) {
+    // 桌面端长文本会被省略号截断；Tooltip 让鼠标悬停时能看到完整内容，
+    // 移动端也可通过长按查看，交互成本比弹窗详情更低。
+    return Tooltip(
+      message: value,
+      waitDuration: const Duration(milliseconds: 350),
+      child: Text(
+        value,
+        maxLines: maxLines,
+        overflow: TextOverflow.ellipsis,
+        textAlign: textAlign,
+        style: style,
+      ),
+    );
+  }
 }
 
 extension _IncomingCallSnapshot on PjsipUIState {

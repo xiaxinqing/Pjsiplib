@@ -5,7 +5,9 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
     if (!uiState.isInitialized) {
       return Center(
         child: FilledButton.icon(
-          onPressed: () => _registerLine(service),
+          onPressed: uiState.isNetworkAvailable
+              ? () => _showAddAccountDialog(uiState, service)
+              : null,
           icon: const Icon(Icons.login),
           label: const Text('添加电话线路'),
         ),

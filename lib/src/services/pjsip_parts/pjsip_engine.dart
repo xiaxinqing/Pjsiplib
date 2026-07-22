@@ -18,10 +18,6 @@ extension PjsipEngineOperations on PjsipService {
       _bindings.pjsua_logging_config_default(logCfg);
       _bindings.pjsua_media_config_default(mediaCfg);
 
-      // Enable SRTP support at media layer
-      mediaCfg.ref.enable_ice = 0; // Disable ICE for now
-      mediaCfg.ref.enable_turn = 0; // Disable TURN for now
-
       uaCfg.ref.cb.on_reg_state = _regStateCallable.nativeFunction;
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
@@ -62,8 +58,8 @@ extension PjsipEngineOperations on PjsipService {
         File(_nativeLogFilePath).writeAsStringSync('');
       } catch (_) {}
       logCfg.ref.msg_logging = 1;
-      logCfg.ref.level = 6;
-      logCfg.ref.console_level = 6;
+      logCfg.ref.level = 3;
+      logCfg.ref.console_level = 3;
       _pjStr(
         logCfg.ref.log_filename,
         _nativeLogFilePath.toNativeUtf8(allocator: arena),
@@ -76,8 +72,6 @@ extension PjsipEngineOperations on PjsipService {
       uaCfg.ref.stun_srv_cnt = 0;
       // X-nat 是 PJSIP 的非标准 NAT 诊断字段，关闭后 SDP 更接近 MicroSIP。
       uaCfg.ref.nat_type_in_sdp = 0;
-      // MicroSIP 全局默认是 0；账号层仍会显式配置 DTLS-SRTP。
-      uaCfg.ref.srtp_secure_signaling = 0;
 
       final initStatus = _bindings.pjsua_init(uaCfg, logCfg, mediaCfg);
       if (initStatus != 0) {
@@ -140,9 +134,16 @@ extension PjsipEngineOperations on PjsipService {
     });
 
     if (_uiState.isInitialized) {
-      await refreshAudioDevices();
+      // 启动时要允许自动策略跑一遍：如果用户已经戴着耳机，UI 和“下一通
+      // 要使用的设备”应立即选中耳机。但空闲阶段仍由 _releaseSoundDeviceIfIdle()
+      // 释放 PJSIP 声卡，避免注册在线就压低系统其他声音。
+      await _refreshAudioDevices(
+        reason: '启动初始化',
+        logResult: true,
+        allowAutomaticSwitch: true,
+      );
+      _releaseSoundDeviceIfIdle('启动后空闲');
       _startAudioDeviceMonitoring();
-      _startAudioLevelTimer();
     }
   }
 
@@ -193,6 +194,8 @@ extension PjsipEngineOperations on PjsipService {
     required String password,
     required String host,
     SipTransport transport = SipTransport.udp,
+    MediaSecurityConfig? mediaSecurity,
+    IceConfig? iceConfig,
     TurnConfig turnConfig = const TurnConfig(),
     bool registrationEnabled = true,
     bool fromRestore = false,
@@ -244,6 +247,13 @@ extension PjsipEngineOperations on PjsipService {
     }
     if (!_uiState.isInitialized) await init();
     if (!_uiState.isInitialized) return;
+    final effectiveMediaSecurity =
+        mediaSecurity ?? _defaultMediaSecurityForTransport(transport);
+    final requestedIceConfig = iceConfig ?? const IceConfig();
+    final effectiveIceConfig =
+        turnConfig.isUsable && !requestedIceConfig.enabled
+        ? requestedIceConfig.copyWith(enabled: true)
+        : requestedIceConfig;
     final transportId = _ensureSipTransport(transport);
     if (transportId == null) {
       ToastUtil.showError('${transport.label} 传输初始化失败');
@@ -256,14 +266,10 @@ extension PjsipEngineOperations on PjsipService {
       accCfg.ref.register_on_acc_add = registrationEnabled ? 1 : 0;
       // MicroSIP 默认账号 keep-alive 是 15 秒，用于维持 SIP/NAT 信令通道。
       accCfg.ref.ka_interval = 15;
-      // 禁用接通后自动 UPDATE 锁定单 codec，避免 DTLS-SRTP 握手期重协商媒体。
-      accCfg.ref.lock_codec = 0;
-      // PJSIP #2963: DTLS-SRTP 在 IP change re-INVITE 重建媒体后可能卡在
-      // EKEYNOTREADY。保留 Contact/Via 更新，但避免默认 REINIT_MEDIA 重建媒体。
-      accCfg.ref.ip_change_cfg.reinvite_flags &=
-          ~pjsua_call_flag.PJSUA_CALL_REINIT_MEDIA.value;
-      _configureAccountMediaTransport(accCfg);
-      _configureAccountMediaSecurity(accCfg, transport, turnConfig, arena);
+      _configureStunServersIfNeeded(effectiveIceConfig, arena);
+      _configureAccountStun(accCfg, effectiveIceConfig);
+      _configureAccountIce(accCfg, effectiveIceConfig, turnConfig, arena);
+      _configureAccountMediaSecurity(accCfg, effectiveMediaSecurity, transport);
       _pjStr(
         accCfg.ref.id,
         'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
@@ -280,17 +286,13 @@ extension PjsipEngineOperations on PjsipService {
       // 与 MicroSIP 对齐：Via/Contact/SDP 都允许按服务器看到的公网地址重写。
       accCfg.ref.allow_via_rewrite = 1;
       accCfg.ref.allow_contact_rewrite = 2;
+
+      accCfg.ref.allow_sdp_nat_rewrite = 1;
       accCfg.ref.contact_rewrite_method =
           pjsua_contact_rewrite_method.PJSUA_CONTACT_REWRITE_UNREGISTER.value |
           pjsua_contact_rewrite_method
               .PJSUA_CONTACT_REWRITE_ALWAYS_UPDATE
               .value;
-      accCfg.ref.allow_sdp_nat_rewrite = 1;
-      accCfg.ref.sip_stun_useAsInt =
-          pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
-      accCfg.ref.media_stun_useAsInt =
-          pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
-
       accCfg.ref.cred_count = 1;
       final cred = accCfg.ref.cred_info[0];
       _pjStr(cred.realm, '*'.toNativeUtf8(allocator: arena));
@@ -314,6 +316,8 @@ extension PjsipEngineOperations on PjsipService {
         password: password,
         host: normalizedHost,
         transport: transport,
+        mediaSecurity: effectiveMediaSecurity,
+        iceConfig: effectiveIceConfig,
         turnConfig: turnConfig,
         registrationStatus: registrationEnabled ? null : 0,
         registrationStatusText: registrationEnabled ? '注册中' : '已暂停',
@@ -338,15 +342,17 @@ extension PjsipEngineOperations on PjsipService {
             ? '🚀 注册请求已发送: ${account.lineLabel} (${transport.label})'
             : '⏸ 已恢复暂停线路: ${account.lineLabel} (${transport.label})',
       );
-      if (transport == SipTransport.tls) {
-        _addLog('🔐 TLS 线路已启用 DTLS-SRTP 媒体加密');
-        if (turnConfig.isUsable) {
-          _addLog(
-            '🧊 ICE/TURN 中继已启用: ${turnConfig.server} (${turnConfig.transport.label})',
-          );
-        } else {
-          _addLog('🧊 ICE/TURN 未启用，使用基础 DTLS-SRTP 媒体路径');
-        }
+      if (effectiveMediaSecurity.usesSrtp) {
+        _addLog('🔐 媒体加密: ${effectiveMediaSecurity.mode.label}');
+      }
+      if (effectiveIceConfig.hasStunServer) {
+        _addLog('🌐 STUN 服务器: ${effectiveIceConfig.stunServer.trim()}');
+      }
+      if (effectiveIceConfig.enabled) {
+        final turn = turnConfig.isUsable
+            ? '，TURN=${turnConfig.transport.label}:${turnConfig.server.trim()}'
+            : '';
+        _addLog('🧊 ICE 已启用$turn');
       }
       if (!fromRestore) {
         unawaited(_persistSeatEnvironment());
@@ -354,63 +360,227 @@ extension PjsipEngineOperations on PjsipService {
     });
   }
 
-  void _configureAccountMediaTransport(ffi.Pointer<pjsua_acc_config> accCfg) {
-    // 与 MicroSIP 的媒体端口行为对齐做验证：固定从 4000 附近分配 RTP/RTCP，
-    // 避免系统随机高端口在部分 NAT/防火墙下无法完成 DTLS-SRTP 回包。
-    accCfg.ref.rtp_cfg.port = 4000;
-    accCfg.ref.rtp_cfg.port_range = 200;
-    accCfg.ref.rtp_cfg.randomize_port = 0;
-  }
-
-  void _configureAccountMediaSecurity(
-    ffi.Pointer<pjsua_acc_config> accCfg,
-    SipTransport transport,
-    TurnConfig turnConfig,
-    Arena arena,
-  ) {
-    if (transport != SipTransport.tls) {
-      accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_DISABLED.value;
+  Future<void> updateAccount({
+    required int accId,
+    required String username,
+    required String password,
+    required String host,
+    required SipTransport transport,
+    required MediaSecurityConfig mediaSecurity,
+    required IceConfig iceConfig,
+    required TurnConfig turnConfig,
+  }) async {
+    final original = _uiState.accounts[accId];
+    if (original == null || original.isRestoringPlaceholder) return;
+    if (original.registrationActionInProgress) {
+      _addLog('⚠️ 线路注册操作处理中，暂不能编辑: ${original.lineLabel}');
+      ToastUtil.showWarning('线路操作处理中，请稍后');
+      return;
+    }
+    final hasActiveCalls = _uiState.calls.values.any(
+      (call) => call.accountId == accId,
+    );
+    if (hasActiveCalls) {
+      _addLog('⚠️ 线路仍有通话，不能编辑: ${original.lineLabel}');
+      ToastUtil.showWarning('线路仍有通话，不能编辑');
+      return;
+    }
+    if (original.registrationEnabled && !_uiState.isNetworkAvailable) {
+      _addLog('❌ 当前网络不可用，暂不能编辑在线线路: ${original.lineLabel}');
+      ToastUtil.showWarning('当前网络不可用，暂不能编辑在线线路');
       return;
     }
 
-    // TLS 只加密 SIP 信令。Asterisk `media_encryption=dtls` 还要求媒体使用
-    // DTLS-SRTP，否则服务端会因 SDP 媒体协商失败而拒绝音频流。
-    accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
-    // MicroSIP 设置为 0；DTLS-SRTP 自己保护媒体，不再额外要求信令安全等级。
-    accCfg.ref.srtp_secure_signaling = 0;
-    // Asterisk `media_encryption=dtls` 要求 SDP 里出现 fingerprint/setup。
-    // 这里使用 DTLS-only，避免底层在 DTLS 不可用时退回 SDES 并发出 a=crypto。
-    accCfg.ref.srtp_opt.keying_count = 1;
+    final normalizedUsername = username.trim();
+    final normalizedHost = _normalizeSipHost(host, transport);
+    final normalizedHostKey = _sipHostIdentityKey(normalizedHost);
+    final duplicate = _uiState.accounts.values.any(
+      (account) =>
+          account.accId != accId &&
+          account.username == normalizedUsername &&
+          _sipHostIdentityKey(account.host) == normalizedHostKey,
+    );
+    if (duplicate) {
+      _addLog('⚠️ 已存在相同账号和服务器的线路，不能保存编辑: $normalizedUsername@$normalizedHost');
+      ToastUtil.showWarning('已存在相同账号和服务器的线路');
+      return;
+    }
 
-    // srtpOpt.ref.keyingPriority[0] = PjMediaSrtpKeying.dtlsSrtp;
-    // srtpOpt.ref.keyingPriority[1] = PjMediaSrtpKeying.sdes;
-    accCfg.ref.srtp_opt.keying[0] =
-        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP.value;
+    if (!_uiState.isInitialized) await init();
+    if (!_uiState.isInitialized) return;
+    final effectiveIceConfig = turnConfig.isUsable && !iceConfig.enabled
+        ? iceConfig.copyWith(enabled: true)
+        : iceConfig;
+    final transportId = _ensureSipTransport(transport);
+    if (transportId == null) {
+      ToastUtil.showError('${transport.label} 传输初始化失败');
+      return;
+    }
 
+    final modifyStatus = using<int>((Arena arena) {
+      final accCfg = arena<pjsua_acc_config>();
+      _bindings.pjsua_acc_config_default(accCfg);
+      accCfg.ref.transport_id = transportId;
+      accCfg.ref.register_on_acc_add = original.registrationEnabled ? 1 : 0;
+      accCfg.ref.ka_interval = 15;
+      _configureStunServersIfNeeded(effectiveIceConfig, arena);
+      _configureAccountStun(accCfg, effectiveIceConfig);
+      _configureAccountIce(accCfg, effectiveIceConfig, turnConfig, arena);
+      _configureAccountMediaSecurity(accCfg, mediaSecurity, transport);
+      _pjStr(
+        accCfg.ref.id,
+        'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
+          allocator: arena,
+        ),
+      );
+      _pjStr(
+        accCfg.ref.reg_uri,
+        'sip:$normalizedHost;transport=${transport.uriParam}'.toNativeUtf8(
+          allocator: arena,
+        ),
+      );
+      accCfg.ref.allow_via_rewrite = 1;
+      accCfg.ref.allow_contact_rewrite = 2;
+      accCfg.ref.allow_sdp_nat_rewrite = 1;
+      accCfg.ref.contact_rewrite_method =
+          pjsua_contact_rewrite_method.PJSUA_CONTACT_REWRITE_UNREGISTER.value |
+          pjsua_contact_rewrite_method
+              .PJSUA_CONTACT_REWRITE_ALWAYS_UPDATE
+              .value;
+      accCfg.ref.cred_count = 1;
+      final cred = accCfg.ref.cred_info[0];
+      _pjStr(cred.realm, '*'.toNativeUtf8(allocator: arena));
+      _pjStr(cred.scheme, 'digest'.toNativeUtf8(allocator: arena));
+      _pjStr(cred.username, normalizedUsername.toNativeUtf8(allocator: arena));
+      cred.data_type = 0;
+      _pjStr(cred.data, password.toNativeUtf8(allocator: arena));
+      final status = _bindings.pjsua_acc_modify(accId, accCfg);
+      if (status != 0) return status;
+      return _bindings.pjsua_acc_set_transport(accId, transportId);
+    });
+    if (modifyStatus != 0) {
+      _addLog('❌ 编辑线路失败: ${original.lineLabel}, pj_status=$modifyStatus');
+      ToastUtil.showError('编辑线路失败');
+      return;
+    }
+
+    final shouldRegister = original.registrationEnabled;
+    final updated = original.copyWith(
+      username: normalizedUsername,
+      password: password,
+      host: normalizedHost,
+      transport: transport,
+      mediaSecurity: mediaSecurity,
+      iceConfig: effectiveIceConfig,
+      turnConfig: turnConfig,
+      registrationStatus: shouldRegister ? null : 0,
+      registrationStatusText: shouldRegister ? '注册中' : '已暂停',
+      registrationExpires: shouldRegister ? null : 0,
+      registrationEnabled: shouldRegister,
+      registrationActionInProgress: shouldRegister,
+    );
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+      ..[accId] = updated;
+    final defaultAccountId = _uiState.defaultAccountId;
+    final defaultAccount = defaultAccountId == null
+        ? null
+        : accounts[defaultAccountId];
+    _uiState = _uiState.copyWith(
+      accounts: accounts,
+      accId: defaultAccount?.accId ?? -1,
+      host: defaultAccount?.host ?? '',
+    );
+    if (defaultAccountId == accId ||
+        _preferredDefaultLineKey ==
+            _lineKey(original.username, original.host)) {
+      _preferredDefaultLineKey = _lineKey(updated.username, updated.host);
+    }
+    unawaited(_persistSeatEnvironment());
+
+    if (shouldRegister) {
+      final regStatus = _bindings.pjsua_acc_set_registration(accId, 1);
+      if (regStatus != 0) {
+        final failedAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+          ..[accId] = updated.copyWith(
+            registrationStatus: 0,
+            registrationStatusText: '注册失败',
+            registrationExpires: 0,
+            registrationActionInProgress: false,
+          );
+        _uiState = _uiState.copyWith(accounts: failedAccounts);
+        unawaited(_persistSeatEnvironment());
+        _addLog('❌ 编辑后重新注册失败: ${updated.lineLabel}, pj_status=$regStatus');
+        ToastUtil.showError('编辑已保存，但重新注册失败');
+        return;
+      }
+    }
+
+    _addLog(
+      shouldRegister
+          ? '✏️ 线路已更新，正在重新注册: ${updated.lineLabel} (${transport.label})'
+          : '✏️ 已保存暂停线路: ${updated.lineLabel} (${transport.label})',
+    );
+    ToastUtil.showSuccess(shouldRegister ? '线路已更新，正在重新注册' : '线路已保存');
+  }
+
+  MediaSecurityConfig _defaultMediaSecurityForTransport(
+    SipTransport transport,
+  ) {
+    // 兼容旧逻辑：代码里没有显式传媒体加密配置时，TLS 线路仍默认走基础
+    // DTLS-SRTP；弹窗会显式传入用户选择，所以用户选“不加密”不会被覆盖。
+    return transport == SipTransport.tls
+        ? const MediaSecurityConfig(mode: MediaEncryptionMode.dtlsSrtp)
+        : const MediaSecurityConfig();
+  }
+
+  void _configureStunServersIfNeeded(IceConfig iceConfig, Arena arena) {
+    if (!iceConfig.hasStunServer) return;
+    final stunServer = iceConfig.stunServer.trim();
+    final stun = arena<pj_str_t>();
+    _pjStr(stun.ref, stunServer.toNativeUtf8(allocator: arena));
+    final status = _bindings.pjsua_update_stun_servers(1, stun, 0);
+    if (status != 0) {
+      _addLog('⚠️ 更新 STUN 服务器失败: $stunServer, pj_status=$status');
+    }
+  }
+
+  void _configureAccountStun(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    IceConfig iceConfig,
+  ) {
+    if (!iceConfig.hasStunServer) {
+      accCfg.ref.sip_stun_useAsInt =
+          pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
+      accCfg.ref.media_stun_useAsInt =
+          pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
+      return;
+    }
+
+    // STUN 用来发现公网映射地址，可以独立于 ICE 配置；ICE 开启时它会提供
+    // server-reflexive candidate，ICE 关闭时仍可让账号按全局 STUN 设置做 NAT 处理。
+    accCfg.ref.sip_stun_useAsInt = pjsua_stun_use.PJSUA_STUN_USE_DEFAULT.value;
+    accCfg.ref.media_stun_useAsInt =
+        pjsua_stun_use.PJSUA_STUN_RETRY_ON_FAILURE.value;
+  }
+
+  void _configureAccountIce(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    IceConfig iceConfig,
+    TurnConfig turnConfig,
+    Arena arena,
+  ) {
+    if (!iceConfig.enabled) return;
+
+    // ICE 是媒体层 NAT 穿透配置，和 SIP 注册传输无关。仅在用户开启时按账号
+    // 覆盖默认值，避免普通内网/PBX 场景下多生成公网候选地址。
     accCfg.ref.ice_cfg_useAsInt =
         pjsua_ice_config_use.PJSUA_ICE_CONFIG_USE_CUSTOM.value;
+    accCfg.ref.ice_cfg.enable_ice = 1;
+
+    if (!turnConfig.isUsable) return;
     accCfg.ref.turn_cfg_useAsInt =
         pjsua_turn_config_use.PJSUA_TURN_CONFIG_USE_CUSTOM.value;
-
-    if (turnConfig.isUsable) {
-      // 只有配置 TURN 时才启用 ICE。否则 VPN/虚拟网卡容易被采集成错误候选，
-      // 反而破坏基础 DTLS-SRTP 通话。
-      accCfg.ref.ice_cfg.enable_ice = 1;
-      accCfg.ref.ice_cfg.ice_max_host_cands = -1;
-      accCfg.ref.ice_cfg.ice_no_rtcp = 0;
-      accCfg.ref.ice_cfg.ice_always_update = 1;
-      accCfg.ref.ice_cfg.ice_opt.trickleAsInt =
-          pj_ice_sess_trickle.PJ_ICE_SESS_TRICKLE_DISABLED.value;
-      _configureTurnRelay(accCfg, turnConfig, arena);
-    } else {
-      accCfg.ref.ice_cfg.enable_ice = 0;
-      accCfg.ref.turn_cfg.enable_turn = 0;
-    }
-    // 与 MicroSIP 的正常链路对齐：offer 中带 a=rtcp-mux，让 RTP/RTCP 复用
-    // 同一个媒体端口，避免 DTLS-SRTP 同时卡在两条独立通道上。
-    accCfg.ref.rtcp_fb_cfg.dont_use_avpf = 0;
-
-    accCfg.ref.enable_rtcp_mux = 1;
+    _configureTurnRelay(accCfg, turnConfig, arena);
   }
 
   void _configureTurnRelay(
@@ -418,33 +588,88 @@ extension PjsipEngineOperations on PjsipService {
     TurnConfig turnConfig,
     Arena arena,
   ) {
-    if (!turnConfig.isUsable) {
-      accCfg.ref.turn_cfg.enable_turn = 0;
-      return;
-    }
-    accCfg.ref.turn_cfg.enable_turn = 1;
+    final turn = accCfg.ref.turn_cfg;
+    turn.enable_turn = 1;
     _pjStr(
-      accCfg.ref.turn_cfg.turn_server,
+      turn.turn_server,
       turnConfig.server.trim().toNativeUtf8(allocator: arena),
     );
-    accCfg.ref.turn_cfg.turn_conn_typeAsInt = switch (turnConfig.transport) {
-      TurnTransport.udp => pj_turn_tp_type.PJ_TURN_TP_UDP.value,
-      TurnTransport.tcp => pj_turn_tp_type.PJ_TURN_TP_TCP.value,
-      TurnTransport.tls => pj_turn_tp_type.PJ_TURN_TP_TLS.value,
-    };
-    final cred = accCfg.ref.turn_cfg.turn_auth_cred;
+    turn.turn_conn_typeAsInt = _pjTurnTransportType(turnConfig.transport).value;
+
+    final hasCredential =
+        turnConfig.username.trim().isNotEmpty || turnConfig.password.isNotEmpty;
+    if (!hasCredential) return;
+
+    // TURN 鉴权通常使用 long-term credential。realm 用 "*" 让 PJSIP 按服务器
+    // 返回的 realm 完成认证，密码以明文方式交给底层库处理。
+    final cred = turn.turn_auth_cred;
     cred.typeAsInt = pj_stun_auth_cred_type.PJ_STUN_AUTH_CRED_STATIC.value;
-    _pjStr(cred.data.static_cred.realm, '*'.toNativeUtf8(allocator: arena));
+    final staticCred = cred.data.static_cred;
+    _pjStr(staticCred.realm, '*'.toNativeUtf8(allocator: arena));
     _pjStr(
-      cred.data.static_cred.username,
-      turnConfig.username.toNativeUtf8(allocator: arena),
+      staticCred.username,
+      turnConfig.username.trim().toNativeUtf8(allocator: arena),
     );
-    cred.data.static_cred.data_typeAsInt =
-        pj_stun_passwd_type.PJ_STUN_PASSWD_PLAIN.value;
-    _pjStr(
-      cred.data.static_cred.data,
-      turnConfig.password.toNativeUtf8(allocator: arena),
-    );
+    staticCred.data_typeAsInt = pj_stun_passwd_type.PJ_STUN_PASSWD_PLAIN.value;
+    _pjStr(staticCred.data, turnConfig.password.toNativeUtf8(allocator: arena));
+  }
+
+  void _configureAccountMediaSecurity(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    MediaSecurityConfig mediaSecurity,
+    SipTransport transport,
+  ) {
+    final mode = mediaSecurity.mode;
+    if (mode == MediaEncryptionMode.none) {
+      accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_DISABLED.value;
+      return;
+    }
+
+    // SRTP 是媒体加密；DTLS/SDES 只是“SRTP 密钥怎么协商”的两种方式。
+    // mandatory = 对端必须支持 SRTP；optional = 可加密也可回退，兼容性更好。
+    accCfg.ref.use_srtpAsInt = mode.isOptional
+        ? pjmedia_srtp_use.PJMEDIA_SRTP_OPTIONAL.value
+        : pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
+
+    // 1 表示 SRTP 需要安全信令承载。只有 TLS 信令能满足；UDP/TCP 下如果强制
+    // 要求安全信令，PJSIP 会拒绝发起 SRTP，所以这里按传输协议自动放宽。
+    accCfg.ref.srtp_secure_signaling = transport.isSecure ? 1 : 0;
+
+    final keyingMethods = _srtpKeyingMethodsFor(mode);
+    accCfg.ref.srtp_opt.keying_count = keyingMethods.length;
+    for (var i = 0; i < keyingMethods.length; i++) {
+      accCfg.ref.srtp_opt.keying[i] = keyingMethods[i].value;
+    }
+  }
+
+  List<pjmedia_srtp_keying_method> _srtpKeyingMethodsFor(
+    MediaEncryptionMode mode,
+  ) {
+    return switch (mode) {
+      MediaEncryptionMode.none => const [],
+      MediaEncryptionMode.dtlsSrtp => const [
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP,
+      ],
+      MediaEncryptionMode.sdesSrtp => const [
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_SDES,
+      ],
+      MediaEncryptionMode.optionalDtlsFirst => const [
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP,
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_SDES,
+      ],
+      MediaEncryptionMode.optionalSdesFirst => const [
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_SDES,
+        pjmedia_srtp_keying_method.PJMEDIA_SRTP_KEYING_DTLS_SRTP,
+      ],
+    };
+  }
+
+  pj_turn_tp_type _pjTurnTransportType(TurnTransport transport) {
+    return switch (transport) {
+      TurnTransport.udp => pj_turn_tp_type.PJ_TURN_TP_UDP,
+      TurnTransport.tcp => pj_turn_tp_type.PJ_TURN_TP_TCP,
+      TurnTransport.tls => pj_turn_tp_type.PJ_TURN_TP_TLS,
+    };
   }
 
   String _normalizeSipHost(String host, SipTransport transport) {
@@ -650,6 +875,94 @@ extension PjsipEngineOperations on PjsipService {
       _clearDefaultAccountIfUnavailable(accId);
     }
     _addLog('${enabled ? '🌐 重新注册线路' : '⏸ 暂停线路注册'}: ${account.lineLabel}');
+  }
+
+  void disconnectAllAccounts() {
+    if (!_uiState.isInitialized || _uiState.accounts.isEmpty) return;
+    if (_uiState.calls.isNotEmpty) {
+      _addLog('⚠️ 当前仍有通话，不能断开全部线路');
+      ToastUtil.showWarning('请先结束当前通话，再断开全部线路');
+      return;
+    }
+
+    final stopWatch = Stopwatch()..start();
+    final accountsSnapshot = _uiState.accounts.values.toList();
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts);
+    final pendingAccounts = <SipAccountInfo>[];
+    var locallyPaused = 0;
+    var alreadyDisconnected = 0;
+
+    for (final account in accountsSnapshot) {
+      if (account.registrationActionInProgress) {
+        _addLog('⚠️ 跳过处理中线路: ${account.lineLabel}');
+        continue;
+      }
+      if (!account.registrationEnabled && !account.isRegistered) {
+        alreadyDisconnected++;
+        continue;
+      }
+
+      // 已经失败/离线的账号没有必要再向 PJSIP 发 unregister。直接把 UI 和持久化
+      // 状态标记为暂停即可；真正在线或注册中的账号才需要通知 PJSIP。
+      final shouldUnregisterNative =
+          account.isRegistered || account.registrationStatus == null;
+      if (shouldUnregisterNative) {
+        pendingAccounts.add(account);
+      } else {
+        locallyPaused++;
+      }
+      accounts[account.accId] = account.copyWith(
+        registrationStatus: 0,
+        registrationStatusText: shouldUnregisterNative ? '暂停中' : '已暂停',
+        registrationExpires: 0,
+        registrationEnabled: false,
+        registrationActionInProgress: shouldUnregisterNative,
+      );
+    }
+
+    if (pendingAccounts.isEmpty && locallyPaused == 0) {
+      ToastUtil.showWarning(alreadyDisconnected > 0 ? '线路已断开' : '没有可断开的线路');
+      return;
+    }
+
+    // “断开全部”只注销账号，不销毁 pjsua endpoint。pjsua_destroy() 在桌面端
+    // 常会同步等待网络/transport 清理 1 秒左右，放在 UI isolate 会造成明显卡顿。
+    _uiState = _uiState.copyWith(
+      accounts: accounts,
+      defaultAccountId: null,
+      accId: -1,
+      host: '',
+    );
+    unawaited(_persistSeatEnvironment());
+
+    var sent = 0;
+    var failed = 0;
+    for (final account in pendingAccounts) {
+      final status = _bindings.pjsua_acc_set_registration(account.accId, 0);
+      if (status == 0) {
+        sent++;
+        _addLog('⏸ 暂停线路注册: ${account.lineLabel}');
+        continue;
+      }
+
+      failed++;
+      final rollbackAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+        ..[account.accId] = account.copyWith(
+          registrationActionInProgress: false,
+        );
+      _uiState = _uiState.copyWith(accounts: rollbackAccounts);
+      _addLog('❌ 断开线路失败: ${account.lineLabel}, pj_status=$status');
+    }
+
+    if (failed == 0) {
+      ToastUtil.showSuccess(sent > 0 ? '已发送全部线路断开请求' : '已断开全部线路');
+    } else {
+      ToastUtil.showError('部分线路断开失败');
+    }
+    _addLog(
+      '⏱ 断开全部线路请求耗时: ${stopWatch.elapsedMilliseconds}ms, '
+      'sent=$sent, local=$locallyPaused, skipped=$alreadyDisconnected, failed=$failed',
+    );
   }
 
   void removeAccount(int accId) {

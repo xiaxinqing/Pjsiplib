@@ -8,17 +8,23 @@ extension _PjsipNativeCallbacks on PjsipService {
   // 回调时，只是往 Dart isolate 的消息队列投递一个事件后立即返回；回调闭包
   // 的代码会稍后在 Dart isolate 中执行，所以必须先复制原生数据再更新状态。
   //
-  // 控制台诊断使用三个阶段：T1 原生日志、T2 Dart 收到事件、T3 更新业务状态。
-  // _trace 不进入 UI 日志列表，避免 microtask 改变诊断时序。
-  Future<void> _trace(String stage, String msg) async {
+  // _printLog 不进入 UI 日志列表，避免 microtask 改变诊断时序。
+  Future<void> _printLog(String stage, String msg) async {
     debugPrint('🧵 [$stage] t=${DateTime.now().toIso8601String()} | $msg');
   }
 
+  /// 把 PJSIP 的 `pj_str_t` 安全转换成 Dart 字符串。
+  ///
+  /// `pj_str_t` 不是以 `\0` 结尾的 C 字符串，必须按 `slen` 指定长度读取；
+  /// 否则轻则读到脏字符，重则越界。
   String _pjString(pj_str_t value) {
     if (value.ptr == ffi.nullptr || value.slen <= 0) return '';
     return value.ptr.cast<Utf8>().toDartString(length: value.slen);
   }
 
+  /// 格式化单条 SDP attribute，输出类似 `a=rtpmap:0 PCMU/8000`。
+  ///
+  /// 这里主要服务于日志诊断，不参与真实媒体协商。
   String _sdpAttrLine(ffi.Pointer<pjmedia_sdp_attr> attr) {
     if (attr == ffi.nullptr) return '';
     final name = _pjString(attr.ref.name);
@@ -26,6 +32,7 @@ extension _PjsipNativeCallbacks on PjsipService {
     return value.isEmpty ? 'a=$name' : 'a=$name:$value';
   }
 
+  /// 格式化 SDP connection 行，输出类似 `c=IN IP4 1.2.3.4`。
   String _sdpConnLine(ffi.Pointer<pjmedia_sdp_conn> conn) {
     if (conn == ffi.nullptr) return '';
     return 'c=${_pjString(conn.ref.net_type)} '
@@ -33,6 +40,11 @@ extension _PjsipNativeCallbacks on PjsipService {
         '${_pjString(conn.ref.addr)}';
   }
 
+  /// 生成便于人读的 SDP 摘要。
+  ///
+  /// PJSIP 的完整 SDP 结构层级较深；排查 ICE/STUN、DTLS-SRTP、codec 时，
+  /// 只需要会话级属性和 audio media 段即可。这里还限制了最大行数，避免
+  /// 异常 SDP 导致 UI 日志爆量。
   String _sdpSummary(ffi.Pointer<pjmedia_sdp_session> sdp) {
     if (sdp == ffi.nullptr) return '<null>';
     final lines = <String>[];
@@ -75,6 +87,10 @@ extension _PjsipNativeCallbacks on PjsipService {
     return lines.isEmpty ? '<empty>' : lines.join('\n');
   }
 
+  /// 调用 PJSIP 的 `pjsua_call_dump()` 输出媒体诊断。
+  ///
+  /// 常用于媒体 ACTIVE 后或传输错误时确认 SRTP、ICE selected pair、收发包
+  /// 数量和丢包情况。它只读当前 call 的诊断信息，不改变通话状态。
   void _logCallMediaDump(int callId, String reason) {
     if (!_uiState.isInitialized) return;
     using((Arena arena) {
@@ -96,6 +112,10 @@ extension _PjsipNativeCallbacks on PjsipService {
     });
   }
 
+  /// 把 `pjmedia_event_type` 的整数值转换成便于阅读的名称。
+  ///
+  /// 生成绑定里有 enum，但日志里直接打印业务名称更快定位问题；未知值保留
+  /// 原始数字，方便和 PJSIP 源码或原生日志对照。
   String _mediaEventName(int type) {
     return switch (type) {
       0 => 'NONE',
@@ -109,22 +129,10 @@ extension _PjsipNativeCallbacks on PjsipService {
     };
   }
 
-  void _addNativeLog(int level, String msg) {
-    final normalized = msg.trimRight();
-    if (normalized.trim().isEmpty) return;
-
-    // SIP/SDP 报文可能很长。分段写入可以避免终端或 UI 单条日志过长时
-    // 看起来像“后半段丢失”，排查 TLS/SRTP 协商时尤其重要。
-    const chunkSize = 1600;
-    final total = (normalized.length / chunkSize).ceil();
-    for (var i = 0; i < normalized.length; i += chunkSize) {
-      final end = math.min(i + chunkSize, normalized.length);
-      final chunk = normalized.substring(i, end);
-      final part = total > 1 ? ' ${i ~/ chunkSize + 1}/$total' : '';
-      _addLog('[PJSIP Native L$level$part] $chunk');
-    }
-  }
-
+  /// 提取一次 call info 快照，集中打印通话状态、SIP 状态和 Contact。
+  ///
+  /// 这个函数只在同步读取 `pjsua_call_info` 后立即调用；返回值是纯 Dart
+  /// 字符串，可以安全带入后面的 microtask。
   String _callSnapshot(pjsua_call_info info) {
     return 'call=${info.id}, _uiState =${info.state.value}(${_pjString(info.state_text)}), '
         'lastSip=${info.last_status.value}(${_pjString(info.last_status_text)}), '
@@ -154,37 +162,23 @@ extension _PjsipNativeCallbacks on PjsipService {
     };
   }
 
+  /// 创建并保存所有注册给 PJSIP 的 Native 回调。
+  ///
+  /// 这些 `NativeCallable.listener` 必须在 `pjsua_init()` 前创建，并在 service
+  /// dispose 时关闭。listener 是异步回调：PJSIP 工作线程只负责投递事件，
+  /// Dart 闭包稍后才执行，所以每个回调都要特别注意“原生指针生命周期”。
   void _setupCallables() {
-    _logCallable = ffi.NativeCallable.listener((
-      int level,
-      ffi.Pointer<ffi.Char> data,
-      int len,
-    ) {
-      if (!_uiState.isInitialized) return;
-      if (data != ffi.nullptr) {
-        final bytes = data.cast<ffi.Uint8>().asTypedList(len);
-        final msg = utf8.decode(bytes, allowMalformed: true);
-        // [T1 native] PJSIP 报文/日志。虽然 listener 是异步的，但这条能反映
-        // 工作线程侧发生了什么。挂断相关 SIP 报文额外高亮，便于对照后续 T2/T3。
-        final trimmed = msg.trim();
-        final isIncoming = trimmed.contains('<--- Received');
-        final isOutgoing = trimmed.contains('---> Transmitting');
-        final direction = isIncoming
-            ? '收到远端'
-            : isOutgoing
-            ? '本端发出'
-            : 'PJSIP';
-        if (msg.contains('BYE') ||
-            msg.contains('CANCEL') ||
-            msg.contains('SIP/2.0 487') ||
-            msg.contains('SIP/2.0 408')) {
-          _trace('T1 native', '$direction 挂断相关 SIP: $trimmed');
-          _addLog('🧾 $direction 挂断相关 SIP\n$trimmed');
-        }
-        _addNativeLog(level, msg);
-      }
-    });
-
+    // 本地 SDP 创建回调。
+    //
+    // 触发时机：
+    // - PJSIP 为 INVITE/200 OK/re-INVITE 等生成本地 SDP 时触发。
+    //
+    // 用途：
+    // - 打印本地 audio SDP，确认 codec、ICE candidate、DTLS fingerprint/setup。
+    // - 如果启用了 DTLS-SRTP 但 SDP 缺少 fingerprint/setup，直接提示编译配置。
+    //
+    // 注意：
+    // - `sdp/remSdp/pool` 都是原生结构，只能在当前闭包内同步读取。
     _callSdpCreatedCallable = ffi.NativeCallable.listener((
       int callId,
       ffi.Pointer<pjmedia_sdp_session> sdp,
@@ -210,6 +204,14 @@ extension _PjsipNativeCallbacks on PjsipService {
       }
     });
 
+    // 媒体事件回调。
+    //
+    // 触发时机：
+    // - 媒体传输层、RTCP feedback、音视频设备等出现事件时触发。
+    //
+    // 用途：
+    // - 普通事件记一行日志。
+    // - `MEDIA_TP_ERR` 代表 RTP/RTCP/ICE/DTLS 传输错误，额外 dump call 诊断。
     _callMediaEventCallable = ffi.NativeCallable.listener((
       int callId,
       int mediaIndex,
@@ -231,10 +233,22 @@ extension _PjsipNativeCallbacks on PjsipService {
       _addLog('📡 媒体事件: call=$callId, media=$mediaIndex, event=$eventName');
     });
 
+    // 账号注册状态回调。
+    //
+    // 触发时机：
+    // - REGISTER/UNREGISTER 收到响应，或账号注册状态发生变化。
+    //
+    // 用途：
+    // - 更新账号 SIP 状态码、expires、暂停/注册中的 UI 状态。
+    // - 注册成功后选择/提升默认外呼线路。
+    // - 注册失败时清理不可用默认线路并弹出提示。
+    //
+    // 注意：
+    // - `pjsua_acc_info` 属于 Arena；只把 status/expires/text 复制成 Dart 值。
     _regStateCallable = ffi.NativeCallable.listener((int accId) {
       if (!_uiState.isInitialized) return;
       // [T2 enqueue] on_reg_state 闭包入口
-      _trace('T2 enqueue', 'on_reg_state: acc=$accId');
+      _printLog('T2 enqueue', 'on_reg_state: acc=$accId');
       using((Arena arena) {
         final info = arena<pjsua_acc_info>();
         if (_bindings.pjsua_acc_get_info(accId, info) == 0) {
@@ -272,7 +286,7 @@ extension _PjsipNativeCallbacks on PjsipService {
               );
             _uiState = _uiState.copyWith(accounts: accounts);
             if (isPaused && wasActionInProgress) {
-              ToastUtil.showSuccess('线路已暂停');
+              ToastUtil.showSuccess('${account.displayName}线路已暂停');
             } else if (sipStatus == 200 &&
                 expires != 0 &&
                 account.registrationEnabled &&
@@ -300,6 +314,17 @@ extension _PjsipNativeCallbacks on PjsipService {
       });
     });
 
+    // 来电回调。
+    //
+    // 触发时机：
+    // - PJSIP 收到新的 INVITE。
+    //
+    // 用途：
+    // - 读取来电号码和所属账号，把 call 放进 UI 状态。
+    //
+    // 注意：
+    // - `rdata` 是原始 SIP 收包数据，本实现暂不读取。
+    // - call info 仍需同步复制，真正更新 UI 放到 microtask 的 T3 阶段。
     _incomingCallCallable = ffi.NativeCallable.listener((
       int accId,
       int callId,
@@ -307,7 +332,7 @@ extension _PjsipNativeCallbacks on PjsipService {
     ) {
       if (!_uiState.isInitialized) return;
       // [T2 enqueue] on_incoming_call 闭包入口
-      _trace('T2 enqueue', 'on_incoming_call: call=$callId, acc=$accId');
+      _printLog('T2 enqueue', 'on_incoming_call: call=$callId, acc=$accId');
       _addLog('📞 收到来电！ID: $callId, 来自账号: $accId');
 
       using((Arena arena) {
@@ -320,7 +345,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           final callState = info.ref.stateAsInt;
           scheduleMicrotask(() {
             // [T3 handle] 真正更新状态
-            _trace('T3 handle', 'on_incoming_call: 添加 call=$callId');
+            _printLog('T3 handle', 'on_incoming_call: 添加 call=$callId');
             _putCall(
               CallInfo(
                 callId: callId,
@@ -350,6 +375,11 @@ extension _PjsipNativeCallbacks on PjsipService {
     //
     // 修复：get_info 失败时，判定该 call 已被 PJSIP 释放（等价于 DISCONNECTED），
     // 照常清理状态。callId 是按值传入的 int，已被安全拷贝，可放心跨异步使用。
+    //
+    // 通话状态回调负责：
+    // - CALLING/CONNECTING/CONFIRMED/DISCONNECTED 等 SIP dialog 状态同步到 UI。
+    // - CONFIRMED 时记录接通时间并启动计时。
+    // - DISCONNECTED 或 info 已释放时统一清理 call。
     _callStateCallable = ffi.NativeCallable.listener((
       int callId,
       ffi.Pointer<pjsip_event> e,
@@ -358,13 +388,13 @@ extension _PjsipNativeCallbacks on PjsipService {
       // [T2 enqueue] on_call_state 闭包入口。
       // 如果对方挂断时你在控制台看到了 [T1 native] BYE，但这里【没有】T2，
       // 说明是 NativeCallable 层把回调吞了；若 T2 出现了，问题就在下面的处理。
-      _trace('T2 enqueue', 'on_call_state: call=$callId');
+      _printLog('T2 enqueue', 'on_call_state: call=$callId');
 
       using((Arena arena) {
         final info = arena<pjsua_call_info>();
         final gotInfo = _bindings.pjsua_call_get_info(callId, info) == 0;
         // 关键诊断：get_info 是否成功。DISCONNECTED 后 call 被释放会返回非 0。
-        _trace(
+        _printLog(
           'T2 enqueue',
           'on_call_state: call=$callId, get_info成功=$gotInfo'
               '${gotInfo ? ', _uiState =${info.ref.stateAsInt}' : ' (call 已被 PJSIP 释放)'}',
@@ -375,7 +405,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           // 都会走到这里。当作“通话已结束”处理。
           scheduleMicrotask(() {
             // [T3 handle] 走“已释放 → 判定 DISCONNECTED”分支
-            _trace('T3 handle', 'on_call_state: call=$callId 走“已释放”清理分支');
+            _printLog('T3 handle', 'on_call_state: call=$callId 走“已释放”清理分支');
             _addLog(
               '📞 通话已结束: call=$callId\n'
               '原因: info 已释放，判定为 DISCONNECTED\n'
@@ -397,7 +427,10 @@ extension _PjsipNativeCallbacks on PjsipService {
 
         scheduleMicrotask(() {
           // [T3 handle] get_info 成功分支
-          _trace('T3 handle', 'on_call_state: call=$callId, state=$callState');
+          _printLog(
+            'T3 handle',
+            'on_call_state: call=$callId, state=$callState',
+          );
           _addLog('📞 通话状态回调: $snapshot');
           if (callState == pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value) {
             // 少数情况下 isolate 抢在 PJSIP 释放 call 之前执行，get_info 成功
@@ -413,6 +446,7 @@ extension _PjsipNativeCallbacks on PjsipService {
             _addLog('通话状态变更: $callId -> $callState');
             final isConfirmed =
                 callState == pjsip_inv_state.PJSIP_INV_STATE_CONFIRMED.value;
+
             // 进入 CONFIRMED 时记录接通时刻并启动计时。若已在通话中，保留原
             // connectedAt，避免中途的状态刷新把计时清零。
             final prev = _uiState.calls[callId];
@@ -439,10 +473,23 @@ extension _PjsipNativeCallbacks on PjsipService {
       });
     });
 
+    // 通话媒体状态回调。
+    //
+    // 触发时机：
+    // - SDP 协商完成、媒体 ACTIVE、hold/unhold、媒体错误等。
+    //
+    // 用途：
+    // - 更新本地/远端 hold 标记。
+    // - 媒体 ACTIVE 后才打开声卡并连接 PJSIP conference bridge。
+    // - 会议通话时重建三方桥；非当前活动通话保持声卡断开。
+    //
+    // 注意：
+    // - 这里是“真正接声卡”的入口。注册在线、空闲设备检测都不应提前打开声卡，
+    //   否则 macOS 会压低系统其他声音。
     _callMediaStateCallable = ffi.NativeCallable.listener((int callId) {
       if (!_uiState.isInitialized) return;
       // [T2 enqueue] on_call_media_state 闭包入口
-      _trace('T2 enqueue', 'on_call_media_state: call=$callId');
+      _printLog('T2 enqueue', 'on_call_media_state: call=$callId');
       using((Arena arena) {
         final info = arena<pjsua_call_info>();
         final gotInfo = _bindings.pjsua_call_get_info(callId, info) == 0;
@@ -461,7 +508,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           };
         }
 
-        _trace(
+        _printLog(
           'T2 enqueue',
           'on_call_media_state: call=$callId, get_info成功=$gotInfo'
               '${gotInfo ? ', media=$mediaStatusName(${info.ref.media_statusAsInt}), slot=${info.ref.conf_slot}' : ''}',
@@ -476,7 +523,10 @@ extension _PjsipNativeCallbacks on PjsipService {
           // [T3 handle] 更新 hold 状态
           final current = _uiState.calls[callId];
           if (current == null) {
-            _trace('T3 handle', 'on_call_media_state: call=$callId 不在列表中，跳过');
+            _printLog(
+              'T3 handle',
+              'on_call_media_state: call=$callId 不在列表中，跳过',
+            );
             return;
           }
 
@@ -486,10 +536,10 @@ extension _PjsipNativeCallbacks on PjsipService {
           // 无法从本地操作预知的远端 Hold 状态变化。
           if (holdFlags.remote && !current.isRemoteOnHold) {
             _addLog('⏸️ 对方已暂停通话: call=$callId');
-            _trace('T3 handle', 'on_call_media_state: 检测到远程 HOLD');
+            _printLog('T3 handle', 'on_call_media_state: 检测到远程 HOLD');
           } else if (!holdFlags.remote && current.isRemoteOnHold) {
             _addLog('▶️ 对方已恢复通话: call=$callId');
-            _trace('T3 handle', 'on_call_media_state: 检测到远程 UNHOLD');
+            _printLog('T3 handle', 'on_call_media_state: 检测到远程 UNHOLD');
           }
 
           _putCall(
@@ -503,6 +553,9 @@ extension _PjsipNativeCallbacks on PjsipService {
         if (mediaStatusInt ==
                 pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value &&
             confSlot != invalidId) {
+          // 空闲阶段只预选设备，不打开声卡；媒体真正 ACTIVE 时才按需打开，
+          // 然后再连接 conference bridge，避免注册在线期间影响系统外放音量。
+          if (!_ensureSoundDeviceOpen('通话媒体已激活')) return;
           // 会议成员不受“只能有一个 activeCallId”的限制。会议桥会把本机声卡、
           // 客户和经理三方互相连接；后续任意一路媒体重新协商完成时都会重建桥。
           if (_uiState.isConferenceActive &&
@@ -547,6 +600,14 @@ extension _PjsipNativeCallbacks on PjsipService {
       });
     });
 
+    // IP 变化处理进度回调。
+    //
+    // 触发时机：
+    // - 网络切换、IP 变化、PJSIP 尝试重注册/更新 Contact 等过程中。
+    //
+    // 注意：
+    // - `info` 指针只在原生回调期间有效；listener 异步投递后不再安全。
+    // - 当前只传递 op/status 两个按值参数给网络处理逻辑。
     // info 指针只在原生回调期间有效，而 NativeCallable.listener 会异步投递到
     // Dart isolate，所以这里刻意只使用按值复制的 op/status，不读取 info。
     _ipChangeProgressCallable = ffi.NativeCallable.listener((
@@ -558,6 +619,10 @@ extension _PjsipNativeCallbacks on PjsipService {
     });
   }
 
+  /// 判断注册失败是否更像网络问题，而不是账号密码或服务器拒绝。
+  ///
+  /// 408/503/5xx 通常意味着超时、服务不可用或网关错误；401/403 这类鉴权
+  /// 失败不应把整体网络状态标记为 failed。
   bool _isNetworkRegistrationFailure(int sipStatus) {
     return sipStatus == 408 || sipStatus == 503 || sipStatus >= 500;
   }

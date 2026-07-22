@@ -108,6 +108,13 @@ extension _HomeCalls on _MyHomePageState {
                     )
                   else
                     SizedBox(height: compact ? 32 : 50),
+                  if (primary.isConnected) ...[
+                    SizedBox(height: compact ? 12 : 16),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 380),
+                      child: _buildCallAudioMeters(uiState, compact: compact),
+                    ),
+                  ],
                   SizedBox(height: compact ? 14 : 20),
                   if (isConferenceMember)
                     Chip(
@@ -355,10 +362,8 @@ extension _HomeCalls on _MyHomePageState {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    _buildTooltipText(
                       _displayRemote(call.remoteUri),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
@@ -368,10 +373,8 @@ extension _HomeCalls on _MyHomePageState {
                     ),
                     if (account != null) ...[
                       const SizedBox(height: 3),
-                      Text(
+                      _buildTooltipText(
                         '${account.lineLabel} · ${account.transportLabel}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
                         style: Theme.of(
                           context,
                         ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -386,6 +389,10 @@ extension _HomeCalls on _MyHomePageState {
                 const Icon(Icons.graphic_eq, size: 18),
             ],
           ),
+          if (call.isConnected && (isActive || isConferenceMember)) ...[
+            const SizedBox(height: 10),
+            _buildCompactCallAudioMeters(uiState),
+          ],
           const SizedBox(height: 10),
           Wrap(
             spacing: 8,

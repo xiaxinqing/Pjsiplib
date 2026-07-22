@@ -16,18 +16,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
   final TextEditingController _numberController = TextEditingController(
     text: '6529',
   );
-  final TextEditingController _usernameController = TextEditingController(
-    text: '6523',
-  );
-  final TextEditingController _passwordController = TextEditingController(
-    text: 'veserve888',
-  );
-  final TextEditingController _hostController = TextEditingController(
-    text: '139.59.100.15',
-  );
-  final TextEditingController _turnServerController = TextEditingController();
-  final TextEditingController _turnUsernameController = TextEditingController();
-  final TextEditingController _turnPasswordController = TextEditingController();
   late final TabController _settingsTabController;
   Timer? _settingsPrewarmTimer;
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
@@ -35,12 +23,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
   int _settingsTabIndex = 0;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
-  bool _hidePassword = true;
-  bool _hideTurnPassword = true;
-  bool _turnEnabled = false;
   bool _settingsPrewarmVisible = false;
-  SipTransport _selectedLineTransport = SipTransport.udp;
-  TurnTransport _selectedTurnTransport = TurnTransport.udp;
 
   @override
   void initState() {
@@ -62,12 +45,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
       ..removeListener(_handleSettingsTabChanged)
       ..dispose();
     _numberController.dispose();
-    _usernameController.dispose();
-    _passwordController.dispose();
-    _hostController.dispose();
-    _turnServerController.dispose();
-    _turnUsernameController.dispose();
-    _turnPasswordController.dispose();
     super.dispose();
   }
 
@@ -174,27 +151,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     service.hangupCall(callId);
   }
 
-  void _registerLine(PjsipService service) {
-    final username = _usernameController.text.trim();
-    final host = _hostController.text.trim();
-    if (username.isEmpty || host.isEmpty) return;
-    service.register(
-      username: username,
-      password: _passwordController.text,
-      host: host,
-      transport: _selectedLineTransport,
-      turnConfig: TurnConfig(
-        enabled: _turnEnabled && _selectedLineTransport == SipTransport.tls,
-        server: _turnServerController.text.trim(),
-        username: _turnUsernameController.text.trim(),
-        password: _turnPasswordController.text,
-        transport: _selectedTurnTransport,
-      ),
-    );
-    _usernameController.clear();
-    _passwordController.clear();
-  }
-
   void _selectSection(_WorkspaceSection section) {
     setState(() => _section = section);
   }
@@ -203,32 +159,43 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     setState(() => _showInCallDialpad = !_showInCallDialpad);
   }
 
-  void _togglePasswordVisibility() {
-    setState(() => _hidePassword = !_hidePassword);
-  }
-
-  void _toggleTurnPasswordVisibility() {
-    setState(() => _hideTurnPassword = !_hideTurnPassword);
-  }
-
-  void _setTurnEnabled(bool value) {
-    setState(() => _turnEnabled = value);
-  }
-
-  void _selectLineTransport(SipTransport transport) {
-    setState(() => _selectedLineTransport = transport);
-  }
-
-  void _selectTurnTransport(TurnTransport transport) {
-    setState(() => _selectedTurnTransport = transport);
-  }
-
   void _setDiagnosticLogsVisible(bool value) {
     setState(() => _showDiagnosticLogs = value);
   }
 
   void _selectOutgoingAccount(int? accountId) {
     setState(() => _selectedOutgoingAccountId = accountId);
+  }
+
+  Future<void> _showAddAccountDialog(
+    PjsipUIState uiState,
+    PjsipService service,
+  ) {
+    return _showAccountDialog(uiState, service);
+  }
+
+  Future<void> _showEditAccountDialog(
+    PjsipUIState uiState,
+    PjsipService service,
+    SipAccountInfo account,
+  ) {
+    return _showAccountDialog(uiState, service, account: account);
+  }
+
+  Future<void> _showAccountDialog(
+    PjsipUIState uiState,
+    PjsipService service, {
+    SipAccountInfo? account,
+  }) {
+    return showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (context) => AddAccountDialog(
+        service: service,
+        isNetworkAvailable: uiState.isNetworkAvailable,
+        account: account,
+      ),
+    );
   }
 
   void _openSettingsDrawer({int tabIndex = 0}) {

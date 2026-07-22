@@ -44,6 +44,8 @@ class _PersistedSipLine {
     required this.password,
     required this.host,
     required this.transport,
+    required this.mediaSecurity,
+    required this.iceConfig,
     required this.turnConfig,
     required this.registrationEnabled,
   });
@@ -52,6 +54,8 @@ class _PersistedSipLine {
   final String password;
   final String host;
   final SipTransport transport;
+  final MediaSecurityConfig mediaSecurity;
+  final IceConfig iceConfig;
   final TurnConfig turnConfig;
   final bool registrationEnabled;
 
@@ -63,6 +67,10 @@ class _PersistedSipLine {
       'password': password,
       'host': host,
       'transport': transport.name,
+      // 媒体加密是账号级配置：信令传输和 RTP/SRTP 是否加密是两件事。
+      'mediaSecurity': {'mode': mediaSecurity.mode.storageKey},
+      // STUN 可独立保存；ICE 开关只控制是否生成 ICE 候选。
+      'ice': {'enabled': iceConfig.enabled, 'stunServer': iceConfig.stunServer},
       'turn': {
         'enabled': turnConfig.enabled,
         'server': turnConfig.server,
@@ -76,6 +84,18 @@ class _PersistedSipLine {
 
   static _PersistedSipLine fromJson(Map<String, Object?> json) {
     final transportName = json['transport'] as String?;
+    final transport = SipTransport.values.firstWhere(
+      (transport) => transport.name == transportName,
+      orElse: () => SipTransport.udp,
+    );
+    final rawMediaSecurity = json['mediaSecurity'];
+    final mediaSecurityJson = rawMediaSecurity is Map
+        ? Map<String, Object?>.from(rawMediaSecurity)
+        : const <String, Object?>{};
+    final rawIce = json['ice'];
+    final iceJson = rawIce is Map
+        ? Map<String, Object?>.from(rawIce)
+        : const <String, Object?>{};
     final rawTurn = json['turn'];
     final turnJson = rawTurn is Map
         ? Map<String, Object?>.from(rawTurn)
@@ -85,9 +105,16 @@ class _PersistedSipLine {
       username: (json['username'] as String?)?.trim() ?? '',
       password: json['password'] as String? ?? '',
       host: (json['host'] as String?)?.trim() ?? '',
-      transport: SipTransport.values.firstWhere(
-        (transport) => transport.name == transportName,
-        orElse: () => SipTransport.udp,
+      transport: transport,
+      mediaSecurity: MediaSecurityConfig(
+        mode: _mediaEncryptionFromStorage(
+          mediaSecurityJson['mode'] as String?,
+          transport,
+        ),
+      ),
+      iceConfig: IceConfig(
+        enabled: iceJson['enabled'] as bool? ?? false,
+        stunServer: (iceJson['stunServer'] as String?)?.trim() ?? '',
       ),
       turnConfig: TurnConfig(
         enabled: turnJson['enabled'] as bool? ?? false,
@@ -102,10 +129,26 @@ class _PersistedSipLine {
       registrationEnabled: json['registrationEnabled'] as bool? ?? true,
     );
   }
+
+  static MediaEncryptionMode _mediaEncryptionFromStorage(
+    String? storageKey,
+    SipTransport transport,
+  ) {
+    if (storageKey == null || storageKey.isEmpty) {
+      // 兼容旧版本保存的数据：以前 TLS 线路注册时默认启用基础 DTLS-SRTP。
+      return transport == SipTransport.tls
+          ? MediaEncryptionMode.dtlsSrtp
+          : MediaEncryptionMode.none;
+    }
+    return MediaEncryptionMode.values.firstWhere(
+      (mode) => mode.storageKey == storageKey,
+      orElse: () => MediaEncryptionMode.none,
+    );
+  }
 }
 
 extension PjsipPersistenceOperations on PjsipService {
-  Future<void> _restoreSeatEnvironment() async {
+  Future<void> _loadCachedAgent() async {
     if (_isDisposed) return;
     _seatRestoreInProgress = true;
     var shouldPersistAfterRestore = false;
@@ -145,6 +188,8 @@ extension PjsipPersistenceOperations on PjsipService {
           password: line.password,
           host: line.host,
           transport: line.transport,
+          mediaSecurity: line.mediaSecurity,
+          iceConfig: line.iceConfig,
           turnConfig: line.turnConfig,
           registrationEnabled: line.registrationEnabled,
           fromRestore: true,
@@ -195,6 +240,8 @@ extension PjsipPersistenceOperations on PjsipService {
               password: account.password,
               host: account.host,
               transport: account.transport,
+              mediaSecurity: account.mediaSecurity,
+              iceConfig: account.iceConfig,
               turnConfig: account.turnConfig,
               registrationEnabled: account.registrationEnabled,
             ),
@@ -219,6 +266,8 @@ extension PjsipPersistenceOperations on PjsipService {
         password: line.password,
         host: normalizedHost,
         transport: line.transport,
+        mediaSecurity: line.mediaSecurity,
+        iceConfig: line.iceConfig,
         turnConfig: line.turnConfig,
         registrationStatus: line.registrationEnabled ? null : 0,
         registrationStatusText: line.registrationEnabled ? '恢复中' : '已暂停',

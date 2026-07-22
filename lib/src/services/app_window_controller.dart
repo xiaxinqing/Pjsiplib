@@ -22,12 +22,21 @@ class AppWindowController {
 
     await windowManager.ensureInitialized();
 
-    const options = WindowOptions(
-      size: Size(1280, 780),
+    // macOS keeps the native traffic-light buttons when the title bar is
+    // hidden, while Windows/Linux hide the system window controls as well.
+    final titleBarStyle = Platform.isMacOS
+        ? TitleBarStyle.hidden
+        : TitleBarStyle.normal;
+    final initialSize = Platform.isMacOS
+        ? const Size(1280, 780)
+        : const Size(1120, 720);
+
+    final options = WindowOptions(
+      size: initialSize,
       minimumSize: minimumSize,
       center: true,
-      title: 'Thruv',
-      titleBarStyle: TitleBarStyle.hidden,
+      title: 'VPhone',
+      titleBarStyle: titleBarStyle,
     );
 
     await windowManager.waitUntilReadyToShow(options, () async {

@@ -214,7 +214,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Thruv'), findsOneWidget);
+    expect(find.text('VPhone'), findsOneWidget);
     expect(find.text('拨号'), findsWidgets);
     expect(find.text('设置'), findsOneWidget);
   });
@@ -232,7 +232,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Thruv'), findsOneWidget);
+    expect(find.text('VPhone'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,9 +15,11 @@ part 'src/ui/home/home_page.dart';
 part 'src/ui/home/home_sidebar.dart';
 part 'src/ui/home/home_workspace.dart';
 part 'src/ui/home/home_calls.dart';
+part 'src/ui/home/home_call_audio_meters.dart';
 part 'src/ui/home/home_helpers.dart';
 part 'src/ui/settings/home_settings.dart';
 part 'src/ui/settings/home_settings_account.dart';
+part 'src/ui/settings/add_account_dialog.dart';
 part 'src/ui/settings/home_settings_audio.dart';
 part 'src/ui/settings/home_settings_call.dart';
 part 'src/ui/settings/home_settings_diagnostics.dart';
@@ -37,7 +40,7 @@ class MyApp extends StatelessWidget {
       brightness: Brightness.light,
     );
     return MaterialApp(
-      title: 'Thruv',
+      title: 'VPhone',
       navigatorKey: ToastUtil.navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

@@ -38,6 +38,61 @@ enum TurnTransport {
   final String storageKey;
 }
 
+/// 媒体加密方式。
+///
+/// SIP 传输（UDP/TCP/TLS）只决定信令怎么走；语音 RTP 是否加密由这里决定。
+/// PJSIP 当前支持两类 SRTP 密钥交换：
+///
+/// - DTLS-SRTP：媒体层 DTLS 握手协商密钥，Asterisk `media_encryption=dtls`
+///   通常需要这个。
+/// - SDES-SRTP：密钥放在 SDP 的 `a=crypto` 中，必须配合 TLS 信令才比较安全。
+enum MediaEncryptionMode {
+  none('不加密 RTP', 'none'),
+  sdesSrtp('SDES-SRTP', 'sdes_srtp'),
+  dtlsSrtp('DTLS-SRTP', 'dtls_srtp'),
+  optionalDtlsFirst('可选 SRTP，优先 DTLS', 'optional_dtls_first'),
+  optionalSdesFirst('可选 SRTP，优先 SDES', 'optional_sdes_first');
+
+  const MediaEncryptionMode(this.label, this.storageKey);
+
+  final String label;
+  final String storageKey;
+
+  bool get usesSrtp => this != MediaEncryptionMode.none;
+
+  bool get isOptional =>
+      this == MediaEncryptionMode.optionalDtlsFirst ||
+      this == MediaEncryptionMode.optionalSdesFirst;
+}
+
+class MediaSecurityConfig {
+  const MediaSecurityConfig({this.mode = MediaEncryptionMode.none});
+
+  final MediaEncryptionMode mode;
+
+  bool get usesSrtp => mode.usesSrtp;
+
+  MediaSecurityConfig copyWith({MediaEncryptionMode? mode}) {
+    return MediaSecurityConfig(mode: mode ?? this.mode);
+  }
+}
+
+class IceConfig {
+  const IceConfig({this.enabled = false, this.stunServer = ''});
+
+  final bool enabled;
+  final String stunServer;
+
+  bool get hasStunServer => stunServer.trim().isNotEmpty;
+
+  IceConfig copyWith({bool? enabled, String? stunServer}) {
+    return IceConfig(
+      enabled: enabled ?? this.enabled,
+      stunServer: stunServer ?? this.stunServer,
+    );
+  }
+}
+
 class TurnConfig {
   const TurnConfig({
     this.enabled = false,
@@ -82,6 +137,8 @@ class SipAccountInfo {
   final String password;
   final String host;
   final SipTransport transport;
+  final MediaSecurityConfig mediaSecurity;
+  final IceConfig iceConfig;
   final TurnConfig turnConfig;
   final int? registrationStatus;
   final String registrationStatusText;
@@ -95,6 +152,8 @@ class SipAccountInfo {
     this.password = '',
     required this.host,
     this.transport = SipTransport.udp,
+    this.mediaSecurity = const MediaSecurityConfig(),
+    this.iceConfig = const IceConfig(),
     this.turnConfig = const TurnConfig(),
     this.registrationStatus,
     this.registrationStatusText = '注册中',
@@ -109,6 +168,8 @@ class SipAccountInfo {
     String? password,
     String? host,
     SipTransport? transport,
+    MediaSecurityConfig? mediaSecurity,
+    IceConfig? iceConfig,
     TurnConfig? turnConfig,
     Object? registrationStatus = _unset,
     String? registrationStatusText,
@@ -122,6 +183,8 @@ class SipAccountInfo {
       password: password ?? this.password,
       host: host ?? this.host,
       transport: transport ?? this.transport,
+      mediaSecurity: mediaSecurity ?? this.mediaSecurity,
+      iceConfig: iceConfig ?? this.iceConfig,
       turnConfig: turnConfig ?? this.turnConfig,
       registrationStatus: identical(registrationStatus, _unset)
           ? this.registrationStatus

@@ -36,6 +36,9 @@ part 'pjsip_parts/pjsip_network.dart';
 part 'pjsip_parts/pjsip_persistence.dart';
 
 class PjsipService extends Notifier<PjsipUIState> {
+  static const int _maxUiLogEntries = 300;
+  static const Duration _logFlushInterval = Duration(milliseconds: 80);
+
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
@@ -51,8 +54,11 @@ class PjsipService extends Notifier<PjsipUIState> {
   // 通话计时器：接通后每秒触发一次 state 刷新，让 UI 上的时长走动。
   // duration 本身由 CallInfo.connectedAt 实时算出，timer 只负责触发重建。
   Timer? _callTimer;
+  Timer? _logFlushTimer;
+  Timer? _startupWarmupTimer;
   Timer? _networkChangeTimer;
   Timer? _ipChangeTimeoutTimer;
+  final List<PjsipLog> _pendingLogs = <PjsipLog>[];
   bool _ipChangeInProgress = false;
   bool _ipChangeHadError = false;
   bool _pendingIpChange = false;
@@ -76,10 +82,6 @@ class PjsipService extends Notifier<PjsipUIState> {
       : '$_nativeLogDirectoryPath/pjsip_lib_native.log';
 
   // 保持对 Callable 的引用，防止被 GC 回收
-  late ffi.NativeCallable<
-    ffi.Void Function(ffi.Int, ffi.Pointer<ffi.Char>, ffi.Int)
-  >
-  _logCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _regStateCallable;
   late ffi.NativeCallable<
     ffi.Void Function(ffi.Int, ffi.Int, ffi.Pointer<pjsip_rx_data>)
@@ -126,18 +128,55 @@ class PjsipService extends Notifier<PjsipUIState> {
     ref.onDispose(_cleanup);
     // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
     scheduleMicrotask(_startConnectivityMonitoring);
-    scheduleMicrotask(_restoreSeatEnvironment);
+    _scheduleStartupWarmup();
     return PjsipUIState(logs: []);
+  }
+
+  void _scheduleStartupWarmup() {
+    _startupWarmupTimer?.cancel();
+    // 让首帧和基础布局先出来，再预热 PJSIP。这样首次添加线路时不用把
+    // create/init/start、transport 创建、codec 精简和音频设备枚举都压在点击事件里。
+    _startupWarmupTimer = Timer(const Duration(milliseconds: 250), () {
+      _startupWarmupTimer = null;
+      unawaited(_warmUpAfterStartup());
+    });
+  }
+
+  Future<void> _warmUpAfterStartup() async {
+    if (_isDisposed) return;
+    await init();
+    if (_isDisposed) return;
+    await _loadCachedAgent();
   }
 
   void _addLog(String msg) {
     debugPrint('🔔 printLog: ID $msg');
-    scheduleMicrotask(() {
-      state = state.copyWith(logs: [...state.logs, PjsipLog(msg)]);
-    });
+    if (_isDisposed) return;
+
+    // PJSIP 注册、ICE/DTLS 协商、音频设备枚举会在很短时间内产生成批日志。
+    // 如果每条日志都立即 copy 一次完整 logs 列表并通知 Riverpod，设置页和拨号页
+    // 会被迫连续重建，用户看到的就是首次启动/添加账号时明显卡顿。
+    _pendingLogs.add(PjsipLog(msg));
+    _logFlushTimer ??= Timer(_logFlushInterval, _flushPendingLogs);
+  }
+
+  void _flushPendingLogs() {
+    _logFlushTimer = null;
+    if (_isDisposed || _pendingLogs.isEmpty) return;
+
+    final pending = List<PjsipLog>.of(_pendingLogs);
+    _pendingLogs.clear();
+    final merged = <PjsipLog>[...state.logs, ...pending];
+    final logs = merged.length <= _maxUiLogEntries
+        ? merged
+        : merged.sublist(merged.length - _maxUiLogEntries);
+    state = state.copyWith(logs: logs);
   }
 
   void clearLogs() {
+    _logFlushTimer?.cancel();
+    _logFlushTimer = null;
+    _pendingLogs.clear();
     state = state.copyWith(logs: const []);
   }
 
@@ -170,6 +209,7 @@ class PjsipService extends Notifier<PjsipUIState> {
 
   void stop() {
     if (!state.isInitialized) return;
+    final stopWatch = Stopwatch()..start();
     _stopCallTimer();
     _stopMicrophoneTestRecorder();
     _stopSpeakerTestPlayer();
@@ -181,7 +221,11 @@ class PjsipService extends Notifier<PjsipUIState> {
     _ipChangeInProgress = false;
     _ipChangeHadError = false;
     _pendingIpChange = false;
+
+    final destroyWatch = Stopwatch()..start();
     _bindings.pjsua_destroy();
+    final destroyMs = destroyWatch.elapsedMilliseconds;
+
     _mediaConnectedCalls.clear();
     _sipTransportIds.clear();
     state = state.copyWith(
@@ -210,6 +254,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       audioDeviceStatus: '设备监控已停止',
       allowInCallAudioDeviceSwitch: false,
     );
+    _addLog(
+      '⏱ 断开全部耗时: total=${stopWatch.elapsedMilliseconds}ms, pjsua_destroy=${destroyMs}ms',
+    );
     _addLog('⏹ 引擎已关闭');
   }
 
@@ -217,6 +264,11 @@ class PjsipService extends Notifier<PjsipUIState> {
     _isDisposed = true;
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
+    _startupWarmupTimer?.cancel();
+    _startupWarmupTimer = null;
+    _logFlushTimer?.cancel();
+    _logFlushTimer = null;
+    _pendingLogs.clear();
     _stopCallTimer();
     _stopMicrophoneTestRecorder();
     _stopSpeakerTestPlayer();
@@ -232,7 +284,6 @@ class PjsipService extends Notifier<PjsipUIState> {
       _mediaConnectedCalls.clear();
       _sipTransportIds.clear();
     }
-    _logCallable.close();
     _regStateCallable.close();
     _incomingCallCallable.close();
     _callStateCallable.close();

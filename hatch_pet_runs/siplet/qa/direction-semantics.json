@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "reviewed_by": "independent_final_visual_qa_worker",
+  "directions": [
+    {"direction": "000", "expected": "up", "verdict": "pass", "observed": "eyes and head aim upward", "reason": "Pupils sit high and the face/head reads as looking toward the top edge."},
+    {"direction": "022.5", "expected": "up-right", "verdict": "pass", "observed": "up-right", "reason": "Gaze lifts with a slight screen-right turn."},
+    {"direction": "045", "expected": "up-right", "verdict": "pass", "observed": "up-right", "reason": "Face and pupils read upper-right."},
+    {"direction": "067.5", "expected": "up-right", "verdict": "pass", "observed": "up-right", "reason": "Stronger right turn retains upward gaze."},
+    {"direction": "090", "expected": "right", "verdict": "pass", "observed": "right", "reason": "Cardinal clearly faces screen-right."},
+    {"direction": "112.5", "expected": "down-right", "verdict": "pass", "observed": "down-right", "reason": "Right turn includes downward eye and head cue."},
+    {"direction": "135", "expected": "down-right", "verdict": "pass", "observed": "down-right", "reason": "Down-right quadrant is readable."},
+    {"direction": "157.5", "expected": "down-right", "verdict": "pass", "observed": "down-right", "reason": "Near-down pose still retains a rightward cue."},
+    {"direction": "180", "expected": "down", "verdict": "pass", "observed": "down", "reason": "Cardinal clearly looks downward."},
+    {"direction": "202.5", "expected": "down-left", "verdict": "pass", "observed": "down-left", "reason": "Left turn includes downward cue."},
+    {"direction": "225", "expected": "down-left", "verdict": "pass", "observed": "down-left", "reason": "Down-left quadrant is readable."},
+    {"direction": "247.5", "expected": "down-left", "verdict": "warning", "observed": "left with subtle downward axis", "reason": "Screen-left is clear; the vertical/down axis is subtle but acceptable as an intermediate pose in the labeled loop."},
+    {"direction": "270", "expected": "left", "verdict": "pass", "observed": "left", "reason": "Cardinal clearly faces screen-left."},
+    {"direction": "292.5", "expected": "up-left", "verdict": "pass", "observed": "up-left", "reason": "Left turn includes upward cue."},
+    {"direction": "315", "expected": "up-left", "verdict": "pass", "observed": "up-left", "reason": "Up-left quadrant is readable."},
+    {"direction": "337.5", "expected": "up-left", "verdict": "pass", "observed": "up-left", "reason": "Near-up pose still retains a leftward cue."}
+  ],
+  "warnings": [
+    "247.5 down-left has a subtle vertical/down axis; accepted because labeled loop context remains coherent and cardinals pass.",
+    "Continuity metrics flag 157.5->180 and 337.5->000 area/diff outliers; accepted after visual QA found no visible snap, pop, reversal, or identity break.",
+    "Stable-slots extraction warnings are accepted after visual review confirmed stable placement and no clipping."
+  ]
+}
