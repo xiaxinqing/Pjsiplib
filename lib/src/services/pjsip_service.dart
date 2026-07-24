@@ -45,6 +45,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
+  final Map<int, String> _callNotes = <int, String>{};
+  final Map<int, String> _sharedConferenceNotes = <int, String>{};
   final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 

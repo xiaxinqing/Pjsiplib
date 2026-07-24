@@ -63,6 +63,7 @@ class CallHistoryEntries extends Table {
   IntColumn get ringSeconds => integer().withDefault(const Constant(0))();
   IntColumn get sipStatusCode => integer().nullable()();
   TextColumn get hangupReason => text().nullable()();
+  TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 }
 
@@ -137,7 +138,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -154,6 +155,9 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
         await migrator.createTable(dbContacts);
         await migrator.createTable(dbContactPhones);
         await _createContactIndexes();
+      }
+      if (from < 4) {
+        await migrator.addColumn(callHistoryEntries, callHistoryEntries.note);
       }
     },
   );
@@ -227,7 +231,8 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
             table.phoneNumber.lower().contains(normalizedKeyword) |
             table.remoteUri.lower().contains(normalizedKeyword) |
             table.displayName.lower().contains(normalizedKeyword) |
-            table.accountLabel.lower().contains(normalizedKeyword),
+            table.accountLabel.lower().contains(normalizedKeyword) |
+            table.note.lower().contains(normalizedKeyword),
       );
     }
     return query.watch();
@@ -278,6 +283,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     String? accountLabel,
     int? sipStatusCode,
     String? hangupReason,
+    String? note,
   }) {
     final durationSeconds = answeredAt == null
         ? 0
@@ -305,6 +311,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
         ringSeconds: Value(ringSeconds),
         sipStatusCode: Value(sipStatusCode),
         hangupReason: Value(hangupReason),
+        note: Value(note?.trim().isEmpty == true ? null : note?.trim()),
         createdAt: DateTime.now(),
       ),
     );
@@ -314,6 +321,15 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     return (delete(
       callHistoryEntries,
     )..where((table) => table.id.equals(id))).go().then((_) {});
+  }
+
+  Future<void> updateEntryNote(int id, String note) {
+    final value = note.trim();
+    return (update(
+      callHistoryEntries,
+    )..where((table) => table.id.equals(id))).write(
+      CallHistoryEntriesCompanion(note: Value(value.isEmpty ? null : value)),
+    );
   }
 
   Future<void> clearAll() {

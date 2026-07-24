@@ -2,6 +2,53 @@ part of '../pjsip_service.dart';
 
 /// 单路、多路及三方会议的通话控制与音频桥管理。
 extension PjsipCallOperations on PjsipService {
+  String callNote(int callId) => _callNotes[callId] ?? '';
+
+  String sharedConferenceNote(Iterable<int> callIds) {
+    final notes = <String>[];
+    for (final callId in callIds) {
+      final note = _sharedConferenceNotes[callId]?.trim();
+      if (note == null || note.isEmpty || notes.contains(note)) continue;
+      notes.add(note);
+    }
+    return notes.join('\n\n');
+  }
+
+  void setCallNote(int callId, String note) {
+    if (!_uiState.calls.containsKey(callId)) return;
+    final value = note.trim();
+    if (value.isEmpty) {
+      _callNotes.remove(callId);
+    } else {
+      _callNotes[callId] = value;
+    }
+  }
+
+  void setSharedConferenceNote(Iterable<int> callIds, String note) {
+    final activeCallIds = callIds
+        .where((callId) => _uiState.calls.containsKey(callId))
+        .toSet();
+    final value = note.trim();
+    for (final callId in activeCallIds) {
+      if (value.isEmpty) {
+        _sharedConferenceNotes.remove(callId);
+      } else {
+        _sharedConferenceNotes[callId] = value;
+      }
+    }
+  }
+
+  void _syncSharedConferenceNoteAcross(Iterable<int> callIds) {
+    final activeCallIds = callIds
+        .where((callId) => _uiState.calls.containsKey(callId))
+        .toSet();
+    final note = sharedConferenceNote(activeCallIds).trim();
+    if (note.isEmpty) return;
+    for (final callId in activeCallIds) {
+      _sharedConferenceNotes[callId] = note;
+    }
+  }
+
   Future<void> makeCall(String number) async {
     return makeCallFromAccount(number, _uiState.defaultAccountId);
   }
@@ -246,7 +293,9 @@ extension PjsipCallOperations on PjsipService {
       _putCall(target.copyWith(isOnHold: false));
     }
 
-    _rebuildConferenceBridge();
+    _rebuildConferenceBridge('合并后立即重建');
+    _scheduleConferenceBridgeRebuilds('合并后等待媒体协商');
+    _syncSharedConferenceNoteAcross(members);
     _addLog('👥 三方通话已建立: calls=${members.toList()}');
   }
 
@@ -337,7 +386,8 @@ extension PjsipCallOperations on PjsipService {
       conferenceInterruptionCallId: null,
       activeCallId: null,
     );
-    _rebuildConferenceBridge();
+    _rebuildConferenceBridge('恢复会议后立即重建');
+    _scheduleConferenceBridgeRebuilds('恢复会议后等待媒体协商');
     _addLog('▶️ 三方通话已恢复');
   }
 
@@ -429,12 +479,32 @@ extension PjsipCallOperations on PjsipService {
   }
 
   /// 重建三方音频矩阵：本机与每一路双向连接，两路远端之间也双向连接。
-  void _rebuildConferenceBridge() {
+  ///
+  /// 会议反复拆分/合并会触发多次 hold/unhold re-INVITE，PJSIP 的 conf_slot
+  /// 也可能在媒体重新 ACTIVE 后变化。这里每次重建都先按“当前成员当前 slot”
+  /// 清理旧连接，再重新建立矩阵，避免残留连接或旧回调把本机声卡路径断掉。
+  void _rebuildConferenceBridge([String reason = '']) {
     final slots = <int, int>{};
     for (final callId in _uiState.conferenceCallIds) {
+      final call = _uiState.calls[callId];
+      if (call == null ||
+          !call.isConnected ||
+          call.isOnHold ||
+          call.isRemoteOnHold) {
+        continue;
+      }
       final slot = _getConferenceSlot(callId);
       if (slot != null) slots[callId] = slot;
     }
+    if (slots.length < 2) {
+      if (reason.isNotEmpty) {
+        _addLog('👥 会议桥暂未重建: $reason, 可用媒体=${slots.length}');
+      }
+      return;
+    }
+
+    _disconnectConferenceBridge(Set<int>.of(slots.keys));
+
     for (final slot in slots.values) {
       if (!_uiState.isMicrophoneMuted) {
         _bindings.pjsua_conf_connect(0, slot); // 本机麦克风 -> 远端
@@ -449,6 +519,32 @@ extension PjsipCallOperations on PjsipService {
         _bindings.pjsua_conf_connect(values[i], values[j]);
         _bindings.pjsua_conf_connect(values[j], values[i]);
       }
+    }
+    _mediaConnectedCalls.addAll(slots.keys);
+    if (reason.isNotEmpty) {
+      _addLog(
+        '👥 会议桥已重建: $reason, '
+        '${slots.entries.map((entry) => 'call=${entry.key}/slot=${entry.value}').join(', ')}',
+      );
+    }
+  }
+
+  void _scheduleConferenceBridgeRebuilds(String reason) {
+    if (!_uiState.isConferenceActive) return;
+    for (final delay in const [
+      Duration(milliseconds: 150),
+      Duration(milliseconds: 500),
+      Duration(milliseconds: 1200),
+      Duration(milliseconds: 2500),
+    ]) {
+      Future<void>.delayed(delay, () {
+        if (_isDisposed ||
+            !_uiState.isInitialized ||
+            !_uiState.isConferenceActive) {
+          return;
+        }
+        _rebuildConferenceBridge('$reason +${delay.inMilliseconds}ms');
+      });
     }
   }
 
@@ -550,6 +646,12 @@ extension PjsipCallOperations on PjsipService {
         : _uiState.accounts[call.accountId];
     final phoneNumber = _extractPhoneNumber(call.remoteUri);
     final contact = _findContactForPhoneNumber(phoneNumber);
+    final personalNote = _callNotes.remove(call.callId)?.trim();
+    final sharedNote = _sharedConferenceNotes.remove(call.callId)?.trim();
+    final note = _composeCallHistoryNote(
+      personalNote: personalNote,
+      sharedNote: sharedNote,
+    );
 
     unawaited(
       _callHistoryDatabase
@@ -570,11 +672,24 @@ extension PjsipCallOperations on PjsipService {
             hangupReason: hangupReason?.trim().isEmpty == true
                 ? null
                 : hangupReason,
+            note: note,
           )
           .catchError((Object error, StackTrace stackTrace) {
             _addLog('⚠️ 通话记录保存失败: $error');
           }),
     );
+  }
+
+  String? _composeCallHistoryNote({String? personalNote, String? sharedNote}) {
+    final personal = personalNote?.trim();
+    final shared = sharedNote?.trim();
+    final hasPersonal = personal != null && personal.isNotEmpty;
+    final hasShared = shared != null && shared.isNotEmpty;
+    if (!hasShared && !hasPersonal) return null;
+    if (!hasShared) return personal;
+    if (!hasPersonal) return '会议备注：$shared';
+    if (personal == shared) return '会议备注：$shared';
+    return '会议备注：$shared\n\n客户备注：$personal';
   }
 
   CallHistoryStatus _resolveCallHistoryStatus(

@@ -1292,6 +1292,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
   ///
   /// 所以麦克风静音就是不连接 `0 -> slot`；扬声器静音就是不连接 `slot -> 0`。
   void _applyAudioMuteState() {
+    if (_uiState.isConferenceActive) {
+      _rebuildConferenceBridge('重新应用音频状态');
+      return;
+    }
     for (final entry in _uiState.calls.entries) {
       final callId = entry.key;
       final call = entry.value;

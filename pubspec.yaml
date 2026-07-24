@@ -47,6 +47,7 @@ dependencies:
   sqlite3_flutter_libs: ^0.6.0+eol
   path: ^1.9.1
   path_provider: ^2.1.6
+  dropdown_button2: ^3.1.0
 
 #生成Pjsip的绑定文件
 ffigen:

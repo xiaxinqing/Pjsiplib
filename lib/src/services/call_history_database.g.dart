@@ -196,6 +196,15 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -226,6 +235,7 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     ringSeconds,
     sipStatusCode,
     hangupReason,
+    note,
     createdAt,
   ];
   @override
@@ -374,6 +384,12 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         ),
       );
     }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -459,6 +475,10 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         DriftSqlType.string,
         data['${effectivePrefix}hangup_reason'],
       ),
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -491,6 +511,7 @@ class CallHistoryEntry extends DataClass
   final int ringSeconds;
   final int? sipStatusCode;
   final String? hangupReason;
+  final String? note;
   final DateTime createdAt;
   const CallHistoryEntry({
     required this.id,
@@ -510,6 +531,7 @@ class CallHistoryEntry extends DataClass
     required this.ringSeconds,
     this.sipStatusCode,
     this.hangupReason,
+    this.note,
     required this.createdAt,
   });
   @override
@@ -545,6 +567,9 @@ class CallHistoryEntry extends DataClass
     }
     if (!nullToAbsent || hangupReason != null) {
       map['hangup_reason'] = Variable<String>(hangupReason);
+    }
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
@@ -583,6 +608,7 @@ class CallHistoryEntry extends DataClass
       hangupReason: hangupReason == null && nullToAbsent
           ? const Value.absent()
           : Value(hangupReason),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
     );
   }
@@ -610,6 +636,7 @@ class CallHistoryEntry extends DataClass
       ringSeconds: serializer.fromJson<int>(json['ringSeconds']),
       sipStatusCode: serializer.fromJson<int?>(json['sipStatusCode']),
       hangupReason: serializer.fromJson<String?>(json['hangupReason']),
+      note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -634,6 +661,7 @@ class CallHistoryEntry extends DataClass
       'ringSeconds': serializer.toJson<int>(ringSeconds),
       'sipStatusCode': serializer.toJson<int?>(sipStatusCode),
       'hangupReason': serializer.toJson<String?>(hangupReason),
+      'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -656,6 +684,7 @@ class CallHistoryEntry extends DataClass
     int? ringSeconds,
     Value<int?> sipStatusCode = const Value.absent(),
     Value<String?> hangupReason = const Value.absent(),
+    Value<String?> note = const Value.absent(),
     DateTime? createdAt,
   }) => CallHistoryEntry(
     id: id ?? this.id,
@@ -677,6 +706,7 @@ class CallHistoryEntry extends DataClass
         ? sipStatusCode.value
         : this.sipStatusCode,
     hangupReason: hangupReason.present ? hangupReason.value : this.hangupReason,
+    note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
   );
   CallHistoryEntry copyWithCompanion(CallHistoryEntriesCompanion data) {
@@ -714,6 +744,7 @@ class CallHistoryEntry extends DataClass
       hangupReason: data.hangupReason.present
           ? data.hangupReason.value
           : this.hangupReason,
+      note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -738,6 +769,7 @@ class CallHistoryEntry extends DataClass
           ..write('ringSeconds: $ringSeconds, ')
           ..write('sipStatusCode: $sipStatusCode, ')
           ..write('hangupReason: $hangupReason, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -762,6 +794,7 @@ class CallHistoryEntry extends DataClass
     ringSeconds,
     sipStatusCode,
     hangupReason,
+    note,
     createdAt,
   );
   @override
@@ -785,6 +818,7 @@ class CallHistoryEntry extends DataClass
           other.ringSeconds == this.ringSeconds &&
           other.sipStatusCode == this.sipStatusCode &&
           other.hangupReason == this.hangupReason &&
+          other.note == this.note &&
           other.createdAt == this.createdAt);
 }
 
@@ -806,6 +840,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   final Value<int> ringSeconds;
   final Value<int?> sipStatusCode;
   final Value<String?> hangupReason;
+  final Value<String?> note;
   final Value<DateTime> createdAt;
   const CallHistoryEntriesCompanion({
     this.id = const Value.absent(),
@@ -825,6 +860,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     this.ringSeconds = const Value.absent(),
     this.sipStatusCode = const Value.absent(),
     this.hangupReason = const Value.absent(),
+    this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   CallHistoryEntriesCompanion.insert({
@@ -845,6 +881,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     this.ringSeconds = const Value.absent(),
     this.sipStatusCode = const Value.absent(),
     this.hangupReason = const Value.absent(),
+    this.note = const Value.absent(),
     required DateTime createdAt,
   }) : callId = Value(callId),
        direction = Value(direction),
@@ -872,6 +909,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     Expression<int>? ringSeconds,
     Expression<int>? sipStatusCode,
     Expression<String>? hangupReason,
+    Expression<String>? note,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -892,6 +930,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
       if (ringSeconds != null) 'ring_seconds': ringSeconds,
       if (sipStatusCode != null) 'sip_status_code': sipStatusCode,
       if (hangupReason != null) 'hangup_reason': hangupReason,
+      if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -914,6 +953,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     Value<int>? ringSeconds,
     Value<int?>? sipStatusCode,
     Value<String?>? hangupReason,
+    Value<String?>? note,
     Value<DateTime>? createdAt,
   }) {
     return CallHistoryEntriesCompanion(
@@ -934,6 +974,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
       ringSeconds: ringSeconds ?? this.ringSeconds,
       sipStatusCode: sipStatusCode ?? this.sipStatusCode,
       hangupReason: hangupReason ?? this.hangupReason,
+      note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -992,6 +1033,9 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     if (hangupReason.present) {
       map['hangup_reason'] = Variable<String>(hangupReason.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1018,6 +1062,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
           ..write('ringSeconds: $ringSeconds, ')
           ..write('sipStatusCode: $sipStatusCode, ')
           ..write('hangupReason: $hangupReason, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2176,6 +2221,7 @@ typedef $$CallHistoryEntriesTableCreateCompanionBuilder =
       Value<int> ringSeconds,
       Value<int?> sipStatusCode,
       Value<String?> hangupReason,
+      Value<String?> note,
       required DateTime createdAt,
     });
 typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
@@ -2197,6 +2243,7 @@ typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
       Value<int> ringSeconds,
       Value<int?> sipStatusCode,
       Value<String?> hangupReason,
+      Value<String?> note,
       Value<DateTime> createdAt,
     });
 
@@ -2291,6 +2338,11 @@ class $$CallHistoryEntriesTableFilterComposer
 
   ColumnFilters<String> get hangupReason => $composableBuilder(
     column: $table.hangupReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2394,6 +2446,11 @@ class $$CallHistoryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2476,6 +2533,9 @@ class $$CallHistoryEntriesTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -2537,6 +2597,7 @@ class $$CallHistoryEntriesTableTableManager
                 Value<int> ringSeconds = const Value.absent(),
                 Value<int?> sipStatusCode = const Value.absent(),
                 Value<String?> hangupReason = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => CallHistoryEntriesCompanion(
                 id: id,
@@ -2556,6 +2617,7 @@ class $$CallHistoryEntriesTableTableManager
                 ringSeconds: ringSeconds,
                 sipStatusCode: sipStatusCode,
                 hangupReason: hangupReason,
+                note: note,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -2577,6 +2639,7 @@ class $$CallHistoryEntriesTableTableManager
                 Value<int> ringSeconds = const Value.absent(),
                 Value<int?> sipStatusCode = const Value.absent(),
                 Value<String?> hangupReason = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 required DateTime createdAt,
               }) => CallHistoryEntriesCompanion.insert(
                 id: id,
@@ -2596,6 +2659,7 @@ class $$CallHistoryEntriesTableTableManager
                 ringSeconds: ringSeconds,
                 sipStatusCode: sipStatusCode,
                 hangupReason: hangupReason,
+                note: note,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

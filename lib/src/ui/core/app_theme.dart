@@ -39,6 +39,9 @@ class AppIcons {
   static const confirm = LucideIcons.badgeCheck300;
   static const more = LucideIcons.ellipsis300;
   static const next = LucideIcons.chevronRight300;
+  static const chevronDown = LucideIcons.chevronDown300;
+  static const chevronUp = LucideIcons.chevronUp300;
+  static const check = LucideIcons.check300;
   static const add = LucideIcons.plus300;
   static const edit = LucideIcons.squarePen300;
   static const save = LucideIcons.save300;

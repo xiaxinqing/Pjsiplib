@@ -290,6 +290,37 @@ void main() {
     expect(entries.map((entry) => entry.displayName).toSet(), {'移动客服'});
   });
 
+  test('通话备注会保存到通话记录', () async {
+    final database = CallHistoryDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final startedAt = DateTime(2026, 7, 24, 9);
+    await database.recordCall(
+      callId: 90,
+      direction: CallHistoryDirection.outbound,
+      status: CallHistoryStatus.completed,
+      remoteUri: 'sip:10010@pbx.example.com',
+      phoneNumber: '10010',
+      startedAt: startedAt,
+      answeredAt: startedAt.add(const Duration(seconds: 3)),
+      endedAt: startedAt.add(const Duration(seconds: 63)),
+      note: '客户要求下午回访',
+    );
+
+    final entries = await database.watchRecent(keyword: '回访', limit: 1).first;
+
+    expect(entries, hasLength(1));
+    expect(entries.single.note, '客户要求下午回访');
+
+    await database.updateEntryNote(entries.single.id, '客户已确认明天回访');
+    final updated = await database.watchRecent(keyword: '明天', limit: 1).first;
+    expect(updated.single.note, '客户已确认明天回访');
+
+    await database.updateEntryNote(entries.single.id, '');
+    final cleared = await database.watchRecent(limit: 1).first;
+    expect(cleared.single.note, isNull);
+  });
+
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

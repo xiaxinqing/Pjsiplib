@@ -2,11 +2,26 @@ part of '../../../main.dart';
 
 extension _HomeHelpers on _MyHomePageState {
   CallInfo? _primaryCall(PjsipUIState uiState) {
-    if (uiState.activeCall != null) return uiState.activeCall;
+    // 未接听来电是高优先级事件，不能被用户之前点选的“查看中”通话挡住。
     for (final call in uiState.calls.values) {
       if (call.isIncoming) return call;
     }
-    return uiState.calls.values.isEmpty ? null : uiState.calls.values.first;
+    final focusedId = _focusedCallDetailId;
+    if (focusedId != null && uiState.calls[focusedId] != null) {
+      return uiState.calls[focusedId];
+    }
+    if (uiState.activeCall != null) return uiState.activeCall;
+    final calls = uiState.calls.values.toList()
+      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    for (final call in calls) {
+      if (call.isConnected && !call.isOnHold && !call.isRemoteOnHold) {
+        return call;
+      }
+    }
+    for (final call in calls) {
+      if (uiState.isInConference(call.callId)) return call;
+    }
+    return calls.isEmpty ? null : calls.first;
   }
 
   String _deviceLabelById(List<PjsipAudioDevice> devices, int? id) {

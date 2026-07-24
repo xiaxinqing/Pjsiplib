@@ -569,7 +569,8 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (_uiState.isConferenceActive &&
               _uiState.conferenceCallIds.contains(callId)) {
             _mediaConnectedCalls.add(callId);
-            _rebuildConferenceBridge();
+            _rebuildConferenceBridge('会议成员媒体 ACTIVE');
+            _scheduleConferenceBridgeRebuilds('会议成员媒体 ACTIVE 后补偿');
             _addLog('👥 会议媒体已就绪: call=$callId, slot=$confSlot');
             return;
           }

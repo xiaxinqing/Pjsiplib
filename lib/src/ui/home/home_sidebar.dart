@@ -449,7 +449,8 @@ extension _HomeSidebar on _MyHomePageState {
           child: _buildPopupActionRow(AppIcons.pause, '暂停线路'),
         ),
         PopupMenuItem<String>(
-          value: 'delete',
+          value: account.registrationActionInProgress ? null : 'delete',
+          enabled: !account.registrationActionInProgress,
           child: _buildPopupActionRow(
             AppIcons.delete,
             '删除线路',
@@ -468,8 +469,125 @@ extension _HomeSidebar on _MyHomePageState {
       case 'pause':
         service.setAccountRegistration(account.accId, false);
       case 'delete':
+        final confirmed = await _confirmDeleteLine(account);
+        if (confirmed != true || !mounted) return;
         service.removeAccount(account.accId);
     }
+  }
+
+  Future<bool?> _confirmDeleteLine(SipAccountInfo account) {
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (context) => AlertDialog(
+        contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _dangerRed.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(_radiusSm),
+                    ),
+                    child: Icon(
+                      AppIcons.delete,
+                      size: _iconMd,
+                      color: _dangerRed,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '删除线路',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '删除后需要重新添加账号才能恢复。',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: _textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _subtlePanel,
+                  borderRadius: BorderRadius.circular(_radiusSm),
+                  border: Border.all(color: _softBorder),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildTooltipText(
+                              account.lineLabel,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${account.registrationStatusText} · ${account.transportLabel}',
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: _textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '确定删除这条线路吗？',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(AppIcons.delete),
+            label: const Text('删除线路'),
+            style: FilledButton.styleFrom(backgroundColor: _dangerRed),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildStatusSummaryRow({
