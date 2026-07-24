@@ -1,8 +1,11 @@
 import 'dart:ui';
 
+import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pjsip_lib/main.dart';
+import 'package:pjsip_lib/src/services/call_history_database.dart';
+import 'package:pjsip_lib/src/services/contact_service.dart';
 import 'package:pjsip_lib/src/services/pjsip_service.dart';
 
 class FakePjsipService extends PjsipService {
@@ -204,6 +207,87 @@ void main() {
     );
 
     expect(state.accountForCall(call)?.username, '售后');
+  });
+
+  test('联系人备用号码可以被识别为重复号码', () {
+    final existing = ContactEntry(
+      id: 'contact-a',
+      name: '客户 A',
+      number: '10086',
+      phones: const [
+        ContactPhoneEntry(label: '默认', number: '10086', isPrimary: true),
+        ContactPhoneEntry(label: '备用', number: '20086'),
+      ],
+    );
+    final state = ContactBookState(contacts: [existing]);
+
+    final conflict = state.findPhoneConflict(const [
+      ContactPhoneEntry(label: '手机', number: '20086'),
+    ]);
+
+    expect(conflict?.contact.id, 'contact-a');
+    expect(conflict?.phone.label, '备用');
+  });
+
+  test('保存联系人后会自动关联已有通话记录', () async {
+    final database = CallHistoryDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+
+    final startedAt = DateTime(2026, 7, 23, 10);
+    await database.recordCall(
+      callId: 88,
+      direction: CallHistoryDirection.outbound,
+      status: CallHistoryStatus.completed,
+      remoteUri: 'sip:10086@pbx.example.com',
+      phoneNumber: '10086',
+      startedAt: startedAt,
+      answeredAt: startedAt.add(const Duration(seconds: 2)),
+      endedAt: startedAt.add(const Duration(seconds: 32)),
+    );
+    await database.recordCall(
+      callId: 89,
+      direction: CallHistoryDirection.inbound,
+      status: CallHistoryStatus.missed,
+      remoteUri: 'sip:20086@pbx.example.com',
+      phoneNumber: '20086',
+      startedAt: startedAt.add(const Duration(minutes: 1)),
+      endedAt: startedAt.add(const Duration(minutes: 1, seconds: 8)),
+    );
+
+    await database.upsertContact(
+      StoredContactRow(
+        id: 'contact-10086',
+        name: '移动客服',
+        number: '10086',
+        phones: const [
+          StoredContactPhoneRow(label: '热线', number: '10086', isPrimary: true),
+          StoredContactPhoneRow(label: '备用', number: '20086', isPrimary: false),
+        ],
+        company: '客户中心',
+        department: '热线',
+        remark: '',
+        isFavorite: true,
+        createdAt: startedAt,
+        updatedAt: startedAt,
+      ),
+    );
+
+    final contact = await database.findContactByPhoneNumber('10086');
+    final backupContact = await database.findContactByPhoneNumber('20086');
+    final entries = await database
+        .watchRecentForContact(
+          contactId: 'contact-10086',
+          phoneNumber: '10086',
+          phoneNumbers: const ['10086', '20086'],
+        )
+        .first;
+
+    expect(contact?.name, '移动客服');
+    expect(backupContact?.id, 'contact-10086');
+    expect(contact?.phones, hasLength(2));
+    expect(entries, hasLength(2));
+    expect(entries.map((entry) => entry.contactId).toSet(), {'contact-10086'});
+    expect(entries.map((entry) => entry.displayName).toSet(), {'移动客服'});
   });
 
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {

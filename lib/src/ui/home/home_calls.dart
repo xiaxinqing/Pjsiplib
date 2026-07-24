@@ -29,7 +29,7 @@ extension _HomeCalls on _MyHomePageState {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(flex: 5, child: _buildPrimaryCallStage(uiState, service)),
-        const SizedBox(width: 24),
+        const SizedBox(width: 20),
         Expanded(flex: 4, child: _buildLiveCallsPanel(uiState, service)),
       ],
     );
@@ -39,11 +39,11 @@ extension _HomeCalls on _MyHomePageState {
     final primary = _primaryCall(uiState);
     if (primary == null) {
       return _buildEmptyState(
-        icon: Icons.call,
+        icon: AppIcons.call,
         title: '暂无通话',
         action: FilledButton.icon(
           onPressed: () => _selectSection(_WorkspaceSection.dialpad),
-          icon: const Icon(Icons.dialpad),
+          icon: const Icon(AppIcons.dialpad),
           label: const Text('去拨号'),
         ),
       );
@@ -54,8 +54,12 @@ extension _HomeCalls on _MyHomePageState {
     final isIncoming = primary.isIncoming && !primary.isConnected;
     final account = uiState.accountForCall(primary);
 
-    return Card(
-      color: _panelBackground,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final compact = constraints.maxHeight < 620;
@@ -119,7 +123,7 @@ extension _HomeCalls on _MyHomePageState {
                   if (isConferenceMember)
                     Chip(
                       avatar: Icon(
-                        isConferencePaused ? Icons.pause : Icons.groups,
+                        isConferencePaused ? AppIcons.pause : AppIcons.contacts,
                       ),
                       label: Text(isConferencePaused ? '会议已暂停' : '三方通话'),
                     ),
@@ -152,14 +156,14 @@ extension _HomeCalls on _MyHomePageState {
     if (call.isIncoming && !call.isConnected) {
       controls.addAll([
         _roundCallButton(
-          icon: Icons.call,
+          icon: AppIcons.call,
           label: '接听',
           color: _callGreen,
           emphasized: true,
           onPressed: () => _answerCall(service, call.callId),
         ),
         _roundCallButton(
-          icon: Icons.call_end,
+          icon: AppIcons.callEnd,
           label: '拒接',
           color: _dangerRed,
           onPressed: () => _rejectCall(service, call.callId),
@@ -168,14 +172,16 @@ extension _HomeCalls on _MyHomePageState {
     } else {
       controls.addAll([
         _roundCallButton(
-          icon: uiState.isMicrophoneMuted ? Icons.mic_off : Icons.mic,
+          icon: uiState.isMicrophoneMuted
+              ? AppIcons.microphoneOff
+              : AppIcons.microphone,
           label: uiState.isMicrophoneMuted ? '取消静音' : '静音',
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed: () =>
               service.setMicrophoneMuted(!uiState.isMicrophoneMuted),
         ),
         _roundCallButton(
-          icon: Icons.dialpad,
+          icon: AppIcons.dialpad,
           label: '键盘',
           color: _showInCallDialpad
               ? Theme.of(context).colorScheme.primary
@@ -183,7 +189,7 @@ extension _HomeCalls on _MyHomePageState {
           onPressed: call.isConnected ? () => _toggleInCallDialpad() : null,
         ),
         _roundCallButton(
-          icon: call.isOnHold ? Icons.play_arrow : Icons.pause,
+          icon: call.isOnHold ? AppIcons.play : AppIcons.pause,
           label: call.isOnHold ? '恢复' : '保持',
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed: call.isConnected && !isConferenceMember
@@ -193,13 +199,13 @@ extension _HomeCalls on _MyHomePageState {
               : null,
         ),
         _roundCallButton(
-          icon: Icons.tune,
+          icon: AppIcons.tune,
           label: '音频',
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed: () => _openSettingsDrawer(tabIndex: 1),
         ),
         _roundCallButton(
-          icon: Icons.call_end,
+          icon: AppIcons.callEnd,
           label: '挂断',
           color: _dangerRed,
           onPressed: () => _hangupCall(service, call.callId),
@@ -276,16 +282,20 @@ extension _HomeCalls on _MyHomePageState {
 
   Widget _buildLiveCallsPanel(PjsipUIState uiState, PjsipService service) {
     final calls = uiState.calls.values.toList();
-    return Card(
-      color: _panelBackground,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                const Icon(Icons.call, size: 18),
+                const Icon(AppIcons.call, size: 18),
                 const SizedBox(width: 8),
                 const Expanded(
                   child: Text(
@@ -296,12 +306,12 @@ extension _HomeCalls on _MyHomePageState {
                 if (uiState.isConferencePaused)
                   TextButton.icon(
                     onPressed: service.resumeConference,
-                    icon: const Icon(Icons.play_arrow),
+                    icon: const Icon(AppIcons.play),
                     label: const Text('恢复会议'),
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Expanded(
               child: calls.isEmpty
                   ? Center(
@@ -312,7 +322,7 @@ extension _HomeCalls on _MyHomePageState {
                     )
                   : ListView.separated(
                       itemCount: calls.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 10),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, index) =>
                           _buildCallListTile(calls[index], uiState, service),
                     ),
@@ -338,106 +348,105 @@ extension _HomeCalls on _MyHomePageState {
         uiState.activeCallId != null &&
         uiState.activeCallId != call.callId;
 
-    return Container(
-      padding: const EdgeInsets.all(12),
+    final highlighted = isActive || isConferenceMember;
+    return DecoratedBox(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: isActive || isConferenceMember
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).dividerColor,
-        ),
+        color: highlighted ? _brandGreen.withValues(alpha: 0.06) : _subtlePanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
       ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                child: Text(_avatarText(call.remoteUri)),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTooltipText(
-                      _displayRemote(call.remoteUri),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      call.isConnected ? call.durationLabel : call.statusLabel,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    if (account != null) ...[
-                      const SizedBox(height: 3),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  child: Text(_avatarText(call.remoteUri)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                       _buildTooltipText(
-                        '${account.lineLabel} · ${account.transportLabel}',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                        _displayRemote(call.remoteUri),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        call.isConnected
+                            ? call.durationLabel
+                            : call.statusLabel,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (account != null) ...[
+                        const SizedBox(height: 3),
+                        _buildTooltipText(
+                          '${account.lineLabel} · ${account.transportLabel}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: _textSecondary),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (isConferenceMember)
-                const Icon(Icons.groups, size: 18)
-              else if (isActive)
-                const Icon(Icons.graphic_eq, size: 18),
+                if (isConferenceMember)
+                  const Icon(AppIcons.contacts, size: 18)
+                else if (isActive)
+                  const Icon(AppIcons.meters, size: 18),
+              ],
+            ),
+            if (call.isConnected && (isActive || isConferenceMember)) ...[
+              const SizedBox(height: 10),
+              _buildCompactCallAudioMeters(uiState),
             ],
-          ),
-          if (call.isConnected && (isActive || isConferenceMember)) ...[
             const SizedBox(height: 10),
-            _buildCompactCallAudioMeters(uiState),
-          ],
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (call.isIncoming && !call.isConnected) ...[
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                if (call.isIncoming && !call.isConnected) ...[
+                  FilledButton.tonalIcon(
+                    onPressed: () => _answerCall(service, call.callId),
+                    icon: const Icon(AppIcons.call),
+                    label: const Text('接听'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () => _rejectCall(service, call.callId),
+                    icon: const Icon(AppIcons.callEnd),
+                    label: const Text('拒接'),
+                  ),
+                ],
+                if (call.isConnected && !isConferenceMember)
+                  OutlinedButton.icon(
+                    onPressed: () => call.isOnHold
+                        ? service.unholdCall(call.callId)
+                        : service.holdCall(call.callId),
+                    icon: Icon(call.isOnHold ? AppIcons.play : AppIcons.pause),
+                    label: Text(call.isOnHold ? '恢复' : '保持'),
+                  ),
+                if (canMergeWithActive)
+                  OutlinedButton.icon(
+                    onPressed: () => service.mergeWithActiveCall(call.callId),
+                    icon: const Icon(AppIcons.contacts),
+                    label: const Text('合并'),
+                  ),
+                if (isConferenceMember && !uiState.isConferencePaused)
+                  OutlinedButton.icon(
+                    onPressed: () => service.splitConference(call.callId),
+                    icon: const Icon(AppIcons.split),
+                    label: const Text('拆分'),
+                  ),
                 FilledButton.tonalIcon(
-                  onPressed: () => _answerCall(service, call.callId),
-                  icon: const Icon(Icons.call),
-                  label: const Text('接听'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: () => _rejectCall(service, call.callId),
-                  icon: const Icon(Icons.call_end),
-                  label: const Text('拒接'),
+                  onPressed: () => _hangupCall(service, call.callId),
+                  icon: const Icon(AppIcons.callEnd),
+                  label: const Text('挂断'),
                 ),
               ],
-              if (call.isConnected && !isConferenceMember)
-                OutlinedButton.icon(
-                  onPressed: () => call.isOnHold
-                      ? service.unholdCall(call.callId)
-                      : service.holdCall(call.callId),
-                  icon: Icon(call.isOnHold ? Icons.play_arrow : Icons.pause),
-                  label: Text(call.isOnHold ? '恢复' : '保持'),
-                ),
-              if (canMergeWithActive)
-                OutlinedButton.icon(
-                  onPressed: () => service.mergeWithActiveCall(call.callId),
-                  icon: const Icon(Icons.groups),
-                  label: const Text('合并'),
-                ),
-              if (isConferenceMember && !uiState.isConferencePaused)
-                OutlinedButton.icon(
-                  onPressed: () => service.splitConference(call.callId),
-                  icon: const Icon(Icons.call_split),
-                  label: const Text('拆分'),
-                ),
-              FilledButton.tonalIcon(
-                onPressed: () => _hangupCall(service, call.callId),
-                icon: const Icon(Icons.call_end),
-                label: const Text('挂断'),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -447,7 +456,7 @@ extension _HomeCalls on _MyHomePageState {
     required bool isIncoming,
   }) {
     return Chip(
-      avatar: Icon(isIncoming ? Icons.call_received : Icons.outbound),
+      avatar: Icon(isIncoming ? AppIcons.incoming : AppIcons.outgoing),
       label: Text(
         isIncoming
             ? '来电线路：${account.lineLabel} · ${account.transportLabel}'
@@ -458,89 +467,17 @@ extension _HomeCalls on _MyHomePageState {
     );
   }
 
-  Widget _buildContactsPage(PjsipUIState uiState, PjsipService service) {
-    final outgoingAccount = uiState.bestOutgoingAccount;
-    final contacts = const [
-      ('6529', '前台'),
-      ('6530', '客服一组'),
-      ('6531', '客服二组'),
-      ('6532', '技术支持'),
-    ];
-    return Card(
-      color: _panelBackground,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(18),
-        itemCount: contacts.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final (number, name) = contacts[index];
-          return ListTile(
-            leading: CircleAvatar(child: Text(name.characters.first)),
-            title: Text(name),
-            subtitle: Text(number),
-            trailing: IconButton.filledTonal(
-              tooltip: '呼叫',
-              onPressed: outgoingAccount == null
-                  ? null
-                  : () {
-                      _numberController.text = number;
-                      service.makeCallFromAccount(
-                        number,
-                        outgoingAccount.accId,
-                      );
-                      _selectSection(_WorkspaceSection.calls);
-                    },
-              icon: const Icon(Icons.call),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHistoryPage(PjsipUIState uiState, PjsipService service) {
-    final recent = uiState.logs
-        .where(
-          (log) => log.message.contains('拨打') || log.message.contains('来电'),
-        )
-        .toList()
-        .reversed
-        .take(12)
-        .toList();
-
-    if (recent.isEmpty) {
-      return _buildEmptyState(icon: Icons.history, title: '暂无通话记录');
-    }
-
-    return Card(
-      color: _panelBackground,
-      child: ListView.separated(
-        padding: const EdgeInsets.all(18),
-        itemCount: recent.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (context, index) {
-          final item = recent[index];
-          return ListTile(
-            leading: const Icon(Icons.history),
-            title: Text(
-              item.message,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            subtitle: Text(DateFormat('yyyy-MM-dd HH:mm:ss').format(item.time)),
-          );
-        },
-      ),
-    );
-  }
-
   Widget _buildEmptyState({
     required IconData icon,
     required String title,
     Widget? action,
   }) {
-    return Card(
-      color: _panelBackground,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

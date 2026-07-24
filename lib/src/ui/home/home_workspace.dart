@@ -7,7 +7,7 @@ extension _HomeWorkspace on _MyHomePageState {
         _buildTopBar(uiState, service),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
             child: switch (_section) {
               _WorkspaceSection.dialpad => _buildDialpadPage(uiState, service),
               _WorkspaceSection.calls => _buildCallsPage(uiState, service),
@@ -33,9 +33,9 @@ extension _HomeWorkspace on _MyHomePageState {
     final subtitle = _statusSubtitle(uiState);
 
     return Container(
-      height: 54,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(
+      height: 64,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      decoration: const BoxDecoration(
         color: _appBackground,
         border: Border(bottom: BorderSide(color: _softBorder)),
       ),
@@ -46,15 +46,8 @@ extension _HomeWorkspace on _MyHomePageState {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0,
-                  ),
-                ),
-                const SizedBox(height: 3),
+                Text(title, style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 2),
                 Text(
                   subtitle,
                   maxLines: 1,
@@ -69,7 +62,7 @@ extension _HomeWorkspace on _MyHomePageState {
           IconButton(
             tooltip: '设置',
             onPressed: _openSettingsDrawer,
-            icon: const Icon(Icons.settings),
+            icon: const Icon(AppIcons.settings),
           ),
         ],
       ),
@@ -80,7 +73,7 @@ extension _HomeWorkspace on _MyHomePageState {
     if (uiState.accounts.isNotEmpty) {
       return FilledButton.tonalIcon(
         onPressed: uiState.isInitialized ? service.disconnectAllAccounts : null,
-        icon: const Icon(Icons.power_settings_new),
+        icon: const Icon(AppIcons.power),
         label: const Text('断开全部'),
       );
     }
@@ -88,7 +81,7 @@ extension _HomeWorkspace on _MyHomePageState {
       onPressed: uiState.isNetworkAvailable
           ? () => _showAddAccountDialog(uiState, service)
           : null,
-      icon: const Icon(Icons.login),
+      icon: const Icon(AppIcons.login),
       label: const Text('添加线路'),
       style: FilledButton.styleFrom(backgroundColor: _textPrimary),
     );
@@ -109,7 +102,7 @@ extension _HomeWorkspace on _MyHomePageState {
           : '，默认外呼 ${outgoingAccount.displayName}';
       return '已接入 ${uiState.accounts.length} 条线路$suffix';
     }
-    if (uiState.isInitialized) return '引擎已就绪，账号尚未连接';
+    if (uiState.isInitialized) return '初始化完成，账号尚未连接';
     return '连接电话服务后即可发起和接听通话';
   }
 
@@ -123,14 +116,14 @@ extension _HomeWorkspace on _MyHomePageState {
         selectedAccount?.isRegistered == true &&
         uiState.calls.length < 4 &&
         !uiState.hasConference;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 5,
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 430),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final dialpadWidth = math.min(430.0, constraints.maxWidth * 0.48);
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: dialpadWidth,
               child: _buildDialpadCard(
                 uiState,
                 service,
@@ -138,11 +131,11 @@ extension _HomeWorkspace on _MyHomePageState {
                 selectedAccountId,
               ),
             ),
-          ),
-        ),
-        const SizedBox(width: 24),
-        Expanded(flex: 4, child: _buildLiveCallsPanel(uiState, service)),
-      ],
+            const SizedBox(width: 20),
+            Expanded(child: _buildLiveCallsPanel(uiState, service)),
+          ],
+        );
+      },
     );
   }
 
@@ -152,12 +145,16 @@ extension _HomeWorkspace on _MyHomePageState {
     bool canCall,
     int? selectedAccountId,
   ) {
-    return Card(
-      color: _panelBackground,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
       child: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.all(20),
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 minHeight: constraints.maxHeight > 44
@@ -173,17 +170,17 @@ extension _HomeWorkspace on _MyHomePageState {
                     controller: _numberController,
                     textAlign: TextAlign.center,
                     style: const TextStyle(
-                      fontSize: 30,
+                      fontSize: 28,
                       fontWeight: FontWeight.w700,
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
                     decoration: InputDecoration(
                       hintText: '输入号码',
-                      prefixIcon: const Icon(Icons.search),
+                      prefixIcon: const Icon(AppIcons.search),
                       suffixIcon: IconButton(
                         tooltip: '清空',
                         onPressed: () => _numberController.clear(),
-                        icon: const Icon(Icons.backspace_outlined),
+                        icon: const Icon(AppIcons.clear),
                       ),
                     ),
                     keyboardType: TextInputType.phone,
@@ -199,9 +196,9 @@ extension _HomeWorkspace on _MyHomePageState {
                   ],
                   const SizedBox(height: 18),
                   _buildNumberPad(),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   SizedBox(
-                    height: 54,
+                    height: 50,
                     child: FilledButton.icon(
                       onPressed: canCall
                           ? () => _callNumberIfPossible(
@@ -210,13 +207,13 @@ extension _HomeWorkspace on _MyHomePageState {
                               selectedAccountId,
                             )
                           : null,
-                      icon: const Icon(Icons.call),
+                      icon: const Icon(AppIcons.call),
                       label: const Text('呼叫'),
                       style: FilledButton.styleFrom(
                         backgroundColor: _callGreen,
                         foregroundColor: Colors.white,
                         textStyle: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -240,15 +237,14 @@ extension _HomeWorkspace on _MyHomePageState {
         ? selectedCandidate
         : accounts.first.accId;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: _subtlePanel,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _softBorder),
+        borderRadius: BorderRadius.circular(_radiusSm),
       ),
       child: Row(
         children: [
-          const Icon(Icons.outbound, size: 16),
+          const Icon(AppIcons.outgoing, size: _iconSm),
           const SizedBox(width: 8),
           const Text('外呼线路', style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(width: 12),
@@ -303,7 +299,7 @@ extension _HomeWorkspace on _MyHomePageState {
           child: Text(
             key,
             style: const TextStyle(
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
               fontFeatures: [FontFeature.tabularFigures()],
             ),

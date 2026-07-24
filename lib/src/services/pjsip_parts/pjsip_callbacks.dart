@@ -352,6 +352,8 @@ extension _PjsipNativeCallbacks on PjsipService {
                 state: callState,
                 remoteUri: remoteUri,
                 accountId: accId,
+                direction: PjsipCallDirection.inbound,
+                startedAt: DateTime.now(),
               ),
             );
           });
@@ -441,7 +443,11 @@ extension _PjsipNativeCallbacks on PjsipService {
               '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
               'PJSIP 原生日志: $_nativeLogFilePath',
             );
-            _removeCall(callId);
+            _removeCall(
+              callId,
+              sipStatusCode: lastStatus,
+              hangupReason: lastStatusText,
+            );
           } else {
             _addLog('通话状态变更: $callId -> $callState');
             final isConfirmed =
@@ -463,6 +469,8 @@ extension _PjsipNativeCallbacks on PjsipService {
                 state: callState,
                 remoteUri: remoteUri,
                 accountId: prev?.accountId,
+                direction: prev?.direction ?? PjsipCallDirection.outbound,
+                startedAt: prev?.startedAt,
                 connectedAt: connectedAt,
                 isOnHold: holdFlags.local,
                 isRemoteOnHold: holdFlags.remote,

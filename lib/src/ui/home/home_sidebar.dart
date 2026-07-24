@@ -3,9 +3,9 @@ part of '../../../main.dart';
 extension _HomeSidebar on _MyHomePageState {
   Widget _buildSidebar(PjsipUIState uiState, PjsipService service) {
     return Container(
-      width: 236,
+      width: 228,
       color: _sidebarBackground,
-      padding: const EdgeInsets.fromLTRB(14, 54, 14, 14),
+      padding: const EdgeInsets.fromLTRB(12, 48, 12, 12),
       child: LayoutBuilder(
         builder: (context, constraints) {
           return SingleChildScrollView(
@@ -18,15 +18,16 @@ extension _HomeSidebar on _MyHomePageState {
                     Row(
                       children: [
                         Container(
-                          width: 36,
-                          height: 36,
+                          width: 32,
+                          height: 32,
                           decoration: BoxDecoration(
                             color: _textPrimary,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(_radiusSm),
                           ),
                           child: const Icon(
-                            Icons.phone_in_talk,
+                            AppIcons.appLogo,
                             color: Colors.white,
+                            size: _iconMd,
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -34,8 +35,8 @@ extension _HomeSidebar on _MyHomePageState {
                           child: Text(
                             'VPhone',
                             style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                               letterSpacing: 0,
                             ),
                           ),
@@ -44,14 +45,14 @@ extension _HomeSidebar on _MyHomePageState {
                     ),
                     const SizedBox(height: 18),
                     _buildConnectionPill(uiState, service),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 14),
                     _buildNavItem(
-                      icon: Icons.dialpad,
+                      icon: AppIcons.dialpad,
                       label: '拨号',
                       section: _WorkspaceSection.dialpad,
                     ),
                     _buildNavItem(
-                      icon: Icons.call,
+                      icon: AppIcons.call,
                       label: '当前通话',
                       section: _WorkspaceSection.calls,
                       badge: uiState.calls.isEmpty
@@ -59,24 +60,41 @@ extension _HomeSidebar on _MyHomePageState {
                           : '${uiState.calls.length}',
                     ),
                     _buildNavItem(
-                      icon: Icons.contacts,
+                      icon: AppIcons.contacts,
                       label: '联系人',
                       section: _WorkspaceSection.contacts,
                     ),
                     _buildNavItem(
-                      icon: Icons.history,
+                      icon: AppIcons.history,
                       label: '通话记录',
                       section: _WorkspaceSection.history,
                     ),
                     const Spacer(),
                     _buildLineStatusPanel(uiState, service),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                     _buildAudioMiniStatus(uiState, service),
-                    const SizedBox(height: 12),
-                    OutlinedButton.icon(
-                      onPressed: _openSettingsDrawer,
-                      icon: const Icon(Icons.settings),
-                      label: const Text('设置'),
+                    const SizedBox(height: 10),
+                    Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(_radiusSm),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(_radiusSm),
+                        onTap: _openSettingsDrawer,
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 11,
+                            vertical: 9,
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(AppIcons.settings, size: _iconMd),
+                              SizedBox(width: 10),
+                              Expanded(child: Text('设置')),
+                              Icon(AppIcons.next, size: _iconSm),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -115,17 +133,17 @@ extension _HomeSidebar on _MyHomePageState {
         : '未连接';
 
     return Material(
-      color: _panelBackground,
-      borderRadius: BorderRadius.circular(10),
+      color: _panelBackground.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(_radiusSm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        hoverColor: _hoverPanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
         onTapDown: (details) =>
             _showConnectionStatusMenu(uiState, service, details.globalPosition),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _softBorder),
+            borderRadius: BorderRadius.circular(_radiusSm),
           ),
           child: Row(
             children: [
@@ -139,7 +157,7 @@ extension _HomeSidebar on _MyHomePageState {
                   ),
                 )
               else
-                Icon(Icons.circle, size: 10, color: color),
+                Icon(Icons.circle, size: 9, color: color),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -149,7 +167,7 @@ extension _HomeSidebar on _MyHomePageState {
                 ),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_right, size: 18, color: _textSecondary),
+              Icon(AppIcons.next, size: _iconSm, color: _textSecondary),
             ],
           ),
         ),
@@ -164,11 +182,10 @@ extension _HomeSidebar on _MyHomePageState {
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: _panelBackground,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _softBorder),
+        color: _panelBackground.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(_radiusSm),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -178,10 +195,10 @@ extension _HomeSidebar on _MyHomePageState {
               const Expanded(
                 child: Text(
                   '线路',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
                 ),
               ),
-              Icon(Icons.touch_app_outlined, size: 14, color: _textSecondary),
+              Icon(AppIcons.pointer, size: _iconXs, color: _textSecondary),
             ],
           ),
           const SizedBox(height: 8),
@@ -246,7 +263,7 @@ extension _HomeSidebar on _MyHomePageState {
                   ),
                 ),
                 Icon(
-                  isDefault ? Icons.outbound : Icons.more_horiz,
+                  isDefault ? AppIcons.outgoing : AppIcons.more,
                   size: isDefault ? 14 : 18,
                   color: _textSecondary,
                 ),
@@ -312,24 +329,24 @@ extension _HomeSidebar on _MyHomePageState {
               ),
               const SizedBox(height: 12),
               _buildStatusSummaryRow(
-                icon: Icons.network_check,
+                icon: AppIcons.network,
                 label: '网络',
                 value: uiState.isNetworkAvailable ? '可用' : '不可用',
               ),
               _buildStatusSummaryRow(
-                icon: Icons.settings_input_component,
+                icon: AppIcons.server,
                 label: '电话服务',
                 value: uiState.isInitialized ? '已启动' : '未启动',
               ),
               _buildStatusSummaryRow(
-                icon: Icons.outbound,
+                icon: AppIcons.outgoing,
                 label: '默认外呼',
                 value: uiState.bestOutgoingAccount == null
                     ? '暂无'
                     : '${uiState.bestOutgoingAccount!.lineLabel} · ${uiState.bestOutgoingAccount!.transportLabel}',
               ),
               _buildStatusSummaryRow(
-                icon: Icons.account_tree_outlined,
+                icon: AppIcons.lines,
                 label: '线路',
                 value:
                     '${uiState.registeredAccounts.length}/${uiState.accounts.length} 在线',
@@ -341,15 +358,15 @@ extension _HomeSidebar on _MyHomePageState {
         if (failedAccounts.isNotEmpty)
           PopupMenuItem<String>(
             value: 'retry_failed',
-            child: _buildPopupActionRow(Icons.refresh, '重连异常线路'),
+            child: _buildPopupActionRow(AppIcons.refresh, '重连异常线路'),
           ),
         PopupMenuItem<String>(
           value: 'add_line',
-          child: _buildPopupActionRow(Icons.add_call, '添加线路'),
+          child: _buildPopupActionRow(AppIcons.line, '添加线路'),
         ),
         PopupMenuItem<String>(
           value: 'open_settings',
-          child: _buildPopupActionRow(Icons.settings, '打开线路设置'),
+          child: _buildPopupActionRow(AppIcons.settings, '打开线路设置'),
         ),
       ],
     );
@@ -405,7 +422,7 @@ extension _HomeSidebar on _MyHomePageState {
           PopupMenuItem<String>(
             value: account.isRegistered ? 'set_default' : null,
             enabled: account.isRegistered,
-            child: _buildPopupActionRow(Icons.outbound, '设为默认外呼'),
+            child: _buildPopupActionRow(AppIcons.outgoing, '设为默认外呼'),
           ),
         PopupMenuItem<String>(
           value:
@@ -418,7 +435,7 @@ extension _HomeSidebar on _MyHomePageState {
               !account.registrationActionInProgress &&
               !(account.registrationEnabled &&
                   account.registrationStatus == null),
-          child: _buildPopupActionRow(Icons.refresh, '重新注册'),
+          child: _buildPopupActionRow(AppIcons.refresh, '重新注册'),
         ),
         PopupMenuItem<String>(
           value:
@@ -429,12 +446,12 @@ extension _HomeSidebar on _MyHomePageState {
           enabled:
               !account.registrationActionInProgress &&
               account.registrationEnabled,
-          child: _buildPopupActionRow(Icons.pause_circle_outline, '暂停线路'),
+          child: _buildPopupActionRow(AppIcons.pause, '暂停线路'),
         ),
         PopupMenuItem<String>(
           value: 'delete',
           child: _buildPopupActionRow(
-            Icons.delete_outline,
+            AppIcons.delete,
             '删除线路',
             destructive: true,
           ),
@@ -464,7 +481,7 @@ extension _HomeSidebar on _MyHomePageState {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Icon(icon, size: 18, color: _textSecondary),
+          Icon(icon, size: _iconSm, color: _textSecondary),
           const SizedBox(width: 10),
           Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(width: 12),
@@ -482,8 +499,8 @@ extension _HomeSidebar on _MyHomePageState {
     final color = destructive ? Colors.red.shade700 : null;
     return Row(
       children: [
-        Icon(icon, size: 19, color: color),
-        const SizedBox(width: 12),
+        Icon(icon, size: _iconMd, color: color),
+        const SizedBox(width: 10),
         Expanded(
           child: _buildTooltipText(
             label,
@@ -503,20 +520,21 @@ extension _HomeSidebar on _MyHomePageState {
     final selected = _section == section;
     final colors = Theme.of(context).colorScheme;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Material(
         color: selected ? _hoverPanel : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(_radiusSm),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          hoverColor: selected ? _hoverPanel : _panelBackground,
+          borderRadius: BorderRadius.circular(_radiusSm),
           onTap: () => _selectSection(section),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
             child: Row(
               children: [
                 Icon(
                   icon,
-                  size: 20,
+                  size: _iconMd,
                   color: selected ? _textPrimary : _textSecondary,
                 ),
                 const SizedBox(width: 10),
@@ -524,7 +542,7 @@ extension _HomeSidebar on _MyHomePageState {
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                       color: _textPrimary,
                     ),
                   ),
@@ -532,16 +550,17 @@ extension _HomeSidebar on _MyHomePageState {
                 if (badge != null)
                   Container(
                     constraints: const BoxConstraints(minWidth: 24),
-                    height: 22,
+                    height: 20,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: colors.primary,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(_radiusXs),
                     ),
                     child: Text(
                       badge,
                       style: const TextStyle(
                         color: Colors.white,
+                        fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -564,17 +583,17 @@ extension _HomeSidebar on _MyHomePageState {
       uiState.selectedPlaybackDeviceId,
     );
     return Material(
-      color: _panelBackground,
-      borderRadius: BorderRadius.circular(10),
+      color: _panelBackground.withValues(alpha: 0.72),
+      borderRadius: BorderRadius.circular(_radiusSm),
       child: InkWell(
-        borderRadius: BorderRadius.circular(10),
+        hoverColor: _hoverPanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
         onTapDown: (details) =>
             _showAudioStatusMenu(uiState, service, details.globalPosition),
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(11),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: _softBorder),
+            borderRadius: BorderRadius.circular(_radiusSm),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -586,17 +605,17 @@ extension _HomeSidebar on _MyHomePageState {
                       '音频',
                       style: TextStyle(
                         fontSize: 12,
-                        fontWeight: FontWeight.w800,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                  Icon(Icons.chevron_right, size: 16, color: _textSecondary),
+                  Icon(AppIcons.next, size: _iconSm, color: _textSecondary),
                 ],
               ),
               const SizedBox(height: 8),
-              _buildTinyDeviceLine(Icons.mic, mic),
+              _buildTinyDeviceLine(AppIcons.microphone, mic),
               const SizedBox(height: 8),
-              _buildTinyDeviceLine(Icons.volume_up, speaker),
+              _buildTinyDeviceLine(AppIcons.speaker, speaker),
             ],
           ),
         ),
@@ -639,19 +658,23 @@ extension _HomeSidebar on _MyHomePageState {
                 ),
               ),
               const SizedBox(height: 12),
-              _buildStatusSummaryRow(icon: Icons.mic, label: '输入', value: mic),
               _buildStatusSummaryRow(
-                icon: Icons.volume_up,
+                icon: AppIcons.microphone,
+                label: '输入',
+                value: mic,
+              ),
+              _buildStatusSummaryRow(
+                icon: AppIcons.speaker,
                 label: '输出',
                 value: speaker,
               ),
               _buildStatusSummaryRow(
-                icon: Icons.auto_awesome,
+                icon: AppIcons.automatic,
                 label: '模式',
                 value: isAutomatic ? '自动选择' : '手动选择',
               ),
               _buildStatusSummaryRow(
-                icon: Icons.info_outline,
+                icon: AppIcons.info,
                 label: '状态',
                 value: uiState.audioDeviceStatus,
               ),
@@ -663,18 +686,18 @@ extension _HomeSidebar on _MyHomePageState {
           value: 'toggle_auto',
           enabled: uiState.isInitialized,
           child: _buildPopupActionRow(
-            isAutomatic ? Icons.tune : Icons.auto_awesome,
+            isAutomatic ? AppIcons.tune : AppIcons.automatic,
             isAutomatic ? '切换为手动选择' : '切换为自动选择',
           ),
         ),
         PopupMenuItem<String>(
           value: 'refresh',
           enabled: uiState.isInitialized,
-          child: _buildPopupActionRow(Icons.refresh, '刷新设备'),
+          child: _buildPopupActionRow(AppIcons.refresh, '刷新设备'),
         ),
         PopupMenuItem<String>(
           value: 'open_settings',
-          child: _buildPopupActionRow(Icons.settings, '打开音频设置'),
+          child: _buildPopupActionRow(AppIcons.settings, '打开音频设置'),
         ),
       ],
     );
@@ -693,7 +716,7 @@ extension _HomeSidebar on _MyHomePageState {
   Widget _buildTinyDeviceLine(IconData icon, String value) {
     return Row(
       children: [
-        Icon(icon, size: 16),
+        Icon(icon, size: _iconSm),
         const SizedBox(width: 8),
         Expanded(child: _buildTooltipText(value)),
       ],

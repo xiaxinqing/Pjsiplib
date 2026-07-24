@@ -9,6 +9,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../generated/pjsip_bindings.g.dart';
+import 'call_history_database.dart';
+import 'contact_service.dart';
 import '../../utils/toast_util.dart';
 
 part 'pjsip_parts/pjsip_log_model.dart';
@@ -42,6 +44,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
+  final Set<int> _locallyEndedCallIds = <int>{};
   final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
@@ -50,6 +53,11 @@ class PjsipService extends Notifier<PjsipUIState> {
   PjsipUIState get _uiState => state;
 
   set _uiState(PjsipUIState value) => state = value;
+
+  CallHistoryDatabase get _callHistoryDatabase =>
+      ref.read(callHistoryDatabaseProvider);
+
+  List<ContactEntry> get _contacts => ref.read(contactBookProvider).contacts;
 
   // 通话计时器：接通后每秒触发一次 state 刷新，让 UI 上的时长走动。
   // duration 本身由 CallInfo.connectedAt 实时算出，timer 只负责触发重建。
@@ -227,6 +235,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     final destroyMs = destroyWatch.elapsedMilliseconds;
 
     _mediaConnectedCalls.clear();
+    _locallyEndedCallIds.clear();
     _sipTransportIds.clear();
     state = state.copyWith(
       isInitialized: false,

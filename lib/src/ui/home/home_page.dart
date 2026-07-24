@@ -9,43 +9,72 @@ class MyHomePage extends ConsumerStatefulWidget {
   ConsumerState<MyHomePage> createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends ConsumerState<MyHomePage>
-    with SingleTickerProviderStateMixin {
+class _MyHomePageState extends ConsumerState<MyHomePage> {
   final AppWindowController _windowController = AppWindowController();
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController _numberController = TextEditingController(
     text: '6529',
   );
-  late final TabController _settingsTabController;
-  Timer? _settingsPrewarmTimer;
+  final TextEditingController _contactSearchController =
+      TextEditingController();
+  final TextEditingController _historySearchController =
+      TextEditingController();
+  final Set<String> _selectedContactIds = <String>{};
+  final Set<String> _hoveredContactCallButtonIds = <String>{};
+  final Set<String> _focusedContactCallButtonIds = <String>{};
+  String? _selectedContactDetailId;
+  String? _contactDetailHistoryContactId;
+  String _contactDetailHistoryPhoneNumber = '';
+  Stream<List<CallHistoryEntry>>? _contactDetailHistoryStream;
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
+  CallHistoryDirection? _historyDirectionFilter;
+  _HistoryDateFilter _historyDateFilter = _HistoryDateFilter.all;
+  Stream<List<CallHistoryEntry>>? _historyEntriesStream;
+  String _historyStreamKeyword = '';
+  CallHistoryDirection? _historyStreamDirectionFilter;
+  _HistoryDateFilter _historyStreamDateFilter = _HistoryDateFilter.all;
+  int _historyVisibleLimit = _historyPageSize;
+  int _historyStreamVisibleLimit = _historyPageSize;
+  String? _selectedHistoryItemKey;
   int? _selectedOutgoingAccountId;
   int _settingsTabIndex = 0;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
-  bool _settingsPrewarmVisible = false;
 
   @override
   void initState() {
     super.initState();
-    _settingsTabController = TabController(length: 4, vsync: this)
-      ..addListener(_handleSettingsTabChanged);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _settingsPrewarmTimer = Timer(const Duration(milliseconds: 600), () {
-        if (!mounted) return;
-        setState(() => _settingsPrewarmVisible = true);
-      });
+      if (!mounted) return;
+      if (_isRunningWidgetTest) return;
+      unawaited(_warmUpHistoryDatabase());
     });
   }
 
   @override
   void dispose() {
-    _settingsPrewarmTimer?.cancel();
-    _settingsTabController
-      ..removeListener(_handleSettingsTabChanged)
-      ..dispose();
+    _contactSearchController.dispose();
+    _historySearchController.dispose();
     _numberController.dispose();
     super.dispose();
+  }
+
+  Future<void> _warmUpHistoryDatabase() async {
+    try {
+      await ref.read(callHistoryDatabaseProvider).warmUp();
+    } catch (_) {
+      // 预热失败不影响用户后续进入通话记录，真正页面查询仍会重试。
+    }
+  }
+
+  bool get _isRunningWidgetTest {
+    var isTest = false;
+    assert(() {
+      isTest = WidgetsBinding.instance.runtimeType.toString().contains(
+        'TestWidgetsFlutterBinding',
+      );
+      return true;
+    }());
+    return isTest;
   }
 
   @override
@@ -56,8 +85,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     final service = ref.read(pjsipServiceProvider.notifier);
 
     return Scaffold(
-      key: _scaffoldKey,
-      endDrawer: _buildSettingsDrawer(uiState, service),
       body: Stack(
         children: [
           SafeArea(
@@ -69,31 +96,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
               ],
             ),
           ),
-          if (_settingsPrewarmVisible)
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: _buildSettingsPrewarm(uiState, service),
-            ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsPrewarm(PjsipUIState uiState, PjsipService service) {
-    return Offstage(
-      offstage: true,
-      child: IgnorePointer(
-        child: ExcludeSemantics(
-          child: TickerMode(
-            enabled: false,
-            child: SizedBox(
-              width: 460,
-              child: _buildSettingsDrawer(uiState, service),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -167,6 +170,104 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
     setState(() => _selectedOutgoingAccountId = accountId);
   }
 
+  void _setSelectedContact(String id, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedContactIds.add(id);
+      } else {
+        _selectedContactIds.remove(id);
+      }
+    });
+  }
+
+  void _setVisibleContactsSelected(Iterable<String> ids, bool selected) {
+    setState(() {
+      if (selected) {
+        _selectedContactIds.addAll(ids);
+      } else {
+        _selectedContactIds.removeAll(ids.toSet());
+      }
+    });
+  }
+
+  void _clearSelectedContacts() {
+    if (_selectedContactIds.isEmpty) return;
+    setState(_selectedContactIds.clear);
+  }
+
+  void _refreshContactSearch() {
+    setState(() {});
+  }
+
+  void _clearContactSearch() {
+    _contactSearchController.clear();
+    setState(() {});
+  }
+
+  void _setContactCallButtonHovered(String id, bool hovered) {
+    if (!mounted) return;
+    setState(() {
+      if (hovered) {
+        _hoveredContactCallButtonIds.add(id);
+      } else {
+        _hoveredContactCallButtonIds.remove(id);
+      }
+    });
+  }
+
+  void _setContactCallButtonFocused(String id, bool focused) {
+    if (!mounted) return;
+    setState(() {
+      if (focused) {
+        _focusedContactCallButtonIds.add(id);
+      } else {
+        _focusedContactCallButtonIds.remove(id);
+      }
+    });
+  }
+
+  void _selectContactDetail(String id) {
+    if (_selectedContactDetailId == id) return;
+    setState(() => _selectedContactDetailId = id);
+  }
+
+  void _refreshHistorySearch() {
+    setState(_resetHistoryPagination);
+  }
+
+  void _clearHistorySearch() {
+    _historySearchController.clear();
+    setState(_resetHistoryPagination);
+  }
+
+  void _setHistoryDirectionFilter(CallHistoryDirection? direction) {
+    setState(() {
+      _historyDirectionFilter = direction;
+      _resetHistoryPagination();
+    });
+  }
+
+  void _setHistoryDateFilter(_HistoryDateFilter filter) {
+    setState(() {
+      _historyDateFilter = filter;
+      _resetHistoryPagination();
+    });
+  }
+
+  void _selectHistoryItem(String key) {
+    if (_selectedHistoryItemKey == key) return;
+    setState(() => _selectedHistoryItemKey = key);
+  }
+
+  void _loadMoreHistoryEntries() {
+    setState(() => _historyVisibleLimit += _historyPageSize);
+  }
+
+  void _resetHistoryPagination() {
+    _historyVisibleLimit = _historyPageSize;
+    _selectedHistoryItemKey = null;
+  }
+
   Future<void> _showAddAccountDialog(
     PjsipUIState uiState,
     PjsipService service,
@@ -199,26 +300,36 @@ class _MyHomePageState extends ConsumerState<MyHomePage>
   }
 
   void _openSettingsDrawer({int tabIndex = 0}) {
-    if (_settingsTabController.index != tabIndex) {
-      _settingsTabController.index = tabIndex;
-    }
     if (_settingsTabIndex != tabIndex) {
       setState(() => _settingsTabIndex = tabIndex);
     }
-    if (_settingsPrewarmVisible) {
-      setState(() => _settingsPrewarmVisible = false);
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _scaffoldKey.currentState?.openEndDrawer();
-      });
-      return;
-    }
-    _scaffoldKey.currentState?.openEndDrawer();
-  }
-
-  void _handleSettingsTabChanged() {
-    if (_settingsTabController.indexIsChanging) return;
-    final nextIndex = _settingsTabController.index;
-    if (_settingsTabIndex == nextIndex) return;
-    setState(() => _settingsTabIndex = nextIndex);
+    var selectedIndex = tabIndex;
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.22),
+      builder: (dialogContext) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final uiState = ref.watch(pjsipServiceProvider);
+            final service = ref.read(pjsipServiceProvider.notifier);
+            return StatefulBuilder(
+              builder: (context, setDialogState) {
+                return _buildSettingsDialog(
+                  uiState,
+                  service,
+                  selectedIndex: selectedIndex,
+                  onSelected: (index) {
+                    setDialogState(() => selectedIndex = index);
+                    if (_settingsTabIndex != index && mounted) {
+                      setState(() => _settingsTabIndex = index);
+                    }
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 }

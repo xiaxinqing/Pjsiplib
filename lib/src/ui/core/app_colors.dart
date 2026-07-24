@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 class AppColors {
   const AppColors._();
 
-  static const appBackground = Color(0xfff7f7f8);
-  static const sidebarBackground = Color(0xfff4f4f5);
+  static const appBackground = Color(0xfffafafa);
+  static const sidebarBackground = Color(0xfff7f7f7);
   static const panelBackground = Colors.white;
-  static const subtlePanel = Color(0xfffafafa);
-  static const hoverPanel = Color(0xffececf1);
-  static const softBorder = Color(0xffe5e5e5);
-  static const textPrimary = Color(0xff202123);
-  static const textSecondary = Color(0xff6e6e80);
+  static const subtlePanel = Color(0xfff5f5f5);
+  static const hoverPanel = Color(0xffececec);
+  static const softBorder = Color(0xffeeeeee);
+  static const textPrimary = Color(0xff171717);
+  static const textSecondary = Color(0xff6b6b6b);
   static const brandGreen = Color(0xff10a37f);
   static const dangerRed = Color(0xffd92d20);
   static const callGreen = Color(0xff12a150);

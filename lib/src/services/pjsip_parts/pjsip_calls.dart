@@ -70,6 +70,8 @@ extension PjsipCallOperations on PjsipService {
             state: pjsip_inv_state.PJSIP_INV_STATE_CALLING.value,
             remoteUri: targetUri,
             accountId: account.accId,
+            direction: PjsipCallDirection.outbound,
+            startedAt: DateTime.now(),
           ),
           makeActive: true,
         );
@@ -108,6 +110,7 @@ extension PjsipCallOperations on PjsipService {
       ffi.nullptr,
     );
     if (status == 0) {
+      _locallyEndedCallIds.add(callId);
       _addLog('🚫 已拒绝来电: call=$callId');
     } else {
       _addLog('❌ 拒绝来电失败: call=$callId, pj_status=$status');
@@ -128,6 +131,7 @@ extension PjsipCallOperations on PjsipService {
       '⏹ 本地用户请求挂断: call=${call.callId}, '
       'remote=${call.remoteUri}, state=${call.state}',
     );
+    _locallyEndedCallIds.add(call.callId);
     final status = _bindings.pjsua_call_hangup(
       call.callId,
       0,
@@ -463,7 +467,15 @@ extension PjsipCallOperations on PjsipService {
     }
   }
 
-  void _removeCall(int callId) {
+  void _removeCall(int callId, {int? sipStatusCode, String? hangupReason}) {
+    final endedCall = _uiState.calls[callId];
+    if (endedCall != null) {
+      _archiveEndedCall(
+        endedCall,
+        sipStatusCode: sipStatusCode,
+        hangupReason: hangupReason,
+      );
+    }
     final calls = Map<int, CallInfo>.of(_uiState.calls)..remove(callId);
     _mediaConnectedCalls.remove(callId);
     final wasConferencePaused = _uiState.isConferencePaused;
@@ -516,5 +528,96 @@ extension PjsipCallOperations on PjsipService {
       _releaseSoundDeviceIfIdle('最后一通结束');
       _stopAudioLevelTimerIfIdle();
     }
+  }
+
+  void _archiveEndedCall(
+    CallInfo call, {
+    int? sipStatusCode,
+    String? hangupReason,
+  }) {
+    final wasEndedLocally = _locallyEndedCallIds.remove(call.callId);
+    final endedAt = DateTime.now();
+    final direction = call.direction == PjsipCallDirection.inbound
+        ? CallHistoryDirection.inbound
+        : CallHistoryDirection.outbound;
+    final status = _resolveCallHistoryStatus(
+      call,
+      wasEndedLocally: wasEndedLocally,
+      sipStatusCode: sipStatusCode,
+    );
+    final account = call.accountId == null
+        ? null
+        : _uiState.accounts[call.accountId];
+    final phoneNumber = _extractPhoneNumber(call.remoteUri);
+    final contact = _findContactForPhoneNumber(phoneNumber);
+
+    unawaited(
+      _callHistoryDatabase
+          .recordCall(
+            callId: call.callId,
+            direction: direction,
+            status: status,
+            remoteUri: call.remoteUri,
+            phoneNumber: phoneNumber,
+            startedAt: call.startedAt,
+            answeredAt: call.connectedAt,
+            endedAt: endedAt,
+            displayName: contact?.name,
+            contactId: contact?.id,
+            accountId: call.accountId,
+            accountLabel: account?.lineLabel,
+            sipStatusCode: sipStatusCode,
+            hangupReason: hangupReason?.trim().isEmpty == true
+                ? null
+                : hangupReason,
+          )
+          .catchError((Object error, StackTrace stackTrace) {
+            _addLog('⚠️ 通话记录保存失败: $error');
+          }),
+    );
+  }
+
+  CallHistoryStatus _resolveCallHistoryStatus(
+    CallInfo call, {
+    required bool wasEndedLocally,
+    int? sipStatusCode,
+  }) {
+    if (call.connectedAt != null) return CallHistoryStatus.completed;
+    if (call.direction == PjsipCallDirection.inbound) {
+      return wasEndedLocally
+          ? CallHistoryStatus.rejected
+          : CallHistoryStatus.missed;
+    }
+    if (wasEndedLocally) return CallHistoryStatus.canceled;
+    if (sipStatusCode != null && sipStatusCode >= 400) {
+      return CallHistoryStatus.failed;
+    }
+    return CallHistoryStatus.failed;
+  }
+
+  String _extractPhoneNumber(String remoteUri) {
+    final sipMatch = RegExp(
+      r'sip:([^@;>]+)',
+      caseSensitive: false,
+    ).firstMatch(remoteUri);
+    final raw = sipMatch?.group(1) ?? remoteUri;
+    return raw.replaceAll(RegExp(r'[^0-9+*#]'), '');
+  }
+
+  ContactEntry? _findContactForPhoneNumber(String phoneNumber) {
+    final normalized = _normalizePhoneNumber(phoneNumber);
+    if (normalized.isEmpty) return null;
+    for (final contact in _contacts) {
+      if (contact.phoneEntries.any(
+        (phone) => _normalizePhoneNumber(phone.number) == normalized,
+      )) {
+        return contact;
+      }
+    }
+    return null;
+  }
+
+  String _normalizePhoneNumber(String value) {
+    return value.replaceAll(RegExp(r'[^0-9+*#]'), '');
   }
 }

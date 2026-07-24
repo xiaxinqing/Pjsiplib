@@ -627,6 +627,7 @@ extension PjsipEngineOperations on PjsipService {
 
     // SRTP 是媒体加密；DTLS/SDES 只是“SRTP 密钥怎么协商”的两种方式。
     // mandatory = 对端必须支持 SRTP；optional = 可加密也可回退，兼容性更好。
+
     accCfg.ref.use_srtpAsInt = mode.isOptional
         ? pjmedia_srtp_use.PJMEDIA_SRTP_OPTIONAL.value
         : pjmedia_srtp_use.PJMEDIA_SRTP_MANDATORY.value;
@@ -634,6 +635,8 @@ extension PjsipEngineOperations on PjsipService {
     // 1 表示 SRTP 需要安全信令承载。只有 TLS 信令能满足；UDP/TCP 下如果强制
     // 要求安全信令，PJSIP 会拒绝发起 SRTP，所以这里按传输协议自动放宽。
     accCfg.ref.srtp_secure_signaling = transport.isSecure ? 1 : 0;
+
+    // accCfg.ref.enable_rtcp_mux=0;
 
     final keyingMethods = _srtpKeyingMethodsFor(mode);
     accCfg.ref.srtp_opt.keying_count = keyingMethods.length;

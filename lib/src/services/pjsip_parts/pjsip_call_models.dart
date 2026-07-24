@@ -1,5 +1,7 @@
 part of '../pjsip_service.dart';
 
+enum PjsipCallDirection { inbound, outbound }
+
 /// 一路 SIP 通话在 UI 层需要关心的信息。
 ///
 /// PJSIP 自己维护完整的 call object；这里不是复制全部底层数据，而是抽取 UI、
@@ -19,6 +21,12 @@ class CallInfo {
   /// 这通电话归属的 SIP 账号/线路 ID。来电来自 PJSIP 回调 accId，外呼来自默认线路。
   final int? accountId;
 
+  /// 呼叫方向。用于通话记录判断未接来电、呼出取消、呼叫失败等状态。
+  final PjsipCallDirection direction;
+
+  /// 通话创建时间。外呼为发起 INVITE 的时刻，来电为收到 INVITE 的时刻。
+  final DateTime startedAt;
+
   /// 通话接通 (进入 CONFIRMED) 的时间戳，用于计时。未接通时为 null。
   final DateTime? connectedAt;
 
@@ -33,16 +41,20 @@ class CallInfo {
     required this.state,
     required this.remoteUri,
     this.accountId,
+    this.direction = PjsipCallDirection.outbound,
+    DateTime? startedAt,
     this.connectedAt,
     this.isOnHold = false,
     this.isRemoteOnHold = false,
-  });
+  }) : startedAt = startedAt ?? DateTime.now();
 
   CallInfo copyWith({
     int? callId,
     int? state,
     String? remoteUri,
     Object? accountId = _unset,
+    PjsipCallDirection? direction,
+    DateTime? startedAt,
     DateTime? connectedAt,
     bool? isOnHold,
     bool? isRemoteOnHold,
@@ -54,6 +66,8 @@ class CallInfo {
       accountId: identical(accountId, _unset)
           ? this.accountId
           : accountId as int?,
+      direction: direction ?? this.direction,
+      startedAt: startedAt ?? this.startedAt,
       connectedAt: connectedAt ?? this.connectedAt,
       isOnHold: isOnHold ?? this.isOnHold,
       isRemoteOnHold: isRemoteOnHold ?? this.isRemoteOnHold,

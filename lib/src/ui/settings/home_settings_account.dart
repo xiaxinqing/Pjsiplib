@@ -3,14 +3,14 @@ part of '../../../main.dart';
 extension _HomeSettingsAccountTab on _MyHomePageState {
   Widget _buildAccountSettingsTab(PjsipUIState uiState, PjsipService service) {
     return ListView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       children: [
         _buildSettingsSection(
           title: '线路状态',
-          icon: Icons.route,
+          icon: AppIcons.route,
           children: [
             _buildConnectionPill(uiState, service),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -18,24 +18,24 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     onPressed: uiState.isNetworkAvailable
                         ? () => _showAddAccountDialog(uiState, service)
                         : null,
-                    icon: const Icon(Icons.add),
+                    icon: const Icon(AppIcons.add),
                     label: const Text('添加线路'),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             if (uiState.accounts.isEmpty)
               Text('尚未接入线路', style: Theme.of(context).textTheme.bodyMedium)
             else
               for (final account in uiState.accounts.values)
                 _buildAccountLineTile(uiState, service, account),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed: uiState.isInitialized
                   ? service.disconnectAllAccounts
                   : null,
-              icon: const Icon(Icons.power_settings_new),
+              icon: const Icon(AppIcons.power),
               label: const Text('断开全部线路'),
             ),
           ],
@@ -66,8 +66,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _subtlePanel,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: _softBorder),
+        borderRadius: BorderRadius.circular(_radiusSm),
       ),
       child: Column(
         children: [
@@ -115,7 +114,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                             account.registrationStatus == null)
                     ? null
                     : () => service.setAccountRegistration(account.accId, true),
-                icon: const Icon(Icons.refresh),
+                icon: const Icon(AppIcons.refresh),
                 label: const Text('重连'),
               ),
               const SizedBox(width: 6),
@@ -126,7 +125,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     ? null
                     : () =>
                           service.setAccountRegistration(account.accId, false),
-                icon: const Icon(Icons.pause_circle_outline),
+                icon: const Icon(AppIcons.pause),
                 label: const Text('暂停'),
               ),
               const SizedBox(width: 6),
@@ -135,14 +134,14 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     account.registrationActionInProgress || hasActiveCalls
                     ? null
                     : () => _showEditAccountDialog(uiState, service, account),
-                icon: const Icon(Icons.edit_outlined),
+                icon: const Icon(AppIcons.edit),
                 label: const Text('编辑'),
               ),
               const Spacer(),
               IconButton(
                 tooltip: '删除线路',
                 onPressed: () => service.removeAccount(account.accId),
-                icon: const Icon(Icons.delete_outline),
+                icon: const Icon(AppIcons.delete),
               ),
             ],
           ),

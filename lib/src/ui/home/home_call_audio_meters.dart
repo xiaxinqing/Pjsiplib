@@ -29,7 +29,6 @@ extension _HomeCallAudioMeters on _MyHomePageState {
       decoration: BoxDecoration(
         color: _subtlePanel,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _softBorder),
       ),
       child: Padding(
         padding: EdgeInsets.symmetric(
@@ -39,7 +38,9 @@ extension _HomeCallAudioMeters on _MyHomePageState {
         child: Column(
           children: [
             _buildAudioMeterRow(
-              icon: uiState.isMicrophoneMuted ? Icons.mic_off : Icons.mic,
+              icon: uiState.isMicrophoneMuted
+                  ? AppIcons.microphoneOff
+                  : AppIcons.microphone,
               label: '我方说话',
               value: microphoneValue,
               muted: uiState.isMicrophoneMuted,
@@ -48,8 +49,8 @@ extension _HomeCallAudioMeters on _MyHomePageState {
             SizedBox(height: compact ? 8 : 10),
             _buildAudioMeterRow(
               icon: uiState.isSpeakerMuted
-                  ? Icons.volume_off
-                  : Icons.graphic_eq,
+                  ? AppIcons.speakerOff
+                  : AppIcons.meters,
               label: '对方声音',
               value: speakerValue,
               muted: uiState.isSpeakerMuted,
@@ -66,7 +67,9 @@ extension _HomeCallAudioMeters on _MyHomePageState {
       children: [
         Expanded(
           child: _buildTinyAudioMeter(
-            icon: uiState.isMicrophoneMuted ? Icons.mic_off : Icons.mic,
+            icon: uiState.isMicrophoneMuted
+                ? AppIcons.microphoneOff
+                : AppIcons.microphone,
             value: _audioMeterValue(
               uiState.microphoneLevel,
               muted: uiState.isMicrophoneMuted,
@@ -79,7 +82,9 @@ extension _HomeCallAudioMeters on _MyHomePageState {
         const SizedBox(width: 10),
         Expanded(
           child: _buildTinyAudioMeter(
-            icon: uiState.isSpeakerMuted ? Icons.volume_off : Icons.graphic_eq,
+            icon: uiState.isSpeakerMuted
+                ? AppIcons.speakerOff
+                : AppIcons.meters,
             value: _audioMeterValue(
               uiState.speakerLevel,
               muted: uiState.isSpeakerMuted,

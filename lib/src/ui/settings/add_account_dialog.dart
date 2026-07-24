@@ -108,7 +108,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                 child: Row(
                   children: [
                     Icon(
-                      _isEditing ? Icons.edit_outlined : Icons.add_call,
+                      _isEditing ? AppIcons.edit : AppIcons.line,
                       size: 20,
                       color: _textPrimary,
                     ),
@@ -126,7 +126,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     IconButton(
                       tooltip: '关闭',
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, size: 20),
+                      icon: const Icon(AppIcons.close, size: 20),
                       style: IconButton.styleFrom(
                         fixedSize: const Size.square(36),
                         minimumSize: const Size.square(36),
@@ -148,7 +148,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: '线路账号',
-                          prefixIcon: Icon(Icons.person),
+                          prefixIcon: Icon(AppIcons.person),
                         ),
                         validator: _requiredValidator,
                       ),
@@ -159,15 +159,15 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
                           labelText: '密码',
-                          prefixIcon: const Icon(Icons.lock),
+                          prefixIcon: const Icon(AppIcons.lock),
                           suffixIcon: IconButton(
                             tooltip: _hidePassword ? '显示密码' : '隐藏密码',
                             onPressed: () =>
                                 setState(() => _hidePassword = !_hidePassword),
                             icon: Icon(
                               _hidePassword
-                                  ? Icons.visibility
-                                  : Icons.visibility_off,
+                                  ? AppIcons.visible
+                                  : AppIcons.hidden,
                             ),
                           ),
                         ),
@@ -180,7 +180,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         decoration: const InputDecoration(
                           labelText: '服务器',
                           helperText: '未填写端口时：UDP/TCP 默认 5060，TLS 默认 5061',
-                          prefixIcon: Icon(Icons.dns),
+                          prefixIcon: Icon(AppIcons.host),
                         ),
                         validator: _requiredValidator,
                       ),
@@ -220,7 +220,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     const SizedBox(width: 10),
                     FilledButton.icon(
                       onPressed: widget.isNetworkAvailable ? _submit : null,
-                      icon: Icon(_isEditing ? Icons.save_outlined : Icons.add),
+                      icon: Icon(_isEditing ? AppIcons.save : AppIcons.add),
                       label: Text(_isEditing ? '保存修改' : '添加并注册'),
                     ),
                   ],
@@ -239,7 +239,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
       initialValue: _selectedTransport,
       decoration: const InputDecoration(
         labelText: '传输协议',
-        prefixIcon: Icon(Icons.lan_outlined),
+        prefixIcon: Icon(AppIcons.transport),
       ),
       items: [
         for (final transport in SipTransport.values)
@@ -273,7 +273,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           initialValue: _selectedMediaEncryption,
           decoration: const InputDecoration(
             labelText: '媒体加密',
-            prefixIcon: Icon(Icons.enhanced_encryption_outlined),
+            prefixIcon: Icon(AppIcons.security),
           ),
           items: [
             for (final mode in MediaEncryptionMode.values)
@@ -314,7 +314,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
             child: Row(
               children: [
-                Icon(Icons.tune_outlined, size: 20, color: _textPrimary),
+                Icon(AppIcons.tune, size: 20, color: _textPrimary),
                 SizedBox(width: 10),
                 Text(
                   '高级设置',
@@ -334,7 +334,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             }),
             dense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            secondary: const Icon(Icons.hub_outlined),
+            secondary: const Icon(AppIcons.hub),
             title: const Text('启用 ICE'),
             subtitle: const Text('用于复杂 NAT 网络下协商媒体地址'),
           ),
@@ -348,7 +348,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                 labelText: 'STUN 服务器',
                 helperText: '清空则不使用 STUN',
                 hintText: _defaultStunServer,
-                prefixIcon: Icon(Icons.public),
+                prefixIcon: Icon(AppIcons.public),
               ),
             ),
           ),
@@ -363,7 +363,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             }),
             dense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            secondary: const Icon(Icons.swap_calls_outlined),
+            secondary: const Icon(AppIcons.swap),
             title: const Text('启用 TURN'),
             subtitle: const Text('无法直连媒体时使用中继服务器'),
           ),
@@ -379,7 +379,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     decoration: const InputDecoration(
                       labelText: 'TURN 服务器',
                       hintText: 'turn.example.com:3478',
-                      prefixIcon: Icon(Icons.cloud_queue),
+                      prefixIcon: Icon(AppIcons.cloud),
                     ),
                     validator: (value) {
                       if (!_turnEnabled) return null;
@@ -395,7 +395,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           textInputAction: TextInputAction.next,
                           decoration: const InputDecoration(
                             labelText: 'TURN 用户名',
-                            prefixIcon: Icon(Icons.person_outline),
+                            prefixIcon: Icon(AppIcons.person),
                           ),
                         ),
                       ),
@@ -406,7 +406,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           initialValue: _selectedTurnTransport,
                           decoration: const InputDecoration(
                             labelText: 'TURN 协议',
-                            prefixIcon: Icon(Icons.settings_ethernet),
+                            prefixIcon: Icon(AppIcons.transport),
                           ),
                           items: [
                             for (final transport in TurnTransport.values)
@@ -431,7 +431,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
                       labelText: 'TURN 密码',
-                      prefixIcon: const Icon(Icons.key_outlined),
+                      prefixIcon: const Icon(AppIcons.key),
                       suffixIcon: IconButton(
                         tooltip: _hideTurnPassword ? '显示密码' : '隐藏密码',
                         onPressed: () => setState(
@@ -439,8 +439,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         ),
                         icon: Icon(
                           _hideTurnPassword
-                              ? Icons.visibility
-                              : Icons.visibility_off,
+                              ? AppIcons.visible
+                              : AppIcons.hidden,
                         ),
                       ),
                     ),
