@@ -186,6 +186,25 @@ extension PjsipNetworkOperations on PjsipService {
     }
   }
 
+  bool requestSipNetworkRecovery({required String reason}) {
+    if (!_uiState.isInitialized ||
+        !_uiState.isNetworkAvailable ||
+        _uiState.accounts.isEmpty) {
+      return false;
+    }
+
+    _networkChangeTimer?.cancel();
+    if (_ipChangeInProgress) {
+      _pendingIpChange = true;
+      _addLog('🌐 SIP 网络恢复已在进行，已合并手动请求: $reason');
+      return true;
+    }
+
+    _addLog('🌐 手动触发 SIP 网络恢复: $reason');
+    _startIpChange();
+    return true;
+  }
+
   void _startIpChange() {
     _pendingIpChange = false;
     _ipChangeInProgress = true;

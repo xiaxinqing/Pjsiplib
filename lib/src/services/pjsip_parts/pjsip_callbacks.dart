@@ -600,6 +600,9 @@ extension _PjsipNativeCallbacks on PjsipService {
                 mediaSecurity: mediaSecurity ?? prev?.mediaSecurity,
               ),
             );
+            if (isConfirmed) {
+              _holdBackgroundConfirmedCallIfNeeded(callId);
+            }
           }
         });
       });

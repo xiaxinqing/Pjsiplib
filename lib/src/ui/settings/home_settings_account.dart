@@ -57,7 +57,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     final detail =
         '${account.host} · ${account.transportLabel}'
         '${account.mediaSecurity.usesSrtp ? ' · ${account.mediaSecurity.mode.label}' : ''}'
-        '${account.iceConfig.hasStunServer ? ' · STUN' : ''}'
+        ' · STUN'
         '${account.iceConfig.enabled ? ' · ICE' : ''}'
         '${account.turnConfig.isUsable ? ' · TURN' : ''}'
         ' · ${account.registrationStatusText}';

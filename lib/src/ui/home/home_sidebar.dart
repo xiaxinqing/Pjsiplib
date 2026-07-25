@@ -358,7 +358,7 @@ extension _HomeSidebar on _MyHomePageState {
         if (failedAccounts.isNotEmpty)
           PopupMenuItem<String>(
             value: 'retry_failed',
-            child: _buildPopupActionRow(AppIcons.refresh, '重连异常线路'),
+            child: _buildPopupActionRow(AppIcons.refresh, '刷新异常线路'),
           ),
         PopupMenuItem<String>(
           value: 'add_line',
@@ -435,7 +435,14 @@ extension _HomeSidebar on _MyHomePageState {
               !account.registrationActionInProgress &&
               !(account.registrationEnabled &&
                   account.registrationStatus == null),
-          child: _buildPopupActionRow(AppIcons.refresh, '重新注册'),
+          child: _buildPopupActionRow(AppIcons.refresh, '刷新注册'),
+        ),
+        PopupMenuItem<String>(
+          value: account.registrationActionInProgress
+              ? null
+              : 'force_reconnect',
+          enabled: !account.registrationActionInProgress,
+          child: _buildPopupActionRow(AppIcons.power, '强制重连'),
         ),
         PopupMenuItem<String>(
           value:
@@ -466,6 +473,10 @@ extension _HomeSidebar on _MyHomePageState {
         service.setDefaultAccount(account.accId);
       case 'retry':
         service.setAccountRegistration(account.accId, true);
+      case 'force_reconnect':
+        final confirmed = await _confirmForceReconnectLine(account);
+        if (confirmed != true || !mounted) return;
+        service.forceReconnectAccount(account.accId);
       case 'pause':
         service.setAccountRegistration(account.accId, false);
       case 'delete':
@@ -473,6 +484,111 @@ extension _HomeSidebar on _MyHomePageState {
         if (confirmed != true || !mounted) return;
         service.removeAccount(account.accId);
     }
+  }
+
+  Future<bool?> _confirmForceReconnectLine(SipAccountInfo account) {
+    return showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (context) => AlertDialog(
+        contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+        content: SizedBox(
+          width: 380,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: _brandGreen.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(_radiusSm),
+                    ),
+                    child: const Icon(
+                      AppIcons.power,
+                      size: _iconMd,
+                      color: _brandGreen,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '强制重连线路',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '会短暂注销后重新注册，不会删除这条线路。',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: _textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _subtlePanel,
+                  borderRadius: BorderRadius.circular(_radiusSm),
+                  border: Border.all(color: _softBorder),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildTooltipText(
+                        account.lineLabel,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${account.registrationStatusText} · ${account.transportLabel}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: _textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '适合网络恢复、电脑休眠唤醒后线路状态不对的情况。',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(AppIcons.power),
+            label: const Text('强制重连'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<bool?> _confirmDeleteLine(SipAccountInfo account) {

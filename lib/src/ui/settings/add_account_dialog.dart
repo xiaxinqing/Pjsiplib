@@ -31,7 +31,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   var _hideTurnPassword = true;
   var _selectedTransport = SipTransport.udp;
   var _selectedMediaEncryption = MediaEncryptionMode.none;
-  var _iceEnabled = false;
+  var _iceEnabled = true;
   var _turnEnabled = false;
   var _selectedTurnTransport = TurnTransport.udp;
 
@@ -65,7 +65,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     _selectedTransport = account?.transport ?? SipTransport.udp;
     _selectedMediaEncryption =
         account?.mediaSecurity.mode ?? MediaEncryptionMode.none;
-    _iceEnabled = account?.iceConfig.enabled ?? false;
+    _iceEnabled = account?.iceConfig.enabled ?? true;
     _turnEnabled = account?.turnConfig.enabled ?? false;
     _selectedTurnTransport = account?.turnConfig.transport ?? TurnTransport.udp;
   }
@@ -346,7 +346,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(
                 labelText: 'STUN 服务器',
-                helperText: '清空则不使用 STUN',
+                helperText: '清空则使用默认 STUN，多个可用逗号或空格分隔',
                 hintText: _defaultStunServer,
                 prefixIcon: Icon(AppIcons.public),
               ),

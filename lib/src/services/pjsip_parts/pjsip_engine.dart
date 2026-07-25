@@ -348,8 +348,9 @@ extension PjsipEngineOperations on PjsipService {
       if (effectiveMediaSecurity.usesSrtp) {
         _addLog('🔐 媒体加密: ${effectiveMediaSecurity.mode.label}');
       }
-      if (effectiveIceConfig.hasStunServer) {
-        _addLog('🌐 STUN 服务器: ${effectiveIceConfig.stunServer.trim()}');
+      final stunServers = _stunServersForConfig(effectiveIceConfig);
+      if (stunServers.isNotEmpty) {
+        _addLog('🌐 STUN 服务器: ${stunServers.join(', ')}');
       }
       if (effectiveIceConfig.enabled) {
         final turn = turnConfig.isUsable
@@ -537,21 +538,45 @@ extension PjsipEngineOperations on PjsipService {
   }
 
   void _configureStunServersIfNeeded(IceConfig iceConfig, Arena arena) {
-    if (!iceConfig.hasStunServer) return;
-    final stunServer = iceConfig.stunServer.trim();
-    final stun = arena<pj_str_t>();
-    _pjStr(stun.ref, stunServer.toNativeUtf8(allocator: arena));
-    final status = _bindings.pjsua_update_stun_servers(1, stun, 0);
-    if (status != 0) {
-      _addLog('⚠️ 更新 STUN 服务器失败: $stunServer, pj_status=$status');
+    final stunServers = _stunServersForConfig(iceConfig);
+    if (stunServers.isEmpty) return;
+
+    final stun = arena<pj_str_t>(stunServers.length);
+    for (var i = 0; i < stunServers.length; i++) {
+      _pjStr(stun[i], stunServers[i].toNativeUtf8(allocator: arena));
     }
+    final status = _bindings.pjsua_update_stun_servers(
+      stunServers.length,
+      stun,
+      0,
+    );
+    if (status != 0) {
+      _addLog('⚠️ 更新 STUN 服务器失败: ${stunServers.join(', ')}, pj_status=$status');
+    }
+  }
+
+  List<String> _stunServersForConfig(IceConfig iceConfig) {
+    const defaultStunServers = <String>[
+      'stun.l.google.com:19302',
+      'stun.pjsip.org',
+    ];
+    final userStunServers = iceConfig.stunServer
+        .split(RegExp(r'[\s,;]+'))
+        .map((server) => server.trim())
+        .where((server) => server.isNotEmpty);
+    final servers = <String>[...userStunServers, ...defaultStunServers];
+    final seen = <String>{};
+    return [
+      for (final server in servers)
+        if (server.isNotEmpty && seen.add(server.toLowerCase())) server,
+    ];
   }
 
   void _configureAccountStun(
     ffi.Pointer<pjsua_acc_config> accCfg,
     IceConfig iceConfig,
   ) {
-    if (!iceConfig.hasStunServer) {
+    if (_stunServersForConfig(iceConfig).isEmpty) {
       accCfg.ref.sip_stun_useAsInt =
           pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
       accCfg.ref.media_stun_useAsInt =
@@ -872,15 +897,160 @@ extension PjsipEngineOperations on PjsipService {
       _uiState = _uiState.copyWith(accounts: rollbackAccounts);
       unawaited(_persistSeatEnvironment());
       _addLog(
-        '❌ ${enabled ? '重新注册' : '暂停注册'}线路失败: ${account.lineLabel}, pj_status=$status',
+        '❌ ${enabled ? '刷新注册' : '暂停注册'}线路失败: ${account.lineLabel}, pj_status=$status',
       );
-      ToastUtil.showError(enabled ? '重新注册失败' : '暂停线路失败');
+      ToastUtil.showError(enabled ? '刷新注册失败' : '暂停线路失败');
       return;
     }
     if (!enabled) {
       _clearDefaultAccountIfUnavailable(accId);
     }
-    _addLog('${enabled ? '🌐 重新注册线路' : '⏸ 暂停线路注册'}: ${account.lineLabel}');
+    _addLog('${enabled ? '🌐 刷新线路注册' : '⏸ 暂停线路注册'}: ${account.lineLabel}');
+  }
+
+  void forceReconnectAccount(int accId) {
+    final account = _uiState.accounts[accId];
+    if (account == null || !_uiState.isInitialized) return;
+    if (account.registrationActionInProgress) {
+      _addLog('⚠️ 线路注册操作处理中，请稍后再试: ${account.lineLabel}');
+      ToastUtil.showWarning('线路操作处理中，请稍后');
+      return;
+    }
+    if (_uiState.calls.values.any((call) => call.accountId == accId)) {
+      _addLog('⚠️ 线路仍有通话，不能强制重连: ${account.lineLabel}');
+      ToastUtil.showWarning('线路仍有通话，不能强制重连');
+      return;
+    }
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('⚠️ 当前网络不可用，暂不能强制重连线路: ${account.lineLabel}');
+      ToastUtil.showWarning('当前网络不可用');
+      return;
+    }
+
+    final shouldUnregister =
+        account.registrationEnabled &&
+        (account.isRegistered ||
+            account.registrationStatus == null ||
+            (account.registrationExpires ?? 0) > 0);
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+      ..[accId] = account.copyWith(
+        registrationStatus: null,
+        registrationStatusText: '网络恢复中',
+        registrationExpires: null,
+        registrationEnabled: true,
+        registrationActionInProgress: true,
+      );
+    _uiState = _uiState.copyWith(accounts: accounts);
+    unawaited(_persistSeatEnvironment());
+
+    final networkRecoveryRequested = requestSipNetworkRecovery(
+      reason: '强制重连线路 ${account.lineLabel}',
+    );
+
+    try {
+      final refreshStatus = _bindings.pjsua_acc_refresh_transport(accId);
+      if (refreshStatus != 0) {
+        _addLog(
+          '⚠️ 刷新线路传输缓存失败: ${account.lineLabel}, pj_status=$refreshStatus',
+        );
+      }
+    } catch (error) {
+      _addLog('⚠️ 当前 PJSIP 不支持刷新线路传输缓存，将继续重连: $error');
+    }
+
+    var unregisterSent = false;
+    final shouldUnregisterNow = shouldUnregister && !networkRecoveryRequested;
+    if (shouldUnregisterNow) {
+      final unregisterStatus = _bindings.pjsua_acc_set_registration(accId, 0);
+      if (unregisterStatus == 0) {
+        unregisterSent = true;
+        _addLog('🔄 强制重连：已发送线路注销请求: ${account.lineLabel}');
+      } else {
+        _addLog(
+          '⚠️ 强制重连：注销请求失败，将直接重新注册: ${account.lineLabel}, pj_status=$unregisterStatus',
+        );
+      }
+    }
+
+    unawaited(
+      _completeForceReconnectAccount(
+        accId,
+        networkRecoveryRequested
+            ? const Duration(milliseconds: 1200)
+            : unregisterSent
+            ? const Duration(milliseconds: 450)
+            : const Duration(milliseconds: 120),
+        unregisterBeforeRegister: shouldUnregister && networkRecoveryRequested,
+      ),
+    );
+    ToastUtil.showSuccess('已开始强制重连');
+  }
+
+  Future<void> _completeForceReconnectAccount(
+    int accId,
+    Duration delay, {
+    required bool unregisterBeforeRegister,
+  }) async {
+    await Future<void>.delayed(delay);
+    if (_isDisposed || !_uiState.isInitialized) return;
+    final account = _uiState.accounts[accId];
+    if (account == null) return;
+
+    if (unregisterBeforeRegister) {
+      final unregisterAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+        ..[accId] = account.copyWith(
+          registrationStatus: null,
+          registrationStatusText: '重连中',
+          registrationExpires: null,
+          registrationEnabled: true,
+          registrationActionInProgress: true,
+        );
+      _uiState = _uiState.copyWith(accounts: unregisterAccounts);
+      unawaited(_persistSeatEnvironment());
+
+      final unregisterStatus = _bindings.pjsua_acc_set_registration(accId, 0);
+      if (unregisterStatus == 0) {
+        _addLog('🔄 强制重连：网络恢复后已发送线路注销请求: ${account.lineLabel}');
+        await Future<void>.delayed(const Duration(milliseconds: 450));
+      } else {
+        _addLog(
+          '⚠️ 强制重连：网络恢复后注销请求失败，将直接重新注册: ${account.lineLabel}, pj_status=$unregisterStatus',
+        );
+      }
+      if (_isDisposed || !_uiState.isInitialized) return;
+    }
+
+    final latestAccount = _uiState.accounts[accId];
+    if (latestAccount == null) return;
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+      ..[accId] = latestAccount.copyWith(
+        registrationStatus: null,
+        registrationStatusText: '注册中',
+        registrationExpires: null,
+        registrationEnabled: true,
+        registrationActionInProgress: true,
+      );
+    _uiState = _uiState.copyWith(accounts: accounts);
+    unawaited(_persistSeatEnvironment());
+
+    final status = _bindings.pjsua_acc_set_registration(accId, 1);
+    if (status != 0) {
+      final rollbackAccount = _uiState.accounts[accId];
+      if (rollbackAccount != null) {
+        final rollbackAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+          ..[accId] = rollbackAccount.copyWith(
+            registrationStatusText: '重连失败',
+            registrationActionInProgress: false,
+          );
+        _uiState = _uiState.copyWith(accounts: rollbackAccounts);
+        unawaited(_persistSeatEnvironment());
+      }
+      _addLog('❌ 强制重连线路失败: ${account.lineLabel}, pj_status=$status');
+      ToastUtil.showError('强制重连失败');
+      return;
+    }
+
+    _addLog('🌐 强制重连：已重新发送注册请求: ${account.lineLabel}');
   }
 
   void disconnectAllAccounts() {

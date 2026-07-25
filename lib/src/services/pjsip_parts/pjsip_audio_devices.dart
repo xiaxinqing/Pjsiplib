@@ -1435,14 +1435,16 @@ extension PjsipAudioDeviceOperations on PjsipService {
   bool get _hasIncomingCall =>
       _uiState.calls.values.any((call) => call.isIncoming);
 
-  bool get _hasOutboundCallWaiting => _uiState.calls.values.any((call) {
+  bool get _hasActiveOutboundCallWaiting {
+    final call = _uiState.activeCall;
+    if (call == null) return false;
     if (call.direction != PjsipCallDirection.outbound || call.isConnected) {
       return false;
     }
     return call.state == pjsip_inv_state.PJSIP_INV_STATE_CALLING.value ||
         call.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value ||
         call.state == pjsip_inv_state.PJSIP_INV_STATE_CONNECTING.value;
-  });
+  }
 
   void _syncCallProgressSounds() {
     if (!_uiState.isInitialized) {
@@ -1458,7 +1460,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
         _stopIncomingRingtone();
       }
       _stopOutgoingRingback();
-    } else if (_hasOutboundCallWaiting) {
+    } else if (_hasActiveOutboundCallWaiting) {
       _stopIncomingRingtone();
       if (_uiState.outgoingRingbackEnabled) {
         _startOutgoingRingback();
@@ -1508,7 +1510,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
         assetPath: _ringbackAssetPath,
         tempFileName: 'pjsip_lib_ringback.wav',
         reason: '外呼回铃音',
-        shouldStillPlay: () => !_hasIncomingCall && _hasOutboundCallWaiting,
+        shouldStillPlay: () =>
+            !_hasIncomingCall && _hasActiveOutboundCallWaiting,
         getPlayerId: () => _audio.ringbackPlayerId,
         setPlayer: (id, port) {
           _audio.ringbackPlayerId = id;

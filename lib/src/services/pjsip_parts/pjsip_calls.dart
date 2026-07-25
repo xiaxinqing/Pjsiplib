@@ -75,6 +75,16 @@ extension PjsipCallOperations on PjsipService {
       _addLog('❌ 请先拆分当前三方通话，再发起新的呼叫');
       return;
     }
+    final pendingOutboundCall = _pendingOutboundCall;
+    if (pendingOutboundCall != null) {
+      final pendingNumber = _extractPhoneNumber(pendingOutboundCall.remoteUri);
+      final message = pendingNumber.isEmpty
+          ? '已有呼叫正在进行，请先挂断后再拨打'
+          : '正在呼叫 $pendingNumber，请先挂断后再拨打';
+      ToastUtil.showWarning(message);
+      _addLog('⚠️ $message');
+      return;
+    }
     // 发起新通话也遵循“单路激活”规则。
     if (!await _holdActiveCallExcept(-1)) return;
     using((Arena arena) {
@@ -132,6 +142,7 @@ extension PjsipCallOperations on PjsipService {
   Future<void> answerCall(int callId) async {
     final call = _uiState.calls[callId];
     if (call == null || !call.isIncoming) return;
+    _cancelPendingOutboundCallsBeforeAnswer(callId);
     if (!await _holdActiveCallExcept(callId)) return;
     final status = _bindings.pjsua_call_answer(
       callId,
@@ -145,6 +156,73 @@ extension PjsipCallOperations on PjsipService {
       _addLog('✅ 已接听电话: call=$callId');
     } else {
       _addLog('❌ 接听失败: $status');
+    }
+  }
+
+  bool _isPendingOutboundCall(CallInfo call) {
+    if (call.direction != PjsipCallDirection.outbound || call.isConnected) {
+      return false;
+    }
+    return call.state == pjsip_inv_state.PJSIP_INV_STATE_CALLING.value ||
+        call.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value ||
+        call.state == pjsip_inv_state.PJSIP_INV_STATE_CONNECTING.value;
+  }
+
+  CallInfo? get _pendingOutboundCall {
+    for (final call in _uiState.calls.values) {
+      if (_isPendingOutboundCall(call)) return call;
+    }
+    return null;
+  }
+
+  void _cancelPendingOutboundCallsBeforeAnswer(int incomingCallId) {
+    final pendingOutboundCalls = _uiState.calls.values
+        .where(
+          (call) =>
+              call.callId != incomingCallId && _isPendingOutboundCall(call),
+        )
+        .toList();
+    if (pendingOutboundCalls.isEmpty) return;
+
+    _stopOutgoingRingback();
+    for (final call in pendingOutboundCalls) {
+      _locallyEndedCallIds.add(call.callId);
+      if (_bindings.pjsua_call_is_active(call.callId) == 0) {
+        _addLog('🚫 接听来电前清理已失效外呼: call=${call.callId}');
+        _removeCall(call.callId, hangupReason: 'incoming answer cancel');
+        continue;
+      }
+      final status = _bindings.pjsua_call_hangup(
+        call.callId,
+        0,
+        ffi.nullptr,
+        ffi.nullptr,
+      );
+      if (status == 0) {
+        _addLog(
+          '🚫 接听来电前已取消未接通外呼: call=${call.callId}, remote=${call.remoteUri}',
+        );
+      } else {
+        _addLog('⚠️ 取消未接通外呼失败: call=${call.callId}, pj_status=$status');
+      }
+    }
+  }
+
+  void _holdBackgroundConfirmedCallIfNeeded(int callId) {
+    final call = _uiState.calls[callId];
+    if (call == null || !call.isConnected || call.isOnHold) return;
+    if (_uiState.activeCallId == callId) return;
+
+    final activeId = _uiState.activeCallId;
+    final active = activeId == null ? null : _uiState.calls[activeId];
+    if (active == null || !active.isConnected) return;
+
+    final status = _bindings.pjsua_call_set_hold(callId, ffi.nullptr);
+    if (status == 0) {
+      _putCall(call.copyWith(isOnHold: true));
+      _addLog('⏸ 后台通话接通，已自动保持: call=$callId');
+    } else {
+      _addLog('⚠️ 后台通话自动保持失败: call=$callId, pj_status=$status');
     }
   }
 

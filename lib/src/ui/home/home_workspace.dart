@@ -255,6 +255,12 @@ extension _HomeWorkspace on _MyHomePageState {
                 _clearDialpadNumber(),
             const SingleActivator(LogicalKeyboardKey.numpadEnter): () =>
                 _callNumberIfPossible(canCall, service, selectedAccountId),
+            const SingleActivator(LogicalKeyboardKey.equal, shift: true): () =>
+                _insertDialpadKey('+'),
+            const SingleActivator(LogicalKeyboardKey.add): () =>
+                _insertDialpadKey('+'),
+            const SingleActivator(LogicalKeyboardKey.numpadAdd): () =>
+                _insertDialpadKey('+'),
           },
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1211,6 +1217,7 @@ extension _HomeWorkspace on _MyHomePageState {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _insertDialpadKey(key),
+        onLongPress: key == '0' ? () => _insertDialpadKey('+') : null,
         child: Container(
           alignment: Alignment.center,
           decoration: BoxDecoration(
@@ -1218,16 +1225,48 @@ extension _HomeWorkspace on _MyHomePageState {
             borderRadius: BorderRadius.circular(_radiusSm),
             border: Border.all(color: _softBorder),
           ),
-          child: Text(
-            key,
-            style: const TextStyle(
-              fontSize: 21,
-              fontWeight: FontWeight.w700,
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
+          child: _buildDialpadKeyLabel(key),
         ),
       ),
+    );
+  }
+
+  Widget _buildDialpadKeyLabel(String key) {
+    final secondary = key == '0' ? '+' : null;
+    if (secondary == null) {
+      return Text(
+        key,
+        style: const TextStyle(
+          fontSize: 21,
+          fontWeight: FontWeight.w700,
+          fontFeatures: [FontFeature.tabularFigures()],
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          key,
+          style: const TextStyle(
+            fontSize: 21,
+            fontWeight: FontWeight.w700,
+            height: 1,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          secondary,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: _textSecondary,
+            height: 1,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1376,19 +1415,22 @@ String _sanitizeDialpadNumber(String input) {
   if (uriMatch != null) value = uriMatch.group(1) ?? value;
 
   final buffer = StringBuffer();
-  var usedPlus = false;
   for (var index = 0; index < value.length; index++) {
     final char = value[index];
     if ('0123456789*#'.contains(char)) {
       buffer.write(char);
       continue;
     }
-    if (char == '+' && buffer.isEmpty && !usedPlus) {
-      buffer.write(char);
-      usedPlus = true;
+    if (_isPlusChar(char)) {
+      buffer.write('+');
+      continue;
     }
   }
   return buffer.toString();
+}
+
+bool _isPlusChar(String value) {
+  return value == '+' || value == '＋' || value == '﹢' || value == '➕';
 }
 
 int _cleanedDialpadSelectionOffset(
