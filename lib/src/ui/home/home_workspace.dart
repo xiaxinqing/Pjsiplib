@@ -58,11 +58,11 @@ extension _HomeWorkspace on _MyHomePageState {
             ),
           ),
           _buildHeaderAction(uiState, service),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           IconButton(
             tooltip: '设置',
             onPressed: _openSettingsDrawer,
-            icon: const Icon(AppIcons.settings),
+            icon: const Icon(AppIcons.settings, color: _textPrimary),
           ),
         ],
       ),
@@ -94,7 +94,7 @@ extension _HomeWorkspace on _MyHomePageState {
                 service.disconnectAllAccounts();
               }
             : null,
-        icon: const Icon(AppIcons.power),
+        icon: const Icon(AppIcons.power, color: _textPrimary),
       );
     }
     return FilledButton.icon(

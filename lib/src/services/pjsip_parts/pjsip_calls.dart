@@ -249,6 +249,76 @@ extension PjsipCallOperations on PjsipService {
     });
   }
 
+  /// 盲转当前通话到指定号码或 SIP URI。
+  ///
+  /// 这里发送 SIP REFER。同步 status 只代表 REFER 请求是否成功发起。
+  /// 产品层按“甩转”处理：REFER 发出后本机直接结束并移除原通话，
+  /// 后续 NOTIFY 只进日志，不再影响本机通话列表。
+  Future<void> blindTransferCall(int callId, String destination) async {
+    final call = _uiState.calls[callId];
+    if (call == null || !call.isConnected) {
+      _addLog('⚠️ 当前没有可转接的已接通通话');
+      ToastUtil.showWarning('当前没有可转接的通话');
+      return;
+    }
+    if (_uiState.isInConference(callId)) {
+      _addLog('⚠️ 会议成员暂不支持盲转，请先拆分三方通话');
+      ToastUtil.showWarning('请先拆分三方通话，再执行转接');
+      return;
+    }
+
+    final targetUri = _transferTargetUri(call, destination);
+    if (targetUri == null) {
+      _addLog('⚠️ 盲转目标为空');
+      ToastUtil.showWarning('请输入转接号码');
+      return;
+    }
+
+    final status = using((Arena arena) {
+      final pjDest = arena<pj_str_t>();
+      _pjStr(pjDest.ref, targetUri.toNativeUtf8(allocator: arena));
+      return _bindings.pjsua_call_xfer(callId, pjDest, ffi.nullptr);
+    });
+    if (status == 0) {
+      _addLog('➡️ 已发送盲转 REFER: call=$callId, target=$targetUri');
+      _blindTransferAutoReleaseCallIds.add(callId);
+      unawaited(
+        Future<void>.delayed(const Duration(seconds: 30), () {
+          _blindTransferAutoReleaseCallIds.remove(callId);
+        }),
+      );
+      ToastUtil.showSuccess('已发送转接请求，正在结束本机通话');
+      unawaited(
+        Future<void>.delayed(const Duration(milliseconds: 120), () async {
+          if (!_uiState.calls.containsKey(callId)) return;
+          await hangupCall(callId);
+          if (!_uiState.calls.containsKey(callId)) return;
+          _addLog('➡️ 盲转后本地移除通话: call=$callId');
+          _removeCall(callId, hangupReason: 'blind transfer local release');
+        }),
+      );
+    } else {
+      _addLog('❌ 盲转失败: call=$callId, target=$targetUri, pj_status=$status');
+      ToastUtil.showError('转接请求发送失败');
+    }
+  }
+
+  String? _transferTargetUri(CallInfo call, String destination) {
+    final target = destination.trim();
+    if (target.isEmpty) return null;
+    final hasScheme = RegExp(
+      r'^[a-z][a-z0-9+.-]*:',
+      caseSensitive: false,
+    ).hasMatch(target);
+    if (hasScheme) return target;
+    if (target.contains('@')) return 'sip:$target';
+
+    final accountId = call.accountId;
+    final account = accountId == null ? null : _uiState.accounts[accountId];
+    if (account == null) return 'sip:$target';
+    return 'sip:$target@${account.host};transport=${account.transport.uriParam}';
+  }
+
   /// 把一条已接通且处于 Hold 的通话，与当前活动通话合并为三方会议。
   ///
   /// PJSUA 的 conference bridge 是有方向的，所以除了两路通话分别连接声卡，

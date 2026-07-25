@@ -45,6 +45,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
+  final Set<int> _blindTransferAutoReleaseCallIds = <int>{};
   final Map<int, String> _callNotes = <int, String>{};
   final Map<int, String> _sharedConferenceNotes = <int, String>{};
   final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
@@ -113,6 +114,16 @@ class PjsipService extends Notifier<PjsipUIState> {
     )
   >
   _callSdpCreatedCallable;
+  late ffi.NativeCallable<
+    ffi.Void Function(
+      ffi.Int,
+      ffi.Int,
+      ffi.Pointer<pj_str_t>,
+      ffi.Int,
+      ffi.Pointer<ffi.Int>,
+    )
+  >
+  _callTransferStatusCallable;
   late ffi.NativeCallable<
     ffi.Void Function(
       ffi.UnsignedInt,
@@ -301,6 +312,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _callMediaStateCallable.close();
     _callMediaEventCallable.close();
     _callSdpCreatedCallable.close();
+    _callTransferStatusCallable.close();
     _ipChangeProgressCallable.close();
   }
 }

@@ -233,6 +233,47 @@ extension _PjsipNativeCallbacks on PjsipService {
       _addLog('📡 媒体事件: call=$callId, media=$mediaIndex, event=$eventName');
     });
 
+    // 盲转/咨询转状态回调。
+    //
+    // pjsua_call_xfer() 只代表 REFER 已发出；是否真正转接成功，需要等待
+    // PBX/对端通过 NOTIFY 汇报。这里使用 NativeCallable.listener，回调会异步
+    // 投递到 Dart，所以 st_text/p_cont 这类原生指针不能在闭包里解引用。
+    _callTransferStatusCallable = ffi.NativeCallable.listener((
+      int callId,
+      int statusCode,
+      ffi.Pointer<pj_str_t> statusTextPointer,
+      int isFinal,
+      ffi.Pointer<ffi.Int> continueReportingPointer,
+    ) {
+      if (!_uiState.isInitialized) return;
+      final finalStatus = isFinal != 0;
+      final autoRelease = _blindTransferAutoReleaseCallIds.contains(callId);
+      final hasLocalCall = _uiState.calls.containsKey(callId);
+      _addLog(
+        '➡️ 转接状态: call=$callId, status=$statusCode, final=$finalStatus, '
+        'autoRelease=$autoRelease, hasLocalCall=$hasLocalCall',
+      );
+      if (!finalStatus) return;
+
+      if (autoRelease || !hasLocalCall) {
+        _addLog('➡️ 甩转本机已收尾，忽略最终转接状态: call=$callId, status=$statusCode');
+        return;
+      }
+
+      if (statusCode >= 200 && statusCode < 300) {
+        ToastUtil.showSuccess('转接已完成');
+        unawaited(
+          Future<void>.delayed(const Duration(milliseconds: 120), () async {
+            if (!_uiState.calls.containsKey(callId)) return;
+            await hangupCall(callId);
+          }),
+        );
+        return;
+      }
+
+      ToastUtil.showError('转接失败：$statusCode');
+    });
+
     // 账号注册状态回调。
     //
     // 触发时机：
@@ -408,6 +449,11 @@ extension _PjsipNativeCallbacks on PjsipService {
           scheduleMicrotask(() {
             // [T3 handle] 走“已释放 → 判定 DISCONNECTED”分支
             _printLog('T3 handle', 'on_call_state: call=$callId 走“已释放”清理分支');
+            if (_blindTransferAutoReleaseCallIds.contains(callId) &&
+                !_uiState.calls.containsKey(callId)) {
+              _addLog('➡️ 盲转本机已移除，忽略已释放状态回调: call=$callId');
+              return;
+            }
             _addLog(
               '📞 通话已结束: call=$callId\n'
               '原因: info 已释放，判定为 DISCONNECTED\n'
@@ -437,6 +483,11 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (callState == pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value) {
             // 少数情况下 isolate 抢在 PJSIP 释放 call 之前执行，get_info 成功
             // 且状态就是 DISCONNECTED。与上面的失败分支做同样的清理。
+            if (_blindTransferAutoReleaseCallIds.contains(callId) &&
+                !_uiState.calls.containsKey(callId)) {
+              _addLog('➡️ 盲转本机已移除，忽略断开状态回调: call=$callId');
+              return;
+            }
             _addLog(
               '📞 通话已挂断: call=$callId\n'
               'lastSip=$lastStatus${lastStatusText.isEmpty ? '' : ' ($lastStatusText)'}\n'
@@ -449,6 +500,11 @@ extension _PjsipNativeCallbacks on PjsipService {
               hangupReason: lastStatusText,
             );
           } else {
+            if (_blindTransferAutoReleaseCallIds.contains(callId) &&
+                !_uiState.calls.containsKey(callId)) {
+              _addLog('➡️ 盲转本机已移除，忽略后续通话状态: call=$callId, state=$callState');
+              return;
+            }
             _addLog('通话状态变更: $callId -> $callState');
             final isConfirmed =
                 callState == pjsip_inv_state.PJSIP_INV_STATE_CONFIRMED.value;

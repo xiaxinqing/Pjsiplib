@@ -943,6 +943,15 @@ extension _HomeCalls on _MyHomePageState {
               : null,
         ),
         _roundCallButton(
+          icon: AppIcons.route,
+          label: '转接',
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          onPressed:
+              call.isConnected && !isConferenceMember && !hasPendingOperation
+              ? () => _showBlindTransferDialog(call, uiState, service)
+              : null,
+        ),
+        _roundCallButton(
           icon: AppIcons.tune,
           label: '音频',
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -964,6 +973,36 @@ extension _HomeCalls on _MyHomePageState {
       spacing: 14,
       runSpacing: 14,
       children: controls,
+    );
+  }
+
+  Future<void> _showBlindTransferDialog(
+    CallInfo call,
+    PjsipUIState uiState,
+    PjsipService service,
+  ) async {
+    final account = uiState.accountForCall(call);
+    final participant = _callParticipantLabel(call);
+    final contacts = ref.read(contactBookProvider).contacts;
+    final destination = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.28),
+      builder: (context) => _BlindTransferDialog(
+        participant: participant,
+        lineLabel: account == null
+            ? '当前线路未知'
+            : '${account.lineLabel} · ${account.transportLabel}',
+        exampleTarget: account == null
+            ? '输入号码或 SIP URI'
+            : '例如 6545 或 sip:6545@${account.host}',
+        contacts: contacts,
+      ),
+    );
+    if (destination == null || destination.trim().isEmpty || !mounted) return;
+    _runCallActionAndFocus(
+      call.callId,
+      '正在转接',
+      () => unawaited(service.blindTransferCall(call.callId, destination)),
     );
   }
 
@@ -2204,6 +2243,18 @@ extension _HomeCalls on _MyHomePageState {
                                       () => service.holdCall(call.callId),
                                     ),
                       ),
+                    if (!isConferenceMember)
+                      _compactCallAction(
+                        icon: AppIcons.route,
+                        label: '转接',
+                        onPressed: hasPendingOperation
+                            ? null
+                            : () => _showBlindTransferDialog(
+                                call,
+                                uiState,
+                                service,
+                              ),
+                      ),
                     if (canMergeWithActive)
                       _compactCallAction(
                         icon: AppIcons.contacts,
@@ -2322,6 +2373,420 @@ class _CallContactMatch {
 
   final ContactEntry contact;
   final ContactPhoneEntry phone;
+}
+
+class _BlindTransferDialog extends StatefulWidget {
+  const _BlindTransferDialog({
+    required this.participant,
+    required this.lineLabel,
+    required this.exampleTarget,
+    required this.contacts,
+  });
+
+  final String participant;
+  final String lineLabel;
+  final String exampleTarget;
+  final List<ContactEntry> contacts;
+
+  @override
+  State<_BlindTransferDialog> createState() => _BlindTransferDialogState();
+}
+
+class _BlindTransferDialogState extends State<_BlindTransferDialog> {
+  late final TextEditingController _manualController;
+  late final TextEditingController _contactSearchController;
+
+  @override
+  void initState() {
+    super.initState();
+    _manualController = TextEditingController();
+    _contactSearchController = TextEditingController()
+      ..addListener(_handleContactSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _contactSearchController
+      ..removeListener(_handleContactSearchChanged)
+      ..dispose();
+    _manualController.dispose();
+    super.dispose();
+  }
+
+  void _handleContactSearchChanged() {
+    if (mounted) setState(() {});
+  }
+
+  List<_BlindTransferContactTarget> get _contactTargets {
+    final keyword = _contactSearchController.text.trim();
+    final targets = <_BlindTransferContactTarget>[];
+    for (final contact in widget.contacts) {
+      if (!contact.matches(keyword)) continue;
+      for (final phone in contact.phoneEntries) {
+        targets.add(
+          _BlindTransferContactTarget(contact: contact, phone: phone),
+        );
+        if (targets.length >= 16) return targets;
+      }
+    }
+    return targets;
+  }
+
+  void _submitManual() {
+    final target = _manualController.text.trim();
+    if (target.isEmpty) return;
+    Navigator.of(context).pop(target);
+  }
+
+  void _submitContact(_BlindTransferContactTarget target) {
+    Navigator.of(context).pop(target.phone.number);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final targets = _contactTargets;
+    return AlertDialog(
+      contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+      actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+      content: SizedBox(
+        width: 520,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: _brandGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(_radiusSm),
+                  ),
+                  child: const Icon(
+                    AppIcons.route,
+                    size: _iconMd,
+                    color: _brandGreen,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '盲转通话',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '直接将当前通话转接到目标号码，本机不先咨询对方。',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: _subtlePanel,
+                borderRadius: BorderRadius.circular(_radiusSm),
+                border: Border.all(color: _softBorder),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Tooltip(
+                      message: widget.participant,
+                      child: Text(
+                        widget.participant,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Tooltip(
+                      message: widget.lineLabel,
+                      child: Text(
+                        widget.lineLabel,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: _textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _BlindTransferSectionTitle(
+              icon: AppIcons.contacts,
+              title: '通讯录直接选择',
+              trailing: '${targets.length} 个号码',
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _contactSearchController,
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.search,
+              decoration: const InputDecoration(
+                hintText: '搜索联系人、号码、公司',
+                prefixIcon: Icon(AppIcons.search),
+                isDense: true,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _buildContactTargetList(targets),
+            const SizedBox(height: 16),
+            _BlindTransferSectionTitle(
+              icon: AppIcons.dialpad,
+              title: '手动输入盲转号码',
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _manualController,
+              autofocus: true,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(
+                hintText: widget.exampleTarget,
+                prefixIcon: const Icon(AppIcons.call),
+              ),
+              onSubmitted: (_) => _submitManual(),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        ValueListenableBuilder<TextEditingValue>(
+          valueListenable: _manualController,
+          builder: (context, value, _) {
+            return FilledButton.icon(
+              onPressed: value.text.trim().isEmpty ? null : _submitManual,
+              icon: const Icon(AppIcons.route),
+              label: const Text('发起盲转'),
+              style: FilledButton.styleFrom(backgroundColor: _brandGreen),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContactTargetList(List<_BlindTransferContactTarget> targets) {
+    if (widget.contacts.isEmpty) {
+      return const _BlindTransferEmptyContacts(message: '暂无联系人');
+    }
+    if (targets.isEmpty) {
+      return const _BlindTransferEmptyContacts(message: '没有匹配的联系人');
+    }
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxHeight: 230),
+        child: ListView.separated(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          shrinkWrap: true,
+          itemCount: targets.length,
+          separatorBuilder: (context, index) => const Divider(
+            height: 1,
+            indent: 52,
+            endIndent: 12,
+            color: _softBorder,
+          ),
+          itemBuilder: (context, index) {
+            final target = targets[index];
+            final contact = target.contact;
+            final phone = target.phone;
+            final subtitle = [
+              phone.label,
+              if (contact.organizationLabel != '未设置组织')
+                contact.organizationLabel,
+            ].join(' · ');
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => _submitContact(target),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 9,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: _brandGreen.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(_radiusSm),
+                        ),
+                        child: Text(
+                          contact.initials,
+                          style: const TextStyle(
+                            color: _brandGreen,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              contact.name.trim().isEmpty
+                                  ? '未命名联系人'
+                                  : contact.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: _textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          phone.number,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.right,
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(
+                        AppIcons.route,
+                        size: _iconSm,
+                        color: _brandGreen,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _BlindTransferContactTarget {
+  const _BlindTransferContactTarget({
+    required this.contact,
+    required this.phone,
+  });
+
+  final ContactEntry contact;
+  final ContactPhoneEntry phone;
+}
+
+class _BlindTransferSectionTitle extends StatelessWidget {
+  const _BlindTransferSectionTitle({
+    required this.icon,
+    required this.title,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: _iconSm, color: _textSecondary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w800),
+          ),
+        ),
+        if (trailing != null)
+          Text(
+            trailing!,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: _textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _BlindTransferEmptyContacts extends StatelessWidget {
+  const _BlindTransferEmptyContacts({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 18),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(AppIcons.contacts, size: _iconSm, color: _textSecondary),
+            const SizedBox(width: 8),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: _textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _DialpadAvailabilityStatus {

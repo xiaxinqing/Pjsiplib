@@ -24,6 +24,8 @@ extension PjsipEngineOperations on PjsipService {
       uaCfg.ref.cb.on_call_media_state = _callMediaStateCallable.nativeFunction;
       uaCfg.ref.cb.on_call_media_event = _callMediaEventCallable.nativeFunction;
       uaCfg.ref.cb.on_call_sdp_created = _callSdpCreatedCallable.nativeFunction;
+      uaCfg.ref.cb.on_call_transfer_status =
+          _callTransferStatusCallable.nativeFunction;
       uaCfg.ref.cb.on_ip_change_progress =
           _ipChangeProgressCallable.nativeFunction;
 
