@@ -2,6 +2,58 @@ part of '../pjsip_service.dart';
 
 typedef _PjmediaAudDevRefreshC = ffi.Int Function();
 typedef _PjmediaAudDevRefreshDart = int Function();
+typedef _PjmediaTonegenCreateC =
+    ffi.Int Function(
+      ffi.Pointer<pj_pool_t>,
+      ffi.UnsignedInt,
+      ffi.UnsignedInt,
+      ffi.UnsignedInt,
+      ffi.UnsignedInt,
+      ffi.UnsignedInt,
+      ffi.Pointer<ffi.Pointer<pjmedia_port>>,
+    );
+typedef _PjmediaTonegenCreateDart =
+    int Function(
+      ffi.Pointer<pj_pool_t>,
+      int,
+      int,
+      int,
+      int,
+      int,
+      ffi.Pointer<ffi.Pointer<pjmedia_port>>,
+    );
+typedef _PjmediaTonegenPlayDigitsC =
+    ffi.Int Function(
+      ffi.Pointer<pjmedia_port>,
+      ffi.UnsignedInt,
+      ffi.Pointer<_PjmediaToneDigit>,
+      ffi.UnsignedInt,
+    );
+typedef _PjmediaTonegenPlayDigitsDart =
+    int Function(
+      ffi.Pointer<pjmedia_port>,
+      int,
+      ffi.Pointer<_PjmediaToneDigit>,
+      int,
+    );
+typedef _PjmediaPortDestroyC = ffi.Int Function(ffi.Pointer<pjmedia_port>);
+typedef _PjmediaPortDestroyDart = int Function(ffi.Pointer<pjmedia_port>);
+typedef _PjPoolReleaseC = ffi.Void Function(ffi.Pointer<pj_pool_t>);
+typedef _PjPoolReleaseDart = void Function(ffi.Pointer<pj_pool_t>);
+
+final class _PjmediaToneDigit extends ffi.Struct {
+  @ffi.Int8()
+  external int digit;
+
+  @ffi.Int16()
+  external int onMsec;
+
+  @ffi.Int16()
+  external int offMsec;
+
+  @ffi.Int16()
+  external int volume;
+}
 
 /// 音频模块的运行时状态。
 ///
@@ -14,6 +66,10 @@ class _PjsipAudioRuntime {
   /// 生成的 FFI bindings 里不一定包含这个函数，所以启动时手动 lookup。
   /// 如果动态库没有导出，值为 null，后续只做 `pjsua_enum_aud_devs` 枚举缓存。
   _PjmediaAudDevRefreshDart? pjmediaAudDevRefresh;
+  _PjmediaTonegenCreateDart? pjmediaTonegenCreate;
+  _PjmediaTonegenPlayDigitsDart? pjmediaTonegenPlayDigits;
+  _PjmediaPortDestroyDart? pjmediaPortDestroy;
+  _PjPoolReleaseDart? pjPoolRelease;
 
   /// 没有通话时的设备轮询间隔。
   Duration idlePollInterval = const Duration(seconds: 1);
@@ -51,6 +107,30 @@ class _PjsipAudioRuntime {
   String? lastDeviceSnapshot;
   int? speakerTestPlayerId;
   int? speakerTestPlayerPort;
+  int? ringtonePlayerId;
+  int? ringtonePlayerPort;
+  bool ringtoneStarting = false;
+  bool ringtoneMissingLogged = false;
+  int? ringbackPlayerId;
+  int? ringbackPlayerPort;
+  bool ringbackStarting = false;
+  bool ringbackMissingLogged = false;
+  Timer? hangupSoundTimer;
+  int? hangupSoundPlayerId;
+  int? hangupSoundPlayerPort;
+  bool hangupSoundStarting = false;
+  bool hangupSoundMissingLogged = false;
+  DateTime? lastHangupSoundAt;
+  Timer? dialpadKeySoundTimer;
+  Timer? dialpadTonegenDestroyTimer;
+  ffi.Pointer<pj_pool_t>? dialpadTonegenPool;
+  ffi.Pointer<pjmedia_port>? dialpadTonegenPort;
+  int? dialpadTonegenSlot;
+  bool dialpadTonegenConnected = false;
+  bool dialpadTonegenStarting = false;
+  bool dialpadTonegenUnavailableLogged = false;
+  DateTime? lastDialpadKeySoundAt;
+  Future<void>? audioPreferencesWrite;
   int? microphoneTestRecorderId;
   int? microphoneTestRecorderPort;
 
@@ -166,6 +246,40 @@ extension PjsipAudioDeviceOperations on PjsipService {
     } catch (_) {
       _audio.pjmediaAudDevRefresh = null;
     }
+
+    try {
+      _audio.pjmediaTonegenCreate = dylib
+          .lookupFunction<_PjmediaTonegenCreateC, _PjmediaTonegenCreateDart>(
+            'pjmedia_tonegen_create',
+          );
+    } catch (_) {
+      _audio.pjmediaTonegenCreate = null;
+    }
+    try {
+      _audio.pjmediaTonegenPlayDigits = dylib
+          .lookupFunction<
+            _PjmediaTonegenPlayDigitsC,
+            _PjmediaTonegenPlayDigitsDart
+          >('pjmedia_tonegen_play_digits');
+    } catch (_) {
+      _audio.pjmediaTonegenPlayDigits = null;
+    }
+    try {
+      _audio.pjmediaPortDestroy = dylib
+          .lookupFunction<_PjmediaPortDestroyC, _PjmediaPortDestroyDart>(
+            'pjmedia_port_destroy',
+          );
+    } catch (_) {
+      _audio.pjmediaPortDestroy = null;
+    }
+    try {
+      _audio.pjPoolRelease = dylib
+          .lookupFunction<_PjPoolReleaseC, _PjPoolReleaseDart>(
+            'pj_pool_release',
+          );
+    } catch (_) {
+      _audio.pjPoolRelease = null;
+    }
   }
 
   Future<void> refreshAudioDevices() => _refreshAudioDevices(
@@ -231,6 +345,40 @@ extension PjsipAudioDeviceOperations on PjsipService {
       audioDeviceStatus: enabled ? '实验模式：通话中检测并自动切换新设备' : '通话中保持当前设备；设备丢失时自动回退',
     );
     _addLog(enabled ? '🎧 已开启通话中自动检测/切换音频设备' : '🎧 已关闭通话中自动检测/切换音频设备');
+  }
+
+  void setIncomingRingtoneEnabled(bool enabled) {
+    if (_uiState.incomingRingtoneEnabled == enabled) return;
+    _uiState = _uiState.copyWith(incomingRingtoneEnabled: enabled);
+    if (!enabled) _stopIncomingRingtone();
+    _syncCallProgressSounds();
+    unawaited(_persistAudioPreferences());
+  }
+
+  void setOutgoingRingbackEnabled(bool enabled) {
+    if (_uiState.outgoingRingbackEnabled == enabled) return;
+    _uiState = _uiState.copyWith(outgoingRingbackEnabled: enabled);
+    if (!enabled) _stopOutgoingRingback();
+    _syncCallProgressSounds();
+    unawaited(_persistAudioPreferences());
+  }
+
+  void setCallEndedSoundEnabled(bool enabled) {
+    if (_uiState.callEndedSoundEnabled == enabled) return;
+    _uiState = _uiState.copyWith(callEndedSoundEnabled: enabled);
+    if (!enabled) _stopHangupSound();
+    unawaited(_persistAudioPreferences());
+  }
+
+  void setDialpadKeySoundEnabled(bool enabled) {
+    if (_uiState.dialpadKeySoundEnabled == enabled) return;
+    _uiState = _uiState.copyWith(dialpadKeySoundEnabled: enabled);
+    if (enabled) {
+      _scheduleDialpadKeySoundWarmup();
+    } else {
+      _stopDialpadKeySound();
+    }
+    unawaited(_persistAudioPreferences());
   }
 
   /// 切换 PJSIP 当前使用的输入/输出设备。
@@ -1191,7 +1339,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
   bool get _shouldKeepSoundDeviceOpen =>
       _uiState.calls.isNotEmpty ||
       _uiState.isMicrophoneTesting ||
-      _uiState.isSpeakerTesting;
+      _uiState.isSpeakerTesting ||
+      _audio.ringtonePlayerId != null ||
+      _audio.ringbackPlayerId != null ||
+      _audio.hangupSoundStarting ||
+      _audio.hangupSoundPlayerId != null ||
+      _audio.dialpadTonegenConnected;
 
   bool _isNoSoundDevice(({int? captureId, int? playbackId}) current) {
     final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
@@ -1264,6 +1417,416 @@ extension PjsipAudioDeviceOperations on PjsipService {
   void _stopAudioLevelTimerIfIdle() {
     if (_shouldKeepSoundDeviceOpen) return;
     _stopAudioLevelTimer();
+  }
+
+  static const String _ringtoneAssetPath = 'assets/audio/ringtone.wav';
+  static const String _ringbackAssetPath = 'assets/audio/ringing_loop.wav';
+  static const String _hangupAssetPath = 'assets/audio/hangup.wav';
+  static const Duration _dialpadKeySoundPathKeepWarmDuration = Duration(
+    seconds: 5,
+  );
+  static const Duration _dialpadTonegenIdleDisposeDuration = Duration(
+    seconds: 5,
+  );
+  static const Duration _dialpadPageWarmKeepAliveDuration = Duration(
+    seconds: 30,
+  );
+
+  bool get _hasIncomingCall =>
+      _uiState.calls.values.any((call) => call.isIncoming);
+
+  bool get _hasOutboundCallWaiting => _uiState.calls.values.any((call) {
+    if (call.direction != PjsipCallDirection.outbound || call.isConnected) {
+      return false;
+    }
+    return call.state == pjsip_inv_state.PJSIP_INV_STATE_CALLING.value ||
+        call.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value ||
+        call.state == pjsip_inv_state.PJSIP_INV_STATE_CONNECTING.value;
+  });
+
+  void _syncCallProgressSounds() {
+    if (!_uiState.isInitialized) {
+      _stopIncomingRingtone();
+      _stopOutgoingRingback();
+      return;
+    }
+
+    if (_hasIncomingCall) {
+      if (_uiState.incomingRingtoneEnabled) {
+        _startIncomingRingtone();
+      } else {
+        _stopIncomingRingtone();
+      }
+      _stopOutgoingRingback();
+    } else if (_hasOutboundCallWaiting) {
+      _stopIncomingRingtone();
+      if (_uiState.outgoingRingbackEnabled) {
+        _startOutgoingRingback();
+      } else {
+        _stopOutgoingRingback();
+      }
+    } else {
+      _stopIncomingRingtone();
+      _stopOutgoingRingback();
+    }
+  }
+
+  void _startIncomingRingtone() {
+    if (_audio.ringtonePlayerId != null ||
+        _audio.ringtoneStarting ||
+        !_uiState.isInitialized) {
+      return;
+    }
+    _audio.ringtoneStarting = true;
+    unawaited(
+      _startLoopingSoundPlayer(
+        assetPath: _ringtoneAssetPath,
+        tempFileName: 'pjsip_lib_ringtone.wav',
+        reason: '来电铃声',
+        shouldStillPlay: () => _hasIncomingCall,
+        getPlayerId: () => _audio.ringtonePlayerId,
+        setPlayer: (id, port) {
+          _audio.ringtonePlayerId = id;
+          _audio.ringtonePlayerPort = port;
+        },
+        getMissingLogged: () => _audio.ringtoneMissingLogged,
+        setMissingLogged: (value) => _audio.ringtoneMissingLogged = value,
+        clearStarting: () => _audio.ringtoneStarting = false,
+      ),
+    );
+  }
+
+  void _startOutgoingRingback() {
+    if (_audio.ringbackPlayerId != null ||
+        _audio.ringbackStarting ||
+        !_uiState.isInitialized) {
+      return;
+    }
+    _audio.ringbackStarting = true;
+    unawaited(
+      _startLoopingSoundPlayer(
+        assetPath: _ringbackAssetPath,
+        tempFileName: 'pjsip_lib_ringback.wav',
+        reason: '外呼回铃音',
+        shouldStillPlay: () => !_hasIncomingCall && _hasOutboundCallWaiting,
+        getPlayerId: () => _audio.ringbackPlayerId,
+        setPlayer: (id, port) {
+          _audio.ringbackPlayerId = id;
+          _audio.ringbackPlayerPort = port;
+        },
+        getMissingLogged: () => _audio.ringbackMissingLogged,
+        setMissingLogged: (value) => _audio.ringbackMissingLogged = value,
+        clearStarting: () => _audio.ringbackStarting = false,
+      ),
+    );
+  }
+
+  void _playCallEndedSound(CallInfo endedCall, {String? hangupReason}) {
+    if (!_uiState.callEndedSoundEnabled) return;
+    if (!endedCall.isConnected) return;
+    if (hangupReason == 'blind transfer local release') return;
+    if (_hangupSoundPlayedCallIds.contains(endedCall.callId)) return;
+    if (!_uiState.isInitialized) return;
+
+    final now = DateTime.now();
+    final lastPlayedAt = _audio.lastHangupSoundAt;
+    if (lastPlayedAt != null &&
+        now.difference(lastPlayedAt) < const Duration(milliseconds: 600)) {
+      return;
+    }
+    _hangupSoundPlayedCallIds.add(endedCall.callId);
+    _audio.lastHangupSoundAt = now;
+    _startHangupSound();
+  }
+
+  void _startHangupSound() {
+    if (_audio.hangupSoundStarting || !_uiState.isInitialized) return;
+    _stopHangupSound();
+    _audio.hangupSoundStarting = true;
+    unawaited(
+      _startLoopingSoundPlayer(
+        assetPath: _hangupAssetPath,
+        tempFileName: 'pjsip_lib_hangup.wav',
+        reason: '挂断提示音',
+        shouldStillPlay: () => true,
+        getPlayerId: () => _audio.hangupSoundPlayerId,
+        setPlayer: (id, port) {
+          _audio.hangupSoundPlayerId = id;
+          _audio.hangupSoundPlayerPort = port;
+          _audio.hangupSoundTimer = Timer(
+            const Duration(milliseconds: 240),
+            _stopHangupSound,
+          );
+        },
+        getMissingLogged: () => _audio.hangupSoundMissingLogged,
+        setMissingLogged: (value) => _audio.hangupSoundMissingLogged = value,
+        clearStarting: () => _audio.hangupSoundStarting = false,
+      ),
+    );
+  }
+
+  void playDialpadKeySound(String digit) {
+    if (!_uiState.dialpadKeySoundEnabled || !_uiState.isInitialized) return;
+    if (digit.length != 1 || !'0123456789*#'.contains(digit)) return;
+
+    final now = DateTime.now();
+    final lastPlayedAt = _audio.lastDialpadKeySoundAt;
+    if (lastPlayedAt != null &&
+        now.difference(lastPlayedAt) < const Duration(milliseconds: 12)) {
+      return;
+    }
+    _audio.lastDialpadKeySoundAt = now;
+    _playDialpadTone(digit);
+  }
+
+  void prepareDialpadKeySound({
+    Duration keepAlive = _dialpadPageWarmKeepAliveDuration,
+  }) {
+    if (!_uiState.dialpadKeySoundEnabled || !_uiState.isInitialized) return;
+    if (!_ensureDialpadTonegenConnected('拨号按键音预热')) return;
+    _scheduleDialpadKeySoundPathRelease(keepAlive);
+    _scheduleDialpadTonegenDispose(
+      Duration(
+        milliseconds:
+            keepAlive.inMilliseconds +
+            _dialpadTonegenIdleDisposeDuration.inMilliseconds,
+      ),
+    );
+  }
+
+  void releaseDialpadKeySoundSoon() {
+    if (!_uiState.isInitialized) return;
+    _scheduleDialpadKeySoundPathRelease(_dialpadKeySoundPathKeepWarmDuration);
+  }
+
+  void _playDialpadTone(String digit) {
+    if (!_uiState.dialpadKeySoundEnabled || !_uiState.isInitialized) return;
+    if (!_ensureDialpadTonegenConnected('拨号按键音')) return;
+    final tonegen = _audio.dialpadTonegenPort;
+    final playDigits = _audio.pjmediaTonegenPlayDigits;
+    if (tonegen == null || tonegen.address == 0 || playDigits == null) {
+      return;
+    }
+
+    final status = using((Arena arena) {
+      final tone = arena<_PjmediaToneDigit>();
+      tone.ref.digit = digit.codeUnitAt(0);
+      tone.ref.onMsec = 160;
+      tone.ref.offMsec = 50;
+      tone.ref.volume = 0;
+      return playDigits(tonegen, 1, tone, 0);
+    });
+    if (status != 0) {
+      _addLog('❌ 拨号按键音播放失败: digit=$digit, pj_status=$status');
+      return;
+    }
+
+    _scheduleDialpadKeySoundPathRelease(_dialpadKeySoundPathKeepWarmDuration);
+    _scheduleDialpadTonegenDispose(_dialpadTonegenIdleDisposeDuration);
+  }
+
+  bool _ensureDialpadTonegenConnected(String reason) {
+    if (!_ensureDialpadTonegen()) return false;
+    final slot = _audio.dialpadTonegenSlot;
+    if (slot == null || slot < 0) return false;
+    if (!_ensureSoundDeviceOpen(reason)) return false;
+
+    if (_audio.dialpadTonegenConnected) return true;
+    final connectStatus = _bindings.pjsua_conf_connect(slot, 0);
+    if (connectStatus != 0) {
+      _addLog('❌ 拨号按键音连接失败: pj_status=$connectStatus');
+      _releaseSoundDeviceIfIdle('拨号按键音连接失败');
+      _stopAudioLevelTimerIfIdle();
+      return false;
+    }
+    _audio.dialpadTonegenConnected = true;
+    return true;
+  }
+
+  bool _ensureDialpadTonegen() {
+    final existingPort = _audio.dialpadTonegenPort;
+    if (existingPort != null &&
+        existingPort.address != 0 &&
+        _audio.dialpadTonegenSlot != null) {
+      return true;
+    }
+    if (_audio.dialpadTonegenStarting || !_uiState.isInitialized) return false;
+
+    final createTonegen = _audio.pjmediaTonegenCreate;
+    final playDigits = _audio.pjmediaTonegenPlayDigits;
+    if (createTonegen == null || playDigits == null) {
+      if (!_audio.dialpadTonegenUnavailableLogged) {
+        _addLog('⚠️ 当前 PJSIP 动态库未导出 tonegen，拨号按键音不可用');
+        _audio.dialpadTonegenUnavailableLogged = true;
+      }
+      return false;
+    }
+
+    _audio.dialpadTonegenStarting = true;
+    try {
+      if (!_uiState.isInitialized) return false;
+
+      return using((Arena arena) {
+        final name = 'dart_dialpad_tonegen'
+            .toNativeUtf8(allocator: arena)
+            .cast<ffi.Char>();
+        final pool = _bindings.pjsua_pool_create(name, 512, 512);
+        if (pool == ffi.nullptr) {
+          _addLog('❌ 拨号按键音内存池创建失败');
+          return false;
+        }
+
+        final portRef = arena<ffi.Pointer<pjmedia_port>>();
+        final createStatus = createTonegen(pool, 8000, 1, 64, 16, 0, portRef);
+        if (createStatus != 0) {
+          _audio.pjPoolRelease?.call(pool);
+          _addLog('❌ 拨号按键音 tonegen 创建失败: pj_status=$createStatus');
+          return false;
+        }
+
+        final tonegen = portRef.value;
+        final slotRef = arena<pjsua_conf_port_id>();
+        final addStatus = _bindings.pjsua_conf_add_port(pool, tonegen, slotRef);
+        if (addStatus != 0) {
+          _audio.pjmediaPortDestroy?.call(tonegen);
+          _audio.pjPoolRelease?.call(pool);
+          _addLog('❌ 拨号按键音端口注册失败: pj_status=$addStatus');
+          return false;
+        }
+
+        final slot = slotRef.value;
+        final levelStatus = _bindings.pjsua_conf_adjust_rx_level(slot, 0.4);
+        if (levelStatus != 0) {
+          _addLog('⚠️ 拨号按键音音量设置失败: pj_status=$levelStatus');
+        }
+
+        _audio.dialpadTonegenPool = pool;
+        _audio.dialpadTonegenPort = tonegen;
+        _audio.dialpadTonegenSlot = slot;
+        _audio.dialpadTonegenUnavailableLogged = false;
+        return true;
+      });
+    } finally {
+      _audio.dialpadTonegenStarting = false;
+    }
+  }
+
+  void _scheduleDialpadKeySoundWarmup() {
+    if (!_uiState.dialpadKeySoundEnabled || !_uiState.isInitialized) return;
+    Timer(const Duration(milliseconds: 80), () {
+      if (_isDisposed ||
+          !_uiState.isInitialized ||
+          !_uiState.dialpadKeySoundEnabled) {
+        return;
+      }
+      _ensureDialpadTonegen();
+    });
+  }
+
+  void _scheduleDialpadKeySoundPathRelease(Duration delay) {
+    _audio.dialpadKeySoundTimer?.cancel();
+    _audio.dialpadKeySoundTimer = Timer(delay, _releaseDialpadKeySoundPath);
+  }
+
+  void _scheduleDialpadTonegenDispose(Duration delay) {
+    _audio.dialpadTonegenDestroyTimer?.cancel();
+    _audio.dialpadTonegenDestroyTimer = Timer(delay, _stopDialpadKeySound);
+  }
+
+  Future<void> _startLoopingSoundPlayer({
+    required String assetPath,
+    required String tempFileName,
+    required String reason,
+    required bool Function() shouldStillPlay,
+    required int? Function() getPlayerId,
+    required void Function(int id, int port) setPlayer,
+    required bool Function() getMissingLogged,
+    required void Function(bool value) setMissingLogged,
+    required VoidCallback clearStarting,
+  }) async {
+    try {
+      if (getPlayerId() != null || !_uiState.isInitialized) return;
+
+      final file = await _ensureRuntimeAudioFile(
+        assetPath: assetPath,
+        tempFileName: tempFileName,
+        getMissingLogged: getMissingLogged,
+        setMissingLogged: setMissingLogged,
+      );
+      if (file == null) return;
+      if (!shouldStillPlay()) return;
+
+      if (!_ensureSoundDeviceOpen(reason)) return;
+      using((Arena arena) {
+        final filename = arena<pj_str_t>();
+        final path = file.path.toNativeUtf8(allocator: arena);
+        _pjStr(filename.ref, path);
+
+        final playerId = arena<pjsua_player_id>();
+        const loopPlayback = 0;
+        final status = _bindings.pjsua_player_create(
+          filename,
+          loopPlayback,
+          playerId,
+        );
+        if (status != 0) {
+          _releaseSoundDeviceIfIdle('$reason创建失败');
+          _stopAudioLevelTimerIfIdle();
+          _addLog('❌ $reason创建失败: pj_status=$status');
+          return;
+        }
+
+        final playerPort = _bindings.pjsua_player_get_conf_port(playerId.value);
+        if (playerPort < 0) {
+          _bindings.pjsua_player_destroy(playerId.value);
+          _releaseSoundDeviceIfIdle('$reason端口获取失败');
+          _stopAudioLevelTimerIfIdle();
+          _addLog('❌ $reason端口获取失败');
+          return;
+        }
+
+        final connectStatus = _bindings.pjsua_conf_connect(playerPort, 0);
+        if (connectStatus != 0) {
+          _bindings.pjsua_player_destroy(playerId.value);
+          _releaseSoundDeviceIfIdle('$reason连接失败');
+          _stopAudioLevelTimerIfIdle();
+          _addLog('❌ $reason连接失败: pj_status=$connectStatus');
+          return;
+        }
+
+        setPlayer(playerId.value, playerPort);
+        setMissingLogged(false);
+        _addLog('🔔 $reason已开始播放');
+      });
+    } finally {
+      clearStarting();
+    }
+  }
+
+  Future<File?> _ensureRuntimeAudioFile({
+    required String assetPath,
+    required String tempFileName,
+    required bool Function() getMissingLogged,
+    required void Function(bool value) setMissingLogged,
+  }) async {
+    try {
+      final data = await rootBundle.load(assetPath);
+      final bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
+      final file = File('${Directory.systemTemp.path}/$tempFileName');
+      await file.writeAsBytes(bytes, flush: true);
+      return file;
+    } catch (error) {
+      final devFile = File(assetPath);
+      if (devFile.existsSync()) return devFile.absolute;
+      if (!getMissingLogged()) {
+        setMissingLogged(true);
+        _addLog('🔕 未找到音频文件: $assetPath ($error)');
+      }
+      return null;
+    }
   }
 
   /// 把 PJSIP C 结构里的固定长度 char 数组转成 Dart 字符串。
@@ -1421,6 +1984,107 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _bindings.pjsua_player_destroy(playerId);
     _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
     _releaseSoundDeviceIfIdle('扬声器测试停止');
+    _stopAudioLevelTimerIfIdle();
+  }
+
+  void _stopIncomingRingtone() {
+    _stopSoundPlayer(
+      playerId: _audio.ringtonePlayerId,
+      playerPort: _audio.ringtonePlayerPort,
+      reason: '来电铃声停止',
+      clearPlayer: () {
+        _audio.ringtonePlayerId = null;
+        _audio.ringtonePlayerPort = null;
+      },
+    );
+  }
+
+  void _stopOutgoingRingback() {
+    _stopSoundPlayer(
+      playerId: _audio.ringbackPlayerId,
+      playerPort: _audio.ringbackPlayerPort,
+      reason: '外呼回铃音停止',
+      clearPlayer: () {
+        _audio.ringbackPlayerId = null;
+        _audio.ringbackPlayerPort = null;
+      },
+    );
+  }
+
+  void _stopHangupSound() {
+    _audio.hangupSoundTimer?.cancel();
+    _audio.hangupSoundTimer = null;
+    _stopSoundPlayer(
+      playerId: _audio.hangupSoundPlayerId,
+      playerPort: _audio.hangupSoundPlayerPort,
+      reason: '挂断提示音停止',
+      clearPlayer: () {
+        _audio.hangupSoundPlayerId = null;
+        _audio.hangupSoundPlayerPort = null;
+      },
+    );
+  }
+
+  void _stopDialpadKeySound() {
+    _audio.dialpadKeySoundTimer?.cancel();
+    _audio.dialpadKeySoundTimer = null;
+    _audio.dialpadTonegenDestroyTimer?.cancel();
+    _audio.dialpadTonegenDestroyTimer = null;
+    final pool = _audio.dialpadTonegenPool;
+    final port = _audio.dialpadTonegenPort;
+    final slot = _audio.dialpadTonegenSlot;
+    final wasConnected = _audio.dialpadTonegenConnected;
+    _audio.dialpadTonegenPool = null;
+    _audio.dialpadTonegenPort = null;
+    _audio.dialpadTonegenSlot = null;
+    _audio.dialpadTonegenConnected = false;
+    _audio.dialpadTonegenStarting = false;
+
+    if (_uiState.isInitialized) {
+      if (wasConnected && slot != null && slot >= 0) {
+        _bindings.pjsua_conf_disconnect(slot, 0);
+      }
+      if (slot != null && slot >= 0) {
+        _bindings.pjsua_conf_remove_port(slot);
+      }
+      if (port != null && port.address != 0) {
+        _audio.pjmediaPortDestroy?.call(port);
+      }
+      if (pool != null && pool.address != 0) {
+        _audio.pjPoolRelease?.call(pool);
+      }
+    }
+    _releaseSoundDeviceIfIdle('拨号按键音停止');
+    _stopAudioLevelTimerIfIdle();
+  }
+
+  void _releaseDialpadKeySoundPath() {
+    _audio.dialpadKeySoundTimer?.cancel();
+    _audio.dialpadKeySoundTimer = null;
+    final slot = _audio.dialpadTonegenSlot;
+    final wasConnected = _audio.dialpadTonegenConnected;
+    _audio.dialpadTonegenConnected = false;
+    if (_uiState.isInitialized && wasConnected && slot != null && slot >= 0) {
+      _bindings.pjsua_conf_disconnect(slot, 0);
+    }
+    _releaseSoundDeviceIfIdle('拨号按键音空闲');
+    _stopAudioLevelTimerIfIdle();
+  }
+
+  void _stopSoundPlayer({
+    required int? playerId,
+    required int? playerPort,
+    required String reason,
+    required VoidCallback clearPlayer,
+  }) {
+    clearPlayer();
+
+    if (!_uiState.isInitialized || playerId == null) return;
+    if (playerPort != null && playerPort >= 0) {
+      _bindings.pjsua_conf_disconnect(playerPort, 0);
+    }
+    _bindings.pjsua_player_destroy(playerId);
+    _releaseSoundDeviceIfIdle(reason);
     _stopAudioLevelTimerIfIdle();
   }
 

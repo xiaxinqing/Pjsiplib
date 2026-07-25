@@ -91,6 +91,18 @@ class PjsipUIState {
   /// 是否允许通话中检测并自动切换新插入的音频设备。
   final bool allowInCallAudioDeviceSwitch;
 
+  /// 是否播放来电铃声。
+  final bool incomingRingtoneEnabled;
+
+  /// 是否播放外呼等待接通时的本地回铃音。
+  final bool outgoingRingbackEnabled;
+
+  /// 是否在已接通通话结束时播放轻提示音。
+  final bool callEndedSoundEnabled;
+
+  /// 是否在拨号盘输入时播放轻按键音。
+  final bool dialpadKeySoundEnabled;
+
   PjsipUIState({
     required this.logs,
     this.calls = const {},
@@ -119,6 +131,10 @@ class PjsipUIState {
     this.audioDeviceMode = PjsipAudioDeviceMode.automatic,
     this.audioDeviceStatus = '自动选择设备',
     this.allowInCallAudioDeviceSwitch = false,
+    this.incomingRingtoneEnabled = true,
+    this.outgoingRingbackEnabled = true,
+    this.callEndedSoundEnabled = true,
+    this.dialpadKeySoundEnabled = true,
   });
 
   PjsipUIState copyWith({
@@ -149,6 +165,10 @@ class PjsipUIState {
     PjsipAudioDeviceMode? audioDeviceMode,
     String? audioDeviceStatus,
     bool? allowInCallAudioDeviceSwitch,
+    bool? incomingRingtoneEnabled,
+    bool? outgoingRingbackEnabled,
+    bool? callEndedSoundEnabled,
+    bool? dialpadKeySoundEnabled,
   }) {
     return PjsipUIState(
       logs: logs ?? this.logs,
@@ -190,6 +210,14 @@ class PjsipUIState {
       audioDeviceStatus: audioDeviceStatus ?? this.audioDeviceStatus,
       allowInCallAudioDeviceSwitch:
           allowInCallAudioDeviceSwitch ?? this.allowInCallAudioDeviceSwitch,
+      incomingRingtoneEnabled:
+          incomingRingtoneEnabled ?? this.incomingRingtoneEnabled,
+      outgoingRingbackEnabled:
+          outgoingRingbackEnabled ?? this.outgoingRingbackEnabled,
+      callEndedSoundEnabled:
+          callEndedSoundEnabled ?? this.callEndedSoundEnabled,
+      dialpadKeySoundEnabled:
+          dialpadKeySoundEnabled ?? this.dialpadKeySoundEnabled,
     );
   }
 

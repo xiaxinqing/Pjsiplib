@@ -5,6 +5,7 @@ enum _WorkspaceSection { dialpad, calls, contacts, history }
 enum _CallNoteMode { customer, conference }
 
 const Duration _conferenceActionCooldownDuration = Duration(milliseconds: 1500);
+const Duration _dialpadKeySoundPageWarmupDelay = Duration(seconds: 3);
 
 class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({super.key});
@@ -55,7 +56,12 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   bool _normalizingDialpadNumber = false;
   String? _activeDialpadKey;
   String? _hoveredDialpadKey;
+  int? _dtmfPadCallId;
+  String _dtmfSentPreview = '';
+  String? _dtmfStatusText;
+  bool _dtmfSendFailed = false;
   Timer? _dialpadKeyFeedbackTimer;
+  Timer? _dialpadKeySoundPageWarmupTimer;
   String? _callNoteControllerKey;
   _CallNoteMode _callNoteMode = _CallNoteMode.customer;
   final Map<int, String> _pendingCallOperations = <int, String>{};
@@ -72,12 +78,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       if (!mounted) return;
       if (_isRunningWidgetTest) return;
       unawaited(_warmUpHistoryDatabase());
+      _scheduleDialpadKeySoundPageWarmup();
     });
   }
 
   @override
   void dispose() {
     _dialpadKeyFeedbackTimer?.cancel();
+    _dialpadKeySoundPageWarmupTimer?.cancel();
     _conferenceActionCooldownTimer?.cancel();
     for (final timer in _pendingCallOperationTimers.values) {
       timer.cancel();
@@ -149,6 +157,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     _syncPendingCallOperations(previous, next);
     _syncFocusedCallAfterStateChange(next);
     _syncConferenceActionCooldown(next);
+    _syncDialpadKeySoundWarmup(previous, next);
 
     final previousIncomingIds = previous?._ringingCallIds ?? const <int>{};
     final nextIncomingIds = next._ringingCallIds;
@@ -158,6 +167,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
     if (hasNewIncomingCall) {
       if (mounted && _section != _WorkspaceSection.calls) {
+        _dialpadKeySoundPageWarmupTimer?.cancel();
+        ref.read(pjsipServiceProvider.notifier).releaseDialpadKeySoundSoon();
         setState(() => _section = _WorkspaceSection.calls);
       }
       _windowController.notifyIncomingCall(
@@ -205,11 +216,71 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   }
 
   void _selectSection(_WorkspaceSection section) {
+    final previous = _section;
+    if (previous == section) return;
     setState(() => _section = section);
+    final service = ref.read(pjsipServiceProvider.notifier);
+    if (section == _WorkspaceSection.dialpad) {
+      _scheduleDialpadKeySoundPageWarmup();
+    } else if (previous == _WorkspaceSection.dialpad) {
+      _dialpadKeySoundPageWarmupTimer?.cancel();
+      service.releaseDialpadKeySoundSoon();
+    }
+  }
+
+  void _scheduleDialpadKeySoundPageWarmup() {
+    _dialpadKeySoundPageWarmupTimer?.cancel();
+    _dialpadKeySoundPageWarmupTimer = Timer(
+      _dialpadKeySoundPageWarmupDelay,
+      () {
+        _dialpadKeySoundPageWarmupTimer = null;
+        if (!mounted || _section != _WorkspaceSection.dialpad) return;
+        ref.read(pjsipServiceProvider.notifier).prepareDialpadKeySound();
+      },
+    );
+  }
+
+  void _syncDialpadKeySoundWarmup(PjsipUIState? previous, PjsipUIState next) {
+    if (_section != _WorkspaceSection.dialpad) return;
+    if (!next.isInitialized || !next.dialpadKeySoundEnabled) return;
+    final becameReady =
+        previous == null ||
+        !previous.isInitialized ||
+        !previous.dialpadKeySoundEnabled;
+    if (!becameReady) return;
+    _scheduleDialpadKeySoundPageWarmup();
   }
 
   void _toggleInCallDialpad() {
     setState(() => _showInCallDialpad = !_showInCallDialpad);
+  }
+
+  void _sendInCallDtmf(PjsipService service, CallInfo call, String digit) {
+    service.playDialpadKeySound(digit);
+    setState(() {
+      if (_dtmfPadCallId != call.callId) {
+        _dtmfPadCallId = call.callId;
+        _dtmfSentPreview = '';
+      }
+      _dtmfSentPreview = '$_dtmfSentPreview$digit';
+      if (_dtmfSentPreview.length > 18) {
+        _dtmfSentPreview = _dtmfSentPreview.substring(
+          _dtmfSentPreview.length - 18,
+        );
+      }
+      _dtmfStatusText = '正在发送 $digit';
+      _dtmfSendFailed = false;
+    });
+    unawaited(
+      (() async {
+        final sent = await service.sendDtmf(call.callId, digit);
+        if (!mounted || _dtmfPadCallId != call.callId) return;
+        setState(() {
+          _dtmfStatusText = sent ? '已发送 $digit' : '发送失败 $digit';
+          _dtmfSendFailed = !sent;
+        });
+      })(),
+    );
   }
 
   void _setCallNoteMode(_CallNoteMode mode) {
@@ -221,7 +292,18 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   void _focusCallDetail(int callId) {
     if (_focusedCallDetailId == callId) return;
-    setState(() => _focusedCallDetailId = callId);
+    setState(() {
+      _focusedCallDetailId = callId;
+      _dtmfPadCallId = null;
+      _dtmfSentPreview = '';
+      _dtmfStatusText = null;
+      _dtmfSendFailed = false;
+    });
+  }
+
+  void _clearFocusedCallDetail() {
+    if (_focusedCallDetailId == null) return;
+    setState(() => _focusedCallDetailId = null);
   }
 
   void _runCallActionAndFocus(
@@ -346,9 +428,26 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   void _syncFocusedCallAfterStateChange(PjsipUIState state) {
     final focusedId = _focusedCallDetailId;
+    if (state.calls.isEmpty && (_showInCallDialpad || _dtmfPadCallId != null)) {
+      if (!mounted) return;
+      setState(() {
+        _showInCallDialpad = false;
+        _dtmfPadCallId = null;
+        _dtmfSentPreview = '';
+        _dtmfStatusText = null;
+        _dtmfSendFailed = false;
+      });
+      return;
+    }
     if (focusedId == null || state.calls.containsKey(focusedId)) return;
     if (!mounted) return;
-    setState(() => _focusedCallDetailId = null);
+    setState(() {
+      _focusedCallDetailId = null;
+      _dtmfPadCallId = null;
+      _dtmfSentPreview = '';
+      _dtmfStatusText = null;
+      _dtmfSendFailed = false;
+    });
   }
 
   void _refreshCallNoteState() {

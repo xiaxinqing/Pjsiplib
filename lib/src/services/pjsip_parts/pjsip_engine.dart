@@ -146,6 +146,7 @@ extension PjsipEngineOperations on PjsipService {
       );
       _releaseSoundDeviceIfIdle('启动后空闲');
       _startAudioDeviceMonitoring();
+      _scheduleDialpadKeySoundWarmup();
     }
   }
 

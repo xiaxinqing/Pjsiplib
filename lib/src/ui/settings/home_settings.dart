@@ -259,11 +259,10 @@ extension _HomeSettings on _MyHomePageState {
             ],
           ),
         ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: _panelBackground,
-            borderRadius: BorderRadius.circular(_radiusSm),
-          ),
+        Material(
+          color: _panelBackground,
+          borderRadius: BorderRadius.circular(_radiusSm),
+          clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.all(14),
             child: Column(

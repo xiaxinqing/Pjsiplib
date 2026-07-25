@@ -141,6 +141,7 @@ extension PjsipCallOperations on PjsipService {
     );
     if (status == 0) {
       _uiState = _uiState.copyWith(activeCallId: callId);
+      _stopIncomingRingtone();
       _addLog('✅ 已接听电话: call=$callId');
     } else {
       _addLog('❌ 接听失败: $status');
@@ -158,6 +159,7 @@ extension PjsipCallOperations on PjsipService {
     );
     if (status == 0) {
       _locallyEndedCallIds.add(callId);
+      _stopIncomingRingtone();
       _addLog('🚫 已拒绝来电: call=$callId');
     } else {
       _addLog('❌ 拒绝来电失败: call=$callId, pj_status=$status');
@@ -186,6 +188,7 @@ extension PjsipCallOperations on PjsipService {
       ffi.nullptr,
     );
     if (status == 0) {
+      _playCallEndedSound(call);
       _addLog('挂断 API 调用成功，等待 PJSIP DISCONNECTED 回调: call=${call.callId}');
     } else {
       _addLog('❌ 挂断失败: call=${call.callId}, pj_status=$status');
@@ -226,25 +229,27 @@ extension PjsipCallOperations on PjsipService {
   ///
   /// DTMF 是用户在 IVR 菜单里按 1/2/3、输入分机号时用到的“电话按键音”。
   /// 这里使用 PJSIP 默认的 RFC2833 方式发送，适合大多数 SIP/PBX 场景。
-  Future<void> sendDtmf(int callId, String digit) async {
+  Future<bool> sendDtmf(int callId, String digit) async {
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected) {
       _addLog('⚠️ 当前没有可发送 DTMF 的已接通通话');
-      return;
+      return false;
     }
     if (digit.length != 1 || !'0123456789*#'.contains(digit)) {
       _addLog('⚠️ 无效 DTMF 按键: $digit');
-      return;
+      return false;
     }
 
-    using((Arena arena) {
+    return using((Arena arena) {
       final digits = arena<pj_str_t>();
       _pjStr(digits.ref, digit.toNativeUtf8(allocator: arena));
       final status = _bindings.pjsua_call_dial_dtmf(callId, digits);
       if (status == 0) {
         _addLog('☎️ 已发送 DTMF: $digit, call=$callId');
+        return true;
       } else {
         _addLog('❌ DTMF 发送失败: $digit, call=$callId, pj_status=$status');
+        return false;
       }
     });
   }
@@ -254,24 +259,24 @@ extension PjsipCallOperations on PjsipService {
   /// 这里发送 SIP REFER。同步 status 只代表 REFER 请求是否成功发起。
   /// 产品层按“甩转”处理：REFER 发出后本机直接结束并移除原通话，
   /// 后续 NOTIFY 只进日志，不再影响本机通话列表。
-  Future<void> blindTransferCall(int callId, String destination) async {
+  Future<bool> blindTransferCall(int callId, String destination) async {
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected) {
       _addLog('⚠️ 当前没有可转接的已接通通话');
       ToastUtil.showWarning('当前没有可转接的通话');
-      return;
+      return false;
     }
     if (_uiState.isInConference(callId)) {
       _addLog('⚠️ 会议成员暂不支持盲转，请先拆分三方通话');
       ToastUtil.showWarning('请先拆分三方通话，再执行转接');
-      return;
+      return false;
     }
 
     final targetUri = _transferTargetUri(call, destination);
     if (targetUri == null) {
       _addLog('⚠️ 盲转目标为空');
       ToastUtil.showWarning('请输入转接号码');
-      return;
+      return false;
     }
 
     final status = using((Arena arena) {
@@ -282,9 +287,11 @@ extension PjsipCallOperations on PjsipService {
     if (status == 0) {
       _addLog('➡️ 已发送盲转 REFER: call=$callId, target=$targetUri');
       _blindTransferAutoReleaseCallIds.add(callId);
+      _blindTransferTargets[callId] = destination.trim();
       unawaited(
         Future<void>.delayed(const Duration(seconds: 30), () {
           _blindTransferAutoReleaseCallIds.remove(callId);
+          _blindTransferTargets.remove(callId);
         }),
       );
       ToastUtil.showSuccess('已发送转接请求，正在结束本机通话');
@@ -297,9 +304,11 @@ extension PjsipCallOperations on PjsipService {
           _removeCall(callId, hangupReason: 'blind transfer local release');
         }),
       );
+      return true;
     } else {
       _addLog('❌ 盲转失败: call=$callId, target=$targetUri, pj_status=$status');
       ToastUtil.showError('转接请求发送失败');
+      return false;
     }
   }
 
@@ -521,6 +530,7 @@ extension PjsipCallOperations on PjsipService {
       calls: calls,
       activeCallId: makeActive ? call.callId : _unset,
     );
+    _syncCallProgressSounds();
   }
 
   /// 查询通话在 PJSUA conference bridge 中的槽位。
@@ -641,6 +651,7 @@ extension PjsipCallOperations on PjsipService {
         sipStatusCode: sipStatusCode,
         hangupReason: hangupReason,
       );
+      _playCallEndedSound(endedCall, hangupReason: hangupReason);
     }
     final calls = Map<int, CallInfo>.of(_uiState.calls)..remove(callId);
     _mediaConnectedCalls.remove(callId);
@@ -694,6 +705,8 @@ extension PjsipCallOperations on PjsipService {
       _releaseSoundDeviceIfIdle('最后一通结束');
       _stopAudioLevelTimerIfIdle();
     }
+    _syncCallProgressSounds();
+    _hangupSoundPlayedCallIds.remove(callId);
   }
 
   void _archiveEndedCall(
@@ -718,9 +731,11 @@ extension PjsipCallOperations on PjsipService {
     final contact = _findContactForPhoneNumber(phoneNumber);
     final personalNote = _callNotes.remove(call.callId)?.trim();
     final sharedNote = _sharedConferenceNotes.remove(call.callId)?.trim();
+    final transferTarget = _blindTransferTargets.remove(call.callId)?.trim();
     final note = _composeCallHistoryNote(
       personalNote: personalNote,
       sharedNote: sharedNote,
+      transferTarget: transferTarget,
     );
 
     unawaited(
@@ -741,6 +756,8 @@ extension PjsipCallOperations on PjsipService {
             sipStatusCode: sipStatusCode,
             hangupReason: hangupReason?.trim().isEmpty == true
                 ? null
+                : hangupReason == 'blind transfer local release'
+                ? '盲转'
                 : hangupReason,
             note: note,
           )
@@ -750,16 +767,28 @@ extension PjsipCallOperations on PjsipService {
     );
   }
 
-  String? _composeCallHistoryNote({String? personalNote, String? sharedNote}) {
+  String? _composeCallHistoryNote({
+    String? personalNote,
+    String? sharedNote,
+    String? transferTarget,
+  }) {
     final personal = personalNote?.trim();
     final shared = sharedNote?.trim();
+    final transfer = transferTarget?.trim();
+    final sections = <String>[];
+    if (transfer != null && transfer.isNotEmpty) {
+      sections.add('盲转至：$transfer');
+    }
     final hasPersonal = personal != null && personal.isNotEmpty;
     final hasShared = shared != null && shared.isNotEmpty;
-    if (!hasShared && !hasPersonal) return null;
-    if (!hasShared) return personal;
-    if (!hasPersonal) return '会议备注：$shared';
-    if (personal == shared) return '会议备注：$shared';
-    return '会议备注：$shared\n\n客户备注：$personal';
+    if (hasShared) {
+      sections.add('会议备注：$shared');
+    }
+    if (hasPersonal && personal != shared) {
+      sections.add(hasShared ? '客户备注：$personal' : personal);
+    }
+    if (sections.isEmpty) return null;
+    return sections.join('\n\n');
   }
 
   CallHistoryStatus _resolveCallHistoryStatus(

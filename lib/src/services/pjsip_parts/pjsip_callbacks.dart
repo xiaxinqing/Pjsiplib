@@ -112,6 +112,69 @@ extension _PjsipNativeCallbacks on PjsipService {
     });
   }
 
+  CallMediaSecurity? _readCallMediaSecurity(
+    int callId,
+    pjsua_call_info info,
+    Arena arena, {
+    bool logFailure = false,
+  }) {
+    final mediaCount = math.min(info.media_cnt, 16);
+    for (var mediaIndex = 0; mediaIndex < mediaCount; mediaIndex++) {
+      final media = info.media[mediaIndex];
+      if (media.typeAsInt != pjmedia_type.PJMEDIA_TYPE_AUDIO.value) continue;
+      final transportInfo = arena<pjmedia_transport_info>();
+      final status = _bindings.pjsua_call_get_med_transport_info(
+        callId,
+        media.index,
+        transportInfo,
+      );
+      if (status != 0) {
+        if (logFailure) {
+          _addLog(
+            '🔐 媒体安全信息获取失败: call=$callId, media=${media.index}, pj_status=$status',
+          );
+        }
+        return null;
+      }
+
+      var hasSrtp = false;
+      final stack = <String>[];
+      final count = math.min(transportInfo.ref.specific_info_cnt, 4);
+      for (var index = 0; index < count; index++) {
+        final type = transportInfo.ref.spc_info[index].typeAsInt;
+        final label = _mediaTransportTypeLabel(type);
+        if (label.isNotEmpty) stack.add(label);
+        if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_SRTP.value) {
+          hasSrtp = true;
+        }
+      }
+      return CallMediaSecurity(
+        hasSrtpTransport: hasSrtp,
+        transportStack: stack,
+      );
+    }
+    return null;
+  }
+
+  String _mediaTransportTypeLabel(int type) {
+    if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_UDP.value) {
+      return 'UDP';
+    }
+    if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_ICE.value) {
+      return 'ICE';
+    }
+    if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_SRTP.value) {
+      return 'SRTP';
+    }
+    if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_LOOP.value) {
+      return 'LOOP';
+    }
+    if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_USER.value) {
+      return 'USER';
+    }
+    return 'UNKNOWN($type)';
+  }
+
   /// 把 `pjmedia_event_type` 的整数值转换成便于阅读的名称。
   ///
   /// 生成绑定里有 enum，但日志里直接打印业务名称更快定位问题；未知值保留
@@ -384,6 +447,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           );
           // pjsua_call_info 属于 Arena；进入 microtask 前必须复制为 Dart 值。
           final callState = info.ref.stateAsInt;
+          final mediaStatus = info.ref.media_statusAsInt;
           scheduleMicrotask(() {
             // [T3 handle] 真正更新状态
             _printLog('T3 handle', 'on_incoming_call: 添加 call=$callId');
@@ -395,6 +459,7 @@ extension _PjsipNativeCallbacks on PjsipService {
                 accountId: accId,
                 direction: PjsipCallDirection.inbound,
                 startedAt: DateTime.now(),
+                mediaStatus: mediaStatus,
               ),
             );
           });
@@ -472,6 +537,7 @@ extension _PjsipNativeCallbacks on PjsipService {
         final lastStatus = info.ref.last_status.value;
         final lastStatusText = _pjString(info.ref.last_status_text);
         final snapshot = _callSnapshot(info.ref);
+        final mediaSecurity = _readCallMediaSecurity(callId, info.ref, arena);
 
         scheduleMicrotask(() {
           // [T3 handle] get_info 成功分支
@@ -530,6 +596,8 @@ extension _PjsipNativeCallbacks on PjsipService {
                 connectedAt: connectedAt,
                 isOnHold: holdFlags.local,
                 isRemoteOnHold: holdFlags.remote,
+                mediaStatus: mediaStatus,
+                mediaSecurity: mediaSecurity ?? prev?.mediaSecurity,
               ),
             );
           }
@@ -581,6 +649,14 @@ extension _PjsipNativeCallbacks on PjsipService {
 
         final mediaStatusInt = info.ref.media_statusAsInt;
         final confSlot = info.ref.conf_slot;
+        final mediaSecurity = _readCallMediaSecurity(
+          callId,
+          info.ref,
+          arena,
+          logFailure:
+              mediaStatusInt !=
+              pjsua_call_media_status.PJSUA_CALL_MEDIA_NONE.value,
+        );
         const invalidId = -1; // PJSUA_INVALID_ID
 
         scheduleMicrotask(() {
@@ -610,6 +686,8 @@ extension _PjsipNativeCallbacks on PjsipService {
             current.copyWith(
               isOnHold: holdFlags.local,
               isRemoteOnHold: holdFlags.remote,
+              mediaStatus: mediaStatusInt,
+              mediaSecurity: mediaSecurity ?? current.mediaSecurity,
             ),
           );
         });

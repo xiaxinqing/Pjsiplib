@@ -1,6 +1,40 @@
 part of '../pjsip_service.dart';
 
 const String _seatEnvironmentStorageKey = 'thruv_seat_environment_v1';
+const String _audioPreferencesStorageKey = 'thruv_audio_preferences_v1';
+
+class _PersistedAudioPreferences {
+  const _PersistedAudioPreferences({
+    required this.incomingRingtoneEnabled,
+    required this.outgoingRingbackEnabled,
+    required this.callEndedSoundEnabled,
+    required this.dialpadKeySoundEnabled,
+  });
+
+  final bool incomingRingtoneEnabled;
+  final bool outgoingRingbackEnabled;
+  final bool callEndedSoundEnabled;
+  final bool dialpadKeySoundEnabled;
+
+  Map<String, Object?> toJson() {
+    return {
+      'version': 1,
+      'incomingRingtoneEnabled': incomingRingtoneEnabled,
+      'outgoingRingbackEnabled': outgoingRingbackEnabled,
+      'callEndedSoundEnabled': callEndedSoundEnabled,
+      'dialpadKeySoundEnabled': dialpadKeySoundEnabled,
+    };
+  }
+
+  static _PersistedAudioPreferences fromJson(Map<String, Object?> json) {
+    return _PersistedAudioPreferences(
+      incomingRingtoneEnabled: json['incomingRingtoneEnabled'] as bool? ?? true,
+      outgoingRingbackEnabled: json['outgoingRingbackEnabled'] as bool? ?? true,
+      callEndedSoundEnabled: json['callEndedSoundEnabled'] as bool? ?? true,
+      dialpadKeySoundEnabled: json['dialpadKeySoundEnabled'] as bool? ?? true,
+    );
+  }
+}
 
 class _PersistedSeatEnvironment {
   const _PersistedSeatEnvironment({
@@ -148,6 +182,53 @@ class _PersistedSipLine {
 }
 
 extension PjsipPersistenceOperations on PjsipService {
+  Future<void> _loadAudioPreferences() async {
+    try {
+      final stored = await _secureStorage.read(
+        key: _audioPreferencesStorageKey,
+      );
+      if (_isDisposed || stored == null || stored.isEmpty) return;
+      final decoded = jsonDecode(stored);
+      if (decoded is! Map) return;
+      final preferences = _PersistedAudioPreferences.fromJson(
+        Map<String, Object?>.from(decoded),
+      );
+      _uiState = _uiState.copyWith(
+        incomingRingtoneEnabled: preferences.incomingRingtoneEnabled,
+        outgoingRingbackEnabled: preferences.outgoingRingbackEnabled,
+        callEndedSoundEnabled: preferences.callEndedSoundEnabled,
+        dialpadKeySoundEnabled: preferences.dialpadKeySoundEnabled,
+      );
+      _syncCallProgressSounds();
+      _scheduleDialpadKeySoundWarmup();
+    } catch (error) {
+      _addLog('⚠️ 读取音效偏好失败: $error');
+    }
+  }
+
+  Future<void> _persistAudioPreferences() async {
+    final preferences = _PersistedAudioPreferences(
+      incomingRingtoneEnabled: _uiState.incomingRingtoneEnabled,
+      outgoingRingbackEnabled: _uiState.outgoingRingbackEnabled,
+      callEndedSoundEnabled: _uiState.callEndedSoundEnabled,
+      dialpadKeySoundEnabled: _uiState.dialpadKeySoundEnabled,
+    );
+    final payload = jsonEncode(preferences.toJson());
+    final previousWrite = _audio.audioPreferencesWrite ?? Future<void>.value();
+    final nextWrite = previousWrite.catchError((_) {}).then((_) {
+      return _secureStorage.write(
+        key: _audioPreferencesStorageKey,
+        value: payload,
+      );
+    });
+    _audio.audioPreferencesWrite = nextWrite;
+    try {
+      await nextWrite;
+    } catch (error) {
+      _addLog('⚠️ 保存音效偏好失败: $error');
+    }
+  }
+
   Future<void> _loadCachedAgent() async {
     if (_isDisposed) return;
     _seatRestoreInProgress = true;

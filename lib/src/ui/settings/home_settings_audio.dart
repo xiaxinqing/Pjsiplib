@@ -20,6 +20,41 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
         _buildAudioStatusPanel(uiState, service),
         const SizedBox(height: 18),
         _buildSettingsSection(
+          title: '声音提示',
+          icon: AppIcons.audio,
+          children: [
+            _buildAudioEffectSwitch(
+              icon: AppIcons.incoming,
+              title: '来电铃声',
+              subtitle: '有新来电时播放 ringtone.wav',
+              value: uiState.incomingRingtoneEnabled,
+              onChanged: service.setIncomingRingtoneEnabled,
+            ),
+            _buildAudioEffectSwitch(
+              icon: AppIcons.outgoing,
+              title: '外呼回铃音',
+              subtitle: '主动拨号等待接通时播放 ringing_loop.wav',
+              value: uiState.outgoingRingbackEnabled,
+              onChanged: service.setOutgoingRingbackEnabled,
+            ),
+            _buildAudioEffectSwitch(
+              icon: AppIcons.callEnd,
+              title: '通话结束提示音',
+              subtitle: '已接通通话结束时播放 hangup.wav',
+              value: uiState.callEndedSoundEnabled,
+              onChanged: service.setCallEndedSoundEnabled,
+            ),
+            _buildAudioEffectSwitch(
+              icon: AppIcons.dialpad,
+              title: '拨号按键音',
+              subtitle: '拨号盘输入时播放本地 DTMF 合成音，默认关闭',
+              value: uiState.dialpadKeySoundEnabled,
+              onChanged: service.setDialpadKeySoundEnabled,
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _buildSettingsSection(
           title: '输入与输出',
           icon: AppIcons.devices,
           children: [
@@ -307,6 +342,76 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
               children: [primaryAction, secondaryAction],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAudioEffectSwitch({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    final trackColor = WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) return _brandGreen;
+      if (states.contains(WidgetState.hovered)) return const Color(0xffd9dfdc);
+      return const Color(0xffe3e7e5);
+    });
+    final outlineColor = WidgetStateProperty.resolveWith<Color>((states) {
+      if (states.contains(WidgetState.selected)) return _brandGreen;
+      return const Color(0xffcfd6d2);
+    });
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_radiusSm),
+        onTap: () => onChanged(!value),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Row(
+            children: [
+              Icon(icon, size: _iconMd, color: _textSecondary),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      subtitle,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                trackColor: trackColor,
+                trackOutlineColor: outlineColor,
+                trackOutlineWidth: WidgetStateProperty.all(1),
+                thumbColor: WidgetStateProperty.resolveWith<Color>((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return Colors.white;
+                  }
+                  return const Color(0xfff9faf9);
+                }),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -1254,7 +1254,14 @@ extension _HomeWorkspace on _MyHomePageState {
 
     final feedbackKey = _latestInsertedDialpadKey(_lastDialpadValue, current);
     _lastDialpadValue = current;
-    if (feedbackKey != null) _flashDialpadKey(feedbackKey);
+    if (feedbackKey != null) {
+      _flashDialpadKey(feedbackKey);
+      if (_section == _WorkspaceSection.dialpad) {
+        ref
+            .read(pjsipServiceProvider.notifier)
+            .playDialpadKeySound(feedbackKey);
+      }
+    }
   }
 
   void _insertDialpadKey(String key) {

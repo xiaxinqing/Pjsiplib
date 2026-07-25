@@ -36,6 +36,13 @@ class CallInfo {
   /// 是否由远端发起的暂停 (Remote Hold)
   final bool isRemoteOnHold;
 
+  /// PJSIP 当前默认音频媒体状态。SIP dialog 接通不代表 RTP/SRTP 已经可用，
+  /// 这个字段用于 UI 区分“信令通了”和“媒体已建立”。
+  final int? mediaStatus;
+
+  /// 当前音频媒体 transport 是否实际堆叠了 SRTP。
+  final CallMediaSecurity? mediaSecurity;
+
   CallInfo({
     required this.callId,
     required this.state,
@@ -46,6 +53,8 @@ class CallInfo {
     this.connectedAt,
     this.isOnHold = false,
     this.isRemoteOnHold = false,
+    this.mediaStatus,
+    this.mediaSecurity,
   }) : startedAt = startedAt ?? DateTime.now();
 
   CallInfo copyWith({
@@ -58,6 +67,8 @@ class CallInfo {
     DateTime? connectedAt,
     bool? isOnHold,
     bool? isRemoteOnHold,
+    Object? mediaStatus = _unset,
+    Object? mediaSecurity = _unset,
   }) {
     return CallInfo(
       callId: callId ?? this.callId,
@@ -71,6 +82,12 @@ class CallInfo {
       connectedAt: connectedAt ?? this.connectedAt,
       isOnHold: isOnHold ?? this.isOnHold,
       isRemoteOnHold: isRemoteOnHold ?? this.isRemoteOnHold,
+      mediaStatus: identical(mediaStatus, _unset)
+          ? this.mediaStatus
+          : mediaStatus as int?,
+      mediaSecurity: identical(mediaSecurity, _unset)
+          ? this.mediaSecurity
+          : mediaSecurity as CallMediaSecurity?,
     );
   }
 
@@ -120,4 +137,14 @@ class CallInfo {
         return '通话状态: $state';
     }
   }
+}
+
+class CallMediaSecurity {
+  const CallMediaSecurity({
+    required this.hasSrtpTransport,
+    this.transportStack = const [],
+  });
+
+  final bool hasSrtpTransport;
+  final List<String> transportStack;
 }

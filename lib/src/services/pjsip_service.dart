@@ -7,6 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../generated/pjsip_bindings.g.dart';
 import 'call_history_database.dart';
@@ -46,6 +47,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
   final Set<int> _blindTransferAutoReleaseCallIds = <int>{};
+  final Set<int> _hangupSoundPlayedCallIds = <int>{};
+  final Map<int, String> _blindTransferTargets = <int, String>{};
   final Map<int, String> _callNotes = <int, String>{};
   final Map<int, String> _sharedConferenceNotes = <int, String>{};
   final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
@@ -148,6 +151,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     // 永远不会 close()，pjsua 也不会销毁。
     ref.onDispose(_cleanup);
     // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
+    scheduleMicrotask(_loadAudioPreferences);
     scheduleMicrotask(_startConnectivityMonitoring);
     _scheduleStartupWarmup();
     return PjsipUIState(logs: []);
@@ -234,6 +238,10 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopCallTimer();
     _stopMicrophoneTestRecorder();
     _stopSpeakerTestPlayer();
+    _stopIncomingRingtone();
+    _stopOutgoingRingback();
+    _stopHangupSound();
+    _stopDialpadKeySound();
     _stopAudioLevelTimer();
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();
@@ -249,6 +257,7 @@ class PjsipService extends Notifier<PjsipUIState> {
 
     _mediaConnectedCalls.clear();
     _locallyEndedCallIds.clear();
+    _hangupSoundPlayedCallIds.clear();
     _sipTransportIds.clear();
     state = state.copyWith(
       isInitialized: false,
@@ -294,6 +303,10 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopCallTimer();
     _stopMicrophoneTestRecorder();
     _stopSpeakerTestPlayer();
+    _stopIncomingRingtone();
+    _stopOutgoingRingback();
+    _stopHangupSound();
+    _stopDialpadKeySound();
     _stopAudioLevelTimer();
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();
@@ -304,6 +317,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     if (state.isInitialized) {
       _bindings.pjsua_destroy();
       _mediaConnectedCalls.clear();
+      _hangupSoundPlayedCallIds.clear();
       _sipTransportIds.clear();
     }
     _regStateCallable.close();
