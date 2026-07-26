@@ -514,6 +514,11 @@ extension _PjsipNativeCallbacks on PjsipService {
           scheduleMicrotask(() {
             // [T3 handle] 走“已释放 → 判定 DISCONNECTED”分支
             _printLog('T3 handle', 'on_call_state: call=$callId 走“已释放”清理分支');
+            if (_locallyReleasedCallIds.remove(callId) &&
+                !_uiState.calls.containsKey(callId)) {
+              _addLog('⏹ 本地已收尾，忽略已释放状态回调: call=$callId');
+              return;
+            }
             if (_blindTransferAutoReleaseCallIds.contains(callId) &&
                 !_uiState.calls.containsKey(callId)) {
               _addLog('➡️ 盲转本机已移除，忽略已释放状态回调: call=$callId');
@@ -524,6 +529,11 @@ extension _PjsipNativeCallbacks on PjsipService {
               '原因: info 已释放，判定为 DISCONNECTED\n'
               '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
               'PJSIP 原生日志: $_nativeLogFilePath',
+            );
+            _logEarlyOutboundDisconnectWithoutAutoRecovery(
+              _uiState.calls[callId],
+              sipStatusCode: 0,
+              sipStatusText: 'info released',
             );
             _removeCall(callId);
           });
@@ -549,6 +559,11 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (callState == pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value) {
             // 少数情况下 isolate 抢在 PJSIP 释放 call 之前执行，get_info 成功
             // 且状态就是 DISCONNECTED。与上面的失败分支做同样的清理。
+            if (_locallyReleasedCallIds.remove(callId) &&
+                !_uiState.calls.containsKey(callId)) {
+              _addLog('⏹ 本地已收尾，忽略断开状态回调: call=$callId');
+              return;
+            }
             if (_blindTransferAutoReleaseCallIds.contains(callId) &&
                 !_uiState.calls.containsKey(callId)) {
               _addLog('➡️ 盲转本机已移除，忽略断开状态回调: call=$callId');
@@ -560,6 +575,11 @@ extension _PjsipNativeCallbacks on PjsipService {
               '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
               'PJSIP 原生日志: $_nativeLogFilePath',
             );
+            _logEarlyOutboundDisconnectWithoutAutoRecovery(
+              _uiState.calls[callId],
+              sipStatusCode: lastStatus,
+              sipStatusText: lastStatusText,
+            );
             _removeCall(
               callId,
               sipStatusCode: lastStatus,
@@ -569,6 +589,11 @@ extension _PjsipNativeCallbacks on PjsipService {
             if (_blindTransferAutoReleaseCallIds.contains(callId) &&
                 !_uiState.calls.containsKey(callId)) {
               _addLog('➡️ 盲转本机已移除，忽略后续通话状态: call=$callId, state=$callState');
+              return;
+            }
+            if (_locallyReleasedCallIds.contains(callId) &&
+                !_uiState.calls.containsKey(callId)) {
+              _addLog('⏹ 本地已收尾，忽略后续通话状态: call=$callId, state=$callState');
               return;
             }
             _addLog('通话状态变更: $callId -> $callState');
@@ -601,7 +626,7 @@ extension _PjsipNativeCallbacks on PjsipService {
               ),
             );
             if (isConfirmed) {
-              _holdBackgroundConfirmedCallIfNeeded(callId);
+              _scheduleBackgroundConfirmedHoldIfNeeded(callId);
             }
           }
         });
@@ -693,6 +718,10 @@ extension _PjsipNativeCallbacks on PjsipService {
               mediaSecurity: mediaSecurity ?? current.mediaSecurity,
             ),
           );
+          if (mediaStatusInt ==
+              pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value) {
+            _scheduleBackgroundConfirmedHoldIfNeeded(callId);
+          }
         });
 
         if (mediaStatusInt ==
@@ -707,6 +736,7 @@ extension _PjsipNativeCallbacks on PjsipService {
               _uiState.conferenceCallIds.contains(callId)) {
             _mediaConnectedCalls.add(callId);
             _rebuildConferenceBridge('会议成员媒体 ACTIVE');
+            _applyAudioVolumeState();
             _scheduleConferenceBridgeRebuilds('会议成员媒体 ACTIVE 后补偿');
             _addLog('👥 会议媒体已就绪: call=$callId, slot=$confSlot');
             return;
@@ -728,6 +758,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (!_uiState.isMicrophoneMuted) {
             _bindings.pjsua_conf_connect(0, confSlot);
           }
+          _applyAudioVolumeState();
           if (_mediaConnectedCalls.add(callId)) {
             _addLog('🎙️ 媒体通道已建立并连接到声卡 (slot=$confSlot)');
           }

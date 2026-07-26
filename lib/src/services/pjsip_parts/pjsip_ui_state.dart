@@ -40,6 +40,9 @@ class PjsipUIState {
   /// PJSIP 引擎是否已经初始化。
   final bool isInitialized;
 
+  /// 是否正在完整重启电话服务。该流程会临时注销线路、销毁并重新初始化 PJSIP。
+  final bool isPhoneServiceRestarting;
+
   /// PJSIP 账号 ID。注册成功后用于后续账号相关操作。
   final int accId;
 
@@ -75,6 +78,12 @@ class PjsipUIState {
 
   /// 扬声器电平，来自 PJSIP conference bridge signal level。
   final int speakerLevel;
+
+  /// 本地麦克风输入音量，范围 0-100。
+  final int microphoneVolume;
+
+  /// 本地扬声器输出音量，范围 0-100。
+  final int speakerVolume;
 
   /// 是否正在进行麦克风测试。开启后即使没有通话，也会显示输入电平。
   final bool isMicrophoneTesting;
@@ -114,6 +123,7 @@ class PjsipUIState {
     this.networkState = PjsipNetworkState.idle,
     this.seatEnvironmentState = SeatEnvironmentState.checking,
     this.isInitialized = false,
+    this.isPhoneServiceRestarting = false,
     this.accId = -1,
     this.host = '',
     this.accounts = const {},
@@ -126,6 +136,8 @@ class PjsipUIState {
     this.isSpeakerMuted = false,
     this.microphoneLevel = 0,
     this.speakerLevel = 0,
+    this.microphoneVolume = 100,
+    this.speakerVolume = 100,
     this.isMicrophoneTesting = false,
     this.isSpeakerTesting = false,
     this.audioDeviceMode = PjsipAudioDeviceMode.automatic,
@@ -148,6 +160,7 @@ class PjsipUIState {
     PjsipNetworkState? networkState,
     SeatEnvironmentState? seatEnvironmentState,
     bool? isInitialized,
+    bool? isPhoneServiceRestarting,
     int? accId,
     String? host,
     Map<int, SipAccountInfo>? accounts,
@@ -160,6 +173,8 @@ class PjsipUIState {
     bool? isSpeakerMuted,
     int? microphoneLevel,
     int? speakerLevel,
+    int? microphoneVolume,
+    int? speakerVolume,
     bool? isMicrophoneTesting,
     bool? isSpeakerTesting,
     PjsipAudioDeviceMode? audioDeviceMode,
@@ -186,6 +201,8 @@ class PjsipUIState {
       networkState: networkState ?? this.networkState,
       seatEnvironmentState: seatEnvironmentState ?? this.seatEnvironmentState,
       isInitialized: isInitialized ?? this.isInitialized,
+      isPhoneServiceRestarting:
+          isPhoneServiceRestarting ?? this.isPhoneServiceRestarting,
       accId: accId ?? this.accId,
       host: host ?? this.host,
       accounts: accounts ?? this.accounts,
@@ -204,6 +221,8 @@ class PjsipUIState {
       isSpeakerMuted: isSpeakerMuted ?? this.isSpeakerMuted,
       microphoneLevel: microphoneLevel ?? this.microphoneLevel,
       speakerLevel: speakerLevel ?? this.speakerLevel,
+      microphoneVolume: microphoneVolume ?? this.microphoneVolume,
+      speakerVolume: speakerVolume ?? this.speakerVolume,
       isMicrophoneTesting: isMicrophoneTesting ?? this.isMicrophoneTesting,
       isSpeakerTesting: isSpeakerTesting ?? this.isSpeakerTesting,
       audioDeviceMode: audioDeviceMode ?? this.audioDeviceMode,

@@ -331,7 +331,7 @@ void main() {
 
     expect(find.text('VPhone'), findsOneWidget);
     expect(find.text('拨号'), findsWidgets);
-    expect(find.text('设置'), findsOneWidget);
+    expect(find.byIcon(AppIcons.settings), findsOneWidget);
   });
 
   testWidgets('VoIP 主界面在矮窗口下可以滚动布局', (WidgetTester tester) async {

@@ -2,6 +2,11 @@ part of '../pjsip_service.dart';
 
 /// 单路、多路及三方会议的通话控制与音频桥管理。
 extension PjsipCallOperations on PjsipService {
+  static const Duration _hangupAfterCallControlGuard = Duration(
+    milliseconds: 650,
+  );
+  static const Duration _hangupLocalCleanupDelay = Duration(seconds: 2);
+
   String callNote(int callId) => _callNotes[callId] ?? '';
 
   String sharedConferenceNote(Iterable<int> callIds) {
@@ -56,6 +61,20 @@ extension PjsipCallOperations on PjsipService {
   Future<void> makeCallFromAccount(String number, int? accountId) async {
     if (!_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，无法发起呼叫');
+      return;
+    }
+    if (_warnIfOutgoingMediaRecoveryActive()) return;
+    final duplicatedCall = _findOngoingCallForDialNumber(number);
+    if (duplicatedCall != null) {
+      final duplicatedNumber = _extractPhoneNumber(duplicatedCall.remoteUri);
+      final message = duplicatedNumber.isEmpty
+          ? '该号码已有通话，请先处理当前通话'
+          : '$duplicatedNumber 已在当前通话中，请先处理当前通话';
+      ToastUtil.showWarning(message);
+      _addLog(
+        '⚠️ 拦截重复呼叫: target=$number, '
+        'existingCall=${duplicatedCall.callId}, state=${duplicatedCall.state}',
+      );
       return;
     }
     final account = accountId == null ? null : _uiState.accounts[accountId];
@@ -142,7 +161,12 @@ extension PjsipCallOperations on PjsipService {
   Future<void> answerCall(int callId) async {
     final call = _uiState.calls[callId];
     if (call == null || !call.isIncoming) return;
-    _cancelPendingOutboundCallsBeforeAnswer(callId);
+    final pendingOutboundCallIds = _pendingOutboundCallsExcept(
+      callId,
+    ).map((call) => call.callId).toList();
+    if (pendingOutboundCallIds.isNotEmpty) {
+      _stopOutgoingRingback();
+    }
     if (!await _holdActiveCallExcept(callId)) return;
     final status = _bindings.pjsua_call_answer(
       callId,
@@ -153,8 +177,10 @@ extension PjsipCallOperations on PjsipService {
     if (status == 0) {
       _uiState = _uiState.copyWith(activeCallId: callId);
       _stopIncomingRingtone();
+      _schedulePendingOutboundCancelAfterAnswer(pendingOutboundCallIds);
       _addLog('✅ 已接听电话: call=$callId');
     } else {
+      _syncCallProgressSounds();
       _addLog('❌ 接听失败: $status');
     }
   }
@@ -175,13 +201,27 @@ extension PjsipCallOperations on PjsipService {
     return null;
   }
 
-  void _cancelPendingOutboundCallsBeforeAnswer(int incomingCallId) {
-    final pendingOutboundCalls = _uiState.calls.values
-        .where(
-          (call) =>
-              call.callId != incomingCallId && _isPendingOutboundCall(call),
-        )
+  List<CallInfo> _pendingOutboundCallsExcept(int excludedCallId) {
+    return _uiState.calls.values
+        .where((call) => call.callId != excludedCallId)
+        .where(_isPendingOutboundCall)
         .toList();
+  }
+
+  void _schedulePendingOutboundCancelAfterAnswer(List<int> callIds) {
+    if (callIds.isEmpty) return;
+    Future<void>.delayed(const Duration(milliseconds: 240), () {
+      if (_isDisposed || !_uiState.isInitialized) return;
+      final pendingOutboundCalls = callIds
+          .map((callId) => _uiState.calls[callId])
+          .whereType<CallInfo>()
+          .where(_isPendingOutboundCall)
+          .toList();
+      _cancelPendingOutboundCalls(pendingOutboundCalls);
+    });
+  }
+
+  void _cancelPendingOutboundCalls(List<CallInfo> pendingOutboundCalls) {
     if (pendingOutboundCalls.isEmpty) return;
 
     _stopOutgoingRingback();
@@ -208,15 +248,34 @@ extension PjsipCallOperations on PjsipService {
     }
   }
 
+  void _scheduleBackgroundConfirmedHoldIfNeeded(int callId) {
+    final call = _uiState.calls[callId];
+    if (call == null || !call.isConnected || call.isOnHold) return;
+    if (_uiState.activeCallId == callId) return;
+    if (_backgroundHoldScheduledCallIds.contains(callId)) return;
+
+    _backgroundHoldScheduledCallIds.add(callId);
+    Future<void>.delayed(const Duration(milliseconds: 900), () {
+      _backgroundHoldScheduledCallIds.remove(callId);
+      if (_isDisposed || !_uiState.isInitialized) return;
+      _holdBackgroundConfirmedCallIfNeeded(callId);
+    });
+  }
+
   void _holdBackgroundConfirmedCallIfNeeded(int callId) {
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected || call.isOnHold) return;
     if (_uiState.activeCallId == callId) return;
+    if (call.mediaStatus !=
+        pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value) {
+      return;
+    }
 
     final activeId = _uiState.activeCallId;
     final active = activeId == null ? null : _uiState.calls[activeId];
     if (active == null || !active.isConnected) return;
 
+    _markCallControlOperation(callId);
     final status = _bindings.pjsua_call_set_hold(callId, ffi.nullptr);
     if (status == 0) {
       _putCall(call.copyWith(isOnHold: true));
@@ -247,6 +306,7 @@ extension PjsipCallOperations on PjsipService {
   Future<void> hangupCall(int callId) async {
     final call = _uiState.calls[callId];
     if (call == null) return;
+    if (_scheduleHangupAfterControlSettles(callId)) return;
     // 延迟到达的 DISCONNECTED microtask 可能尚未清除本地记录，此时
     // callId 可能已失效。对死 id 调 hangup 无害但没意义，直接清理本地状态。
     if (_bindings.pjsua_call_is_active(call.callId) == 0) {
@@ -267,6 +327,7 @@ extension PjsipCallOperations on PjsipService {
     );
     if (status == 0) {
       _playCallEndedSound(call);
+      _scheduleLocalHangupCleanup(call);
       _addLog('挂断 API 调用成功，等待 PJSIP DISCONNECTED 回调: call=${call.callId}');
     } else {
       _addLog('❌ 挂断失败: call=${call.callId}, pj_status=$status');
@@ -276,6 +337,7 @@ extension PjsipCallOperations on PjsipService {
   Future<void> holdCall(int callId) async {
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected) return;
+    _markCallControlOperation(callId);
     _addLog('⏹ 请求暂停通话: call=${call.callId}');
     // pjsua_call_set_hold 发起 re-INVITE 将媒体置为 sendonly/inactive
     final status = _bindings.pjsua_call_set_hold(call.callId, ffi.nullptr);
@@ -293,6 +355,7 @@ extension PjsipCallOperations on PjsipService {
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected) return;
     if (!await _holdActiveCallExcept(callId)) return;
+    _markCallControlOperation(callId);
     _addLog('▶️ 请求恢复通话: call=${call.callId}');
     // pjsua_call_reinvite(callId, 1, ...) 发起 re-INVITE 恢复媒体 sendrecv
     final status = _bindings.pjsua_call_reinvite(call.callId, 1, ffi.nullptr);
@@ -301,6 +364,95 @@ extension PjsipCallOperations on PjsipService {
     } else {
       _putCall(call.copyWith(isOnHold: false), makeActive: true);
     }
+  }
+
+  void _markCallControlOperation(int callId) {
+    _lastCallControlOperationAt[callId] = DateTime.now();
+  }
+
+  bool _scheduleHangupAfterControlSettles(int callId) {
+    final lastControlAt = _lastCallControlOperationAt[callId];
+    if (lastControlAt == null) return false;
+
+    final elapsed = DateTime.now().difference(lastControlAt);
+    if (elapsed >= _hangupAfterCallControlGuard) return false;
+
+    if (_delayedHangupTimers.containsKey(callId)) return true;
+    final delay = _hangupAfterCallControlGuard - elapsed;
+    _addLog('⏳ 刚执行保持/恢复，延迟 ${delay.inMilliseconds}ms 后挂断: call=$callId');
+    _delayedHangupTimers[callId] = Timer(delay, () {
+      _delayedHangupTimers.remove(callId);
+      if (_isDisposed || !_uiState.calls.containsKey(callId)) return;
+      unawaited(hangupCall(callId));
+    });
+    return true;
+  }
+
+  void _scheduleLocalHangupCleanup(CallInfo call) {
+    _hangupCleanupTimers.remove(call.callId)?.cancel();
+    _hangupCleanupTimers[call.callId] = Timer(_hangupLocalCleanupDelay, () {
+      _hangupCleanupTimers.remove(call.callId);
+      if (_isDisposed || !_uiState.calls.containsKey(call.callId)) return;
+
+      _locallyReleasedCallIds.add(call.callId);
+      final stillActive = _bindings.pjsua_call_is_active(call.callId) != 0;
+      if (stillActive) {
+        final retryStatus = _bindings.pjsua_call_hangup(
+          call.callId,
+          0,
+          ffi.nullptr,
+          ffi.nullptr,
+        );
+        _addLog(
+          '⚠️ 挂断等待超时，已重发挂断并本地收尾: call=${call.callId}, pj_status=$retryStatus',
+        );
+      } else {
+        _addLog('⚠️ 挂断等待超时，底层已不活跃，本地收尾: call=${call.callId}');
+      }
+      _removeCall(call.callId, hangupReason: 'local hangup timeout');
+      unawaited(
+        Future<void>.delayed(const Duration(seconds: 30), () {
+          _locallyReleasedCallIds.remove(call.callId);
+        }),
+      );
+    });
+  }
+
+  void _hangupNativeCallsIfUiIdle(String reason) {
+    if (!_uiState.isInitialized || _uiState.calls.isNotEmpty) return;
+    final nativeCallCount = _bindings.pjsua_call_get_count();
+    if (nativeCallCount <= 0) return;
+
+    _addLog('🧹 $reason：native 仍有 $nativeCallCount 路通话残留，执行 hangup_all');
+    _bindings.pjsua_call_hangup_all();
+    _mediaConnectedCalls.clear();
+    _backgroundHoldScheduledCallIds.clear();
+    _lastCallControlOperationAt.clear();
+    _releaseSoundDeviceIfIdle('$reason 清理 native 残留');
+  }
+
+  void _logEarlyOutboundDisconnectWithoutAutoRecovery(
+    CallInfo? call, {
+    required int sipStatusCode,
+    required String sipStatusText,
+  }) {
+    if (call == null) return;
+    if (call.direction != PjsipCallDirection.outbound) return;
+    if (call.connectedAt != null) return;
+    if (_locallyEndedCallIds.contains(call.callId)) return;
+
+    final age = DateTime.now().difference(call.startedAt);
+    if (age > const Duration(seconds: 5)) return;
+
+    final nativeCallCount = _bindings.pjsua_call_get_count();
+    _addLog(
+      '🌐 外呼快速断开，暂不自动重连: call=${call.callId}, '
+      'age=${age.inMilliseconds}ms, sip=$sipStatusCode'
+      '${sipStatusText.isEmpty ? '' : ' ($sipStatusText)'}, '
+      'nativeCalls=$nativeCallCount\n'
+      '说明: ICE/STUN 失败后自动 IP Change 容易形成“拨号失败 -> 重连 -> 再失败”循环，'
+      '这里先只记录诊断日志，交给网络变化/手动重连处理。',
+    );
   }
 
   /// 通话中发送 DTMF 按键。
@@ -435,6 +587,7 @@ extension PjsipCallOperations on PjsipService {
     );
 
     if (target.isOnHold) {
+      _markCallControlOperation(callId);
       final status = _bindings.pjsua_call_reinvite(callId, 1, ffi.nullptr);
       if (status != 0) {
         _uiState = _uiState.copyWith(
@@ -472,6 +625,7 @@ extension PjsipCallOperations on PjsipService {
       if (call == null) continue;
       if (callId == keepCallId) {
         if (call.isOnHold) {
+          _markCallControlOperation(callId);
           final status = _bindings.pjsua_call_reinvite(callId, 1, ffi.nullptr);
           if (status != 0) {
             _addLog('❌ 恢复保留通话失败: call=$callId, pj_status=$status');
@@ -480,6 +634,7 @@ extension PjsipCallOperations on PjsipService {
         }
         calls[callId] = call.copyWith(isOnHold: false);
       } else {
+        _markCallControlOperation(callId);
         final status = _bindings.pjsua_call_set_hold(callId, ffi.nullptr);
         if (status != 0) {
           _addLog('❌ 拆分时保持失败: call=$callId, pj_status=$status');
@@ -521,6 +676,7 @@ extension PjsipCallOperations on PjsipService {
         continue;
       }
       if (call.isOnHold) {
+        _markCallControlOperation(callId);
         final status = _bindings.pjsua_call_reinvite(callId, 1, ffi.nullptr);
         if (status != 0) {
           allResumed = false;
@@ -568,6 +724,7 @@ extension PjsipCallOperations on PjsipService {
         if (callId == targetCallId) continue;
         final call = calls[callId];
         if (call == null || !call.isConnected) continue;
+        _markCallControlOperation(callId);
         final status = _bindings.pjsua_call_set_hold(callId, ffi.nullptr);
         if (status == 0) {
           calls[callId] = call.copyWith(isOnHold: true);
@@ -593,6 +750,7 @@ extension PjsipCallOperations on PjsipService {
     if (active == null || !active.isConnected || active.isOnHold) return true;
 
     _addLog('⏸ 接听/恢复新通话前自动保持 call=$activeId');
+    _markCallControlOperation(activeId);
     final status = _bindings.pjsua_call_set_hold(activeId, ffi.nullptr);
     if (status != 0) {
       _addLog('❌ 自动保持失败: call=$activeId, pj_status=$status');
@@ -634,6 +792,7 @@ extension PjsipCallOperations on PjsipService {
       _bindings.pjsua_conf_connect(0, slot);
     }
     _mediaConnectedCalls.add(callId);
+    _applyAudioVolumeState();
   }
 
   /// 重建三方音频矩阵：本机与每一路双向连接，两路远端之间也双向连接。
@@ -679,6 +838,7 @@ extension PjsipCallOperations on PjsipService {
       }
     }
     _mediaConnectedCalls.addAll(slots.keys);
+    _applyAudioVolumeState();
     if (reason.isNotEmpty) {
       _addLog(
         '👥 会议桥已重建: $reason, '
@@ -722,6 +882,10 @@ extension PjsipCallOperations on PjsipService {
   }
 
   void _removeCall(int callId, {int? sipStatusCode, String? hangupReason}) {
+    _delayedHangupTimers.remove(callId)?.cancel();
+    _hangupCleanupTimers.remove(callId)?.cancel();
+    _backgroundHoldScheduledCallIds.remove(callId);
+    _lastCallControlOperationAt.remove(callId);
     final endedCall = _uiState.calls[callId];
     if (endedCall != null) {
       _archiveEndedCall(
@@ -894,6 +1058,22 @@ extension PjsipCallOperations on PjsipService {
     ).firstMatch(remoteUri);
     final raw = sipMatch?.group(1) ?? remoteUri;
     return raw.replaceAll(RegExp(r'[^0-9+*#]'), '');
+  }
+
+  CallInfo? _findOngoingCallForDialNumber(String number) {
+    final targetNumber = _normalizePhoneNumber(_extractPhoneNumber(number));
+    if (targetNumber.isEmpty) return null;
+
+    for (final call in _uiState.calls.values) {
+      if (call.state == pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value) {
+        continue;
+      }
+      final callNumber = _normalizePhoneNumber(
+        _extractPhoneNumber(call.remoteUri),
+      );
+      if (callNumber == targetNumber) return call;
+    }
+    return null;
   }
 
   ContactEntry? _findContactForPhoneNumber(String phoneNumber) {

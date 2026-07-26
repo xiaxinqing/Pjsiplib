@@ -41,6 +41,12 @@ typedef _PjmediaPortDestroyDart = int Function(ffi.Pointer<pjmedia_port>);
 typedef _PjPoolReleaseC = ffi.Void Function(ffi.Pointer<pj_pool_t>);
 typedef _PjPoolReleaseDart = void Function(ffi.Pointer<pj_pool_t>);
 
+// MicroSIP 的音量滑块是 0-100 线性映射到 pjsua_conf_adjust_rx_level(val/100)。
+// 桌面端拖动时线性低段会显得衰减过猛：15% 听起来已经很小。这里保留 UI 的
+// 0-100 语义，只在送入 PJSIP 前做轻微听感曲线，让低段更可控。
+const double _conferenceVolumeTaperPower = 0.58;
+const Duration _audioVolumePersistDebounce = Duration(milliseconds: 450);
+
 final class _PjmediaToneDigit extends ffi.Struct {
   @ffi.Int8()
   external int digit;
@@ -84,7 +90,7 @@ class _PjsipAudioRuntime {
   Duration changeDebounceInterval = const Duration(milliseconds: 250);
 
   /// 通话电平刷新间隔，用来驱动麦克风/扬声器电平条。
-  Duration levelPollInterval = const Duration(milliseconds: 500);
+  Duration levelPollInterval = const Duration(milliseconds: 160);
 
   /// 切换设备后，重复重连 conference bridge 的补偿时间点。
   ///
@@ -123,6 +129,7 @@ class _PjsipAudioRuntime {
   DateTime? lastHangupSoundAt;
   Timer? dialpadKeySoundTimer;
   Timer? dialpadTonegenDestroyTimer;
+  Timer? audioPreferencesDebounceTimer;
   ffi.Pointer<pj_pool_t>? dialpadTonegenPool;
   ffi.Pointer<pjmedia_port>? dialpadTonegenPort;
   int? dialpadTonegenSlot;
@@ -567,6 +574,22 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _uiState = _uiState.copyWith(isSpeakerMuted: muted);
     _applyAudioMuteState();
     _addLog(muted ? '🔈 扬声器已静音' : '🔊 扬声器已恢复');
+  }
+
+  void setMicrophoneVolume(int volume) {
+    final next = volume.clamp(0, 100).toInt();
+    if (_uiState.microphoneVolume == next) return;
+    _uiState = _uiState.copyWith(microphoneVolume: next);
+    _applyAudioVolumeState();
+    _scheduleAudioPreferencesPersist();
+  }
+
+  void setSpeakerVolume(int volume) {
+    final next = volume.clamp(0, 100).toInt();
+    if (_uiState.speakerVolume == next) return;
+    _uiState = _uiState.copyWith(speakerVolume: next);
+    _applyAudioVolumeState();
+    _scheduleAudioPreferencesPersist();
   }
 
   /// 播放一段短测试音到当前 PJSIP 播放设备。
@@ -1887,11 +1910,50 @@ extension PjsipAudioDeviceOperations on PjsipService {
         _bindings.pjsua_conf_connect(slot, 0);
       }
     }
+    _applyAudioVolumeState();
+  }
+
+  void _applyAudioVolumeState() {
+    if (!_uiState.isInitialized) return;
+    final microphoneLevel = _conferenceGainForVolume(
+      _uiState.microphoneVolume,
+      muted: _uiState.isMicrophoneMuted,
+    );
+    final microphoneStatus = _bindings.pjsua_conf_adjust_rx_level(
+      0,
+      microphoneLevel,
+    );
+    if (microphoneStatus != 0) {
+      _addLog('⚠️ 麦克风音量设置失败: pj_status=$microphoneStatus');
+    }
+
+    final speakerLevel = _conferenceGainForVolume(
+      _uiState.speakerVolume,
+      muted: _uiState.isSpeakerMuted,
+    );
+    for (final call in _uiState.calls.values) {
+      final slot = _getConferenceSlot(call.callId);
+      if (slot == null) continue;
+      final status = _bindings.pjsua_conf_adjust_rx_level(slot, speakerLevel);
+      if (status != 0) {
+        _addLog('⚠️ 扬声器音量设置失败: call=${call.callId}, pj_status=$status');
+      }
+    }
+  }
+
+  double _conferenceGainForVolume(int volume, {required bool muted}) {
+    if (muted) return 0;
+    final normalized = (volume.clamp(0, 100).toDouble() / 100).clamp(0.0, 1.0);
+    if (normalized <= 0) return 0;
+    return math
+        .pow(normalized, _conferenceVolumeTaperPower)
+        .toDouble()
+        .clamp(0.0, 1.0);
   }
 
   /// 启动通话电平监测。
   ///
-  /// 这个 timer 周期性调用 `pjsua_conf_get_signal_level(0, tx, rx)`。
+  /// 这个 timer 周期性读取 conference bridge 的 signal level。
   /// 它不是音频设备切换的一部分，只是为了 UI 上显示麦克风/扬声器活跃度。
   void _startAudioLevelTimer() {
     if (_audio.levelTimer != null) return;
@@ -1912,12 +1974,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
       }
 
       using((Arena arena) {
-        // port 0 是本地声卡端口。tx/rx 可以粗略反映麦克风输入和扬声器输出活跃度。
-        final tx = arena<ffi.UnsignedInt>();
-        final rx = arena<ffi.UnsignedInt>();
-        final status = _bindings.pjsua_conf_get_signal_level(0, tx, rx);
-        if (status != 0) return;
-        var microphoneLevel = tx.value;
+        // 参考 MicroSIP 的 VU meter：枚举 conference ports，而不是只看 port 0。
+        // port 0 是本地声卡端口，它的 rx 更能代表“麦克风送入 bridge 的声音”；
+        // 非 0 端口通常是远端通话/播放器，取最大 rx 作为“对方声音”。这样会议、
+        // hold/unhold 后 conf slot 变化时，电平显示会比只读 port 0 稳定得多。
+        final levels = _readConferenceAudioLevels(arena);
+        var microphoneLevel = levels.microphone;
         final recorderPort = _audio.microphoneTestRecorderPort;
         if (_uiState.isMicrophoneTesting &&
             recorderPort != null &&
@@ -1943,11 +2005,57 @@ extension PjsipAudioDeviceOperations on PjsipService {
               ? microphoneLevel
               : 0,
           speakerLevel: shouldReadSpeakerLevel && !_uiState.isSpeakerMuted
-              ? math.max(rx.value, fallbackSpeakerLevel)
+              ? math.max(levels.speaker, fallbackSpeakerLevel)
               : 0,
         );
       });
     });
+  }
+
+  ({int microphone, int speaker}) _readConferenceAudioLevels(Arena arena) {
+    const maxPorts = 64;
+    final ids = arena<pjsua_conf_port_id>(maxPorts);
+    final count = arena<ffi.UnsignedInt>()..value = maxPorts;
+    final enumStatus = _bindings.pjsua_enum_conf_ports(ids, count);
+    if (enumStatus != 0 || count.value <= 1) {
+      final tx = arena<ffi.UnsignedInt>();
+      final rx = arena<ffi.UnsignedInt>();
+      final status = _bindings.pjsua_conf_get_signal_level(0, tx, rx);
+      if (status != 0) return (microphone: 0, speaker: 0);
+      return (
+        microphone: (rx.value / 0.95).round().clamp(0, 255),
+        speaker: (tx.value / 1.15).round().clamp(0, 255),
+      );
+    }
+
+    var microphoneLevel = 0;
+    var speakerLevel = 0;
+    for (var i = 0; i < count.value; i++) {
+      final portId = ids[i];
+      final info = arena<pjsua_conf_port_info>();
+      if (_bindings.pjsua_conf_get_port_info(portId, info) != 0) continue;
+
+      final tx = arena<ffi.UnsignedInt>();
+      final rx = arena<ffi.UnsignedInt>();
+      if (_bindings.pjsua_conf_get_signal_level(portId, tx, rx) != 0) {
+        continue;
+      }
+
+      if (info.ref.slot_id == 0) {
+        if (info.ref.rx_level_adj > 0) {
+          microphoneLevel = math.max(microphoneLevel, rx.value);
+        }
+        continue;
+      }
+
+      if (info.ref.rx_level_adj <= 0) continue;
+      speakerLevel = math.max(speakerLevel, rx.value);
+    }
+
+    return (
+      microphone: (microphoneLevel / 0.95).round().clamp(0, 255),
+      speaker: (speakerLevel / 1.15).round().clamp(0, 255),
+    );
   }
 
   /// 停止通话电平监测。

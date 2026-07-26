@@ -126,7 +126,7 @@ extension _HomeCalls on _MyHomePageState {
                         _buildConferenceStatePanel(conferenceCalls, uiState)
                       else
                         _buildCallStatePanel(primary, statusColor),
-                      if (primary.isConnected) ...[
+                      if (_shouldShowCallAudioMeters(primary, uiState)) ...[
                         SizedBox(height: compact ? 12 : 14),
                         DecoratedBox(
                           decoration: BoxDecoration(
@@ -140,6 +140,7 @@ extension _HomeCalls on _MyHomePageState {
                             ),
                             child: _buildCallAudioMeters(
                               uiState,
+                              service,
                               compact: compact,
                             ),
                           ),
@@ -203,11 +204,10 @@ extension _HomeCalls on _MyHomePageState {
         : isActive
         ? '当前活动通话'
         : '当前查看通话';
-    final subtitle = pendingLabel != null
-        ? '$label · $pendingLabel'
-        : isActive || isConferenceMember
-        ? label
-        : '$label · 如需接入声音，请点击恢复';
+    final subtitle = isActive || isConferenceMember
+        ? pendingLabel
+        : pendingLabel ?? '$label · 如需接入声音，请点击恢复';
+    final text = subtitle == null ? title : '$title · $subtitle';
     return DecoratedBox(
       decoration: BoxDecoration(
         color: _subtlePanel,
@@ -232,7 +232,7 @@ extension _HomeCalls on _MyHomePageState {
             const SizedBox(width: 8),
             Expanded(
               child: _buildTooltipText(
-                '$title · $subtitle',
+                text,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: _textSecondary,
                   fontWeight: FontWeight.w800,
@@ -592,6 +592,16 @@ extension _HomeCalls on _MyHomePageState {
     return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
   }
 
+  bool _shouldShowCallAudioMeters(CallInfo call, PjsipUIState uiState) {
+    if (!call.isConnected || call.isOnHold || call.isRemoteOnHold) {
+      return false;
+    }
+    if (uiState.isInConference(call.callId)) {
+      return !uiState.isConferencePaused;
+    }
+    return uiState.activeCallId == call.callId;
+  }
+
   Widget _buildPrimaryCallSummary(
     CallInfo call,
     SipAccountInfo? account, {
@@ -603,8 +613,6 @@ extension _HomeCalls on _MyHomePageState {
     final displayNumber = contact == null
         ? null
         : contactMatch?.phone.number ?? _callDisplayNumber(call);
-    final organization = contact?.organizationLabel;
-    final remark = contact?.remark.trim() ?? '';
     final quality = _callQualityView(call, account);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -632,54 +640,19 @@ extension _HomeCalls on _MyHomePageState {
           children: [
             _buildCallStatusPill(call),
             _buildCallMetaStrip(
-              icon: isIncoming ? AppIcons.incoming : AppIcons.outgoing,
-              label: isIncoming ? '来电' : '呼出',
-            ),
-            _buildCallMetaStrip(
               icon: quality.icon,
-              label: quality.label,
+              label: quality.compactLabel,
               color: quality.color,
               tooltip: quality.tooltip,
             ),
             if (contact?.isFavorite == true)
-              _buildCallMetaStrip(
+              _buildCallIconBadge(
                 icon: AppIcons.favorite,
-                label: '重点客户',
                 color: _brandGreen,
-              ),
-            if (organization != null && organization != '未设置组织')
-              _buildCallMetaStrip(
-                icon: AppIcons.organization,
-                label: organization,
+                tooltip: '重点客户',
               ),
           ],
         ),
-        if (account != null) ...[
-          const SizedBox(height: 10),
-          _buildCallMetaStrip(
-            icon: AppIcons.line,
-            label: '${account.lineLabel} · ${account.transportLabel}',
-          ),
-        ],
-        if (remark.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _buildCallMetaStrip(icon: AppIcons.note, label: remark),
-        ],
-        if (contact != null) ...[
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _openCallContact(contact),
-              icon: const Icon(AppIcons.person),
-              label: const Text('查看联系人'),
-              style: TextButton.styleFrom(
-                minimumSize: const Size(0, 32),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-              ),
-            ),
-          ),
-        ],
       ],
     );
   }
@@ -810,6 +783,27 @@ extension _HomeCalls on _MyHomePageState {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildCallIconBadge({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      waitDuration: const Duration(milliseconds: 350),
+      child: Container(
+        width: 31,
+        height: 31,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(_radiusXs),
+          border: Border.all(color: color.withValues(alpha: 0.16)),
+        ),
+        child: Icon(icon, size: _iconXs, color: color),
       ),
     );
   }
@@ -1002,8 +996,12 @@ extension _HomeCalls on _MyHomePageState {
   }
 
   void _openCallContact(ContactEntry contact) {
-    _selectContactDetail(contact.id);
-    _selectSection(_WorkspaceSection.contacts);
+    unawaited(
+      _showContactPreviewDialog(
+        contact: contact,
+        showOpenContactPageAction: true,
+      ),
+    );
   }
 
   Widget _buildPrimaryCallControls(
@@ -1350,7 +1348,7 @@ extension _HomeCalls on _MyHomePageState {
     PjsipService service, {
     Widget? emptyContent,
   }) {
-    final calls = _sortedLiveCalls(uiState.calls.values, uiState);
+    final calls = _sortedLiveCalls(uiState.calls.values);
     final conferenceCalls = _conferenceCalls(uiState);
     final focusedCall = _primaryCall(uiState);
     final standaloneCalls = calls
@@ -1465,7 +1463,9 @@ extension _HomeCalls on _MyHomePageState {
                                 const SizedBox(height: 8),
                             ],
                           ],
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 16),
+                          const Divider(height: 1, color: _softBorder),
+                          const SizedBox(height: 14),
                           if (uiState.hasConference)
                             _buildConferenceCustomerContext(
                               conferenceCalls,
@@ -1487,30 +1487,14 @@ extension _HomeCalls on _MyHomePageState {
     );
   }
 
-  List<CallInfo> _sortedLiveCalls(
-    Iterable<CallInfo> calls,
-    PjsipUIState uiState,
-  ) {
+  List<CallInfo> _sortedLiveCalls(Iterable<CallInfo> calls) {
     final result = calls.toList();
     result.sort((a, b) {
-      final priority = _liveCallSortPriority(
-        a,
-        uiState,
-      ).compareTo(_liveCallSortPriority(b, uiState));
-      if (priority != 0) return priority;
-      return b.startedAt.compareTo(a.startedAt);
+      final createdAt = a.startedAt.compareTo(b.startedAt);
+      if (createdAt != 0) return createdAt;
+      return a.callId.compareTo(b.callId);
     });
     return result;
-  }
-
-  int _liveCallSortPriority(CallInfo call, PjsipUIState uiState) {
-    if (call.isIncoming && !call.isConnected) return 0;
-    if (uiState.activeCallId == call.callId) return 1;
-    if (_focusedCallDetailId == call.callId) return 2;
-    if (uiState.isInConference(call.callId)) return 3;
-    if (call.isConnected && !call.isOnHold && !call.isRemoteOnHold) return 4;
-    if (call.isOnHold || call.isRemoteOnHold) return 5;
-    return 6;
   }
 
   Widget _buildCallPanelGroupLabel(String label) {
@@ -1588,7 +1572,7 @@ extension _HomeCalls on _MyHomePageState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildCallContextFollowerLabel(contextLabel),
+        _buildCallContextFollowerLabel('客户信息'),
         const SizedBox(height: 8),
         if (contact == null)
           _buildUnknownCallCustomerCard(number, contextLabel)
@@ -1617,7 +1601,7 @@ extension _HomeCalls on _MyHomePageState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildCallContextFollowerLabel('会议通话 · ${calls.length} 位客户'),
+        _buildCallContextFollowerLabel('会议客户'),
         const SizedBox(height: 8),
         _buildCallContextSection(
           icon: AppIcons.contacts,
@@ -1714,11 +1698,11 @@ extension _HomeCalls on _MyHomePageState {
   Widget _buildCallContextFollowerLabel(String label) {
     return Row(
       children: [
-        Icon(AppIcons.pointer, size: _iconXs, color: _textSecondary),
+        Icon(AppIcons.person, size: _iconXs, color: _textSecondary),
         const SizedBox(width: 6),
         Expanded(
           child: _buildTooltipText(
-            '跟随主通话：$label',
+            label,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: _textSecondary,
               fontWeight: FontWeight.w700,
@@ -1839,7 +1823,11 @@ extension _HomeCalls on _MyHomePageState {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(filled ? AppIcons.save : AppIcons.note, size: _iconXs),
+            Icon(
+              filled ? AppIcons.save : AppIcons.note,
+              size: _iconXs,
+              color: color,
+            ),
             const SizedBox(width: 5),
             Text(
               label,
@@ -1892,17 +1880,28 @@ extension _HomeCalls on _MyHomePageState {
   ) {
     final organization = contact.organizationLabel;
     final remark = contact.remark.trim();
+    final phoneLabel = phone?.label.trim();
+    final phoneNumber = phone?.number.trim().isNotEmpty == true
+        ? phone!.number.trim()
+        : contact.number.trim();
+    final phoneSummary = phoneNumber.isEmpty
+        ? null
+        : '${phoneLabel?.isNotEmpty == true ? phoneLabel : '默认'}号码 · $phoneNumber';
     return _buildCallContextSection(
       icon: AppIcons.person,
-      title: '当前客户',
-      subtitle: contextLabel,
-      trailing: TextButton.icon(
+      title: '通话客户',
+      trailing: IconButton(
+        tooltip: '查看联系人详情',
         onPressed: () => _openCallContact(contact),
         icon: const Icon(AppIcons.next),
-        label: const Text('详情'),
-        style: TextButton.styleFrom(
-          minimumSize: const Size(0, 30),
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+        iconSize: _iconSm,
+        constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+        padding: EdgeInsets.zero,
+        style: IconButton.styleFrom(
+          foregroundColor: _textPrimary,
+          backgroundColor: _panelBackground,
+          hoverColor: _hoverPanel,
+          highlightColor: _hoverPanel,
         ),
       ),
       child: Column(
@@ -1927,16 +1926,16 @@ extension _HomeCalls on _MyHomePageState {
                       contact.name,
                       style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(height: 2),
-                    _buildTooltipText(
-                      phone == null
-                          ? contact.number
-                          : '${phone.label} · ${phone.number}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _textSecondary,
-                        fontWeight: FontWeight.w600,
+                    if (phoneSummary != null) ...[
+                      const SizedBox(height: 2),
+                      _buildTooltipText(
+                        phoneSummary,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: _textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -1944,25 +1943,58 @@ extension _HomeCalls on _MyHomePageState {
           ),
           const SizedBox(height: 12),
           Wrap(
-            spacing: 8,
+            spacing: 10,
             runSpacing: 8,
             children: [
               if (contact.isFavorite)
-                _buildCallMetaStrip(
+                _buildCustomerAttribute(
                   icon: AppIcons.favorite,
                   label: '重点客户',
                   color: _brandGreen,
                 ),
               if (organization != '未设置组织')
-                _buildCallMetaStrip(
+                _buildCustomerAttribute(
                   icon: AppIcons.organization,
                   label: organization,
                 ),
               if (remark.isNotEmpty)
-                _buildCallMetaStrip(icon: AppIcons.note, label: remark),
+                _buildCustomerAttribute(icon: AppIcons.note, label: remark),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomerAttribute({
+    required IconData icon,
+    required String label,
+    Color? color,
+  }) {
+    final foreground = color ?? _textSecondary;
+    return Tooltip(
+      message: label,
+      waitDuration: const Duration(milliseconds: 350),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 150),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: _iconXs, color: foreground),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: foreground,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -2497,7 +2529,7 @@ extension _HomeCalls on _MyHomePageState {
                   ),
                 ],
               ),
-              if (call.isConnected && (isActive || isConferenceMember)) ...[
+              if (_shouldShowCallAudioMeters(call, uiState)) ...[
                 const SizedBox(height: 10),
                 _buildCompactCallAudioMeters(uiState),
               ],

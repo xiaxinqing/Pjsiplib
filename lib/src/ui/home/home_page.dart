@@ -6,6 +6,7 @@ enum _CallNoteMode { customer, conference }
 
 const Duration _conferenceActionCooldownDuration = Duration(milliseconds: 1500);
 const Duration _dialpadKeySoundPageWarmupDelay = Duration(seconds: 3);
+const double _contactListRowExtentEstimate = 62;
 
 class MyHomePage extends ConsumerStatefulWidget {
   const MyHomePage({super.key});
@@ -17,7 +18,8 @@ class MyHomePage extends ConsumerStatefulWidget {
 class _MyHomePageState extends ConsumerState<MyHomePage> {
   final AppWindowController _windowController = AppWindowController();
   final TextEditingController _numberController = TextEditingController(
-    text: '6529',
+    text: '',
+    // text: '6529',
   );
   final FocusNode _numberFocusNode = FocusNode();
   final TextEditingController _contactSearchController =
@@ -25,10 +27,15 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   final TextEditingController _historySearchController =
       TextEditingController();
   final TextEditingController _callNoteController = TextEditingController();
+  final ScrollController _contactListScrollController = ScrollController();
   final Set<String> _selectedContactIds = <String>{};
   final Set<String> _hoveredContactCallButtonIds = <String>{};
   final Set<String> _focusedContactCallButtonIds = <String>{};
   String? _selectedContactDetailId;
+  String? _flashingContactId;
+  String? _pendingContactRevealId;
+  String? _scheduledContactRevealId;
+  int _contactFlashPhase = 0;
   String? _contactDetailHistoryContactId;
   String _contactDetailHistoryPhoneNumber = '';
   Stream<List<CallHistoryEntry>>? _contactDetailHistoryStream;
@@ -62,6 +69,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   bool _dtmfSendFailed = false;
   Timer? _dialpadKeyFeedbackTimer;
   Timer? _dialpadKeySoundPageWarmupTimer;
+  Timer? _contactFlashTimer;
   String? _callNoteControllerKey;
   _CallNoteMode _callNoteMode = _CallNoteMode.customer;
   final Map<int, String> _pendingCallOperations = <int, String>{};
@@ -86,12 +94,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   void dispose() {
     _dialpadKeyFeedbackTimer?.cancel();
     _dialpadKeySoundPageWarmupTimer?.cancel();
+    _contactFlashTimer?.cancel();
     _conferenceActionCooldownTimer?.cancel();
     for (final timer in _pendingCallOperationTimers.values) {
       timer.cancel();
     }
     _numberController.removeListener(_handleNumberControllerChanged);
     _numberFocusNode.dispose();
+    _contactListScrollController.dispose();
     _contactSearchController.dispose();
     _historySearchController.dispose();
     _callNoteController.dispose();
@@ -161,16 +171,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
     final previousIncomingIds = previous?._ringingCallIds ?? const <int>{};
     final nextIncomingIds = next._ringingCallIds;
-    final hasNewIncomingCall = nextIncomingIds
-        .difference(previousIncomingIds)
-        .isNotEmpty;
+    final newIncomingIds = nextIncomingIds.difference(previousIncomingIds);
+    final hasNewIncomingCall = newIncomingIds.isNotEmpty;
 
     if (hasNewIncomingCall) {
-      if (mounted && _section != _WorkspaceSection.calls) {
-        _dialpadKeySoundPageWarmupTimer?.cancel();
-        ref.read(pjsipServiceProvider.notifier).releaseDialpadKeySoundSoon();
-        setState(() => _section = _WorkspaceSection.calls);
-      }
+      _showIncomingCallSurface(newIncomingIds.reduce(math.min));
       _windowController.notifyIncomingCall(
         incomingCallCount: nextIncomingIds.length,
       );
@@ -180,6 +185,27 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     if (previousIncomingIds.isNotEmpty && nextIncomingIds.isEmpty) {
       _windowController.clearIncomingCallAttention();
     }
+  }
+
+  void _showIncomingCallSurface(int callId) {
+    if (!mounted) return;
+
+    // 来电优先级高于普通设置/编辑弹窗：先关闭所有弹窗，再显示来电页面。
+    Navigator.of(
+      context,
+      rootNavigator: true,
+    ).popUntil((route) => route.isFirst);
+
+    _dialpadKeySoundPageWarmupTimer?.cancel();
+    ref.read(pjsipServiceProvider.notifier).releaseDialpadKeySoundSoon();
+    setState(() {
+      _section = _WorkspaceSection.calls;
+      _focusedCallDetailId = callId;
+      _dtmfPadCallId = null;
+      _dtmfSentPreview = '';
+      _dtmfStatusText = null;
+      _dtmfSendFailed = false;
+    });
   }
 
   void _syncSelectedOutgoingAccount(PjsipUIState state) {
@@ -522,6 +548,100 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   void _selectContactDetail(String id) {
     if (_selectedContactDetailId == id) return;
     setState(() => _selectedContactDetailId = id);
+  }
+
+  void _revealContactRow(String id) {
+    _contactFlashTimer?.cancel();
+    _contactSearchController.clear();
+    if (!mounted) return;
+    setState(() {
+      _pendingContactRevealId = id;
+      _flashingContactId = null;
+      _contactFlashPhase = 0;
+    });
+  }
+
+  void _schedulePendingContactReveal(
+    ContactBookState state,
+    List<ContactEntry> contacts,
+  ) {
+    final targetId = _pendingContactRevealId;
+    if (targetId == null || state.isLoading) return;
+    if (_scheduledContactRevealId == targetId) return;
+
+    final index = contacts.indexWhere((contact) => contact.id == targetId);
+    if (index < 0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _pendingContactRevealId != targetId) return;
+        setState(() => _pendingContactRevealId = null);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('联系人已不存在')));
+      });
+      return;
+    }
+
+    _scheduledContactRevealId = targetId;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || _pendingContactRevealId != targetId) {
+        _scheduledContactRevealId = null;
+        return;
+      }
+
+      if (_contactListScrollController.hasClients) {
+        final position = _contactListScrollController.position;
+        final targetOffset =
+            (index * _contactListRowExtentEstimate -
+                    _contactListRowExtentEstimate)
+                .clamp(0.0, position.maxScrollExtent);
+        await _contactListScrollController.animateTo(
+          targetOffset,
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+        );
+      }
+
+      if (!mounted || _pendingContactRevealId != targetId) {
+        _scheduledContactRevealId = null;
+        return;
+      }
+
+      _scheduledContactRevealId = null;
+      setState(() => _pendingContactRevealId = null);
+      _flashContactRow(targetId);
+    });
+  }
+
+  void _flashContactRow(String id) {
+    _contactFlashTimer?.cancel();
+    if (!mounted) return;
+
+    var phase = 0;
+    setState(() {
+      _flashingContactId = id;
+      _contactFlashPhase = phase;
+    });
+
+    _contactFlashTimer = Timer.periodic(const Duration(milliseconds: 170), (
+      timer,
+    ) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      phase += 1;
+      if (phase >= 6) {
+        timer.cancel();
+        setState(() {
+          _flashingContactId = null;
+          _contactFlashPhase = 0;
+        });
+        return;
+      }
+
+      setState(() => _contactFlashPhase = phase);
+    });
   }
 
   void _refreshHistorySearch() {

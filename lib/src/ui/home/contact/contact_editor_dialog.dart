@@ -1,0 +1,358 @@
+part of '../../../../main.dart';
+
+class _ContactFormResult {
+  const _ContactFormResult({
+    required this.name,
+    required this.number,
+    required this.phones,
+    required this.company,
+    required this.department,
+    required this.remark,
+    required this.isFavorite,
+  });
+
+  final String name;
+  final String number;
+  final List<ContactPhoneEntry> phones;
+  final String company;
+  final String department;
+  final String remark;
+  final bool isFavorite;
+}
+
+class _ContactPhoneField {
+  _ContactPhoneField({
+    required String label,
+    required String number,
+    required this.isPrimary,
+  }) : labelController = TextEditingController(text: label),
+       numberController = TextEditingController(text: number);
+
+  final TextEditingController labelController;
+  final TextEditingController numberController;
+  bool isPrimary;
+
+  void dispose() {
+    labelController.dispose();
+    numberController.dispose();
+  }
+}
+
+class _ContactEditorDialog extends StatefulWidget {
+  const _ContactEditorDialog({
+    this.contact,
+    this.initialName = '',
+    this.initialNumber = '',
+  });
+
+  final ContactEntry? contact;
+  final String initialName;
+  final String initialNumber;
+
+  @override
+  State<_ContactEditorDialog> createState() => _ContactEditorDialogState();
+}
+
+class _ContactEditorDialogState extends State<_ContactEditorDialog> {
+  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  late final TextEditingController _nameController;
+  late final TextEditingController _companyController;
+  late final TextEditingController _departmentController;
+  late final TextEditingController _remarkController;
+  late final List<_ContactPhoneField> _phoneFields;
+  late bool _isFavorite;
+
+  @override
+  void initState() {
+    super.initState();
+    final contact = widget.contact;
+    _nameController = TextEditingController(
+      text: contact?.name ?? widget.initialName,
+    );
+    final initialPhones = contact?.phoneEntries;
+    _phoneFields = [
+      if (initialPhones != null && initialPhones.isNotEmpty)
+        for (final phone in initialPhones)
+          _ContactPhoneField(
+            label: phone.label,
+            number: phone.number,
+            isPrimary: phone.isPrimary,
+          )
+      else
+        _ContactPhoneField(
+          label: '默认',
+          number: widget.initialNumber,
+          isPrimary: true,
+        ),
+    ];
+    _companyController = TextEditingController(text: contact?.company ?? '');
+    _departmentController = TextEditingController(
+      text: contact?.department ?? '',
+    );
+    _remarkController = TextEditingController(text: contact?.remark ?? '');
+    _isFavorite = contact?.isFavorite ?? false;
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    for (final phone in _phoneFields) {
+      phone.dispose();
+    }
+    _companyController.dispose();
+    _departmentController.dispose();
+    _remarkController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isEditing = widget.contact != null;
+    return AlertDialog(
+      title: Text(isEditing ? '编辑联系人' : '新建联系人'),
+      content: SizedBox(
+        width: 460,
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: '姓名',
+                    prefixIcon: Icon(AppIcons.person),
+                  ),
+                  validator: (value) =>
+                      (value?.trim().isEmpty ?? true) ? '请输入姓名' : null,
+                ),
+                const SizedBox(height: 12),
+                _buildPhoneFields(context),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _companyController,
+                        decoration: const InputDecoration(
+                          labelText: '公司',
+                          prefixIcon: Icon(AppIcons.organization),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _departmentController,
+                        decoration: const InputDecoration(
+                          labelText: '部门',
+                          prefixIcon: Icon(AppIcons.department),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _remarkController,
+                  decoration: const InputDecoration(
+                    labelText: '备注',
+                    prefixIcon: Icon(AppIcons.note),
+                  ),
+                  minLines: 2,
+                  maxLines: 4,
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  value: _isFavorite,
+                  onChanged: (value) => setState(() => _isFavorite = value),
+                  title: const Text('设为重点联系人'),
+                  secondary: const Icon(AppIcons.favorite),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('取消'),
+        ),
+        FilledButton.icon(
+          onPressed: _submit,
+          icon: const Icon(AppIcons.confirm),
+          label: const Text('保存'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPhoneFields(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+        child: Column(
+          children: [
+            Row(
+              children: [
+                const Icon(AppIcons.call, size: _iconSm, color: _textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '号码',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _addPhoneField,
+                  icon: const Icon(AppIcons.add),
+                  label: const Text('添加号码'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            RadioGroup<int>(
+              groupValue: _primaryPhoneIndex,
+              onChanged: (value) {
+                if (value == null) return;
+                _setPrimaryPhone(value);
+              },
+              child: Column(
+                children: [
+                  for (var index = 0; index < _phoneFields.length; index++) ...[
+                    _buildPhoneFieldRow(context, index),
+                    if (index != _phoneFields.length - 1)
+                      const Divider(height: 18),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPhoneFieldRow(BuildContext context, int index) {
+    final field = _phoneFields[index];
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Radio<int>(value: index),
+        Expanded(
+          flex: 2,
+          child: TextFormField(
+            controller: field.labelController,
+            decoration: const InputDecoration(labelText: '标签'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          flex: 4,
+          child: TextFormField(
+            controller: field.numberController,
+            decoration: const InputDecoration(labelText: '号码'),
+            keyboardType: TextInputType.phone,
+            validator: (value) {
+              final trimmed = value?.trim() ?? '';
+              if (trimmed.isEmpty) return '请输入号码';
+              if (!RegExp(r'^[0-9+*#(). -]+$').hasMatch(trimmed)) {
+                return '号码只能包含数字和常用电话符号';
+              }
+              final normalized = _normalizePhoneField(trimmed);
+              final sameCount = _phoneFields.where((field) {
+                return _normalizePhoneField(field.numberController.text) ==
+                    normalized;
+              }).length;
+              if (sameCount > 1) return '号码重复';
+              return null;
+            },
+          ),
+        ),
+        if (!field.isPrimary) ...[
+          const SizedBox(width: 6),
+          IconButton(
+            tooltip: '删除号码',
+            onPressed: () => _removePhoneField(index),
+            icon: const Icon(AppIcons.delete),
+          ),
+        ],
+      ],
+    );
+  }
+
+  int get _primaryPhoneIndex {
+    final index = _phoneFields.indexWhere((field) => field.isPrimary);
+    return index == -1 ? 0 : index;
+  }
+
+  void _addPhoneField() {
+    setState(() {
+      _phoneFields.add(
+        _ContactPhoneField(label: '备用', number: '', isPrimary: false),
+      );
+    });
+  }
+
+  void _removePhoneField(int index) {
+    if (_phoneFields.length <= 1) return;
+    setState(() {
+      final wasPrimary = _phoneFields[index].isPrimary;
+      final removed = _phoneFields.removeAt(index);
+      removed.dispose();
+      if (wasPrimary && _phoneFields.isNotEmpty) {
+        _phoneFields.first.isPrimary = true;
+      }
+    });
+  }
+
+  void _setPrimaryPhone(int index) {
+    setState(() {
+      for (var i = 0; i < _phoneFields.length; i++) {
+        _phoneFields[i].isPrimary = i == index;
+      }
+    });
+  }
+
+  String _normalizePhoneField(String value) {
+    return value.replaceAll(RegExp(r'[^0-9+*#]'), '');
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final primaryIndex = _primaryPhoneIndex;
+    final phones = [
+      for (var index = 0; index < _phoneFields.length; index++)
+        ContactPhoneEntry(
+          label: _phoneFields[index].labelController.text.trim().isEmpty
+              ? (index == primaryIndex ? '默认' : '备用')
+              : _phoneFields[index].labelController.text.trim(),
+          number: _phoneFields[index].numberController.text.trim(),
+          isPrimary: index == primaryIndex,
+        ),
+    ];
+    final primaryPhone = phones.firstWhere((phone) => phone.isPrimary);
+    // 弹窗只返回用户输入；重复校验、保存和提示由调用方统一处理。
+    Navigator.of(context).pop(
+      _ContactFormResult(
+        name: _nameController.text.trim(),
+        number: primaryPhone.number,
+        phones: phones,
+        company: _companyController.text.trim(),
+        department: _departmentController.text.trim(),
+        remark: _remarkController.text.trim(),
+        isFavorite: _isFavorite,
+      ),
+    );
+  }
+}

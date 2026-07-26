@@ -20,6 +20,8 @@ part 'src/ui/home/home_sidebar.dart';
 part 'src/ui/home/home_workspace.dart';
 part 'src/ui/home/home_calls.dart';
 part 'src/ui/home/home_contacts.dart';
+part 'src/ui/home/contact/contact_preview_dialog.dart';
+part 'src/ui/home/contact/contact_editor_dialog.dart';
 part 'src/ui/home/home_history.dart';
 part 'src/ui/home/home_call_audio_meters.dart';
 part 'src/ui/home/home_helpers.dart';

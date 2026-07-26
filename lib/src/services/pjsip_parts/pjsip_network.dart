@@ -5,6 +5,15 @@ part of '../pjsip_service.dart';
 /// 外部网络监听器只调用 [handleNetworkChanged]，不直接操作 PJSIP FFI。
 /// 这里负责防抖、避免并发 IP Change，并根据引擎/账号状态选择正确恢复方式。
 extension PjsipNetworkOperations on PjsipService {
+  static const Duration _outgoingMediaRecoveryCooldown = Duration(
+    milliseconds: 2500,
+  );
+  // 参考 MicroSIP 的恢复节奏：网络变化只触发一次延迟处理，不把每一次
+  // connectivity 抖动都立刻变成 pjsua_handle_ip_change()。VPN/Wi-Fi
+  // 切换时系统可能连续上报多次路由变化，过于频繁地重建 PJSIP transport
+  // 反而会让 ICE/STUN socket 一直处在 teardown/rebuild 过程中。
+  static const Duration _sipIpChangeMinInterval = Duration(seconds: 8);
+
   /// 启动 connectivity_plus 首次检测与持续监听。整个 PjsipService 生命周期
   /// 只启动一次；Provider 销毁时由 _cleanup() 取消订阅。
   Future<void> _startConnectivityMonitoring() async {
@@ -92,7 +101,7 @@ extension PjsipNetworkOperations on PjsipService {
   void handleNetworkChanged({
     required bool isAvailable,
     bool interfaceChanged = true,
-    Duration debounce = const Duration(seconds: 2),
+    Duration debounce = const Duration(milliseconds: 1200),
   }) {
     _networkChangeTimer?.cancel();
 
@@ -109,6 +118,9 @@ extension PjsipNetworkOperations on PjsipService {
     }
 
     _pendingIpChange = _pendingIpChange || interfaceChanged;
+    if (interfaceChanged) {
+      _startOutgoingMediaRecoveryCooldown('网络变化，等待 ICE/STUN 媒体端口稳定');
+    }
     _uiState = _uiState.copyWith(
       isNetworkAvailable: true,
       networkState: PjsipNetworkState.waitingForStableNetwork,
@@ -147,7 +159,7 @@ extension PjsipNetworkOperations on PjsipService {
     }
 
     if (_pendingIpChange) {
-      _startIpChange();
+      _requestSipIpChange(reason: '网络变化', force: false);
     } else {
       retrySipRegistration();
     }
@@ -194,6 +206,7 @@ extension PjsipNetworkOperations on PjsipService {
     }
 
     _networkChangeTimer?.cancel();
+    _startOutgoingMediaRecoveryCooldown('手动网络恢复，等待 ICE/STUN 重建');
     if (_ipChangeInProgress) {
       _pendingIpChange = true;
       _addLog('🌐 SIP 网络恢复已在进行，已合并手动请求: $reason');
@@ -201,11 +214,40 @@ extension PjsipNetworkOperations on PjsipService {
     }
 
     _addLog('🌐 手动触发 SIP 网络恢复: $reason');
-    _startIpChange();
+    _requestSipIpChange(reason: reason, force: true);
     return true;
   }
 
-  void _startIpChange() {
+  bool _requestSipIpChange({required String reason, required bool force}) {
+    if (_ipChangeInProgress) {
+      _pendingIpChange = true;
+      _addLog('🌐 IP Change 正在处理中，已合并请求: $reason');
+      return true;
+    }
+
+    final lastIpChangeAt = _lastSipIpChangeAt;
+    if (!force && lastIpChangeAt != null) {
+      final elapsed = DateTime.now().difference(lastIpChangeAt);
+      if (elapsed < _sipIpChangeMinInterval) {
+        final delay = _sipIpChangeMinInterval - elapsed;
+        _pendingIpChange = true;
+        _networkChangeTimer?.cancel();
+        _networkChangeTimer = Timer(delay, _recoverAfterNetworkChange);
+        _addLog(
+          '🌐 网络变化过于频繁，延后 ${delay.inMilliseconds}ms 再处理 IP Change: $reason',
+        );
+        return true;
+      }
+    }
+
+    _startIpChange(reason);
+    return true;
+  }
+
+  void _startIpChange(String reason) {
+    _lastSipIpChangeAt = DateTime.now();
+    _startOutgoingMediaRecoveryCooldown('$reason：等待 ICE/STUN 媒体传输恢复');
+    _refreshStunServersForCurrentAccounts('$reason 前');
     _pendingIpChange = false;
     _ipChangeInProgress = true;
     _ipChangeHadError = false;
@@ -226,7 +268,7 @@ extension PjsipNetworkOperations on PjsipService {
       return;
     }
 
-    _addLog('🌐 PJSIP 已开始处理 IP/网络变化');
+    _addLog('🌐 PJSIP 已开始处理 IP/网络变化: $reason');
     _ipChangeTimeoutTimer?.cancel();
     _ipChangeTimeoutTimer = Timer(const Duration(seconds: 30), () {
       if (!_ipChangeInProgress) return;
@@ -253,6 +295,9 @@ extension PjsipNetworkOperations on PjsipService {
           : PjsipNetworkState.failed,
     );
     _addLog(succeeded ? '✅ SIP 网络恢复处理完成' : '❌ SIP 网络恢复未完全成功');
+    if (succeeded) {
+      _startOutgoingMediaRecoveryCooldown('IP Change 已完成，等待 ICE/STUN 稳定');
+    }
 
     // 处理期间如果又发生网络变化，等当前回调完全结束后再启动下一轮。
     if (_pendingIpChange && _uiState.isNetworkAvailable) {
@@ -262,5 +307,63 @@ extension PjsipNetworkOperations on PjsipService {
         _recoverAfterNetworkChange,
       );
     }
+  }
+
+  /// 外呼媒体恢复冷却窗口。
+  ///
+  /// 这个项目必须启用 ICE/STUN：否则 SIP 虽然可能接通，但服务器可能把
+  /// RTP/DTLS-SRTP 发到旧端口或错误地址，表现为“接听没声音”。所以这里
+  /// 绝不能通过关闭 STUN 来规避 `Failed creating STUN transport`。
+  ///
+  /// 真正要处理的是网络/IP/VPN 切换后的短暂不稳定期：PJSIP 的 ICE socket、
+  /// STUN 映射和 DTLS media transport 需要一点时间完成 teardown/rebuild。
+  /// 在这个窗口里继续外呼，容易出现 0 秒断开或媒体 transport 残留。因此
+  /// 统一短暂拦截外呼，并给用户明确提示。
+  void _startOutgoingMediaRecoveryCooldown(
+    String reason, {
+    Duration duration = _outgoingMediaRecoveryCooldown,
+  }) {
+    final until = DateTime.now().add(duration);
+    if (_outgoingMediaRecoveryUntil != null &&
+        _outgoingMediaRecoveryUntil!.isAfter(until)) {
+      return;
+    }
+    _outgoingMediaRecoveryUntil = until;
+    _outgoingMediaRecoveryReason = reason;
+    _outgoingMediaRecoveryTimer?.cancel();
+    _outgoingMediaRecoveryTimer = Timer(duration, () {
+      _outgoingMediaRecoveryTimer = null;
+      _outgoingMediaRecoveryUntil = null;
+      _outgoingMediaRecoveryReason = null;
+    });
+    _addLog('🌐 外呼媒体恢复冷却: $reason，${duration.inMilliseconds}ms');
+  }
+
+  Duration? _outgoingMediaRecoveryRemaining() {
+    final until = _outgoingMediaRecoveryUntil;
+    if (until == null) return null;
+    final remaining = until.difference(DateTime.now());
+    if (remaining <= Duration.zero) {
+      _outgoingMediaRecoveryTimer?.cancel();
+      _outgoingMediaRecoveryTimer = null;
+      _outgoingMediaRecoveryUntil = null;
+      _outgoingMediaRecoveryReason = null;
+      return null;
+    }
+    return remaining;
+  }
+
+  bool _warnIfOutgoingMediaRecoveryActive() {
+    final remaining = _outgoingMediaRecoveryRemaining();
+    if (remaining == null) return false;
+    final seconds = math.max(1, (remaining.inMilliseconds / 1000).ceil());
+    final reason = _outgoingMediaRecoveryReason ?? '网络媒体恢复中';
+    final message = '网络媒体恢复中，请 ${seconds}s 后再外呼';
+    ToastUtil.showWarning(message);
+    _addLog(
+      '⚠️ $message: $reason'
+      '${_lastSipIpChangeAt == null ? '' : ', lastIpChange=${_lastSipIpChangeAt!.toIso8601String()}'}',
+    );
+    return true;
   }
 }

@@ -48,6 +48,11 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Set<int> _locallyEndedCallIds = <int>{};
   final Set<int> _blindTransferAutoReleaseCallIds = <int>{};
   final Set<int> _hangupSoundPlayedCallIds = <int>{};
+  final Set<int> _backgroundHoldScheduledCallIds = <int>{};
+  final Set<int> _locallyReleasedCallIds = <int>{};
+  final Map<int, DateTime> _lastCallControlOperationAt = <int, DateTime>{};
+  final Map<int, Timer> _delayedHangupTimers = <int, Timer>{};
+  final Map<int, Timer> _hangupCleanupTimers = <int, Timer>{};
   final Map<int, String> _blindTransferTargets = <int, String>{};
   final Map<int, String> _callNotes = <int, String>{};
   final Map<int, String> _sharedConferenceNotes = <int, String>{};
@@ -72,6 +77,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   Timer? _startupWarmupTimer;
   Timer? _networkChangeTimer;
   Timer? _ipChangeTimeoutTimer;
+  Timer? _outgoingMediaRecoveryTimer;
   final List<PjsipLog> _pendingLogs = <PjsipLog>[];
   bool _ipChangeInProgress = false;
   bool _ipChangeHadError = false;
@@ -86,6 +92,9 @@ class PjsipService extends Notifier<PjsipUIState> {
   Set<ConnectivityResult>? _lastConnectivityTypes;
   bool _connectivityMonitorStarted = false;
   bool _isDisposed = false;
+  DateTime? _outgoingMediaRecoveryUntil;
+  String? _outgoingMediaRecoveryReason;
+  DateTime? _lastSipIpChangeAt;
   late final String _nativeLogDirectoryPath = Platform.isWindows
       ? '${Platform.environment['APPDATA'] ?? Directory.systemTemp.path}\\pjsip_lib'
       : Platform.isLinux
@@ -232,8 +241,13 @@ class PjsipService extends Notifier<PjsipUIState> {
     target.slen = source.length;
   }
 
-  void stop() {
-    if (!state.isInitialized) return;
+  void stop({bool keepRestarting = false}) {
+    if (!state.isInitialized) {
+      if (!keepRestarting && state.isPhoneServiceRestarting) {
+        state = state.copyWith(isPhoneServiceRestarting: false);
+      }
+      return;
+    }
     final stopWatch = Stopwatch()..start();
     _stopCallTimer();
     _stopMicrophoneTestRecorder();
@@ -247,6 +261,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _cancelPendingAudioBridgeReconnects();
     _networkChangeTimer?.cancel();
     _ipChangeTimeoutTimer?.cancel();
+    _outgoingMediaRecoveryTimer?.cancel();
     _ipChangeInProgress = false;
     _ipChangeHadError = false;
     _pendingIpChange = false;
@@ -258,6 +273,17 @@ class PjsipService extends Notifier<PjsipUIState> {
     _mediaConnectedCalls.clear();
     _locallyEndedCallIds.clear();
     _hangupSoundPlayedCallIds.clear();
+    _backgroundHoldScheduledCallIds.clear();
+    _locallyReleasedCallIds.clear();
+    _lastCallControlOperationAt.clear();
+    for (final timer in _delayedHangupTimers.values) {
+      timer.cancel();
+    }
+    _delayedHangupTimers.clear();
+    for (final timer in _hangupCleanupTimers.values) {
+      timer.cancel();
+    }
+    _hangupCleanupTimers.clear();
     _sipTransportIds.clear();
     state = state.copyWith(
       isInitialized: false,
@@ -267,6 +293,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       isConferencePaused: false,
       conferenceInterruptionCallId: null,
       networkState: PjsipNetworkState.idle,
+      isPhoneServiceRestarting: keepRestarting
+          ? state.isPhoneServiceRestarting
+          : false,
       accId: -1,
       host: '',
       accounts: const {},
@@ -297,6 +326,8 @@ class PjsipService extends Notifier<PjsipUIState> {
     _connectivitySubscription = null;
     _startupWarmupTimer?.cancel();
     _startupWarmupTimer = null;
+    _audio.audioPreferencesDebounceTimer?.cancel();
+    _audio.audioPreferencesDebounceTimer = null;
     _logFlushTimer?.cancel();
     _logFlushTimer = null;
     _pendingLogs.clear();
@@ -312,12 +343,24 @@ class PjsipService extends Notifier<PjsipUIState> {
     _cancelPendingAudioBridgeReconnects();
     _networkChangeTimer?.cancel();
     _ipChangeTimeoutTimer?.cancel();
+    _outgoingMediaRecoveryTimer?.cancel();
     _ipChangeInProgress = false;
     _pendingIpChange = false;
     if (state.isInitialized) {
       _bindings.pjsua_destroy();
       _mediaConnectedCalls.clear();
       _hangupSoundPlayedCallIds.clear();
+      _backgroundHoldScheduledCallIds.clear();
+      _locallyReleasedCallIds.clear();
+      _lastCallControlOperationAt.clear();
+      for (final timer in _delayedHangupTimers.values) {
+        timer.cancel();
+      }
+      _delayedHangupTimers.clear();
+      for (final timer in _hangupCleanupTimers.values) {
+        timer.cancel();
+      }
+      _hangupCleanupTimers.clear();
       _sipTransportIds.clear();
     }
     _regStateCallable.close();

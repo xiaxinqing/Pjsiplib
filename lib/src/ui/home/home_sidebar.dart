@@ -70,32 +70,10 @@ extension _HomeSidebar on _MyHomePageState {
                       section: _WorkspaceSection.history,
                     ),
                     const Spacer(),
-                    _buildLineStatusPanel(uiState, service),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 20),
                     _buildAudioMiniStatus(uiState, service),
                     const SizedBox(height: 10),
-                    Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(_radiusSm),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(_radiusSm),
-                        onTap: _openSettingsDrawer,
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 11,
-                            vertical: 9,
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(AppIcons.settings, size: _iconMd),
-                              SizedBox(width: 10),
-                              Expanded(child: Text('设置')),
-                              Icon(AppIcons.next, size: _iconSm),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                    _buildLineStatusPanel(uiState, service),
                   ],
                 ),
               ),
@@ -180,6 +158,7 @@ extension _HomeSidebar on _MyHomePageState {
     if (accounts.isEmpty) {
       return const SizedBox.shrink();
     }
+    final listHeight = math.min(226.0, accounts.length * 58.0);
 
     return Container(
       padding: const EdgeInsets.all(11),
@@ -192,27 +171,70 @@ extension _HomeSidebar on _MyHomePageState {
         children: [
           Row(
             children: [
-              const Expanded(
+              const Text(
+                '线路',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
                 child: Text(
-                  '线路',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  '${uiState.registeredAccounts.length}/${accounts.length} 在线',
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: _textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-              Icon(AppIcons.pointer, size: _iconXs, color: _textSecondary),
             ],
           ),
           const SizedBox(height: 8),
-          for (final account in accounts.take(3))
-            _buildSidebarLineItem(uiState, service, account),
-          if (accounts.length > 3)
-            TextButton(
-              onPressed: () => _showConnectionStatusMenu(
-                uiState,
-                service,
-                _sidebarMenuFallbackPosition,
+          SizedBox(
+            height: listHeight,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SingleChildScrollView(
+                padding: EdgeInsets.zero,
+                child: Column(
+                  children: [
+                    for (final account in accounts)
+                      _buildSidebarLineItem(uiState, service, account),
+                  ],
+                ),
               ),
-              child: Text('+${accounts.length - 3} 条线路'),
             ),
+          ),
+          const SizedBox(height: 6),
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(8),
+              hoverColor: _hoverPanel,
+              onTap: () => _openSettingsDrawer(tabIndex: 0),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      AppIcons.settings,
+                      size: _iconSm,
+                      color: _textSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '管理 ${accounts.length} 条线路',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    Icon(AppIcons.next, size: _iconSm, color: _textSecondary),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -286,8 +308,6 @@ extension _HomeSidebar on _MyHomePageState {
     });
     return accounts;
   }
-
-  Offset get _sidebarMenuFallbackPosition => const Offset(214, 520);
 
   RelativeRect _popupMenuPosition(Offset globalPosition) {
     final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;

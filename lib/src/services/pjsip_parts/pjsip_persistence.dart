@@ -9,12 +9,16 @@ class _PersistedAudioPreferences {
     required this.outgoingRingbackEnabled,
     required this.callEndedSoundEnabled,
     required this.dialpadKeySoundEnabled,
+    required this.microphoneVolume,
+    required this.speakerVolume,
   });
 
   final bool incomingRingtoneEnabled;
   final bool outgoingRingbackEnabled;
   final bool callEndedSoundEnabled;
   final bool dialpadKeySoundEnabled;
+  final int microphoneVolume;
+  final int speakerVolume;
 
   Map<String, Object?> toJson() {
     return {
@@ -23,15 +27,26 @@ class _PersistedAudioPreferences {
       'outgoingRingbackEnabled': outgoingRingbackEnabled,
       'callEndedSoundEnabled': callEndedSoundEnabled,
       'dialpadKeySoundEnabled': dialpadKeySoundEnabled,
+      'microphoneVolume': microphoneVolume,
+      'speakerVolume': speakerVolume,
     };
   }
 
   static _PersistedAudioPreferences fromJson(Map<String, Object?> json) {
+    int volumeFromJson(String key) {
+      final raw = json[key];
+      if (raw is int) return raw.clamp(0, 100).toInt();
+      if (raw is num) return raw.round().clamp(0, 100).toInt();
+      return 100;
+    }
+
     return _PersistedAudioPreferences(
       incomingRingtoneEnabled: json['incomingRingtoneEnabled'] as bool? ?? true,
       outgoingRingbackEnabled: json['outgoingRingbackEnabled'] as bool? ?? true,
       callEndedSoundEnabled: json['callEndedSoundEnabled'] as bool? ?? true,
       dialpadKeySoundEnabled: json['dialpadKeySoundEnabled'] as bool? ?? true,
+      microphoneVolume: volumeFromJson('microphoneVolume'),
+      speakerVolume: volumeFromJson('speakerVolume'),
     );
   }
 }
@@ -198,7 +213,10 @@ extension PjsipPersistenceOperations on PjsipService {
         outgoingRingbackEnabled: preferences.outgoingRingbackEnabled,
         callEndedSoundEnabled: preferences.callEndedSoundEnabled,
         dialpadKeySoundEnabled: preferences.dialpadKeySoundEnabled,
+        microphoneVolume: preferences.microphoneVolume,
+        speakerVolume: preferences.speakerVolume,
       );
+      _applyAudioVolumeState();
       _syncCallProgressSounds();
       _scheduleDialpadKeySoundWarmup();
     } catch (error) {
@@ -207,11 +225,15 @@ extension PjsipPersistenceOperations on PjsipService {
   }
 
   Future<void> _persistAudioPreferences() async {
+    _audio.audioPreferencesDebounceTimer?.cancel();
+    _audio.audioPreferencesDebounceTimer = null;
     final preferences = _PersistedAudioPreferences(
       incomingRingtoneEnabled: _uiState.incomingRingtoneEnabled,
       outgoingRingbackEnabled: _uiState.outgoingRingbackEnabled,
       callEndedSoundEnabled: _uiState.callEndedSoundEnabled,
       dialpadKeySoundEnabled: _uiState.dialpadKeySoundEnabled,
+      microphoneVolume: _uiState.microphoneVolume,
+      speakerVolume: _uiState.speakerVolume,
     );
     final payload = jsonEncode(preferences.toJson());
     final previousWrite = _audio.audioPreferencesWrite ?? Future<void>.value();
@@ -227,6 +249,17 @@ extension PjsipPersistenceOperations on PjsipService {
     } catch (error) {
       _addLog('⚠️ 保存音效偏好失败: $error');
     }
+  }
+
+  void _scheduleAudioPreferencesPersist() {
+    _audio.audioPreferencesDebounceTimer?.cancel();
+    _audio.audioPreferencesDebounceTimer = Timer(
+      _audioVolumePersistDebounce,
+      () {
+        _audio.audioPreferencesDebounceTimer = null;
+        unawaited(_persistAudioPreferences());
+      },
+    );
   }
 
   Future<void> _loadCachedAgent() async {
@@ -300,9 +333,19 @@ extension PjsipPersistenceOperations on PjsipService {
   }
 
   Future<void> _persistSeatEnvironment() async {
-    if (_isDisposed || _seatRestoreInProgress) return;
+    // 重启电话服务时会临时注销账号并清空 UI 账号列表。此时 PJSIP 的注销回调
+    // 可能晚于 stop() 到达，不能让这些临时状态覆盖已经保存好的真实坐席配置。
+    if (_isDisposed ||
+        _seatRestoreInProgress ||
+        _uiState.isPhoneServiceRestarting) {
+      return;
+    }
     _seatPersistQueue = _seatPersistQueue.then((_) {
-      if (_isDisposed || _seatRestoreInProgress) return Future<void>.value();
+      if (_isDisposed ||
+          _seatRestoreInProgress ||
+          _uiState.isPhoneServiceRestarting) {
+        return Future<void>.value();
+      }
       return _persistSeatEnvironmentNow();
     });
     return _seatPersistQueue;

@@ -144,6 +144,7 @@ extension PjsipEngineOperations on PjsipService {
         logResult: true,
         allowAutomaticSwitch: true,
       );
+      _applyAudioVolumeState();
       _releaseSoundDeviceIfIdle('启动后空闲');
       _startAudioDeviceMonitoring();
       _scheduleDialpadKeySoundWarmup();
@@ -541,6 +542,29 @@ extension PjsipEngineOperations on PjsipService {
     final stunServers = _stunServersForConfig(iceConfig);
     if (stunServers.isEmpty) return;
 
+    _updateStunServers(stunServers, arena, reason: '账号 ICE/STUN 配置');
+  }
+
+  void _refreshStunServersForCurrentAccounts(String reason) {
+    if (!_uiState.isInitialized || _uiState.accounts.isEmpty) return;
+    final seen = <String>{};
+    final stunServers = <String>[];
+    for (final account in _uiState.accounts.values) {
+      for (final server in _stunServersForConfig(account.iceConfig)) {
+        if (seen.add(server.toLowerCase())) stunServers.add(server);
+      }
+    }
+    if (stunServers.isEmpty) return;
+    using((Arena arena) {
+      _updateStunServers(stunServers, arena, reason: reason);
+    });
+  }
+
+  void _updateStunServers(
+    List<String> stunServers,
+    Arena arena, {
+    required String reason,
+  }) {
     final stun = arena<pj_str_t>(stunServers.length);
     for (var i = 0; i < stunServers.length; i++) {
       _pjStr(stun[i], stunServers[i].toNativeUtf8(allocator: arena));
@@ -552,6 +576,8 @@ extension PjsipEngineOperations on PjsipService {
     );
     if (status != 0) {
       _addLog('⚠️ 更新 STUN 服务器失败: ${stunServers.join(', ')}, pj_status=$status');
+    } else {
+      _addLog('🌐 STUN 服务器已应用: ${stunServers.join(', ')} ($reason)');
     }
   }
 
@@ -926,6 +952,9 @@ extension PjsipEngineOperations on PjsipService {
       ToastUtil.showWarning('当前网络不可用');
       return;
     }
+    _hangupNativeCallsIfUiIdle('强制重连前');
+    _refreshStunServersForCurrentAccounts('强制重连前');
+    _startOutgoingMediaRecoveryCooldown('强制重连，等待 ICE/STUN 媒体传输重建');
 
     final shouldUnregister =
         account.registrationEnabled &&
@@ -976,10 +1005,10 @@ extension PjsipEngineOperations on PjsipService {
       _completeForceReconnectAccount(
         accId,
         networkRecoveryRequested
-            ? const Duration(milliseconds: 1200)
+            ? const Duration(milliseconds: 2500)
             : unregisterSent
-            ? const Duration(milliseconds: 450)
-            : const Duration(milliseconds: 120),
+            ? const Duration(milliseconds: 900)
+            : const Duration(milliseconds: 2500),
         unregisterBeforeRegister: shouldUnregister && networkRecoveryRequested,
       ),
     );
@@ -1055,6 +1084,10 @@ extension PjsipEngineOperations on PjsipService {
 
   void disconnectAllAccounts() {
     if (!_uiState.isInitialized || _uiState.accounts.isEmpty) return;
+    if (_uiState.isPhoneServiceRestarting) {
+      ToastUtil.showWarning('电话服务正在重启');
+      return;
+    }
     if (_uiState.calls.isNotEmpty) {
       _addLog('⚠️ 当前仍有通话，不能断开全部线路');
       ToastUtil.showWarning('请先结束当前通话，再断开全部线路');
@@ -1139,6 +1172,120 @@ extension PjsipEngineOperations on PjsipService {
       '⏱ 断开全部线路请求耗时: ${stopWatch.elapsedMilliseconds}ms, '
       'sent=$sent, local=$locallyPaused, skipped=$alreadyDisconnected, failed=$failed',
     );
+  }
+
+  Future<void> restartPhoneService() async {
+    if (_uiState.isPhoneServiceRestarting) {
+      ToastUtil.showWarning('电话服务正在重启');
+      return;
+    }
+    if (_uiState.calls.isNotEmpty) {
+      _addLog('⚠️ 当前仍有通话，不能重启电话服务');
+      ToastUtil.showWarning('请先结束当前通话，再重启电话服务');
+      return;
+    }
+    if (_uiState.accounts.values.any(
+      (account) => account.registrationActionInProgress,
+    )) {
+      _addLog('⚠️ 线路仍有注册操作处理中，不能重启电话服务');
+      ToastUtil.showWarning('线路操作处理中，请稍后');
+      return;
+    }
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('⚠️ 当前网络不可用，暂不能重启电话服务');
+      ToastUtil.showWarning('当前网络不可用');
+      return;
+    }
+
+    final stopWatch = Stopwatch()..start();
+    _uiState = _uiState.copyWith(isPhoneServiceRestarting: true);
+    _addLog('🔁 准备重启电话服务');
+
+    try {
+      // 先保存当前“真实线路配置”。后面临时把线路标成“重启中”、
+      // stop() 又会清空账号列表，如果先改状态再持久化，就会把账号错误地存成临时状态。
+      await _persistSeatEnvironmentNow();
+      if (_isDisposed) return;
+
+      final accountsSnapshot = _uiState.accounts.values
+          .where((account) => !account.isRestoringPlaceholder)
+          .toList();
+
+      if (_uiState.isInitialized) {
+        await _unregisterAccountsBeforeRestart(accountsSnapshot);
+        if (_isDisposed) return;
+
+        _addLog('⏳ 正在关闭 PJSIP 引擎，等待 transport/media 资源释放');
+        stop(keepRestarting: true);
+
+        // pjsua_destroy() 返回后，底层 transport/media 资源在桌面端仍可能有短暂释放窗口。
+        // 给它一段安静时间，避免马上 init/register 时复用到半释放的网络或声卡状态。
+        await Future<void>.delayed(const Duration(seconds: 4));
+        if (_isDisposed) return;
+      }
+
+      await init();
+      if (_isDisposed) return;
+      await _loadCachedAgent();
+      if (_isDisposed) return;
+
+      _uiState = _uiState.copyWith(isPhoneServiceRestarting: false);
+      _addLog('✅ 电话服务重启完成: ${stopWatch.elapsedMilliseconds}ms');
+      ToastUtil.showSuccess('电话服务已重启');
+    } catch (error) {
+      if (_isDisposed) return;
+      _uiState = _uiState.copyWith(isPhoneServiceRestarting: false);
+      _addLog('❌ 电话服务重启失败: $error');
+      ToastUtil.showError('电话服务重启失败');
+    }
+  }
+
+  Future<void> _unregisterAccountsBeforeRestart(
+    List<SipAccountInfo> accountsSnapshot,
+  ) async {
+    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts);
+    var sent = 0;
+    var skipped = 0;
+    var failed = 0;
+
+    for (final account in accountsSnapshot) {
+      if (_isDisposed || !_uiState.isInitialized) return;
+      final shouldUnregister =
+          account.registrationEnabled &&
+          (account.isRegistered ||
+              account.registrationStatus == null ||
+              (account.registrationExpires ?? 0) > 0);
+      if (!shouldUnregister) {
+        skipped++;
+        continue;
+      }
+
+      final latest = accounts[account.accId] ?? account;
+      accounts[account.accId] = latest.copyWith(
+        registrationStatus: null,
+        registrationStatusText: '重启中',
+        registrationExpires: null,
+        registrationActionInProgress: true,
+      );
+      _uiState = _uiState.copyWith(
+        accounts: Map<int, SipAccountInfo>.of(accounts),
+      );
+
+      final status = _bindings.pjsua_acc_set_registration(account.accId, 0);
+      if (status == 0) {
+        sent++;
+        _addLog('🔄 重启电话服务：已发送线路注销请求: ${account.lineLabel}');
+      } else {
+        failed++;
+        _addLog(
+          '⚠️ 重启电话服务：注销请求失败，将继续重启: ${account.lineLabel}, pj_status=$status',
+        );
+      }
+
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+
+    _addLog('⏱ 重启前注销完成: sent=$sent, skipped=$skipped, failed=$failed');
   }
 
   void removeAccount(int accId) {

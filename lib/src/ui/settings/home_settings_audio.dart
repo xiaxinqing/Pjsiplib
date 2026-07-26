@@ -69,8 +69,10 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     title: '麦克风',
                     subtitle: '输入设备',
                     level: _audioSettingsLevel(uiState.microphoneLevel),
+                    volume: uiState.microphoneVolume,
                     muted: uiState.isMicrophoneMuted,
                     testing: uiState.isMicrophoneTesting,
+                    onVolumeChanged: service.setMicrophoneVolume,
                     dropdown: _buildAudioDeviceDropdown(
                       label: '麦克风',
                       icon: AppIcons.microphone,
@@ -114,8 +116,10 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     title: '扬声器',
                     subtitle: '输出设备',
                     level: _audioSettingsLevel(uiState.speakerLevel),
+                    volume: uiState.speakerVolume,
                     muted: uiState.isSpeakerMuted,
                     testing: uiState.isSpeakerTesting,
+                    onVolumeChanged: service.setSpeakerVolume,
                     dropdown: _buildAudioDeviceDropdown(
                       label: '扬声器',
                       icon: AppIcons.speaker,
@@ -287,8 +291,10 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
     required String title,
     required String subtitle,
     required double level,
+    required int volume,
     required bool muted,
     required bool testing,
+    required ValueChanged<int> onVolumeChanged,
     required Widget dropdown,
     required Widget primaryAction,
     required Widget secondaryAction,
@@ -335,6 +341,12 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
             dropdown,
             const SizedBox(height: 12),
             _buildLevelTile(value: level, muted: muted),
+            const SizedBox(height: 12),
+            _buildVolumeSlider(
+              value: volume,
+              muted: muted,
+              onChanged: onVolumeChanged,
+            ),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -463,6 +475,8 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
   Widget _buildLevelTile({required double value, required bool muted}) {
     return Row(
       children: [
+        const Icon(AppIcons.meters, size: _iconSm, color: _textSecondary),
+        const SizedBox(width: 10),
         Expanded(
           child: LinearProgressIndicator(
             value: muted ? 0 : value,
@@ -477,6 +491,61 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
             muted ? '静音' : '${(value * 100).round()}%',
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildVolumeSlider({
+    required int value,
+    required bool muted,
+    required ValueChanged<int> onChanged,
+  }) {
+    final activeColor = muted ? _textSecondary : _brandGreen;
+    return Row(
+      children: [
+        const Icon(AppIcons.audioMode, size: _iconSm, color: _textSecondary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 4,
+              activeTrackColor: activeColor.withValues(alpha: 0.88),
+              inactiveTrackColor: _softBorder.withValues(alpha: 0.72),
+              thumbColor: _panelBackground,
+              overlayColor: activeColor.withValues(alpha: 0.10),
+              thumbShape: const RoundSliderThumbShape(
+                enabledThumbRadius: 7,
+                elevation: 1,
+                pressedElevation: 2,
+              ),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+              valueIndicatorColor: _textPrimary,
+              valueIndicatorTextStyle: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.white),
+            ),
+            child: Slider(
+              value: value.clamp(0, 100).toDouble(),
+              min: 0,
+              max: 100,
+              divisions: 100,
+              label: '$value%',
+              onChanged: (next) => onChanged(next.round()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        SizedBox(
+          width: 44,
+          child: Text(
+            '$value%',
+            textAlign: TextAlign.right,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: muted ? _textSecondary : _textPrimary,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ],

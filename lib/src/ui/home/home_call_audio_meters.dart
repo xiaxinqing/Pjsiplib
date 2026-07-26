@@ -2,63 +2,50 @@ part of '../../../main.dart';
 
 // 通话页声平条调参集中放这里，方便按真实设备效果微调。
 //
-// - _callAudioNoiseFloor：原始 signal level 的底噪门限，低于它直接显示安静。
-// - _callAudioVisualPower：视觉增强指数，越小越“灵敏”，越大越接近原始电平。
-// - _callAudioRiseDuration：说话时上升速度，短一点会更跟嘴。
-// - _callAudioFallDuration：停止说话后回落速度，长一点会更柔和。
-// - _callAudioIdlePulseMax：安静时的小幅闪烁，表示电平监测仍在工作。
-const double _callAudioNoiseFloor = 0.04;
-const double _callAudioVisualPower = 0.45;
-const double _callAudioIdlePulseMax = 0.005;
-const Duration _callAudioRiseDuration = Duration(milliseconds: 90);
-const Duration _callAudioFallDuration = Duration(milliseconds: 120);
-const Duration _callAudioIdlePulseDuration = Duration(milliseconds: 200);
+// MicroSIP 基本直接使用 PJSIP signal level，没有把安静环境下的小电平放大。
+// 这里保留轻微视觉增强，但提高底噪门限，并把极小值钳回 0，避免安静时常亮。
+const double _callAudioNoiseFloor = 0.075;
+const double _callAudioVisualPower = 0.72;
+const double _callAudioVisibleFloor = 0.08;
+const Duration _callAudioRiseDuration = Duration(milliseconds: 70);
+const Duration _callAudioFallDuration = Duration(milliseconds: 320);
 
 extension _HomeCallAudioMeters on _MyHomePageState {
-  Widget _buildCallAudioMeters(PjsipUIState uiState, {required bool compact}) {
-    final microphoneValue = _audioMeterValue(
-      uiState.microphoneLevel,
-      muted: uiState.isMicrophoneMuted,
-    );
-    final speakerValue = _audioMeterValue(
-      uiState.speakerLevel,
-      muted: uiState.isSpeakerMuted,
-    );
-
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _subtlePanel,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 14,
-          vertical: compact ? 10 : 12,
+  Widget _buildCallAudioMeters(
+    PjsipUIState uiState,
+    PjsipService service, {
+    required bool compact,
+  }) {
+    return Column(
+      children: [
+        _buildAudioMeterRow(
+          icon: uiState.isMicrophoneMuted
+              ? AppIcons.microphoneOff
+              : AppIcons.microphone,
+          label: '我方说话',
+          value: _audioMeterValue(
+            uiState.microphoneLevel,
+            muted: uiState.isMicrophoneMuted,
+          ),
+          muted: uiState.isMicrophoneMuted,
+          color: _callGreen,
+          volume: uiState.microphoneVolume,
+          onVolumeChanged: service.setMicrophoneVolume,
         ),
-        child: Column(
-          children: [
-            _buildAudioMeterRow(
-              icon: uiState.isMicrophoneMuted
-                  ? AppIcons.microphoneOff
-                  : AppIcons.microphone,
-              label: '我方说话',
-              value: microphoneValue,
-              muted: uiState.isMicrophoneMuted,
-              color: _callGreen,
-            ),
-            SizedBox(height: compact ? 8 : 10),
-            _buildAudioMeterRow(
-              icon: uiState.isSpeakerMuted
-                  ? AppIcons.speakerOff
-                  : AppIcons.meters,
-              label: '对方声音',
-              value: speakerValue,
-              muted: uiState.isSpeakerMuted,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ],
+        SizedBox(height: compact ? 9 : 11),
+        _buildAudioMeterRow(
+          icon: uiState.isSpeakerMuted ? AppIcons.speakerOff : AppIcons.meters,
+          label: '对方声音',
+          value: _audioMeterValue(
+            uiState.speakerLevel,
+            muted: uiState.isSpeakerMuted,
+          ),
+          muted: uiState.isSpeakerMuted,
+          color: Theme.of(context).colorScheme.primary,
+          volume: uiState.speakerVolume,
+          onVolumeChanged: service.setSpeakerVolume,
         ),
-      ),
+      ],
     );
   }
 
@@ -104,10 +91,13 @@ extension _HomeCallAudioMeters on _MyHomePageState {
     required double value,
     required bool muted,
     required Color color,
+    required int volume,
+    required ValueChanged<int> onVolumeChanged,
   }) {
+    final effectiveColor = muted ? _textSecondary : color;
     return Row(
       children: [
-        Icon(icon, size: 18, color: muted ? _textSecondary : color),
+        Icon(icon, size: 18, color: effectiveColor),
         const SizedBox(width: 10),
         SizedBox(
           width: 70,
@@ -119,19 +109,12 @@ extension _HomeCallAudioMeters on _MyHomePageState {
         Expanded(
           child: _CallAudioMeterBar(
             value: value,
-            color: muted ? _textSecondary : color,
-            idlePulse: !muted,
-          ),
-        ),
-        const SizedBox(width: 10),
-        SizedBox(
-          width: 42,
-          child: Text(
-            _audioMeterStatusLabel(value, muted: muted),
-            textAlign: TextAlign.right,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: muted ? _textSecondary : _textPrimary,
-            ),
+            color: effectiveColor,
+            muted: muted,
+            label: label,
+            height: 16,
+            volume: volume,
+            onVolumeChanged: onVolumeChanged,
           ),
         ),
       ],
@@ -145,18 +128,21 @@ extension _HomeCallAudioMeters on _MyHomePageState {
     required Color color,
     required String tooltip,
   }) {
+    final effectiveColor = muted ? _textSecondary : color;
     return Tooltip(
       message: muted ? '$tooltip：静音' : tooltip,
       child: Row(
         children: [
-          Icon(icon, size: 15, color: muted ? _textSecondary : color),
+          Icon(icon, size: 15, color: effectiveColor),
           const SizedBox(width: 6),
           Expanded(
             child: _CallAudioMeterBar(
               value: value,
               height: 6,
-              color: muted ? _textSecondary : color,
-              idlePulse: !muted,
+              color: effectiveColor,
+              muted: muted,
+              compact: true,
+              label: tooltip,
             ),
           ),
         ],
@@ -171,18 +157,11 @@ extension _HomeCallAudioMeters on _MyHomePageState {
 
     final gated = ((raw - _callAudioNoiseFloor) / (1 - _callAudioNoiseFloor))
         .clamp(0.0, 1.0);
-    // 通话页关注“有没有声音”的可感知反馈，而不是工程测量值。PJSIP 返回的
-    // signal level 在线性显示下会偏小。先切掉安静环境下常见的底噪残留，再做
-    // 非线性增强，避免没人说话时也一直显示 8% 左右。
-    return math.pow(gated, _callAudioVisualPower).toDouble().clamp(0.0, 1.0);
-  }
-
-  String _audioMeterStatusLabel(double value, {required bool muted}) {
-    if (muted) return '静音';
-    if (value <= 0) return '安静';
-    if (value < 0.36) return '低';
-    if (value < 0.72) return '中';
-    return '高';
+    final value = math
+        .pow(gated, _callAudioVisualPower)
+        .toDouble()
+        .clamp(0.0, 1.0);
+    return value < _callAudioVisibleFloor ? 0 : value;
   }
 }
 
@@ -190,42 +169,38 @@ class _CallAudioMeterBar extends StatefulWidget {
   const _CallAudioMeterBar({
     required this.value,
     required this.color,
-    required this.idlePulse,
+    required this.muted,
+    required this.label,
+    this.volume = 100,
+    this.onVolumeChanged,
     this.height = 9,
+    this.compact = false,
   });
 
   final double value;
   final Color color;
-  final bool idlePulse;
+  final bool muted;
+  final String label;
+  final int volume;
+  final ValueChanged<int>? onVolumeChanged;
   final double height;
+  final bool compact;
 
   @override
   State<_CallAudioMeterBar> createState() => _CallAudioMeterBarState();
 }
 
-class _CallAudioMeterBarState extends State<_CallAudioMeterBar>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _idleController;
-  late final Animation<double> _idlePulseValue;
+class _CallAudioMeterBarState extends State<_CallAudioMeterBar> {
   late double _previousTarget;
+  late double _peakTarget;
   late Duration _duration;
 
   @override
   void initState() {
     super.initState();
-    _idleController = AnimationController(
-      vsync: this,
-      duration: _callAudioIdlePulseDuration,
-    );
-    _idlePulseValue = Tween<double>(begin: 0, end: _callAudioIdlePulseMax)
-        .animate(
-          CurvedAnimation(parent: _idleController, curve: Curves.easeInOut),
-        );
-    // 两条电平不要完全同步闪，起始相位错开一点会更自然。
-    _idleController.value = math.Random().nextDouble();
     _previousTarget = widget.value.clamp(0.0, 1.0);
+    _peakTarget = _previousTarget;
     _duration = _callAudioRiseDuration;
-    _syncIdlePulse();
   }
 
   @override
@@ -235,67 +210,283 @@ class _CallAudioMeterBarState extends State<_CallAudioMeterBar>
     _duration = target >= _previousTarget
         ? _callAudioRiseDuration
         : _callAudioFallDuration;
+    // MicroSIP 用 slider selection 显示当前电平。这里额外保留一个很短的
+    // 峰值位置，方便比较“刚才最大值”和“当前值”，后续叠加音量滑块也自然。
+    _peakTarget = target >= _peakTarget
+        ? target
+        : math.max(target, _peakTarget - 0.045);
     _previousTarget = target;
-    _syncIdlePulse();
-  }
-
-  @override
-  void dispose() {
-    _idleController.dispose();
-    super.dispose();
-  }
-
-  void _syncIdlePulse() {
-    final shouldPulse = widget.idlePulse && widget.value <= 0;
-    if (shouldPulse && !_idleController.isAnimating) {
-      _idleController.repeat(reverse: true);
-    } else if (!shouldPulse && _idleController.isAnimating) {
-      _idleController.stop();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     final normalized = widget.value.clamp(0.0, 1.0);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(widget.height),
-      child: SizedBox(
-        height: widget.height,
-        child: Stack(
-          fit: StackFit.expand,
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: normalized),
+      duration: _duration,
+      curve: Curves.easeOutCubic,
+      builder: (context, animatedValue, _) {
+        return _SegmentedAudioMeter(
+          value: animatedValue,
+          color: widget.color,
+          height: widget.height,
+          compact: widget.compact,
+          muted: widget.muted,
+          label: widget.label,
+          peakValue: _peakTarget,
+          volume: widget.volume,
+          onVolumeChanged: widget.onVolumeChanged,
+        );
+      },
+    );
+  }
+}
+
+class _SegmentedAudioMeter extends StatelessWidget {
+  const _SegmentedAudioMeter({
+    required this.value,
+    required this.color,
+    required this.height,
+    required this.compact,
+    required this.muted,
+    required this.label,
+    required this.peakValue,
+    required this.volume,
+    this.onVolumeChanged,
+  });
+
+  final double value;
+  final Color color;
+  final double height;
+  final bool compact;
+  final bool muted;
+  final String label;
+  final double peakValue;
+  final int volume;
+  final ValueChanged<int>? onVolumeChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeValue = muted ? 0.0 : value.clamp(0.0, 1.0);
+    final activePeakValue = muted ? 0.0 : peakValue.clamp(0.0, 1.0);
+    final segmentCount = compact ? 18 : 26;
+    final litSegments = activeValue <= 0
+        ? 0
+        : (activeValue * segmentCount).floor().clamp(1, segmentCount);
+    final peakSegment = activePeakValue <= 0
+        ? -1
+        : ((activePeakValue * segmentCount).ceil() - 1).clamp(
+            0,
+            segmentCount - 1,
+          );
+    final normalizedVolume = (volume.clamp(0, 100).toDouble() / 100).clamp(
+      0.0,
+      1.0,
+    );
+    final trackColor = Color.lerp(
+      Theme.of(context).colorScheme.surface,
+      _textSecondary,
+      compact ? 0.20 : 0.24,
+    )!;
+    final activeColor = color.withValues(alpha: compact ? 0.78 : 0.84);
+    final markerColor = Theme.of(
+      context,
+    ).colorScheme.onSurface.withValues(alpha: 0.82);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final gap = compact ? 2.0 : 2.5;
+        final rawSegmentWidth =
+            (constraints.maxWidth - gap * (segmentCount - 1)) / segmentCount;
+        final segmentWidth = rawSegmentWidth.clamp(compact ? 2.5 : 3.0, 9.0);
+        final trackWidth = math.min(
+          constraints.maxWidth,
+          segmentWidth * segmentCount + gap * (segmentCount - 1),
+        );
+        void updateVolume(Offset localPosition) {
+          final handler = onVolumeChanged;
+          if (handler == null || trackWidth <= 0) return;
+          final ratio = (localPosition.dx / trackWidth).clamp(0.0, 1.0);
+          handler((ratio * 100).round());
+        }
+
+        final volumeText = onVolumeChanged == null ? '' : '，音量 $volume%';
+        final meter = Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ColoredBox(
-              color: Theme.of(context).dividerColor.withValues(alpha: 0.55),
-            ),
-            TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: normalized),
-              duration: _duration,
-              curve: Curves.easeOutCubic,
-              builder: (context, animatedValue, _) {
-                return AnimatedBuilder(
-                  animation: _idleController,
-                  builder: (context, _) {
-                    final idleValue = widget.idlePulse && normalized <= 0
-                        ? _idlePulseValue.value
-                        : 0.0;
-                    final widthFactor = math
-                        .max(animatedValue, idleValue)
-                        .clamp(0.0, 1.0);
-                    return FractionallySizedBox(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: widthFactor,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: widget.color,
-                          borderRadius: BorderRadius.circular(widget.height),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+            for (var index = 0; index < segmentCount; index++) ...[
+              _AudioMeterSegment(
+                active: index < litSegments,
+                peak: index == peakSegment && activePeakValue > 0.12,
+                color: activeColor,
+                trackColor: trackColor,
+                height: compact ? height : 9,
+                width: segmentWidth,
+              ),
+              if (index != segmentCount - 1) SizedBox(width: gap),
+            ],
           ],
+        );
+        final canAdjustVolume = onVolumeChanged != null;
+        final thumbWidth = compact ? 7.0 : 10.0;
+        final thumbHeight = compact ? height + 3 : height + 6;
+        final meterHeight = math.max(height, thumbHeight);
+        final thumbLeft = normalizedVolume * (trackWidth - thumbWidth);
+        final stackedMeter = SizedBox(
+          width: trackWidth,
+          height: meterHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.centerLeft,
+            children: [
+              Positioned.fill(
+                child: Align(alignment: Alignment.center, child: meter),
+              ),
+              if (canAdjustVolume)
+                Positioned(
+                  left: thumbLeft,
+                  top: (meterHeight - thumbHeight) / 2,
+                  child: _AudioVolumeThumb(
+                    color: markerColor,
+                    accentColor: color,
+                    width: thumbWidth,
+                    height: thumbHeight,
+                    compact: compact,
+                  ),
+                ),
+            ],
+          ),
+        );
+
+        return Align(
+          alignment: Alignment.centerLeft,
+          child: Tooltip(
+            message: muted
+                ? '$label：静音$volumeText'
+                : '$label：当前 ${(activeValue * 100).round()}%，峰值 ${(activePeakValue * 100).round()}%$volumeText',
+            child: MouseRegion(
+              cursor: onVolumeChanged == null
+                  ? MouseCursor.defer
+                  : SystemMouseCursors.resizeLeftRight,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTapDown: onVolumeChanged == null
+                    ? null
+                    : (details) => updateVolume(details.localPosition),
+                onHorizontalDragStart: onVolumeChanged == null
+                    ? null
+                    : (details) => updateVolume(details.localPosition),
+                onHorizontalDragUpdate: onVolumeChanged == null
+                    ? null
+                    : (details) => updateVolume(details.localPosition),
+                child: stackedMeter,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _AudioMeterSegment extends StatelessWidget {
+  const _AudioMeterSegment({
+    required this.active,
+    required this.peak,
+    required this.color,
+    required this.trackColor,
+    required this.height,
+    required this.width,
+  });
+
+  final bool active;
+  final bool peak;
+  final Color color;
+  final Color trackColor;
+  final double height;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          AnimatedContainer(
+            duration: active
+                ? _callAudioRiseDuration
+                : const Duration(milliseconds: 190),
+            curve: Curves.easeOutCubic,
+            width: width,
+            height: height,
+            decoration: BoxDecoration(
+              color: active
+                  ? color.withValues(alpha: peak ? 1 : 0.82)
+                  : trackColor,
+              borderRadius: BorderRadius.circular(2),
+              boxShadow: peak
+                  ? [
+                      BoxShadow(
+                        color: color.withValues(alpha: 0.16),
+                        blurRadius: 5,
+                        spreadRadius: 0.5,
+                      ),
+                    ]
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AudioVolumeThumb extends StatelessWidget {
+  const _AudioVolumeThumb({
+    required this.color,
+    required this.accentColor,
+    required this.width,
+    required this.height,
+    required this.compact,
+  });
+
+  final Color color;
+  final Color accentColor;
+  final double width;
+  final double height;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(compact ? 3 : 4),
+        border: Border.all(color: color.withValues(alpha: 0.70), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.16),
+            blurRadius: 6,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: Center(
+          child: Container(
+            width: compact ? 2 : 3,
+            height: compact ? height - 5 : height - 7,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.76),
+              borderRadius: BorderRadius.circular(1.5),
+            ),
+          ),
         ),
       ),
     );
