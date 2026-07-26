@@ -16,7 +16,12 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     final action = await showMenu<String>(
       context: context,
       position: _popupMenuPosition(position),
-      constraints: const BoxConstraints(minWidth: 248, maxWidth: 292),
+      constraints: const BoxConstraints(minWidth: 120, maxWidth: 180),
+      color: Colors.white,
+      elevation: 14,
+      shadowColor: _sidebarMenuShadowColor,
+      surfaceTintColor: Colors.transparent,
+      shape: _sidebarMenuShape,
       items: [
         PopupMenuItem<String>(
           enabled: false,
