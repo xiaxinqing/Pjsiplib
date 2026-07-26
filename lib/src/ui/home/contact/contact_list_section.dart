@@ -2,6 +2,12 @@ part of '../../../../main.dart';
 
 /// 联系人列表区：负责工具栏、批量选择、列表行和行内操作。
 extension _ContactListSection on _MyHomePageState {
+  /// 双栏模式下，列表区域达到该宽度后显示“更新时间”列。
+  ///
+  /// 单栏模式没有右侧详情挤占空间，更新时间默认展示；双栏模式再按列表实际宽度
+  /// 做保护，避免列内容被挤得过窄。
+  static const double _contactUpdatedAtInlineWidth = 520;
+
   Widget _buildContactsSelectionBar(
     Set<String> validSelectedIds,
     int totalVisibleCount,
@@ -183,7 +189,9 @@ extension _ContactListSection on _MyHomePageState {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final showUpdatedAtColumn = constraints.maxWidth >= 760;
+        final showUpdatedAtColumn =
+            !showDetailInline ||
+            constraints.maxWidth >= _contactUpdatedAtInlineWidth;
         return Column(
           children: [
             _buildContactsSelectionBar(validSelectedIds, contacts.length),
@@ -228,11 +236,13 @@ extension _ContactListSection on _MyHomePageState {
                     ),
                   ),
                   if (showUpdatedAtColumn)
-                    const Expanded(
+                    Expanded(
                       flex: 2,
                       child: Text(
                         '更新时间',
-                        style: TextStyle(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
                   const SizedBox(
@@ -359,6 +369,8 @@ extension _ContactListSection on _MyHomePageState {
                   flex: 2,
                   child: Text(
                     _formatContactTime(contact.updatedAt ?? contact.createdAt),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ),

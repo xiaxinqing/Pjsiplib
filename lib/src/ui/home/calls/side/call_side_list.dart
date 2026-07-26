@@ -20,6 +20,7 @@ extension _CallSideList on _MyHomePageState {
     final contactMatch = _callContactMatch(call);
     final contact = contactMatch?.contact;
     final displayName = contact?.name ?? _displayRemote(call.remoteUri);
+    final remoteMuted = uiState.remoteMutedCallIds.contains(call.callId);
     final displayNumber = contact == null
         ? null
         : contactMatch?.phone.number ?? _callDisplayNumber(call);
@@ -88,6 +89,13 @@ extension _CallSideList on _MyHomePageState {
                               visualState.label,
                               visualState.color,
                             ),
+                            if (remoteMuted) ...[
+                              const SizedBox(width: 6),
+                              _buildCallTinyBadge(
+                                '本机不听',
+                                Colors.orange.shade700,
+                              ),
+                            ],
                           ],
                         ),
                         if (displayNumber != null &&
@@ -251,6 +259,18 @@ extension _CallSideList on _MyHomePageState {
                                       () => service.holdCall(call.callId),
                                     ),
                       ),
+                    _compactCallAction(
+                      icon: remoteMuted
+                          ? AppIcons.speaker
+                          : AppIcons.speakerOff,
+                      label: remoteMuted ? '恢复声音' : '本机不听',
+                      active: remoteMuted,
+                      activeColor: Colors.orange.shade700,
+                      onPressed: () => service.setRemoteAudioMuted(
+                        call.callId,
+                        !remoteMuted,
+                      ),
+                    ),
                     if (!isConferenceMember)
                       _compactCallAction(
                         icon: AppIcons.route,

@@ -795,7 +795,7 @@ extension PjsipCallOperations on PjsipService {
     if (!_ensureSoundDeviceOpen('连接通话声卡')) return;
     final slot = _getConferenceSlot(callId);
     if (slot == null) return;
-    if (!_uiState.isSpeakerMuted) {
+    if (_shouldRouteCallToLocalSpeaker(callId)) {
       _bindings.pjsua_conf_connect(slot, 0);
     }
     if (!_uiState.isMicrophoneMuted) {
@@ -832,11 +832,13 @@ extension PjsipCallOperations on PjsipService {
 
     _disconnectConferenceBridge(Set<int>.of(slots.keys));
 
-    for (final slot in slots.values) {
+    for (final entry in slots.entries) {
+      final callId = entry.key;
+      final slot = entry.value;
       if (!_uiState.isMicrophoneMuted) {
         _bindings.pjsua_conf_connect(0, slot); // 本机麦克风 -> 远端
       }
-      if (!_uiState.isSpeakerMuted) {
+      if (_shouldRouteCallToLocalSpeaker(callId)) {
         _bindings.pjsua_conf_connect(slot, 0); // 远端 -> 本机扬声器
       }
     }
@@ -910,6 +912,8 @@ extension PjsipCallOperations on PjsipService {
     }
     final calls = Map<int, CallInfo>.of(_uiState.calls)..remove(callId);
     _mediaConnectedCalls.remove(callId);
+    final remoteMutedCallIds = Set<int>.of(_uiState.remoteMutedCallIds)
+      ..remove(callId);
     final wasConferencePaused = _uiState.isConferencePaused;
     final wasConferenceMember = _uiState.conferenceCallIds.contains(callId);
     final wasConferenceInterruption =
@@ -933,6 +937,7 @@ extension PjsipCallOperations on PjsipService {
         : currentActiveId;
     _uiState = _uiState.copyWith(
       calls: calls,
+      remoteMutedCallIds: remoteMutedCallIds,
       conferenceCallIds: keepConference ? conferenceCallIds : const {},
       isConferencePaused: keepConference && wasConferencePaused,
       conferenceInterruptionCallId: keepConference

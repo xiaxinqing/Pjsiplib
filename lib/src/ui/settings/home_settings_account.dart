@@ -4,16 +4,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
   Widget _buildAccountSettingsTab(PjsipUIState uiState, PjsipService service) {
     final isRestarting = uiState.isPhoneServiceRestarting;
     final hasActiveCalls = uiState.calls.isNotEmpty;
-    final hasRegistrationAction = uiState.accounts.values.any(
-      (account) => account.registrationActionInProgress,
-    );
-    final canRestartPhoneService =
-        uiState.isInitialized &&
-        uiState.accounts.isNotEmpty &&
-        uiState.isNetworkAvailable &&
-        !hasActiveCalls &&
-        !hasRegistrationAction &&
-        !isRestarting;
+    final restartingApplication = _applicationRestarting;
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       children: [
@@ -53,23 +44,17 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: canRestartPhoneService
-                  ? () async {
-                      final confirmed = await _confirmRestartPhoneService(
-                        uiState,
-                      );
-                      if (confirmed != true || !mounted) return;
-                      unawaited(service.restartPhoneService());
-                    }
-                  : null,
-              icon: isRestarting
+              onPressed: restartingApplication
+                  ? null
+                  : _confirmAndRestartApplication,
+              icon: restartingApplication
                   ? const SizedBox(
                       width: 16,
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(AppIcons.refresh),
-              label: Text(isRestarting ? '正在重启电话服务' : '重启电话服务'),
+              label: Text(restartingApplication ? '正在重启应用' : '重启应用'),
             ),
           ],
         ),
@@ -215,7 +200,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     );
   }
 
-  Future<bool?> _confirmRestartPhoneService(PjsipUIState uiState) {
+  Future<bool?> _confirmRestartApplication(PjsipUIState uiState) {
     return showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
@@ -250,7 +235,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          '重启电话服务',
+                          '重启应用',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -258,7 +243,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '会短暂中断所有线路注册，不会删除账号配置。',
+                          '会关闭当前应用进程并自动重新打开，不会删除账号配置。',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: _textSecondary),
                         ),
@@ -279,20 +264,20 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildRestartStep(
-                        '依次注销 ${uiState.accounts.length} 条线路，每条约 1 秒',
-                      ),
+                      _buildRestartStep('保存当前本地配置和通话记录'),
                       const SizedBox(height: 8),
-                      _buildRestartStep('关闭并重新初始化 PJSIP 引擎'),
+                      _buildRestartStep('关闭当前应用进程并自动重新打开'),
                       const SizedBox(height: 8),
-                      _buildRestartStep('等待约 4 秒后恢复已保存线路'),
+                      _buildRestartStep('重新打开后恢复已保存线路'),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 12),
               Text(
-                '适合休眠唤醒、网络切换后只能接听不能外呼，或线路状态明显异常的情况。',
+                uiState.calls.isEmpty
+                    ? '适合休眠唤醒、网络切换后只能接听不能外呼，或线路状态明显异常的情况。'
+                    : '当前仍有通话，重启应用会直接中断通话和线路连接。',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -308,7 +293,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.refresh),
-            label: const Text('重启电话服务'),
+            label: const Text('重启应用'),
           ),
         ],
       ),

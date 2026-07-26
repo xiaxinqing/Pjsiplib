@@ -2,7 +2,7 @@ part of '../../../../main.dart';
 
 /// 通话记录动作层：负责回拨、删除、清空以及添加/查看联系人。
 extension _HistoryActions on _MyHomePageState {
-  void _callHistoryItem(_HistoryItem item, PjsipService service) {
+  Future<void> _callHistoryItem(_HistoryItem item, PjsipService service) async {
     if (item.isLive) {
       ToastUtil.showWarning('进行中的通话不能重复回拨');
       return;
@@ -39,17 +39,242 @@ extension _HistoryActions on _MyHomePageState {
       ToastUtil.showWarning('暂无已注册线路，无法呼叫');
       return;
     }
+    final confirmed = await _showCallHistoryConfirm(
+      item: item,
+      number: number,
+      account: account,
+    );
+    if (!confirmed || !mounted) return;
+
     _numberController.text = number;
     _selectOutgoingAccount(account.accId);
     service.makeCallFromAccount(number, account.accId);
     _selectSection(_WorkspaceSection.calls);
   }
 
-  Future<void> _deleteHistoryEntry(int id) async {
+  Future<void> _deleteHistoryEntry(_HistoryItem item) async {
+    final id = item.databaseId;
+    if (id == null) return;
+
+    final confirmed = await _showDeleteHistoryConfirm(item);
+    if (!confirmed || !mounted) return;
+
     if (_selectedHistoryItemKey == 'history:$id') {
       _selectedHistoryItemKey = null;
     }
     await ref.read(callHistoryDatabaseProvider).deleteEntry(id);
+  }
+
+  Future<bool> _showCallHistoryConfirm({
+    required _HistoryItem item,
+    required String number,
+    required SipAccountInfo account,
+  }) async {
+    final title = item.displayName?.trim().isNotEmpty == true
+        ? item.displayName!.trim()
+        : number;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.24),
+      builder: (context) => AlertDialog(
+        title: const Text('确认回拨'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _subtlePanel,
+                  borderRadius: BorderRadius.circular(_radiusSm),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(AppIcons.call, size: _iconLg, color: _callGreen),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              number,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: _textSecondary,
+                                    fontFeatures: const [
+                                      FontFeature.tabularFigures(),
+                                    ],
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildHistoryConfirmRow(
+                icon: AppIcons.outgoing,
+                label: '外呼线路',
+                value: '${account.displayName} · ${account.transportLabel}',
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(AppIcons.call),
+            label: const Text('确认回拨'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Future<bool> _showDeleteHistoryConfirm(_HistoryItem item) async {
+    final title = item.displayName?.trim().isNotEmpty == true
+        ? item.displayName!.trim()
+        : item.phoneNumber;
+    final result = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.22),
+      builder: (context) => AlertDialog(
+        title: const Text('删除通话记录'),
+        content: SizedBox(
+          width: 420,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _subtlePanel,
+                  borderRadius: BorderRadius.circular(_radiusSm),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      Icon(AppIcons.delete, size: _iconLg, color: _dangerRed),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              '${item.direction.label} · ${item.statusLabel}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: _textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _buildHistoryConfirmRow(
+                icon: AppIcons.call,
+                label: '号码',
+                value: item.phoneNumber,
+              ),
+              const SizedBox(height: 10),
+              _buildHistoryConfirmRow(
+                icon: AppIcons.outgoing,
+                label: '线路',
+                value: item.accountLabel ?? '未知线路',
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '删除后这条本地通话记录将无法恢复。',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(AppIcons.delete),
+            label: const Text('删除'),
+            style: FilledButton.styleFrom(backgroundColor: _dangerRed),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
+  }
+
+  Widget _buildHistoryConfirmRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        child: Row(
+          children: [
+            Icon(icon, size: _iconMd, color: _textPrimary),
+            const SizedBox(width: 10),
+            SizedBox(
+              width: 72,
+              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _confirmClearHistory() {

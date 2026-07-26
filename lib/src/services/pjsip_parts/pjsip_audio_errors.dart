@@ -97,6 +97,10 @@ extension PjsipAudioIssueOperations on PjsipService {
 
   /// 清理已恢复的音频异常。只在 PJSIP 成功打开真实声卡后调用。
   void _clearAudioDeviceIssue() {
+    if (_uiState.audioDeviceIssueStatus ==
+        _audioIssueMicrophonePermissionDenied) {
+      return;
+    }
     if (!_uiState.hasAudioDeviceIssue &&
         _uiState.audioDeviceIssueStatus == null) {
       return;
@@ -108,6 +112,18 @@ extension PjsipAudioIssueOperations on PjsipService {
     _audioDeviceSpeakerOnlyFallbackActive = false;
     _lastAudioDeviceIssueToastAt = null;
   }
+
+  /// PJSIP 声卡成功不代表 macOS 隐私权限恢复，所以权限类异常需要保留。
+  String? get _audioDeviceIssueMessageAfterSuccessfulDeviceApply =>
+      _uiState.audioDeviceIssueStatus == _audioIssueMicrophonePermissionDenied
+      ? _uiState.audioDeviceIssueMessage
+      : null;
+
+  /// PJSIP 声卡成功不代表 macOS 隐私权限恢复，所以权限类异常需要保留。
+  int? get _audioDeviceIssueStatusAfterSuccessfulDeviceApply =>
+      _uiState.audioDeviceIssueStatus == _audioIssueMicrophonePermissionDenied
+      ? _uiState.audioDeviceIssueStatus
+      : null;
 
   /// 把 PJSIP 音频错误码翻译成适合用户看到的文案。
   String _audioDeviceIssueMessage(int status, {required String action}) {

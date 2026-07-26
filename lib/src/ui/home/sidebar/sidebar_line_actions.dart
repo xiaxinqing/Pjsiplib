@@ -33,7 +33,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                 account.lineLabel,
                 style: const TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   color: _textPrimary,
                 ),
               ),

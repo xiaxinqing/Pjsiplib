@@ -7,7 +7,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart'
+    show MethodChannel, MissingPluginException, PlatformException, rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../generated/pjsip_bindings.g.dart';
 import 'call_history_database.dart';
@@ -35,6 +36,8 @@ part 'pjsip_parts/pjsip_calls.dart';
 part 'pjsip_parts/pjsip_audio_devices.dart';
 
 part 'pjsip_parts/pjsip_audio_errors.dart';
+
+part 'pjsip_parts/pjsip_audio_permissions.dart';
 
 part 'pjsip_parts/pjsip_network.dart';
 
@@ -311,6 +314,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       selectedPlaybackDeviceId: null,
       isMicrophoneMuted: false,
       isSpeakerMuted: false,
+      remoteMutedCallIds: const {},
       microphoneLevel: 0,
       speakerLevel: 0,
       isMicrophoneTesting: false,
@@ -319,6 +323,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       audioDeviceStatus: '设备监控已停止',
       audioDeviceIssueMessage: null,
       audioDeviceIssueStatus: null,
+      microphonePermissionStatus: PjsipMicrophonePermissionStatus.unknown,
       allowInCallAudioDeviceSwitch: false,
     );
     _addLog(

@@ -8,6 +8,8 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'src/services/app_window_controller.dart';
+import 'src/services/app_restart_controller.dart';
+import 'src/services/app_tray_controller.dart';
 import 'src/services/call_history_database.dart';
 import 'src/services/contact_service.dart';
 import 'src/services/pjsip_service.dart';
@@ -73,6 +75,7 @@ part 'src/ui/settings/home_settings_diagnostics.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppWindowController.initializeMainWindow();
+  await AppTrayController.instance.initialize();
   runApp(const ProviderScope(child: MyApp()));
 }
 

@@ -6,7 +6,9 @@ list(APPEND FLUTTER_PLUGIN_LIST
   connectivity_plus
   flutter_secure_storage_windows
   flutter_volume_controller
+  restart_app
   screen_retriever_windows
+  tray_manager
   window_manager
 )
 

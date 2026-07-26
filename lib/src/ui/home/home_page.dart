@@ -76,12 +76,15 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   final Map<int, Timer> _pendingCallOperationTimers = <int, Timer>{};
   Timer? _conferenceActionCooldownTimer;
   bool _conferenceActionCoolingDown = false;
+  bool _applicationRestarting = false;
 
   @override
   void initState() {
     super.initState();
     _lastDialpadValue = _numberController.text;
     _numberController.addListener(_handleNumberControllerChanged);
+    unawaited(_windowController.attachCloseToTrayBehavior());
+    _bindTrayActions();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_isRunningWidgetTest) return;
@@ -106,6 +109,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     _historySearchController.dispose();
     _callNoteController.dispose();
     _numberController.dispose();
+    _windowController.detachCloseToTrayBehavior();
+    AppTrayController.instance.clearActions();
     super.dispose();
   }
 
@@ -146,6 +151,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
     final uiState = ref.watch(pjsipServiceProvider);
     final service = ref.read(pjsipServiceProvider.notifier);
+    unawaited(_syncTrayMenu(uiState));
 
     return Scaffold(
       body: Stack(
@@ -162,5 +168,54 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         ],
       ),
     );
+  }
+
+  void _bindTrayActions() {
+    AppTrayController.instance.bindActions(
+      onOpenSettings: () {
+        if (!mounted) return;
+        _openSettingsDrawer();
+      },
+      onDisconnectAll: () async {
+        if (!mounted) return;
+        final uiState = ref.read(pjsipServiceProvider);
+        final confirmed = await _confirmDisconnectAllAccounts(uiState);
+        if (confirmed != true || !mounted) return;
+        ref.read(pjsipServiceProvider.notifier).disconnectAllAccounts();
+      },
+      onRestartApplication: _confirmAndRestartApplication,
+      onIncomingRingtoneChanged: (enabled) {
+        ref
+            .read(pjsipServiceProvider.notifier)
+            .setIncomingRingtoneEnabled(enabled);
+      },
+    );
+  }
+
+  Future<void> _syncTrayMenu(PjsipUIState uiState) {
+    final hasDisconnectableLine = uiState.accounts.values.any(
+      (account) => account.registrationEnabled || account.isRegistered,
+    );
+    final canDisconnectAll =
+        uiState.isInitialized && uiState.calls.isEmpty && hasDisconnectableLine;
+    return AppTrayController.instance.updateMenu(
+      connectedLines: uiState.registeredAccounts.length,
+      totalLines: uiState.accounts.length,
+      incomingRingtoneEnabled: uiState.incomingRingtoneEnabled,
+      canDisconnectAll: canDisconnectAll,
+    );
+  }
+
+  Future<void> _confirmAndRestartApplication() async {
+    if (_applicationRestarting || !mounted) return;
+    final uiState = ref.read(pjsipServiceProvider);
+    final confirmed = await _confirmRestartApplication(uiState);
+    if (confirmed != true || !mounted) return;
+
+    _update(() => _applicationRestarting = true);
+    final accepted = await AppRestartController.instance.restartApplication();
+    if (!accepted && mounted) {
+      _update(() => _applicationRestarting = false);
+    }
   }
 }

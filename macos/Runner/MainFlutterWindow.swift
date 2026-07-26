@@ -1,5 +1,6 @@
 import Cocoa
 import FlutterMacOS
+import AVFoundation
 
 class MainFlutterWindow: NSWindow {
   private var attentionRequestID: Int = 0
@@ -20,6 +21,7 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     configureWindowAttentionChannel(flutterViewController: flutterViewController)
+    configureAudioPermissionChannel(flutterViewController: flutterViewController)
 
     super.awakeFromNib()
   }
@@ -46,6 +48,56 @@ class MainFlutterWindow: NSWindow {
       default:
         result(FlutterMethodNotImplemented)
       }
+    }
+  }
+
+  private func configureAudioPermissionChannel(flutterViewController: FlutterViewController) {
+    let channel = FlutterMethodChannel(
+      name: "voip_desk/audio_permission",
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+
+    channel.setMethodCallHandler { [weak self] call, result in
+      guard let self = self else {
+        result(nil)
+        return
+      }
+
+      switch call.method {
+      case "microphoneAuthorizationStatus":
+        // Only report the current macOS privacy state. This check cannot
+        // disturb active calls.
+        result(self.microphoneAuthorizationStatusText())
+      case "requestMicrophoneAccess":
+        AVCaptureDevice.requestAccess(for: .audio) { _ in
+          DispatchQueue.main.async {
+            result(self.microphoneAuthorizationStatusText())
+          }
+        }
+      case "openMicrophonePrivacySettings":
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+          NSWorkspace.shared.open(url)
+        }
+        result(nil)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+  }
+
+  private func microphoneAuthorizationStatusText() -> String {
+    let status = AVCaptureDevice.authorizationStatus(for: .audio)
+    switch status {
+    case .authorized:
+      return "authorized"
+    case .denied:
+      return "denied"
+    case .restricted:
+      return "restricted"
+    case .notDetermined:
+      return "notDetermined"
+    @unknown default:
+      return "unknown"
     }
   }
 

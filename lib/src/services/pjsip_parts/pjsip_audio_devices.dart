@@ -457,8 +457,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 : markManual
                 ? '已记住手动设备；空闲时不占用声卡'
                 : '空闲中：已释放系统音频设备',
-            audioDeviceIssueMessage: null,
-            audioDeviceIssueStatus: null,
+            audioDeviceIssueMessage:
+                _audioDeviceIssueMessageAfterSuccessfulDeviceApply,
+            audioDeviceIssueStatus:
+                _audioDeviceIssueStatusAfterSuccessfulDeviceApply,
           );
           if (markManual && selectedSystemDefaults) {
             _audio.preferredCaptureDeviceSignature = null;
@@ -495,8 +497,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 : markManual
                 ? '手动选择设备'
                 : _uiState.audioDeviceStatus,
-            audioDeviceIssueMessage: null,
-            audioDeviceIssueStatus: null,
+            audioDeviceIssueMessage:
+                _audioDeviceIssueMessageAfterSuccessfulDeviceApply,
+            audioDeviceIssueStatus:
+                _audioDeviceIssueStatusAfterSuccessfulDeviceApply,
           );
           if (markManual && selectedSystemDefaults) {
             _audio.preferredCaptureDeviceSignature = null;
@@ -581,6 +585,29 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _uiState = _uiState.copyWith(isSpeakerMuted: muted);
     _applyAudioMuteState();
     _addLog(muted ? '🔈 扬声器已静音' : '🔊 扬声器已恢复');
+  }
+
+  /// 设置“本机不听此路”。
+  ///
+  /// 这里只断开 `call slot -> 本地声卡(0)`，所以会议里其他人仍然能听到该通话。
+  /// 这和全局扬声器静音不同：全局静音会影响所有远端声音。
+  void setRemoteAudioMuted(int callId, bool muted) {
+    if (!_uiState.calls.containsKey(callId)) return;
+    final mutedCallIds = Set<int>.of(_uiState.remoteMutedCallIds);
+    final changed = muted
+        ? mutedCallIds.add(callId)
+        : mutedCallIds.remove(callId);
+    if (!changed) return;
+
+    _uiState = _uiState.copyWith(remoteMutedCallIds: mutedCallIds);
+    final slot = _getConferenceSlot(callId);
+    if (slot != null) {
+      _bindings.pjsua_conf_disconnect(slot, 0);
+      if (!muted && _shouldRouteCallToLocalSpeaker(callId)) {
+        _bindings.pjsua_conf_connect(slot, 0);
+      }
+    }
+    _addLog(muted ? '🔇 本机已不听此路: call=$callId' : '🔊 本机已恢复此路声音: call=$callId');
   }
 
   void setMicrophoneVolume(int volume) {
@@ -1376,6 +1403,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _audio.hangupSoundPlayerId != null ||
       _audio.dialpadTonegenConnected;
 
+  bool _shouldRouteCallToLocalSpeaker(int callId) =>
+      !_uiState.isSpeakerMuted && !_uiState.remoteMutedCallIds.contains(callId);
+
   bool _isNoSoundDevice(({int? captureId, int? playbackId}) current) {
     final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
     return current.captureId == noDevice || current.playbackId == noDevice;
@@ -1407,6 +1437,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       if (!_audioDeviceSpeakerOnlyFallbackActive) {
         _clearAudioDeviceIssue();
       }
+      unawaited(_syncMicrophonePermissionIssue(reason: reason));
       _audio.soundDeviceReleasedForIdle = false;
       _startAudioLevelTimer();
       return true;
@@ -1444,6 +1475,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _rememberActiveAudioDevices(captureId, playbackId);
     _audio.soundDeviceReleasedForIdle = false;
     _startAudioLevelTimer();
+    unawaited(_syncMicrophonePermissionIssue(reason: reason));
     _addLog(
       applyResult.speakerOnlyFallback
           ? '⚠️ 音频设备已按需打开为仅扬声器模式: capture=$captureId, playback=$playbackId ($reason)'
@@ -1921,7 +1953,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       if (!_uiState.isMicrophoneMuted) {
         _bindings.pjsua_conf_connect(0, slot);
       }
-      if (!_uiState.isSpeakerMuted) {
+      if (_shouldRouteCallToLocalSpeaker(callId)) {
         _bindings.pjsua_conf_connect(slot, 0);
       }
     }

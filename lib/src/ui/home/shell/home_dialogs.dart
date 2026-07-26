@@ -41,6 +41,13 @@ extension _HomeDialogs on _MyHomePageState {
     if (_settingsTabIndex != tabIndex) {
       _update(() => _settingsTabIndex = tabIndex);
     }
+    if (tabIndex == 1) {
+      unawaited(
+        ref
+            .read(pjsipServiceProvider.notifier)
+            .checkMicrophonePermission(reason: '打开音频设置'),
+      );
+    }
     var selectedIndex = tabIndex;
     showDialog<void>(
       context: context,
@@ -60,6 +67,11 @@ extension _HomeDialogs on _MyHomePageState {
                     setDialogState(() => selectedIndex = index);
                     if (_settingsTabIndex != index && mounted) {
                       _update(() => _settingsTabIndex = index);
+                    }
+                    if (index == 1) {
+                      unawaited(
+                        service.checkMicrophonePermission(reason: '切换到音频设置'),
+                      );
                     }
                   },
                 );

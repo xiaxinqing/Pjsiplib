@@ -230,6 +230,12 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
   Widget _buildAudioStatusPanel(PjsipUIState uiState, PjsipService service) {
     final automatic = uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
     final hasIssue = uiState.hasAudioDeviceIssue;
+    final needsPermissionAction =
+        uiState.microphonePermissionStatus ==
+            PjsipMicrophonePermissionStatus.denied ||
+        uiState.microphonePermissionStatus ==
+            PjsipMicrophonePermissionStatus.restricted;
+    final showRepairAction = hasIssue && !needsPermissionAction;
     final issueColor = Colors.orange.shade700;
     final statusText =
         uiState.audioDeviceIssueMessage ?? uiState.audioDeviceStatus;
@@ -243,64 +249,221 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: hasIssue
-                    ? issueColor.withValues(alpha: 0.10)
-                    : _subtlePanel,
-                borderRadius: BorderRadius.circular(_radiusSm),
-              ),
-              child: Icon(
-                hasIssue
-                    ? AppIcons.info
-                    : automatic
-                    ? AppIcons.automatic
-                    : AppIcons.tune,
-                size: _iconMd,
-                color: hasIssue ? issueColor : _textPrimary,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: hasIssue
+                        ? issueColor.withValues(alpha: 0.10)
+                        : _subtlePanel,
+                    borderRadius: BorderRadius.circular(_radiusSm),
+                  ),
+                  child: Icon(
                     hasIssue
-                        ? '音频设备需要处理'
+                        ? AppIcons.info
                         : automatic
-                        ? '自动音频路由'
-                        : '手动音频路由',
+                        ? AppIcons.automatic
+                        : AppIcons.tune,
+                    size: _iconMd,
+                    color: hasIssue ? issueColor : _textPrimary,
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    statusText,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: hasIssue ? issueColor : _textSecondary,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasIssue
+                            ? '音频设备需要处理'
+                            : automatic
+                            ? '自动音频路由'
+                            : '手动音频路由',
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        statusText,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: hasIssue ? issueColor : _textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: service.refreshAudioDevices,
+                      tooltip: '刷新音频设备',
+                      style: IconButton.styleFrom(
+                        fixedSize: const Size(38, 38),
+                        backgroundColor: _subtlePanel,
+                        foregroundColor: hasIssue ? issueColor : _textPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(_radiusSm),
+                        ),
+                      ),
+                      icon: const Icon(AppIcons.refresh),
                     ),
-                  ),
-                ],
+                    if (showRepairAction) ...[
+                      const SizedBox(width: 8),
+                      FilledButton.tonalIcon(
+                        onPressed: service.repairAudioPath,
+                        icon: const Icon(AppIcons.activity),
+                        label: const Text('修复音频'),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Divider(height: 1),
+            const SizedBox(height: 12),
+            _buildMicrophonePermissionRow(uiState, service),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMicrophonePermissionRow(
+    PjsipUIState uiState,
+    PjsipService service,
+  ) {
+    final status = uiState.microphonePermissionStatus;
+    final enabled = status == PjsipMicrophonePermissionStatus.authorized;
+    final color = switch (status) {
+      PjsipMicrophonePermissionStatus.authorized => Colors.green.shade700,
+      PjsipMicrophonePermissionStatus.denied ||
+      PjsipMicrophonePermissionStatus.restricted => Colors.orange.shade700,
+      PjsipMicrophonePermissionStatus.notDetermined => Colors.orange.shade700,
+      PjsipMicrophonePermissionStatus.unsupported => _textSecondary,
+      PjsipMicrophonePermissionStatus.unknown => _textSecondary,
+    };
+    final title = switch (status) {
+      PjsipMicrophonePermissionStatus.authorized => '麦克风权限已开启',
+      PjsipMicrophonePermissionStatus.denied => '麦克风权限未开启',
+      PjsipMicrophonePermissionStatus.restricted => '麦克风权限受限制',
+      PjsipMicrophonePermissionStatus.notDetermined => '麦克风权限待授权',
+      PjsipMicrophonePermissionStatus.unsupported => '当前平台无需检查',
+      PjsipMicrophonePermissionStatus.unknown => '麦克风权限未检查',
+    };
+    final subtitle = switch (status) {
+      PjsipMicrophonePermissionStatus.authorized => '已允许 VPhone 使用麦克风',
+      PjsipMicrophonePermissionStatus.denied => '点击打开系统设置，手动允许麦克风权限',
+      PjsipMicrophonePermissionStatus.restricted => '系统或管理员限制了麦克风权限',
+      PjsipMicrophonePermissionStatus.notDetermined => '点击向系统申请麦克风权限',
+      PjsipMicrophonePermissionStatus.unsupported => 'Windows 或 Linux 下按系统设备处理',
+      PjsipMicrophonePermissionStatus.unknown => '点击检查当前麦克风权限状态',
+    };
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(_radiusSm),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(_radiusSm),
+        onTap: service.handleMicrophonePermissionAction,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(_radiusSm),
+                ),
+                child: Icon(
+                  enabled ? AppIcons.microphone : AppIcons.microphoneOff,
+                  size: _iconMd,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _buildPermissionSwitchPill(
+                enabled: enabled,
+                status: status,
+                color: color,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPermissionSwitchPill({
+    required bool enabled,
+    required PjsipMicrophonePermissionStatus status,
+    required Color color,
+  }) {
+    final tooltip = switch (status) {
+      PjsipMicrophonePermissionStatus.authorized => '麦克风权限已开启',
+      PjsipMicrophonePermissionStatus.denied ||
+      PjsipMicrophonePermissionStatus.restricted => '打开系统设置',
+      PjsipMicrophonePermissionStatus.notDetermined => '申请麦克风权限',
+      PjsipMicrophonePermissionStatus.unsupported => '当前平台无需检查',
+      PjsipMicrophonePermissionStatus.unknown => '检查麦克风权限',
+    };
+
+    return Tooltip(
+      message: tooltip,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: enabled ? color : _hoverPanel,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: enabled ? color : color.withValues(alpha: 0.24),
+          ),
+        ),
+        child: SizedBox(
+          width: 50,
+          height: 28,
+          child: AnimatedAlign(
+            duration: const Duration(milliseconds: 160),
+            curve: Curves.easeOutCubic,
+            alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: enabled ? Colors.white : color.withValues(alpha: 0.35),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: service.refreshAudioDevices,
-              icon: const Icon(AppIcons.refresh),
-              label: const Text('刷新'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.tonalIcon(
-              onPressed: service.repairAudioPath,
-              icon: const Icon(AppIcons.activity),
-              label: const Text('修复'),
-            ),
-          ],
+          ),
         ),
       ),
     );

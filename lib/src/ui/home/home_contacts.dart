@@ -2,6 +2,12 @@ part of '../../../main.dart';
 
 /// 联系人页入口：负责联系人数据过滤、响应式布局，以及列表/详情区域编排。
 extension _HomeContacts on _MyHomePageState {
+  /// 联系人页达到该宽度后展示右侧详情。
+  ///
+  /// 详情区是联系人页的核心阅读区域，断点不宜太靠后；列表会在自身宽度不足时
+  /// 隐藏“更新时间”列，所以这里可以比之前更早进入双栏。
+  static const double _contactDetailPaneBreakpoint = 780;
+
   Widget _buildContactsPage(PjsipUIState uiState, PjsipService service) {
     final contactState = ref.watch(contactBookProvider);
     final contacts = _filteredContacts(contactState);
@@ -13,8 +19,9 @@ extension _HomeContacts on _MyHomePageState {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compact = constraints.maxWidth < 860;
-        final showDetailPane = constraints.maxWidth >= 920;
+        final compact = constraints.maxWidth < _contactDetailPaneBreakpoint;
+        final showDetailPane =
+            constraints.maxWidth >= _contactDetailPaneBreakpoint;
         final detailContact = _selectedContactDetail(contacts);
         return DecoratedBox(
           decoration: BoxDecoration(
@@ -33,7 +40,7 @@ extension _HomeContacts on _MyHomePageState {
                   child: Row(
                     children: [
                       Expanded(
-                        flex: 7,
+                        flex: 6,
                         child: DecoratedBox(
                           decoration: BoxDecoration(
                             color: _panelBackground,

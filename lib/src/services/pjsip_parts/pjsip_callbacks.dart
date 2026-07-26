@@ -752,7 +752,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           }
           // 每次协商完成 (接通/hold 恢复/换编码) 都会触发本回调，且 conf_slot
           // 可能变化，因此每次都重连。pjsua_conf_connect 幂等，重复调用安全。
-          if (!_uiState.isSpeakerMuted) {
+          if (_shouldRouteCallToLocalSpeaker(callId)) {
             _bindings.pjsua_conf_connect(confSlot, 0);
           }
           if (!_uiState.isMicrophoneMuted) {

@@ -10,6 +10,7 @@ extension _CallStageControls on _MyHomePageState {
     final isConferenceMember = uiState.isInConference(call.callId);
     final hasPendingOperation = _hasPendingCallOperation(call.callId);
     final isCoolingDown = _isMediaBridgeActionCoolingDown;
+    final remoteMuted = uiState.remoteMutedCallIds.contains(call.callId);
     final controls = <Widget>[];
 
     if (call.isIncoming && !call.isConnected) {
@@ -86,6 +87,16 @@ extension _CallStageControls on _MyHomePageState {
               ? () => _showBlindTransferDialog(call, uiState, service)
               : null,
         ),
+        if (call.isConnected && !isConferenceMember)
+          _roundCallButton(
+            icon: remoteMuted ? AppIcons.speaker : AppIcons.speakerOff,
+            label: remoteMuted ? '恢复声音' : '本机不听',
+            color: remoteMuted
+                ? Colors.orange.shade700
+                : Theme.of(context).colorScheme.surfaceContainerHigh,
+            onPressed: () =>
+                service.setRemoteAudioMuted(call.callId, !remoteMuted),
+          ),
         _roundCallButton(
           icon: AppIcons.tune,
           label: '音频',

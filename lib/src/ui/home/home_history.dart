@@ -4,6 +4,12 @@ const int _historyPageSize = 100;
 
 /// 通话记录页入口：负责历史数据流、实时通话合并、筛选匹配和通用格式化。
 extension _HomeHistory on _MyHomePageState {
+  /// 通话记录达到该宽度后展示右侧详情。
+  ///
+  /// 详情内容是选中记录的辅助信息，不需要等页面特别宽才出现；列表行会根据
+  /// 自身宽度隐藏线路列并固定状态/时间列，避免双栏后横向挤压。
+  static const double _historyDetailPaneBreakpoint = 780;
+
   Widget _buildHistoryPage(PjsipUIState uiState, PjsipService service) {
     final database = ref.watch(callHistoryDatabaseProvider);
     final stream = _watchHistoryEntries(database);
@@ -43,7 +49,9 @@ extension _HomeHistory on _MyHomePageState {
                       )
                     : LayoutBuilder(
                         builder: (context, constraints) {
-                          final wide = constraints.maxWidth >= 920;
+                          final wide =
+                              constraints.maxWidth >=
+                              _historyDetailPaneBreakpoint;
                           if (!wide) {
                             return _buildHistoryList(
                               items,
@@ -58,7 +66,7 @@ extension _HomeHistory on _MyHomePageState {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               Expanded(
-                                flex: 7,
+                                flex: 6,
                                 child: _buildHistoryList(
                                   items,
                                   service,

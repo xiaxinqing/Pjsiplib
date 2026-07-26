@@ -38,7 +38,7 @@ extension _HomeSidebarShared on _MyHomePageState {
         children: [
           Icon(icon, size: _iconSm, color: _textSecondary),
           const SizedBox(width: 10),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(width: 12),
           Expanded(child: _buildTooltipText(value, textAlign: TextAlign.right)),
         ],
@@ -60,7 +60,7 @@ extension _HomeSidebarShared on _MyHomePageState {
         Expanded(
           child: _buildTooltipText(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w600),
+            style: TextStyle(color: color, fontWeight: FontWeight.w500),
           ),
         ),
       ],

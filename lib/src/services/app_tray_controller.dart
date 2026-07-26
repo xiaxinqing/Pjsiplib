@@ -1,0 +1,215 @@
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:tray_manager/tray_manager.dart' as tray;
+import 'package:window_manager/window_manager.dart';
+
+import 'app_window_controller.dart';
+
+class AppTrayController with tray.TrayListener {
+  AppTrayController._();
+
+  static final AppTrayController instance = AppTrayController._();
+
+  static const _showWindowKey = 'show_window';
+  static const _statusKey = 'status';
+  static const _incomingRingtoneKey = 'incoming_ringtone';
+  static const _disconnectAllKey = 'disconnect_all';
+  static const _settingsKey = 'settings';
+  static const _restartAppKey = 'restart_app';
+  static const _exitAppKey = 'exit_app';
+
+  bool _initialized = false;
+  String? _menuSignature;
+  VoidCallback? _onOpenSettings;
+  Future<void> Function()? _onDisconnectAll;
+  Future<void> Function()? _onRestartApplication;
+  ValueChanged<bool>? _onIncomingRingtoneChanged;
+
+  void bindActions({
+    required VoidCallback onOpenSettings,
+    required Future<void> Function() onDisconnectAll,
+    required Future<void> Function() onRestartApplication,
+    required ValueChanged<bool> onIncomingRingtoneChanged,
+  }) {
+    _onOpenSettings = onOpenSettings;
+    _onDisconnectAll = onDisconnectAll;
+    _onRestartApplication = onRestartApplication;
+    _onIncomingRingtoneChanged = onIncomingRingtoneChanged;
+  }
+
+  void clearActions() {
+    _onOpenSettings = null;
+    _onDisconnectAll = null;
+    _onRestartApplication = null;
+    _onIncomingRingtoneChanged = null;
+  }
+
+  Future<void> initialize() async {
+    if (!AppWindowController.isDesktop || _initialized) return;
+
+    tray.trayManager.addListener(this);
+    _initialized = true;
+
+    await _safeTrayCall(() async {
+      await tray.trayManager.setIcon(
+        Platform.isWindows
+            ? 'assets/tray/tray_icon.ico'
+            : 'assets/tray/tray_icon.png',
+      );
+      await tray.trayManager.setToolTip('VPhone');
+      await updateMenu(
+        connectedLines: 0,
+        totalLines: 0,
+        incomingRingtoneEnabled: true,
+        canDisconnectAll: false,
+      );
+      debugPrint('Tray initialized.');
+    });
+  }
+
+  Future<void> updateMenu({
+    required int connectedLines,
+    required int totalLines,
+    required bool incomingRingtoneEnabled,
+    required bool canDisconnectAll,
+  }) async {
+    if (!AppWindowController.isDesktop || !_initialized) return;
+
+    final signature = [
+      connectedLines,
+      totalLines,
+      incomingRingtoneEnabled,
+      canDisconnectAll,
+    ].join('|');
+    if (_menuSignature == signature) return;
+    _menuSignature = signature;
+
+    await _safeTrayCall(() {
+      return tray.trayManager.setContextMenu(
+        tray.Menu(
+          items: [
+            tray.MenuItem(key: _showWindowKey, label: '打开 VPhone'),
+            tray.MenuItem(
+              key: _statusKey,
+              label: '当前状态：已连接 $connectedLines/$totalLines 线路',
+              disabled: true,
+            ),
+            tray.MenuItem.checkbox(
+              key: _incomingRingtoneKey,
+              label: '来电铃声',
+              checked: incomingRingtoneEnabled,
+            ),
+            tray.MenuItem(
+              key: _disconnectAllKey,
+              label: '断开全部线路',
+              disabled: !canDisconnectAll,
+            ),
+            tray.MenuItem(key: _settingsKey, label: '设置'),
+            tray.MenuItem(key: _restartAppKey, label: '重启应用...'),
+            tray.MenuItem.separator(),
+            tray.MenuItem(key: _exitAppKey, label: '退出 VPhone'),
+          ],
+        ),
+      );
+    });
+  }
+
+  @override
+  void onTrayIconMouseDown() {
+    unawaited(_showMainWindow());
+  }
+
+  @override
+  void onTrayIconRightMouseDown() {
+    unawaited(_showTrayMenu());
+  }
+
+  @override
+  void onTrayMenuItemClick(tray.MenuItem menuItem) {
+    switch (menuItem.key) {
+      case _showWindowKey:
+        unawaited(_showMainWindow());
+        break;
+      case _incomingRingtoneKey:
+        final nextValue = !(menuItem.checked ?? false);
+        _onIncomingRingtoneChanged?.call(nextValue);
+        break;
+      case _disconnectAllKey:
+        unawaited(_handleDisconnectAll());
+        break;
+      case _settingsKey:
+        unawaited(_handleOpenSettings());
+        break;
+      case _restartAppKey:
+        unawaited(_handleRestartApplication());
+        break;
+      case _exitAppKey:
+        unawaited(_exitApplication());
+        break;
+    }
+  }
+
+  Future<void> _showMainWindow() async {
+    if (!AppWindowController.isDesktop) return;
+
+    await _safeWindowCall(() async {
+      debugPrint('Tray requested main window restore.');
+      if (await windowManager.isMinimized()) {
+        await windowManager.restore();
+      }
+      await windowManager.show();
+      await windowManager.focus();
+      debugPrint('Main window restored from tray.');
+    });
+  }
+
+  Future<void> _showTrayMenu() async {
+    await _safeTrayCall(() => tray.trayManager.popUpContextMenu());
+  }
+
+  Future<void> _handleOpenSettings() async {
+    await _showMainWindow();
+    _onOpenSettings?.call();
+  }
+
+  Future<void> _handleDisconnectAll() async {
+    await _showMainWindow();
+    await _onDisconnectAll?.call();
+  }
+
+  Future<void> _handleRestartApplication() async {
+    await _showMainWindow();
+    await _onRestartApplication?.call();
+  }
+
+  Future<void> _exitApplication() async {
+    if (!AppWindowController.isDesktop) return;
+
+    await _safeWindowCall(() => windowManager.setPreventClose(false));
+    await _safeTrayCall(() => tray.trayManager.destroy());
+    await _safeWindowCall(() => windowManager.destroy());
+  }
+
+  Future<void> _safeTrayCall(Future<void> Function() action) async {
+    try {
+      await action();
+    } on MissingPluginException {
+      // Widget tests and unsupported desktop shells may not register the tray.
+    } on PlatformException catch (error) {
+      debugPrint('Tray manager call failed: ${error.message}');
+    }
+  }
+
+  Future<void> _safeWindowCall(Future<void> Function() action) async {
+    try {
+      await action();
+    } on MissingPluginException {
+      // Widget tests and unsupported desktop shells may not register the plugin.
+    } on PlatformException catch (error) {
+      debugPrint('Window manager call failed: ${error.message}');
+    }
+  }
+}

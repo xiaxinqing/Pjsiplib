@@ -2,6 +2,15 @@ part of '../pjsip_service.dart';
 
 enum SeatEnvironmentState { checking, restoring, ready }
 
+enum PjsipMicrophonePermissionStatus {
+  unsupported,
+  unknown,
+  notDetermined,
+  authorized,
+  denied,
+  restricted,
+}
+
 /// PJSIP 页面/服务暴露给 Flutter UI 的完整状态。
 ///
 /// 这个项目用 Riverpod `Notifier` 管理状态。服务层每次调用 `copyWith` 生成一个
@@ -73,6 +82,12 @@ class PjsipUIState {
   /// 本地扬声器静音状态。
   final bool isSpeakerMuted;
 
+  /// 本机不再收听的远端通话集合。
+  ///
+  /// 这是“只影响当前坐席听感”的单路静音：只断开该通话到本地扬声器的连接，
+  /// 不影响会议中其他成员是否能听到这个人。
+  final Set<int> remoteMutedCallIds;
+
   /// 麦克风电平，来自 PJSIP conference bridge signal level。
   final int microphoneLevel;
 
@@ -106,6 +121,9 @@ class PjsipUIState {
 
   /// 最近一次 PJSIP 音频设备异常码，用于排查 native 侧具体原因。
   final int? audioDeviceIssueStatus;
+
+  /// macOS 麦克风隐私权限状态。
+  final PjsipMicrophonePermissionStatus microphonePermissionStatus;
 
   /// 是否允许通话中检测并自动切换新插入的音频设备。
   final bool allowInCallAudioDeviceSwitch;
@@ -144,6 +162,7 @@ class PjsipUIState {
     this.selectedPlaybackDeviceId,
     this.isMicrophoneMuted = false,
     this.isSpeakerMuted = false,
+    this.remoteMutedCallIds = const {},
     this.microphoneLevel = 0,
     this.speakerLevel = 0,
     this.microphoneVolume = 100,
@@ -154,6 +173,7 @@ class PjsipUIState {
     this.audioDeviceStatus = '自动选择设备',
     this.audioDeviceIssueMessage,
     this.audioDeviceIssueStatus,
+    this.microphonePermissionStatus = PjsipMicrophonePermissionStatus.unknown,
     this.allowInCallAudioDeviceSwitch = false,
     this.incomingRingtoneEnabled = true,
     this.outgoingRingbackEnabled = true,
@@ -183,6 +203,7 @@ class PjsipUIState {
     Object? selectedPlaybackDeviceId = _unset,
     bool? isMicrophoneMuted,
     bool? isSpeakerMuted,
+    Set<int>? remoteMutedCallIds,
     int? microphoneLevel,
     int? speakerLevel,
     int? microphoneVolume,
@@ -193,6 +214,7 @@ class PjsipUIState {
     String? audioDeviceStatus,
     Object? audioDeviceIssueMessage = _unset,
     Object? audioDeviceIssueStatus = _unset,
+    PjsipMicrophonePermissionStatus? microphonePermissionStatus,
     bool? allowInCallAudioDeviceSwitch,
     bool? incomingRingtoneEnabled,
     bool? outgoingRingbackEnabled,
@@ -233,6 +255,7 @@ class PjsipUIState {
           : selectedPlaybackDeviceId as int?,
       isMicrophoneMuted: isMicrophoneMuted ?? this.isMicrophoneMuted,
       isSpeakerMuted: isSpeakerMuted ?? this.isSpeakerMuted,
+      remoteMutedCallIds: remoteMutedCallIds ?? this.remoteMutedCallIds,
       microphoneLevel: microphoneLevel ?? this.microphoneLevel,
       speakerLevel: speakerLevel ?? this.speakerLevel,
       microphoneVolume: microphoneVolume ?? this.microphoneVolume,
@@ -247,6 +270,8 @@ class PjsipUIState {
       audioDeviceIssueStatus: identical(audioDeviceIssueStatus, _unset)
           ? this.audioDeviceIssueStatus
           : audioDeviceIssueStatus as int?,
+      microphonePermissionStatus:
+          microphonePermissionStatus ?? this.microphonePermissionStatus,
       allowInCallAudioDeviceSwitch:
           allowInCallAudioDeviceSwitch ?? this.allowInCallAudioDeviceSwitch,
       incomingRingtoneEnabled:

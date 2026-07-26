@@ -6,13 +6,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
-class AppWindowController {
+class AppWindowController with WindowListener {
   AppWindowController();
 
-  static const Size minimumSize = Size(980, 640);
+  static const Size minimumSize = Size(920, 620);
   static const _attentionChannel = MethodChannel('voip_desk/window_attention');
 
   Timer? _attentionResetTimer;
+  bool _closeToTrayAttached = false;
 
   static bool get isDesktop =>
       !kIsWeb && (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
@@ -28,8 +29,8 @@ class AppWindowController {
         ? TitleBarStyle.hidden
         : TitleBarStyle.normal;
     final initialSize = Platform.isMacOS
-        ? const Size(1280, 780)
-        : const Size(1120, 720);
+        ? const Size(1180, 740)
+        : const Size(1080, 700);
 
     final options = WindowOptions(
       size: initialSize,
@@ -43,6 +44,30 @@ class AppWindowController {
       await windowManager.show();
       await windowManager.focus();
     });
+  }
+
+  Future<void> attachCloseToTrayBehavior() async {
+    if (!isDesktop || _closeToTrayAttached) return;
+
+    _closeToTrayAttached = true;
+    windowManager.addListener(this);
+    await _safeWindowCall(() => windowManager.setPreventClose(true));
+    debugPrint('Window close-to-tray behavior attached.');
+  }
+
+  void detachCloseToTrayBehavior() {
+    if (!isDesktop || !_closeToTrayAttached) return;
+
+    _closeToTrayAttached = false;
+    windowManager.removeListener(this);
+  }
+
+  @override
+  void onWindowClose() {
+    debugPrint(
+      'Window close requested; hiding to tray if prevent-close is on.',
+    );
+    unawaited(_hideWindowInsteadOfClosing());
   }
 
   Future<void> notifyIncomingCall({required int incomingCallCount}) async {
@@ -71,6 +96,19 @@ class AppWindowController {
       }
       await windowManager.show();
       await windowManager.focus();
+    });
+  }
+
+  Future<void> _hideWindowInsteadOfClosing() async {
+    if (!isDesktop) return;
+
+    await _safeWindowCall(() async {
+      final preventClose = await windowManager.isPreventClose();
+      debugPrint('Window hide-to-tray preventClose=$preventClose');
+      if (!preventClose) return;
+      await windowManager.setAlwaysOnTop(false);
+      await windowManager.hide();
+      debugPrint('Window hidden to tray.');
     });
   }
 

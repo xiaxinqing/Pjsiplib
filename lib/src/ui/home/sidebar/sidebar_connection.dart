@@ -102,7 +102,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
                 '连接状态',
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w600,
                   color: _textPrimary,
                 ),
               ),
