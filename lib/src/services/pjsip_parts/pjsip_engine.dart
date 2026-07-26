@@ -542,6 +542,8 @@ extension PjsipEngineOperations on PjsipService {
     final stunServers = _stunServersForConfig(iceConfig);
     if (stunServers.isEmpty) return;
 
+    // PJSUA 的 STUN server 是全局配置，不是单个账号字段；账号开启
+    // STUN/ICE 前先把“用户填写 + 默认兜底”的列表更新到底层。
     _updateStunServers(stunServers, arena, reason: '账号 ICE/STUN 配置');
   }
 
@@ -586,6 +588,8 @@ extension PjsipEngineOperations on PjsipService {
       'stun.l.google.com:19302',
       'stun.pjsip.org',
     ];
+    // 用户填写的 STUN 放在最前面，后面两个默认服务器只做兜底。
+    // 去重时忽略大小写，避免同一个地址被 PJSIP 重复解析。
     final userStunServers = iceConfig.stunServer
         .split(RegExp(r'[\s,;]+'))
         .map((server) => server.trim())
@@ -977,6 +981,8 @@ extension PjsipEngineOperations on PjsipService {
     );
 
     try {
+      // pjsua_acc_refresh_transport() 只刷新账号持有的 transport/cache，
+      // 不等价于 unregister/register；旧版本或某些平台可能没有效果，所以失败只记日志。
       final refreshStatus = _bindings.pjsua_acc_refresh_transport(accId);
       if (refreshStatus != 0) {
         _addLog(
@@ -990,6 +996,9 @@ extension PjsipEngineOperations on PjsipService {
     var unregisterSent = false;
     final shouldUnregisterNow = shouldUnregister && !networkRecoveryRequested;
     if (shouldUnregisterNow) {
+      // 没有触发 IP Change 时，强制重连就是先发注销 REGISTER，再延迟重新注册。
+      // 如果正在做 IP Change，则等 transport/listener 稳定后在 _completeForceReconnectAccount()
+      // 里再注销，避免注销请求发到正在重建的旧通道。
       final unregisterStatus = _bindings.pjsua_acc_set_registration(accId, 0);
       if (unregisterStatus == 0) {
         unregisterSent = true;
@@ -1026,6 +1035,8 @@ extension PjsipEngineOperations on PjsipService {
     if (account == null) return;
 
     if (unregisterBeforeRegister) {
+      // IP Change 完成后的二段式重连：先让服务器移除旧 Contact，再注册新 Contact。
+      // 直接 register 容易留下旧 NAT 映射，表现为能接听但外呼/媒体短暂异常。
       final unregisterAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
         ..[accId] = account.copyWith(
           registrationStatus: null,
@@ -1220,6 +1231,7 @@ extension PjsipEngineOperations on PjsipService {
 
         // pjsua_destroy() 返回后，底层 transport/media 资源在桌面端仍可能有短暂释放窗口。
         // 给它一段安静时间，避免马上 init/register 时复用到半释放的网络或声卡状态。
+        // 这里比普通强制重连更重：适合“休眠恢复后只能接不能打”等底层状态卡住的场景。
         await Future<void>.delayed(const Duration(seconds: 4));
         if (_isDisposed) return;
       }
@@ -1282,6 +1294,8 @@ extension PjsipEngineOperations on PjsipService {
         );
       }
 
+      // 多账号注销不要并发打给 PJSIP。逐个等一下，能降低 registrar/transport
+      // 同时处理多条 REGISTER expires=0 时的偶发失败，也便于日志对应具体线路。
       await Future<void>.delayed(const Duration(seconds: 1));
     }
 

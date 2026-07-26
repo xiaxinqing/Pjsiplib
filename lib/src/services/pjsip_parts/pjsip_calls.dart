@@ -377,6 +377,10 @@ extension PjsipCallOperations on PjsipService {
     final elapsed = DateTime.now().difference(lastControlAt);
     if (elapsed >= _hangupAfterCallControlGuard) return false;
 
+    // hold / unhold 都是 re-INVITE，PJSIP 和对端需要一点时间把媒体状态
+    // 从旧 SDP 切到新 SDP。紧跟着 hangup 偶发会让 BYE/媒体桥清理和 re-INVITE
+    // 交错，表现为对端仍停在 hold 或本地 call 残留。这里宁可晚几百毫秒挂断，
+    // 也不要把两个 SIP 会话控制动作压到同一瞬间。
     if (_delayedHangupTimers.containsKey(callId)) return true;
     final delay = _hangupAfterCallControlGuard - elapsed;
     _addLog('⏳ 刚执行保持/恢复，延迟 ${delay.inMilliseconds}ms 后挂断: call=$callId');
@@ -394,6 +398,9 @@ extension PjsipCallOperations on PjsipService {
       _hangupCleanupTimers.remove(call.callId);
       if (_isDisposed || !_uiState.calls.containsKey(call.callId)) return;
 
+      // 正常路径应该由 DISCONNECTED 回调移除通话；这个定时器只处理
+      // BYE 丢失、native 回调迟迟不到、或者底层已经不活跃但 UI 仍有记录的情况。
+      // 它是本地收尾兜底，不代表一定又成功发送了一次 SIP BYE。
       _locallyReleasedCallIds.add(call.callId);
       final stillActive = _bindings.pjsua_call_is_active(call.callId) != 0;
       if (stillActive) {
@@ -525,6 +532,9 @@ extension PjsipCallOperations on PjsipService {
         }),
       );
       ToastUtil.showSuccess('已发送转接请求，正在结束本机通话');
+      // 盲转在产品语义上是“把通话甩出去”。REFER 成功发出后，是否最终接通
+      // 由对端/PBX 后续 NOTIFY 决定，本机不继续占着原通话；否则用户会看到
+      // 已转出但本机仍在通话中。120ms 只留给 REFER 进入底层发送队列。
       unawaited(
         Future<void>.delayed(const Duration(milliseconds: 120), () async {
           if (!_uiState.calls.containsKey(callId)) return;
@@ -849,6 +859,9 @@ extension PjsipCallOperations on PjsipService {
 
   void _scheduleConferenceBridgeRebuilds(String reason) {
     if (!_uiState.isConferenceActive) return;
+    // 合并/恢复会议后，远端 SDP、ICE selected pair 和 PJSUA conf_slot 可能不是
+    // 同一帧里全部稳定。快速拆分再合并时尤其明显：只重建一次会议桥会偶发单向音频。
+    // 分几个短延迟重复按“当前 slot”重建，成本低，但能覆盖媒体回调乱序。
     for (final delay in const [
       Duration(milliseconds: 150),
       Duration(milliseconds: 500),

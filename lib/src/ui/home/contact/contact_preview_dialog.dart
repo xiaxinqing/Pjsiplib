@@ -1,5 +1,6 @@
 part of '../../../../main.dart';
 
+/// 联系人预览弹窗：复用详情内容并提供编辑、呼叫或打开联系人页操作。
 class _ContactPreviewDialog extends StatelessWidget {
   const _ContactPreviewDialog({
     required this.body,

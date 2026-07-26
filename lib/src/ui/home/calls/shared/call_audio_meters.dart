@@ -1,4 +1,4 @@
-part of '../../../main.dart';
+part of '../../../../../main.dart';
 
 // 通话页声平条调参集中放这里，方便按真实设备效果微调。
 //
@@ -10,6 +10,7 @@ const double _callAudioVisibleFloor = 0.08;
 const Duration _callAudioRiseDuration = Duration(milliseconds: 70);
 const Duration _callAudioFallDuration = Duration(milliseconds: 320);
 
+/// 通话音频电平入口：负责主舞台和紧凑列表里的音量条组合。
 extension _HomeCallAudioMeters on _MyHomePageState {
   Widget _buildCallAudioMeters(
     PjsipUIState uiState,
@@ -165,6 +166,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
   }
 }
 
+/// 可调音量电平条：展示当前电平并允许拖动调整输入/输出音量。
 class _CallAudioMeterBar extends StatefulWidget {
   const _CallAudioMeterBar({
     required this.value,
@@ -190,6 +192,7 @@ class _CallAudioMeterBar extends StatefulWidget {
   State<_CallAudioMeterBar> createState() => _CallAudioMeterBarState();
 }
 
+/// 可调音量电平条状态：处理拖动、延迟保存和本地显示值同步。
 class _CallAudioMeterBarState extends State<_CallAudioMeterBar> {
   late double _previousTarget;
   late double _peakTarget;
@@ -242,6 +245,7 @@ class _CallAudioMeterBarState extends State<_CallAudioMeterBar> {
   }
 }
 
+/// 分段电平条：用固定格子展示最大范围、当前电平和当前音量上限。
 class _SegmentedAudioMeter extends StatelessWidget {
   const _SegmentedAudioMeter({
     required this.value,
@@ -389,6 +393,7 @@ class _SegmentedAudioMeter extends StatelessWidget {
   }
 }
 
+/// 单个电平格：负责格子的颜色、尺寸和圆角表现。
 class _AudioMeterSegment extends StatelessWidget {
   const _AudioMeterSegment({
     required this.active,
@@ -444,6 +449,7 @@ class _AudioMeterSegment extends StatelessWidget {
   }
 }
 
+/// 音量滑块手柄：展示可拖动的当前音量位置。
 class _AudioVolumeThumb extends StatelessWidget {
   const _AudioVolumeThumb({
     required this.color,

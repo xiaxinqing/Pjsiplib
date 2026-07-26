@@ -1,5 +1,6 @@
 part of '../../../../main.dart';
 
+/// 联系人表单结果：承载编辑弹窗提交后的规范化联系人字段。
 class _ContactFormResult {
   const _ContactFormResult({
     required this.name,
@@ -20,6 +21,7 @@ class _ContactFormResult {
   final bool isFavorite;
 }
 
+/// 联系人号码输入行状态：持有标签、号码控制器和默认号码标记。
 class _ContactPhoneField {
   _ContactPhoneField({
     required String label,
@@ -38,6 +40,7 @@ class _ContactPhoneField {
   }
 }
 
+/// 联系人编辑弹窗：负责新增/编辑联系人表单的展示和提交。
 class _ContactEditorDialog extends StatefulWidget {
   const _ContactEditorDialog({
     this.contact,
@@ -53,6 +56,7 @@ class _ContactEditorDialog extends StatefulWidget {
   State<_ContactEditorDialog> createState() => _ContactEditorDialogState();
 }
 
+/// 联系人编辑弹窗状态：管理表单控制器、号码行、校验和提交。
 class _ContactEditorDialogState extends State<_ContactEditorDialog> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameController;
