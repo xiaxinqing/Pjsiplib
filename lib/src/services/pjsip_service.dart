@@ -34,6 +34,8 @@ part 'pjsip_parts/pjsip_calls.dart';
 
 part 'pjsip_parts/pjsip_audio_devices.dart';
 
+part 'pjsip_parts/pjsip_audio_errors.dart';
+
 part 'pjsip_parts/pjsip_network.dart';
 
 part 'pjsip_parts/pjsip_persistence.dart';
@@ -94,6 +96,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   bool _isDisposed = false;
   DateTime? _outgoingMediaRecoveryUntil;
   String? _outgoingMediaRecoveryReason;
+  DateTime? _lastAudioDeviceIssueToastAt;
+  bool _audioDeviceSpeakerOnlyFallbackActive = false;
   DateTime? _lastSipIpChangeAt;
   late final String _nativeLogDirectoryPath = Platform.isWindows
       ? '${Platform.environment['APPDATA'] ?? Directory.systemTemp.path}\\pjsip_lib'
@@ -265,6 +269,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _ipChangeInProgress = false;
     _ipChangeHadError = false;
     _pendingIpChange = false;
+    _audioDeviceSpeakerOnlyFallbackActive = false;
 
     final destroyWatch = Stopwatch()..start();
     _bindings.pjsua_destroy();
@@ -312,6 +317,8 @@ class PjsipService extends Notifier<PjsipUIState> {
       isSpeakerTesting: false,
       audioDeviceMode: PjsipAudioDeviceMode.automatic,
       audioDeviceStatus: '设备监控已停止',
+      audioDeviceIssueMessage: null,
+      audioDeviceIssueStatus: null,
       allowInCallAudioDeviceSwitch: false,
     );
     _addLog(

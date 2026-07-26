@@ -12,6 +12,8 @@ extension _HomeSidebarAudio on _MyHomePageState {
       uiState.playbackDevices,
       uiState.selectedPlaybackDeviceId,
     );
+    final hasIssue = uiState.hasAudioDeviceIssue;
+    final issueColor = Colors.orange.shade700;
     return Material(
       color: _panelBackground.withValues(alpha: 0.72),
       borderRadius: BorderRadius.circular(_radiusSm),
@@ -30,22 +32,52 @@ extension _HomeSidebarAudio on _MyHomePageState {
             children: [
               Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Text(
                       '音频',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
+                        color: hasIssue ? issueColor : _textPrimary,
                       ),
                     ),
                   ),
+                  if (hasIssue) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: issueColor.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        '异常',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: issueColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   Icon(AppIcons.next, size: _iconSm, color: _textSecondary),
                 ],
               ),
               const SizedBox(height: 8),
-              _buildTinyDeviceLine(AppIcons.microphone, mic),
+              _buildTinyDeviceLine(
+                AppIcons.microphone,
+                mic,
+                iconColor: hasIssue ? issueColor : null,
+              ),
               const SizedBox(height: 8),
-              _buildTinyDeviceLine(AppIcons.speaker, speaker),
+              _buildTinyDeviceLine(
+                AppIcons.speaker,
+                speaker,
+                iconColor: hasIssue ? issueColor : null,
+              ),
             ],
           ),
         ),
@@ -67,6 +99,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
       uiState.playbackDevices,
       uiState.selectedPlaybackDeviceId,
     );
+    final issueMessage = uiState.audioDeviceIssueMessage;
     final isAutomatic =
         uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
     final action = await showMenu<String>(
@@ -112,7 +145,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
               _buildStatusSummaryRow(
                 icon: AppIcons.info,
                 label: '状态',
-                value: uiState.audioDeviceStatus,
+                value: issueMessage ?? uiState.audioDeviceStatus,
               ),
             ],
           ),
@@ -150,10 +183,10 @@ extension _HomeSidebarAudio on _MyHomePageState {
   }
 
   /// 构建音频卡片中的一行设备名称。
-  Widget _buildTinyDeviceLine(IconData icon, String value) {
+  Widget _buildTinyDeviceLine(IconData icon, String value, {Color? iconColor}) {
     return Row(
       children: [
-        Icon(icon, size: _iconSm),
+        Icon(icon, size: _iconSm, color: iconColor),
         const SizedBox(width: 8),
         Expanded(child: _buildTooltipText(value)),
       ],

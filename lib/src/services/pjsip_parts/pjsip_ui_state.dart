@@ -97,6 +97,16 @@ class PjsipUIState {
   /// 当前音频策略的简短状态文案。
   final String audioDeviceStatus;
 
+  /// 当前音频设备异常/降级提示，例如没有麦克风、默认设备不可用。
+  ///
+  /// 它和 [audioDeviceStatus] 分开保存：status 表达“当前策略”，issue 表达
+  /// “需要用户处理的风险”。这样设置页和侧边栏可以用更明显的视觉提示，但不影响
+  /// 原有音频策略文案。
+  final String? audioDeviceIssueMessage;
+
+  /// 最近一次 PJSIP 音频设备异常码，用于排查 native 侧具体原因。
+  final int? audioDeviceIssueStatus;
+
   /// 是否允许通话中检测并自动切换新插入的音频设备。
   final bool allowInCallAudioDeviceSwitch;
 
@@ -142,6 +152,8 @@ class PjsipUIState {
     this.isSpeakerTesting = false,
     this.audioDeviceMode = PjsipAudioDeviceMode.automatic,
     this.audioDeviceStatus = '自动选择设备',
+    this.audioDeviceIssueMessage,
+    this.audioDeviceIssueStatus,
     this.allowInCallAudioDeviceSwitch = false,
     this.incomingRingtoneEnabled = true,
     this.outgoingRingbackEnabled = true,
@@ -179,6 +191,8 @@ class PjsipUIState {
     bool? isSpeakerTesting,
     PjsipAudioDeviceMode? audioDeviceMode,
     String? audioDeviceStatus,
+    Object? audioDeviceIssueMessage = _unset,
+    Object? audioDeviceIssueStatus = _unset,
     bool? allowInCallAudioDeviceSwitch,
     bool? incomingRingtoneEnabled,
     bool? outgoingRingbackEnabled,
@@ -227,6 +241,12 @@ class PjsipUIState {
       isSpeakerTesting: isSpeakerTesting ?? this.isSpeakerTesting,
       audioDeviceMode: audioDeviceMode ?? this.audioDeviceMode,
       audioDeviceStatus: audioDeviceStatus ?? this.audioDeviceStatus,
+      audioDeviceIssueMessage: identical(audioDeviceIssueMessage, _unset)
+          ? this.audioDeviceIssueMessage
+          : audioDeviceIssueMessage as String?,
+      audioDeviceIssueStatus: identical(audioDeviceIssueStatus, _unset)
+          ? this.audioDeviceIssueStatus
+          : audioDeviceIssueStatus as int?,
       allowInCallAudioDeviceSwitch:
           allowInCallAudioDeviceSwitch ?? this.allowInCallAudioDeviceSwitch,
       incomingRingtoneEnabled:
@@ -245,6 +265,10 @@ class PjsipUIState {
 
   SipAccountInfo? get defaultAccount =>
       defaultAccountId == null ? null : accounts[defaultAccountId];
+
+  /// 是否存在需要用户注意的音频设备问题。
+  bool get hasAudioDeviceIssue =>
+      audioDeviceIssueMessage?.trim().isNotEmpty == true;
 
   Iterable<SipAccountInfo> get registeredAccounts =>
       accounts.values.where((account) => account.isRegistered);

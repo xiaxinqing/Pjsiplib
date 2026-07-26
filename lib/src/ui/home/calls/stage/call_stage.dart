@@ -95,6 +95,10 @@ extension _HomeCallStage on _MyHomePageState {
                         _buildConferenceStatePanel(conferenceCalls, uiState)
                       else
                         _buildCallStatePanel(primary, statusColor),
+                      if (uiState.hasAudioDeviceIssue) ...[
+                        SizedBox(height: compact ? 12 : 14),
+                        _buildCallAudioIssueBanner(uiState),
+                      ],
                       if (_shouldShowCallAudioMeters(primary, uiState)) ...[
                         SizedBox(height: compact ? 12 : 14),
                         DecoratedBox(

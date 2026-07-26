@@ -457,6 +457,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 : markManual
                 ? '已记住手动设备；空闲时不占用声卡'
                 : '空闲中：已释放系统音频设备',
+            audioDeviceIssueMessage: null,
+            audioDeviceIssueStatus: null,
           );
           if (markManual && selectedSystemDefaults) {
             _audio.preferredCaptureDeviceSignature = null;
@@ -493,6 +495,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 : markManual
                 ? '手动选择设备'
                 : _uiState.audioDeviceStatus,
+            audioDeviceIssueMessage: null,
+            audioDeviceIssueStatus: null,
           );
           if (markManual && selectedSystemDefaults) {
             _audio.preferredCaptureDeviceSignature = null;
@@ -511,11 +515,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
         // 真正告诉 PJSIP 切换输入/输出设备。这里的 ID 可以是真实设备 ID，
         // 也可以是 PJSUA_SND_DEFAULT_CAPTURE_DEV/PJSUA_SND_DEFAULT_PLAYBACK_DEV。
-        final status = _bindings.pjsua_set_snd_dev(captureId, playbackId);
-        if (status != 0) {
-          _addLog(
-            '❌ 切换音频设备失败: capture=$captureId, playback=$playbackId, pj_status=$status',
-          );
+        final applyResult = _setSoundDevicesWithIssueHandling(
+          captureId: captureId,
+          playbackId: playbackId,
+          action: '切换音频设备',
+        );
+        if (!applyResult.success) {
           return;
         }
 
@@ -549,7 +554,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
           'capture=$captureId, playback=$playbackId',
         );
         _addLog(
-          '✅ 音频设备已切换: capture=$captureId, playback=$playbackId ($reason)',
+          applyResult.speakerOnlyFallback
+              ? '⚠️ 音频设备已切换到仅扬声器模式: capture=$captureId, playback=$playbackId ($reason)'
+              : '✅ 音频设备已切换: capture=$captureId, playback=$playbackId ($reason)',
         );
       });
     });
@@ -1397,6 +1404,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
     if (!_uiState.isInitialized) return false;
     final current = using(_currentSoundDeviceIds);
     if (!_isNoSoundDevice(current)) {
+      if (!_audioDeviceSpeakerOnlyFallbackActive) {
+        _clearAudioDeviceIssue();
+      }
       _audio.soundDeviceReleasedForIdle = false;
       _startAudioLevelTimer();
       return true;
@@ -1417,11 +1427,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
     final playbackId =
         selectedPlaybackId ??
         pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
-    final status = _bindings.pjsua_set_snd_dev(captureId, playbackId);
-    if (status != 0) {
-      _addLog(
-        '❌ 打开音频设备失败: capture=$captureId, playback=$playbackId, pj_status=$status',
-      );
+    final applyResult = _setSoundDevicesWithIssueHandling(
+      captureId: captureId,
+      playbackId: playbackId,
+      action: '打开音频设备',
+    );
+    if (!applyResult.success) {
       return false;
     }
 
@@ -1433,7 +1444,11 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _rememberActiveAudioDevices(captureId, playbackId);
     _audio.soundDeviceReleasedForIdle = false;
     _startAudioLevelTimer();
-    _addLog('🎧 音频设备已按需打开: capture=$captureId, playback=$playbackId ($reason)');
+    _addLog(
+      applyResult.speakerOnlyFallback
+          ? '⚠️ 音频设备已按需打开为仅扬声器模式: capture=$captureId, playback=$playbackId ($reason)'
+          : '🎧 音频设备已按需打开: capture=$captureId, playback=$playbackId ($reason)',
+    );
     return true;
   }
 

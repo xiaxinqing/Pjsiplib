@@ -229,11 +229,17 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
 
   Widget _buildAudioStatusPanel(PjsipUIState uiState, PjsipService service) {
     final automatic = uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
+    final hasIssue = uiState.hasAudioDeviceIssue;
+    final issueColor = Colors.orange.shade700;
+    final statusText =
+        uiState.audioDeviceIssueMessage ?? uiState.audioDeviceStatus;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: _panelBackground,
+        color: hasIssue ? issueColor.withValues(alpha: 0.06) : _panelBackground,
         borderRadius: BorderRadius.circular(_radiusSm),
-        border: Border.all(color: _softBorder),
+        border: Border.all(
+          color: hasIssue ? issueColor.withValues(alpha: 0.28) : _softBorder,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -243,13 +249,19 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
               width: 34,
               height: 34,
               decoration: BoxDecoration(
-                color: _subtlePanel,
+                color: hasIssue
+                    ? issueColor.withValues(alpha: 0.10)
+                    : _subtlePanel,
                 borderRadius: BorderRadius.circular(_radiusSm),
               ),
               child: Icon(
-                automatic ? AppIcons.automatic : AppIcons.tune,
+                hasIssue
+                    ? AppIcons.info
+                    : automatic
+                    ? AppIcons.automatic
+                    : AppIcons.tune,
                 size: _iconMd,
-                color: _textPrimary,
+                color: hasIssue ? issueColor : _textPrimary,
               ),
             ),
             const SizedBox(width: 12),
@@ -257,13 +269,21 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(automatic ? '自动音频路由' : '手动音频路由'),
+                  Text(
+                    hasIssue
+                        ? '音频设备需要处理'
+                        : automatic
+                        ? '自动音频路由'
+                        : '手动音频路由',
+                  ),
                   const SizedBox(height: 2),
                   Text(
-                    uiState.audioDeviceStatus,
+                    statusText,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: hasIssue ? issueColor : _textSecondary,
+                    ),
                   ),
                 ],
               ),

@@ -74,4 +74,44 @@ extension _CallStageMetrics on _MyHomePageState {
       ),
     );
   }
+
+  /// 通话中音频设备异常提示。
+  ///
+  /// 只在服务层确认声卡打开失败或降级时显示，避免把普通“自动选择设备”的状态
+  /// 放进主舞台干扰用户接听、保持、挂断这些核心动作。
+  Widget _buildCallAudioIssueBanner(PjsipUIState uiState) {
+    final message = uiState.audioDeviceIssueMessage;
+    if (message == null || message.trim().isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final color = Colors.orange.shade700;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          children: [
+            Icon(AppIcons.info, size: _iconMd, color: color),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                message,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
