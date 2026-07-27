@@ -5,6 +5,7 @@ const String _audioPreferencesStorageKey = 'thruv_audio_preferences_v1';
 
 class _PersistedAudioPreferences {
   const _PersistedAudioPreferences({
+    required this.allowInCallAudioDeviceSwitch,
     required this.incomingRingtoneEnabled,
     required this.outgoingRingbackEnabled,
     required this.callEndedSoundEnabled,
@@ -13,6 +14,7 @@ class _PersistedAudioPreferences {
     required this.speakerVolume,
   });
 
+  final bool allowInCallAudioDeviceSwitch;
   final bool incomingRingtoneEnabled;
   final bool outgoingRingbackEnabled;
   final bool callEndedSoundEnabled;
@@ -23,6 +25,7 @@ class _PersistedAudioPreferences {
   Map<String, Object?> toJson() {
     return {
       'version': 1,
+      'allowInCallAudioDeviceSwitch': allowInCallAudioDeviceSwitch,
       'incomingRingtoneEnabled': incomingRingtoneEnabled,
       'outgoingRingbackEnabled': outgoingRingbackEnabled,
       'callEndedSoundEnabled': callEndedSoundEnabled,
@@ -41,6 +44,8 @@ class _PersistedAudioPreferences {
     }
 
     return _PersistedAudioPreferences(
+      allowInCallAudioDeviceSwitch:
+          json['allowInCallAudioDeviceSwitch'] as bool? ?? true,
       incomingRingtoneEnabled: json['incomingRingtoneEnabled'] as bool? ?? true,
       outgoingRingbackEnabled: json['outgoingRingbackEnabled'] as bool? ?? true,
       callEndedSoundEnabled: json['callEndedSoundEnabled'] as bool? ?? true,
@@ -209,6 +214,7 @@ extension PjsipPersistenceOperations on PjsipService {
         Map<String, Object?>.from(decoded),
       );
       _uiState = _uiState.copyWith(
+        allowInCallAudioDeviceSwitch: preferences.allowInCallAudioDeviceSwitch,
         incomingRingtoneEnabled: preferences.incomingRingtoneEnabled,
         outgoingRingbackEnabled: preferences.outgoingRingbackEnabled,
         callEndedSoundEnabled: preferences.callEndedSoundEnabled,
@@ -228,6 +234,7 @@ extension PjsipPersistenceOperations on PjsipService {
     _audio.audioPreferencesDebounceTimer?.cancel();
     _audio.audioPreferencesDebounceTimer = null;
     final preferences = _PersistedAudioPreferences(
+      allowInCallAudioDeviceSwitch: _uiState.allowInCallAudioDeviceSwitch,
       incomingRingtoneEnabled: _uiState.incomingRingtoneEnabled,
       outgoingRingbackEnabled: _uiState.outgoingRingbackEnabled,
       callEndedSoundEnabled: _uiState.callEndedSoundEnabled,

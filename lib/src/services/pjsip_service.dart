@@ -324,7 +324,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       audioDeviceIssueMessage: null,
       audioDeviceIssueStatus: null,
       microphonePermissionStatus: PjsipMicrophonePermissionStatus.unknown,
-      allowInCallAudioDeviceSwitch: false,
+      allowInCallAudioDeviceSwitch: true,
     );
     _addLog(
       '⏱ 断开全部耗时: total=${stopWatch.elapsedMilliseconds}ms, pjsua_destroy=${destroyMs}ms',

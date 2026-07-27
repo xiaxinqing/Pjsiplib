@@ -78,10 +78,10 @@ class _PjsipAudioRuntime {
   _PjPoolReleaseDart? pjPoolRelease;
 
   /// 没有通话时的设备轮询间隔。
-  Duration idlePollInterval = const Duration(seconds: 1);
+  Duration idlePollInterval = const Duration(seconds: 2);
 
   /// 通话中的设备轮询间隔。通话中用户更在意耳机插拔，所以通常比空闲时更快。
-  Duration inCallPollInterval = const Duration(seconds: 1);
+  Duration inCallPollInterval = const Duration(seconds: 2);
 
   /// 设备变化防抖时间。
   ///
@@ -349,9 +349,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
     if (_uiState.allowInCallAudioDeviceSwitch == enabled) return;
     _uiState = _uiState.copyWith(
       allowInCallAudioDeviceSwitch: enabled,
-      audioDeviceStatus: enabled ? '实验模式：通话中检测并自动切换新设备' : '通话中保持当前设备；设备丢失时自动回退',
+      audioDeviceStatus: enabled ? '通话中检测并自动切换新设备' : '通话中保持当前设备；设备丢失时自动回退',
     );
     _addLog(enabled ? '🎧 已开启通话中自动检测/切换音频设备' : '🎧 已关闭通话中自动检测/切换音频设备');
+    unawaited(_persistAudioPreferences());
   }
 
   void setIncomingRingtoneEnabled(bool enabled) {

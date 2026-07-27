@@ -174,7 +174,7 @@ class PjsipUIState {
     this.audioDeviceIssueMessage,
     this.audioDeviceIssueStatus,
     this.microphonePermissionStatus = PjsipMicrophonePermissionStatus.unknown,
-    this.allowInCallAudioDeviceSwitch = false,
+    this.allowInCallAudioDeviceSwitch = true,
     this.incomingRingtoneEnabled = true,
     this.outgoingRingbackEnabled = true,
     this.callEndedSoundEnabled = true,
