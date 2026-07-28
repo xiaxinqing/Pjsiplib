@@ -983,27 +983,40 @@ extension PjsipCallOperations on PjsipService {
     _callSnapshots.clear(callId);
   }
 
-  String? _releasedCallInfoReason(CallInfo? call) {
-    final nativeSnapshot = call == null
-        ? null
-        : _callSnapshots.getLast(call.callId);
-    final snapshot =
-        nativeSnapshot ??
-        (call == null ? null : _callTsxSnapshots[call.callId]);
-    final snapshotReason = snapshot?.endReason;
-    if (snapshotReason != null) return snapshotReason;
+  CallReleasedInfo _releasedCallInfo(int callId, CallInfo? call) {
+    final nativeSnapshot = _callSnapshots.getLast(callId);
+    final snapshot = nativeSnapshot ?? _callTsxSnapshots[callId];
+    final snapshotReason = snapshot?.customerEndReason;
+    if (snapshotReason != null) {
+      _addLog(
+        '📌 使用通话结束快照: call=$callId, '
+        'status=${snapshot!.statusCode}, reason=$snapshotReason, '
+        'raw=${snapshot.diagnosticReason ?? 'empty'}',
+      );
+      return CallReleasedInfo(
+        reason: snapshotReason,
+        sipStatusCode: snapshot.statusCode > 0 ? snapshot.statusCode : null,
+        fromTransactionSnapshot: true,
+      );
+    }
+    final diagnosticReason = snapshot?.diagnosticReason;
+    if (diagnosticReason != null) {
+      _addLog('📌 通话结束快照只有临时状态: call=$callId, raw=$diagnosticReason');
+    }
 
-    if (call == null) return 'call_info 已释放';
+    if (call == null) {
+      return const CallReleasedInfo(reason: '通话已结束，未返回最终原因');
+    }
     if (call.connectedAt != null) {
       if (_locallyEndedCallIds.contains(call.callId)) {
-        return '本机挂断，call_info 已释放';
+        return const CallReleasedInfo(reason: '本机挂断');
       }
-      return '对方或网络侧结束，call_info 已释放';
+      return const CallReleasedInfo(reason: '对方或网络侧结束');
     }
     if (_locallyEndedCallIds.contains(call.callId)) {
-      return '本机结束未接通通话，call_info 已释放';
+      return const CallReleasedInfo(reason: '本机取消呼叫');
     }
-    return '未接通通话已结束，call_info 已释放';
+    return const CallReleasedInfo(reason: '未接通通话已结束，未返回最终原因');
   }
 
   void _notifyConnectedCallEnded(
@@ -1064,10 +1077,10 @@ extension PjsipCallOperations on PjsipService {
   String _formatCallEndStatus({int? sipStatusCode, String? hangupReason}) {
     final reason = hangupReason?.trim();
     final hasReason = reason != null && reason.isNotEmpty;
+    if (hasReason) return reason;
     if (sipStatusCode != null && sipStatusCode > 0) {
-      return hasReason ? 'SIP $sipStatusCode $reason' : 'SIP $sipStatusCode';
+      return _customerSipStatusLabel(sipStatusCode);
     }
-    if (hasReason) return 'PJSIP $reason';
     return '未返回 SIP 状态';
   }
 

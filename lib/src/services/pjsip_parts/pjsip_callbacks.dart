@@ -655,14 +655,19 @@ extension _PjsipNativeCallbacks on PjsipService {
               '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
               'PJSIP 原生日志: $_nativeLogFilePath',
             );
+            final releasedInfo = _releasedCallInfo(
+              callId,
+              _uiState.calls[callId],
+            );
             _logEarlyOutboundDisconnectWithoutAutoRecovery(
               _uiState.calls[callId],
-              sipStatusCode: 0,
-              sipStatusText: 'info released',
+              sipStatusCode: releasedInfo.sipStatusCode ?? 0,
+              sipStatusText: releasedInfo.reason,
             );
             _removeCall(
               callId,
-              hangupReason: _releasedCallInfoReason(_uiState.calls[callId]),
+              sipStatusCode: releasedInfo.sipStatusCode,
+              hangupReason: releasedInfo.reason,
             );
           });
           return;

@@ -8,6 +8,8 @@
 
 static vphone_call_info_snapshot
     g_call_snapshots[VPHONE_MAX_CALL_SNAPSHOTS];
+static void (*g_original_on_call_state)(pjsua_call_id call_id,
+                                        pjsip_event *event) = NULL;
 
 static int vphone_valid_call_id(int call_id) {
   return call_id >= 0 && call_id < VPHONE_MAX_CALL_SNAPSHOTS;
@@ -92,6 +94,27 @@ static const char *vphone_event_type_label(int type) {
   }
 }
 
+static const char *vphone_inv_state_label(int state) {
+  switch (state) {
+    case PJSIP_INV_STATE_NULL:
+      return "NULL";
+    case PJSIP_INV_STATE_CALLING:
+      return "CALLING";
+    case PJSIP_INV_STATE_INCOMING:
+      return "INCOMING";
+    case PJSIP_INV_STATE_EARLY:
+      return "EARLY";
+    case PJSIP_INV_STATE_CONNECTING:
+      return "CONNECTING";
+    case PJSIP_INV_STATE_CONFIRMED:
+      return "CONFIRMED";
+    case PJSIP_INV_STATE_DISCONNECTED:
+      return "DISCONNECTED";
+    default:
+      return "UNKNOWN";
+  }
+}
+
 static int vphone_should_keep_method(const char *method) {
   if (method == NULL) return 0;
   return strcmp(method, "INVITE") == 0 || strcmp(method, "CANCEL") == 0 ||
@@ -102,6 +125,37 @@ static int vphone_snapshot_has_status(
     const vphone_call_info_snapshot *snapshot) {
   return snapshot != NULL &&
          (snapshot->status_code > 0 || snapshot->status_text[0] != '\0');
+}
+
+static int vphone_snapshot_score(const vphone_call_info_snapshot *snapshot) {
+  int code;
+
+  if (!vphone_snapshot_has_status(snapshot)) return 0;
+
+  code = snapshot->status_code;
+  if (code >= 300) return 4000 + code;
+  if (code >= 200) return 3000 + code;
+  if (code >= 100) return 1000 + code;
+  return 500;
+}
+
+static int vphone_should_replace_snapshot(
+    const vphone_call_info_snapshot *previous,
+    const vphone_call_info_snapshot *next_snapshot) {
+  int previous_score;
+  int next_score;
+
+  if (next_snapshot == NULL || !next_snapshot->valid) return 0;
+  if (previous == NULL || !previous->valid) return 1;
+
+  previous_score = vphone_snapshot_score(previous);
+  next_score = vphone_snapshot_score(next_snapshot);
+
+  /*
+   * 结束原因优先级：最终失败码(3xx-6xx) > 成功终态(2xx) > 临时状态(1xx)。
+   * 这样 100 Trying 不会覆盖 487/486/603 等真正该给用户看的原因。
+   */
+  return next_score >= previous_score;
 }
 
 static void vphone_on_call_tsx_state(
@@ -158,19 +212,62 @@ static void vphone_on_call_tsx_state(
       sizeof(next_snapshot.event_type),
       event_type);
 
-  previous = &g_call_snapshots[call_id];
-  if (previous->valid && vphone_snapshot_has_status(previous) &&
-      !vphone_snapshot_has_status(&next_snapshot)) {
-    return;
-  }
-
   next_snapshot.valid = 1;
-  g_call_snapshots[call_id] = next_snapshot;
+  previous = &g_call_snapshots[call_id];
+  if (vphone_should_replace_snapshot(previous, &next_snapshot)) {
+    g_call_snapshots[call_id] = next_snapshot;
+  }
+}
+
+static void vphone_store_call_state_snapshot(pjsua_call_id call_id) {
+  pjsua_call_info info;
+  vphone_call_info_snapshot next_snapshot;
+  const vphone_call_info_snapshot *previous;
+
+  if (!vphone_valid_call_id(call_id)) return;
+
+  /*
+   * 这个函数运行在 PJSIP 同步 on_call_state 回调里，此时 call_info 通常还没
+   * 被释放。Dart 的 NativeCallable.listener 是异步的，等 Dart 再查就可能
+   * 已释放，所以这里提前复制 last_status/last_status_text。
+   */
+  if (pjsua_call_get_info(call_id, &info) != PJ_SUCCESS) return;
+
+  memset(&next_snapshot, 0, sizeof(next_snapshot));
+  next_snapshot.valid = 1;
+  next_snapshot.call_id = call_id;
+  next_snapshot.status_code = info.last_status;
+  next_snapshot.updated_at_ms = vphone_now_ms();
+  vphone_copy_text(next_snapshot.method, sizeof(next_snapshot.method), "CALL");
+  vphone_copy_text(next_snapshot.role, sizeof(next_snapshot.role), "PJSUA");
+  vphone_copy_text(
+      next_snapshot.transaction_state,
+      sizeof(next_snapshot.transaction_state),
+      vphone_inv_state_label((int)info.state));
+  vphone_copy_text(next_snapshot.event_type, sizeof(next_snapshot.event_type),
+                   "CALL_STATE");
+  vphone_copy_pj_str(next_snapshot.status_text, sizeof(next_snapshot.status_text),
+                     &info.last_status_text);
+
+  previous = &g_call_snapshots[call_id];
+  if (vphone_should_replace_snapshot(previous, &next_snapshot)) {
+    g_call_snapshots[call_id] = next_snapshot;
+  }
+}
+
+static void vphone_on_call_state(pjsua_call_id call_id, pjsip_event *event) {
+  vphone_store_call_state_snapshot(call_id);
+
+  if (g_original_on_call_state != NULL) {
+    (*g_original_on_call_state)(call_id, event);
+  }
 }
 
 VPHONE_PJSIP_EXPORT void vphone_apply_call_snapshot_callbacks(
     pjsua_config *cfg) {
   if (cfg == NULL) return;
+  g_original_on_call_state = cfg->cb.on_call_state;
+  cfg->cb.on_call_state = &vphone_on_call_state;
   cfg->cb.on_call_tsx_state = &vphone_on_call_tsx_state;
 }
 

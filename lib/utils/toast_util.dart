@@ -122,8 +122,8 @@ class ToastUtil {
       type: ToastType.error,
       position: position,
       duration: longTime
-          ? const Duration(seconds: 3)
-          : const Duration(seconds: 2),
+          ? const Duration(seconds: 6)
+          : const Duration(seconds: 4),
     );
   }
 
