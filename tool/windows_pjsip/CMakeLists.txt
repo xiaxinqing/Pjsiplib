@@ -34,15 +34,20 @@ add_library(pjsip_ffi SHARED
 )
 target_include_directories(pjsip_ffi PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/../pjsip_bridge"
+  # pjsua-lib 会把 pjlib 的 PUBLIC 编译宏传给 pjsip_ffi，其中包含
+  # PJ_AUTOCONF=1。PJSIP 的 CMake 构建会把 sip_autoconf.h/config_auto.h
+  # 生成到 binary dir，不在源码 include 目录里；wrapper 单独编译时必须
+  # 显式加入这些生成目录，否则 Windows 会找不到 pjsip/sip_autoconf.h。
+  "${CMAKE_CURRENT_BINARY_DIR}/pjproject-build/pjsip/include"
+  "${CMAKE_CURRENT_BINARY_DIR}/pjproject-build/pjmedia/include"
+  "${CMAKE_CURRENT_BINARY_DIR}/pjproject-build/pjlib/include"
 )
 target_link_libraries(pjsip_ffi PRIVATE pjsua-lib)
 target_compile_definitions(pjsip_ffi PRIVATE
   WIN32_LEAN_AND_MEAN
   NOMINMAX
-  # vphone_pjsip_bridge.c 是单独编译进统一 FFI DLL 的，不一定能继承
-  # PJSIP 子工程的编译宏。Windows 的 CMake/MSVC 构建不会生成
-  # pjsip/sip_autoconf.h，所以这里不能定义 PJ_AUTOCONF；只显式声明
-  # Windows x64 的小端字节序，避免后续改工具链时头文件判断不完整。
+  # Windows x64 是小端。这里显式声明字节序，避免 wrapper 单独编译时
+  # PJSIP 头文件无法从架构宏推断大小端。
   PJ_IS_BIG_ENDIAN=0
   PJ_IS_LITTLE_ENDIAN=1
 )
