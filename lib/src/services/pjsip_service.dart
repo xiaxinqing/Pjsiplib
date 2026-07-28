@@ -61,8 +61,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Set<int> _hangupSoundPlayedCallIds = <int>{};
   final Set<int> _backgroundHoldScheduledCallIds = <int>{};
   final Set<int> _locallyReleasedCallIds = <int>{};
-  final Map<int, CallSipTransactionSnapshot> _callTsxSnapshots =
-      <int, CallSipTransactionSnapshot>{};
+  final Set<int> _knownIncomingCallIds = <int>{};
   final Map<int, DateTime> _lastCallControlOperationAt = <int, DateTime>{};
   final Map<int, Timer> _delayedHangupTimers = <int, Timer>{};
   final Map<int, Timer> _hangupCleanupTimers = <int, Timer>{};
@@ -127,14 +126,6 @@ class PjsipService extends Notifier<PjsipUIState> {
   _incomingCallCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int, ffi.Pointer<pjsip_event>)>
   _callStateCallable;
-  late ffi.NativeCallable<
-    ffi.Void Function(
-      ffi.Int,
-      ffi.Pointer<pjsip_transaction>,
-      ffi.Pointer<pjsip_event>,
-    )
-  >
-  _callTsxStateCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _callMediaStateCallable;
   late ffi.NativeCallable<
     ffi.Void Function(ffi.Int, ffi.UnsignedInt, ffi.Pointer<pjmedia_event>)
@@ -179,6 +170,11 @@ class PjsipService extends Notifier<PjsipUIState> {
     _bindings = PjsipBindings(dylib);
     _setupAudioRuntime(dylib);
     _callSnapshots.setup(dylib);
+    debugPrint(
+      '📌 PJSIP call snapshot bridge: '
+      '${_callSnapshots.isAvailable ? 'available' : 'unavailable'} '
+      '(${_callSnapshots.debugStatus})',
+    );
     _setupCallables();
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable
     // 永远不会 close()，pjsua 也不会销毁。
@@ -300,7 +296,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _hangupSoundPlayedCallIds.clear();
     _backgroundHoldScheduledCallIds.clear();
     _locallyReleasedCallIds.clear();
-    _callTsxSnapshots.clear();
+    _knownIncomingCallIds.clear();
     _callSnapshots.clearAll();
     _lastCallControlOperationAt.clear();
     for (final timer in _delayedHangupTimers.values) {
@@ -383,7 +379,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       _hangupSoundPlayedCallIds.clear();
       _backgroundHoldScheduledCallIds.clear();
       _locallyReleasedCallIds.clear();
-      _callTsxSnapshots.clear();
+      _knownIncomingCallIds.clear();
       _callSnapshots.clearAll();
       _lastCallControlOperationAt.clear();
       for (final timer in _delayedHangupTimers.values) {
@@ -399,7 +395,6 @@ class PjsipService extends Notifier<PjsipUIState> {
     _regStateCallable.close();
     _incomingCallCallable.close();
     _callStateCallable.close();
-    _callTsxStateCallable.close();
     _callMediaStateCallable.close();
     _callMediaEventCallable.close();
     _callSdpCreatedCallable.close();

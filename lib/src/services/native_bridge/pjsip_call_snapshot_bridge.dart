@@ -67,6 +67,23 @@ class _PjsipCallSnapshotRuntime {
   _VphoneClearCallInfoSnapshotDart? _clearSnapshot;
   _VphoneClearAllCallInfoSnapshotsDart? _clearAllSnapshots;
 
+  /// 当前 dylib 是否已经提供安全通话快照能力。
+  ///
+  /// 这个值用于启动诊断日志：如果为 false，说明运行时加载到的是旧 dylib，
+  /// 后续 call_info 已释放时就只能显示粗粒度结束原因。
+  bool get isAvailable =>
+      _applyCallbacks != null &&
+      _getSnapshot != null &&
+      _clearSnapshot != null &&
+      _clearAllSnapshots != null;
+
+  /// 给日志看的桥接状态，方便确认本次运行实际加载到了哪些符号。
+  String get debugStatus =>
+      'apply=${_applyCallbacks != null}, '
+      'get=${_getSnapshot != null}, '
+      'clear=${_clearSnapshot != null}, '
+      'clearAll=${_clearAllSnapshots != null}';
+
   /// 查找 dylib wrapper 的导出函数。
   ///
   /// 兼容旧 dylib：如果当前本地库还没重新打包，符号不存在时保持 no-op，

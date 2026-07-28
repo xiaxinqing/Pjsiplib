@@ -979,19 +979,25 @@ extension PjsipCallOperations on PjsipService {
     }
     _syncCallProgressSounds();
     _hangupSoundPlayedCallIds.remove(callId);
-    _callTsxSnapshots.remove(callId);
+    _knownIncomingCallIds.remove(callId);
     _callSnapshots.clear(callId);
   }
 
   CallReleasedInfo _releasedCallInfo(int callId, CallInfo? call) {
-    final nativeSnapshot = _callSnapshots.getLast(callId);
-    final snapshot = nativeSnapshot ?? _callTsxSnapshots[callId];
+    final snapshot = _callSnapshots.getLast(callId);
     final snapshotReason = snapshot?.customerEndReason;
     if (snapshotReason != null) {
       _addLog(
         '📌 使用通话结束快照: call=$callId, '
         'status=${snapshot!.statusCode}, reason=$snapshotReason, '
         'raw=${snapshot.diagnosticReason ?? 'empty'}',
+      );
+      debugPrint(
+        '📌 [call snapshot hit] call=$callId, final=true, '
+        'status=${snapshot.statusCode}, text=${snapshot.statusText}, '
+        'method=${snapshot.method}, role=${snapshot.role}, '
+        'state=${snapshot.transactionState}, event=${snapshot.eventType}, '
+        'updatedAt=${snapshot.updatedAt.toIso8601String()}',
       );
       return CallReleasedInfo(
         reason: snapshotReason,
@@ -1002,6 +1008,19 @@ extension PjsipCallOperations on PjsipService {
     final diagnosticReason = snapshot?.diagnosticReason;
     if (diagnosticReason != null) {
       _addLog('📌 通话结束快照只有临时状态: call=$callId, raw=$diagnosticReason');
+      debugPrint(
+        '📌 [call snapshot provisional] call=$callId, '
+        'status=${snapshot!.statusCode}, text=${snapshot.statusText}, '
+        'method=${snapshot.method}, role=${snapshot.role}, '
+        'state=${snapshot.transactionState}, event=${snapshot.eventType}, '
+        'updatedAt=${snapshot.updatedAt.toIso8601String()}',
+      );
+    } else {
+      debugPrint(
+        '📌 [call snapshot miss] call=$callId, '
+        'bridge=${_callSnapshots.isAvailable ? 'available' : 'unavailable'}, '
+        'callKnown=${call != null}',
+      );
     }
 
     if (call == null) {

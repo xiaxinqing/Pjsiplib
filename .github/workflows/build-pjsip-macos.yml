@@ -78,22 +78,23 @@ jobs:
           build_openssl "x86_64" "darwin64-x86_64-cc"
           build_openssl "arm64" "darwin64-arm64-cc"
 
-          # --- 3. 配置 PJSIP config_site.h ---        echo "Configuring PJSIP..."
-          #          cat > "${PJ_ROOT}/pjlib/include/pj/config_site.h" << 'EOF'
-          #          #define PJSUA_MAX_CALLS                 32
-          #          #define PJSUA_MAX_ACC                   16
-          #          #define PJMEDIA_SOUND_CLOCK_RATE        44100
-          #          #define PJMEDIA_HAS_WEBRTC_AEC          1
-          #          #define PJMEDIA_HAS_OPUS_CODEC          1
-          #          #define PJMEDIA_HAS_SRTP                1
-          #          #define PJMEDIA_SRTP_HAS_DTLS           1
-          #          #define PJ_HAS_SSL_SOCK                 1
-          #          #define PJ_HAS_IPV6                     1
-          #          #define PJMEDIA_HAS_VIDEO               0
-          #          #define PJ_LOG_MAX_LEVEL                6
-          #          #define PJ_IOQUEUE_MAX_HANDLERS         256
-          #          EOF
-          #          sed -i '' 's/#define DTLS_DEBUG  0/#define DTLS_DEBUG  1/' "${PJ_ROOT}/pjmedia/src/pjmedia/transport_srtp_dtls.c"
+          # --- 3. 配置 PJSIP config_site.h ---
+          echo "Configuring PJSIP..."
+          cat > "${PJ_ROOT}/pjlib/include/pj/config_site.h" <<'EOF'
+          #define PJSUA_MAX_CALLS                 32
+          #define PJSUA_MAX_ACC                   16
+          #define PJMEDIA_SOUND_CLOCK_RATE        44100
+          #define PJMEDIA_HAS_WEBRTC_AEC          1
+          #define PJMEDIA_HAS_OPUS_CODEC          1
+          #define PJMEDIA_HAS_SRTP                1
+          #define PJMEDIA_SRTP_HAS_DTLS           1
+          #define PJ_HAS_SSL_SOCK                 1
+          #define PJ_HAS_IPV6                     1
+          #define PJMEDIA_HAS_VIDEO               0
+          #define PJ_LOG_MAX_LEVEL                6
+          #define PJ_IOQUEUE_MAX_HANDLERS         256
+          EOF
+          sed -i '' 's/#define DTLS_DEBUG  0/#define DTLS_DEBUG  1/' "${PJ_ROOT}/pjmedia/src/pjmedia/transport_srtp_dtls.c"
   
 
           # --- 4. 编译 PJSIP 各架构 ---

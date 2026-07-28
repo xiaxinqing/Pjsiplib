@@ -91,9 +91,16 @@ class CallInfo {
     );
   }
 
-  /// 是否是来电状态。
-  bool get isIncoming =>
-      state == pjsip_inv_state.PJSIP_INV_STATE_INCOMING.value;
+  /// 是否是等待本机处理的来电。
+  ///
+  /// 注意：收到 INVITE 后我们会主动回 `180 Ringing`，PJSIP 可能把来电从
+  /// INCOMING 推进到 EARLY。这个 EARLY 仍然是“别人打给我，等待我接听”，
+  /// 不能当成外呼的“对方振铃中”。
+  bool get isIncoming {
+    if (direction != PjsipCallDirection.inbound) return false;
+    return state == pjsip_inv_state.PJSIP_INV_STATE_INCOMING.value ||
+        state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value;
+  }
 
   /// 通话是否已真正接通 (媒体已建立)。
   bool get isConnected =>
@@ -126,7 +133,9 @@ class CallInfo {
       case 2: // INCOMING
         return '🔔 收到来电';
       case 3: // EARLY
-        return '📳 对方振铃中…';
+        return direction == PjsipCallDirection.inbound
+            ? '🔔 等待接听'
+            : '📳 对方振铃中…';
       case 4: // CONNECTING
         return '🔗 接通中…';
       case 5: // CONFIRMED

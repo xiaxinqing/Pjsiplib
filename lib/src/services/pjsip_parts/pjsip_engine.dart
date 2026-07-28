@@ -67,9 +67,12 @@ extension PjsipEngineOperations on PjsipService {
         Directory(_nativeLogDirectoryPath).createSync(recursive: true);
         File(_nativeLogFilePath).writeAsStringSync('');
       } catch (_) {}
+      // 编译期 `PJ_LOG_MAX_LEVEL=6` 只代表动态库允许输出到 6 级；
+      // 运行时也要显式设置到 6，才能看到 DTLS-SRTP/ICE/SDP 协商细节。
+      const runtimePjsipLogLevel = 6;
       logCfg.ref.msg_logging = 1;
-      logCfg.ref.level = 3;
-      logCfg.ref.console_level = 3;
+      logCfg.ref.level = runtimePjsipLogLevel;
+      logCfg.ref.console_level = runtimePjsipLogLevel;
       _pjStr(
         logCfg.ref.log_filename,
         _nativeLogFilePath.toNativeUtf8(allocator: arena),
@@ -88,7 +91,10 @@ extension PjsipEngineOperations on PjsipService {
         _addLog('❌ pjsua_init 失败: pj_status=$initStatus');
         return;
       }
-      _addLog('🧾 PJSIP 原生日志文件: $_nativeLogFilePath');
+      _addLog(
+        '🧾 PJSIP 原生日志文件: $_nativeLogFilePath '
+        '(level=$runtimePjsipLogLevel)',
+      );
 
       final transportCfg = arena<pjsua_transport_config>();
       _bindings.pjsua_transport_config_default(transportCfg);
@@ -282,6 +288,14 @@ extension PjsipEngineOperations on PjsipService {
       _configureAccountStun(accCfg, effectiveIceConfig);
       _configureAccountIce(accCfg, effectiveIceConfig, turnConfig, arena);
       _configureAccountMediaSecurity(accCfg, effectiveMediaSecurity, transport);
+      if (effectiveMediaSecurity.usesSrtp) {
+        _addLog(
+          '🔐 SRTP 配置已写入: mode=${effectiveMediaSecurity.mode.label}, '
+          'use_srtp=${accCfg.ref.use_srtpAsInt}, '
+          'secure_signaling=${accCfg.ref.srtp_secure_signaling}, '
+          'keying_count=${accCfg.ref.srtp_opt.keying_count}',
+        );
+      }
       _pjStr(
         accCfg.ref.id,
         'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
@@ -686,6 +700,8 @@ extension PjsipEngineOperations on PjsipService {
     SipTransport transport,
   ) {
     final mode = mediaSecurity.mode;
+    accCfg.ref.srtp_opt.crypto_count = 0;
+    accCfg.ref.srtp_opt.keying_count = 0;
     if (mode == MediaEncryptionMode.none) {
       accCfg.ref.use_srtpAsInt = pjmedia_srtp_use.PJMEDIA_SRTP_DISABLED.value;
       return;

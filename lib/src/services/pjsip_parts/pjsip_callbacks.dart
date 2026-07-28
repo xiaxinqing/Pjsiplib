@@ -193,74 +193,6 @@ extension _PjsipNativeCallbacks on PjsipService {
     return 'UNKNOWN($type)';
   }
 
-  String _sipMethodLabel(pjsip_method method) {
-    final name = _pjString(method.name).trim();
-    if (name.isNotEmpty) return name.toUpperCase();
-    return switch (method.idAsInt) {
-      0 => 'INVITE',
-      1 => 'CANCEL',
-      2 => 'ACK',
-      3 => 'BYE',
-      4 => 'REGISTER',
-      5 => 'OPTIONS',
-      _ => 'OTHER(${method.idAsInt})',
-    };
-  }
-
-  bool _shouldKeepCallTransactionSnapshot(String method) {
-    return method == 'INVITE' ||
-        method == 'CANCEL' ||
-        method == 'BYE' ||
-        method == 'REFER';
-  }
-
-  String _sipTransactionRoleLabel(int role) {
-    return switch (role) {
-      0 => 'UAC',
-      1 => 'UAS',
-      _ => 'UNKNOWN($role)',
-    };
-  }
-
-  String _sipTransactionStateLabel(int state) {
-    return switch (state) {
-      0 => 'NULL',
-      1 => 'CALLING',
-      2 => 'TRYING',
-      3 => 'PROCEEDING',
-      4 => 'COMPLETED',
-      5 => 'CONFIRMED',
-      6 => 'TERMINATED',
-      7 => 'DESTROYED',
-      _ => 'UNKNOWN($state)',
-    };
-  }
-
-  String _sipEventTypeLabel(int type) {
-    return switch (type) {
-      0 => 'UNKNOWN',
-      1 => 'TIMER',
-      2 => 'TX_MSG',
-      3 => 'RX_MSG',
-      4 => 'TRANSPORT_ERROR',
-      5 => 'TSX_STATE',
-      6 => 'USER',
-      _ => 'UNKNOWN($type)',
-    };
-  }
-
-  void _storeCallTransactionSnapshot({
-    required int callId,
-    required CallSipTransactionSnapshot snapshot,
-  }) {
-    final previous = _callTsxSnapshots[callId];
-
-    // 避免后续无状态的过渡事件覆盖已经拿到的 SIP 状态码/原因。
-    if (previous != null && previous.hasStatus && !snapshot.hasStatus) return;
-
-    _callTsxSnapshots[callId] = snapshot;
-  }
-
   /// 把 `pjmedia_event_type` 的整数值转换成便于阅读的名称。
   ///
   /// 生成绑定里有 enum，但日志里直接打印业务名称更快定位问题；未知值保留
@@ -423,42 +355,6 @@ extension _PjsipNativeCallbacks on PjsipService {
       ToastUtil.showError('转接失败：$statusCode');
     });
 
-    // 通话内 SIP transaction 快照回调。
-    //
-    // 只同步复制 INVITE/CANCEL/BYE/REFER 的少量字段到 Dart Map，不打日志、
-    // 不弹提示、不更新 UI。它的唯一用途是当 DISCONNECTED 到达时 call_info
-    // 已被 PJSIP 释放，仍能拿到最近一次 SIP 状态码/原因作为兜底。
-    _callTsxStateCallable = ffi.NativeCallable.listener((
-      int callId,
-      ffi.Pointer<pjsip_transaction> tsx,
-      ffi.Pointer<pjsip_event> event,
-    ) {
-      if (!_uiState.isInitialized || tsx == ffi.nullptr) return;
-
-      final method = _sipMethodLabel(tsx.ref.method);
-      if (!_shouldKeepCallTransactionSnapshot(method)) return;
-
-      final eventType = event == ffi.nullptr
-          ? 'UNKNOWN'
-          : event.ref.typeAsInt == pjsip_event_id_e.PJSIP_EVENT_TSX_STATE.value
-          ? _sipEventTypeLabel(event.ref.body.tsx_state.typeAsInt)
-          : _sipEventTypeLabel(event.ref.typeAsInt);
-
-      _storeCallTransactionSnapshot(
-        callId: callId,
-        snapshot: CallSipTransactionSnapshot(
-          callId: callId,
-          method: method,
-          role: _sipTransactionRoleLabel(tsx.ref.roleAsInt),
-          transactionState: _sipTransactionStateLabel(tsx.ref.stateAsInt),
-          eventType: eventType,
-          statusCode: tsx.ref.status_code,
-          statusText: _pjString(tsx.ref.status_text),
-          updatedAt: DateTime.now(),
-        ),
-      );
-    });
-
     // 账号注册状态回调。
     //
     // 触发时机：
@@ -559,6 +455,7 @@ extension _PjsipNativeCallbacks on PjsipService {
       if (!_uiState.isInitialized) return;
       // [T2 enqueue] on_incoming_call 闭包入口
       _printLog('T2 enqueue', 'on_incoming_call: call=$callId, acc=$accId');
+      _knownIncomingCallIds.add(callId);
       _addLog('📞 收到来电！ID: $callId, 来自账号: $accId');
 
       using((Arena arena) {
@@ -659,6 +556,12 @@ extension _PjsipNativeCallbacks on PjsipService {
               callId,
               _uiState.calls[callId],
             );
+            _addLog(
+              'ℹ️ 已释放通话结束原因: call=$callId, '
+              'reason=${releasedInfo.reason}, '
+              'sip=${releasedInfo.sipStatusCode?.toString() ?? 'unknown'}, '
+              'snapshot=${releasedInfo.fromTransactionSnapshot}',
+            );
             _logEarlyOutboundDisconnectWithoutAutoRecovery(
               _uiState.calls[callId],
               sipStatusCode: releasedInfo.sipStatusCode ?? 0,
@@ -736,6 +639,14 @@ extension _PjsipNativeCallbacks on PjsipService {
             // 进入 CONFIRMED 时记录接通时刻并启动计时。若已在通话中，保留原
             // connectedAt，避免中途的状态刷新把计时清零。
             final prev = _uiState.calls[callId];
+            final direction =
+                prev?.direction ??
+                (_knownIncomingCallIds.contains(callId)
+                    ? PjsipCallDirection.inbound
+                    : PjsipCallDirection.outbound);
+            if (prev == null && direction == PjsipCallDirection.inbound) {
+              _addLog('📥 状态回调先到，按已知来电保持方向: call=$callId, state=$callState');
+            }
             final holdFlags = _resolveHoldFlags(mediaStatus, prev);
             final connectedAt = isConfirmed
                 ? prev?.connectedAt ?? DateTime.now()
@@ -749,7 +660,7 @@ extension _PjsipNativeCallbacks on PjsipService {
                 state: callState,
                 remoteUri: remoteUri,
                 accountId: prev?.accountId,
-                direction: prev?.direction ?? PjsipCallDirection.outbound,
+                direction: direction,
                 startedAt: prev?.startedAt,
                 connectedAt: connectedAt,
                 isOnHold: holdFlags.local,
