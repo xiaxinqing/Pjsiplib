@@ -1,5 +1,5 @@
-name: pjsip_lib
-description: "A new Flutter project."
+name: veserve_vphone
+description: "Veserve VPhone desktop softphone."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.2+3
 
 environment:
   sdk: ^3.12.2
@@ -50,6 +50,7 @@ dependencies:
   dropdown_button2: ^3.1.0
   tray_manager: ^0.5.3
   restart_app: ^1.8.3
+  package_info_plus: ^10.2.1
 
 #生成Pjsip的绑定文件
 ffigen:
@@ -91,12 +92,14 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/branding/app_logo.png
     - assets/audio/ringtone.wav
     - assets/audio/ringing.wav
     - assets/audio/ringing_loop.wav
     - assets/audio/hangup.wav
     - assets/audio/msgin.wav
     - assets/tray/tray_icon.png
+    - assets/tray/tray_icon_macos_template.png
     - assets/tray/tray_icon.ico
 
   # To add assets to your application, add an assets section, like this:

@@ -3,10 +3,10 @@ import 'dart:ui';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pjsip_lib/main.dart';
-import 'package:pjsip_lib/src/services/call_history_database.dart';
-import 'package:pjsip_lib/src/services/contact_service.dart';
-import 'package:pjsip_lib/src/services/pjsip_service.dart';
+import 'package:veserve_vphone/main.dart';
+import 'package:veserve_vphone/src/services/call_history_database.dart';
+import 'package:veserve_vphone/src/services/contact_service.dart';
+import 'package:veserve_vphone/src/services/pjsip_service.dart';
 
 class FakePjsipService extends PjsipService {
   @override

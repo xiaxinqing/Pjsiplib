@@ -29,7 +29,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Keep the native startup size aligned with the Dart window options to avoid
   // an oversized first frame before window_manager applies its settings.
   Win32Window::Size size(1120, 720);
-  if (!window.Create(L"pjsip_lib", origin, size)) {
+  if (!window.Create(L"VPhone", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

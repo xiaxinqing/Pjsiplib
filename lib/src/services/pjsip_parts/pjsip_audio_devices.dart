@@ -853,12 +853,13 @@ extension PjsipAudioDeviceOperations on PjsipService {
     required String reason,
     required bool logResult,
     required bool allowAutomaticSwitch,
-  }) {
+  }) async {
     if (!_uiState.isInitialized) {
       if (logResult) _addLog('⚠️ 请先初始化 PJSIP，再刷新音频设备');
-      return Future.value();
+      return;
     }
 
+    await _syncMicrophonePermissionIssue(reason: reason);
     return Future<void>(() {
       // 顺序很重要：先让底层音频驱动刷新，再枚举 PJSIP 看到的设备列表。
       _refreshAudioDriverListIfSafe(reason: reason, logResult: logResult);
@@ -881,6 +882,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
         );
         _logAudioDeviceDetails(snapshot);
       }
+      _syncAudioDeviceAvailabilityIssue(snapshot, reason: reason);
 
       // 自动策略和 ID 映射兜底互斥：如果策略已经安排切换，就不再额外强制 reapply，
       // 避免一次设备变化触发两次 set_snd_dev。
@@ -1179,6 +1181,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _scheduleNextAudioDevicePoll();
       return;
     }
+    // 轮询不只发现“列表变了”，也顺手校准无设备类异常。这样 Mac mini
+    // 从无麦克风/扬声器到插上耳机时，不必重启应用就能恢复侧边栏状态。
+    _syncAudioDeviceAvailabilityIssue(snapshot, reason: '设备轮询');
 
     // 首次轮询只建立基线，不触发“设备变化”。否则启动后会误认为设备发生变化。
     if (_audio.lastDeviceSnapshot == null) {
@@ -1554,7 +1559,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     unawaited(
       _startLoopingSoundPlayer(
         assetPath: _ringtoneAssetPath,
-        tempFileName: 'pjsip_lib_ringtone.wav',
+        tempFileName: 'vphone_ringtone.wav',
         reason: '来电铃声',
         shouldStillPlay: () => _hasIncomingCall,
         getPlayerId: () => _audio.ringtonePlayerId,
@@ -1579,7 +1584,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     unawaited(
       _startLoopingSoundPlayer(
         assetPath: _ringbackAssetPath,
-        tempFileName: 'pjsip_lib_ringback.wav',
+        tempFileName: 'vphone_ringback.wav',
         reason: '外呼回铃音',
         shouldStillPlay: () =>
             !_hasIncomingCall && _hasActiveOutboundCallWaiting,
@@ -1620,7 +1625,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     unawaited(
       _startLoopingSoundPlayer(
         assetPath: _hangupAssetPath,
-        tempFileName: 'pjsip_lib_hangup.wav',
+        tempFileName: 'vphone_hangup.wav',
         reason: '挂断提示音',
         shouldStillPlay: () => true,
         getPlayerId: () => _audio.hangupSoundPlayerId,

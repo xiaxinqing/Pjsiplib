@@ -236,20 +236,9 @@ extension _HistoryList on _MyHomePageState {
 
   Widget _buildHistoryCallButton(_HistoryItem item, PjsipService service) {
     final canCall = !item.isLive && item.phoneNumber.trim().isNotEmpty;
-    return Tooltip(
-      message: item.isLive ? '进行中的通话不能回拨' : '回拨',
-      child: IconButton(
-        onPressed: canCall ? () => _callHistoryItem(item, service) : null,
-        icon: const Icon(AppIcons.call),
-        constraints: const BoxConstraints.tightFor(width: 34, height: 34),
-        padding: EdgeInsets.zero,
-        visualDensity: VisualDensity.compact,
-        style: IconButton.styleFrom(
-          backgroundColor: _subtlePanel,
-          foregroundColor: _textPrimary,
-          hoverColor: _callGreen,
-        ),
-      ),
+    return _CallActionButton(
+      tooltip: item.isLive ? '进行中的通话不能回拨' : '回拨',
+      onPressed: canCall ? () => _callHistoryItem(item, service) : null,
     );
   }
 

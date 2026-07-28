@@ -1,7 +1,7 @@
 part of '../pjsip_service.dart';
 
-const String _seatEnvironmentStorageKey = 'thruv_seat_environment_v1';
-const String _audioPreferencesStorageKey = 'thruv_audio_preferences_v1';
+const String _seatEnvironmentStorageKey = 'veserve_seat_environment_v1';
+const String _audioPreferencesStorageKey = 'veserve_audio_preferences_v1';
 
 class _PersistedAudioPreferences {
   const _PersistedAudioPreferences({
@@ -520,7 +520,7 @@ extension PjsipPersistenceOperations on PjsipService {
     final home = Platform.environment['HOME'];
     if (home == null || home.isEmpty) return null;
     return File(
-      '$home/Library/Application Support/pjsip_lib/seat_environment_dev.json',
+      '$home/Library/Application Support/$appStorageDirectoryName/seat_environment_dev.json',
     );
   }
 

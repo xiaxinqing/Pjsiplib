@@ -122,7 +122,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
                 '音频设备',
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: _textPrimary,
                 ),
               ),

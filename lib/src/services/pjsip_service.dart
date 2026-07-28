@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart'
     show MethodChannel, MissingPluginException, PlatformException, rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import '../app_identity.dart';
 import '../generated/pjsip_bindings.g.dart';
 import 'call_history_database.dart';
 import 'contact_service.dart';
@@ -25,6 +26,8 @@ part 'pjsip_parts/pjsip_account_models.dart';
 
 part 'pjsip_parts/pjsip_call_models.dart';
 
+part 'pjsip_parts/pjsip_call_transaction_snapshot.dart';
+
 part 'pjsip_parts/pjsip_ui_state.dart';
 
 part 'pjsip_parts/pjsip_callbacks.dart';
@@ -37,7 +40,7 @@ part 'pjsip_parts/pjsip_audio_devices.dart';
 
 part 'pjsip_parts/pjsip_audio_errors.dart';
 
-part 'pjsip_parts/pjsip_audio_permissions.dart';
+part 'native_bridge/pjsip_audio_permissions.dart';
 
 part 'pjsip_parts/pjsip_network.dart';
 
@@ -55,6 +58,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Set<int> _hangupSoundPlayedCallIds = <int>{};
   final Set<int> _backgroundHoldScheduledCallIds = <int>{};
   final Set<int> _locallyReleasedCallIds = <int>{};
+  final Map<int, CallSipTransactionSnapshot> _callTsxSnapshots =
+      <int, CallSipTransactionSnapshot>{};
   final Map<int, DateTime> _lastCallControlOperationAt = <int, DateTime>{};
   final Map<int, Timer> _delayedHangupTimers = <int, Timer>{};
   final Map<int, Timer> _hangupCleanupTimers = <int, Timer>{};
@@ -103,13 +108,13 @@ class PjsipService extends Notifier<PjsipUIState> {
   bool _audioDeviceSpeakerOnlyFallbackActive = false;
   DateTime? _lastSipIpChangeAt;
   late final String _nativeLogDirectoryPath = Platform.isWindows
-      ? '${Platform.environment['APPDATA'] ?? Directory.systemTemp.path}\\pjsip_lib'
+      ? '${Platform.environment['APPDATA'] ?? Directory.systemTemp.path}\\$appStorageDirectoryName'
       : Platform.isLinux
-      ? '${Platform.environment['HOME'] ?? Directory.systemTemp.path}/.local/state/pjsip_lib'
-      : '${Platform.environment['HOME'] ?? Directory.systemTemp.path}/Library/Logs/pjsip_lib';
+      ? '${Platform.environment['HOME'] ?? Directory.systemTemp.path}/.local/state/$appStorageDirectoryName'
+      : '${Platform.environment['HOME'] ?? Directory.systemTemp.path}/Library/Logs/$appStorageDirectoryName';
   late final String _nativeLogFilePath = Platform.isWindows
-      ? '$_nativeLogDirectoryPath\\pjsip_lib_native.log'
-      : '$_nativeLogDirectoryPath/pjsip_lib_native.log';
+      ? '$_nativeLogDirectoryPath\\vphone_native.log'
+      : '$_nativeLogDirectoryPath/vphone_native.log';
 
   // 保持对 Callable 的引用，防止被 GC 回收
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _regStateCallable;
@@ -119,6 +124,14 @@ class PjsipService extends Notifier<PjsipUIState> {
   _incomingCallCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int, ffi.Pointer<pjsip_event>)>
   _callStateCallable;
+  late ffi.NativeCallable<
+    ffi.Void Function(
+      ffi.Int,
+      ffi.Pointer<pjsip_transaction>,
+      ffi.Pointer<pjsip_event>,
+    )
+  >
+  _callTsxStateCallable;
   late ffi.NativeCallable<ffi.Void Function(ffi.Int)> _callMediaStateCallable;
   late ffi.NativeCallable<
     ffi.Void Function(ffi.Int, ffi.UnsignedInt, ffi.Pointer<pjmedia_event>)
@@ -283,6 +296,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _hangupSoundPlayedCallIds.clear();
     _backgroundHoldScheduledCallIds.clear();
     _locallyReleasedCallIds.clear();
+    _callTsxSnapshots.clear();
     _lastCallControlOperationAt.clear();
     for (final timer in _delayedHangupTimers.values) {
       timer.cancel();
@@ -364,6 +378,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       _hangupSoundPlayedCallIds.clear();
       _backgroundHoldScheduledCallIds.clear();
       _locallyReleasedCallIds.clear();
+      _callTsxSnapshots.clear();
       _lastCallControlOperationAt.clear();
       for (final timer in _delayedHangupTimers.values) {
         timer.cancel();
@@ -378,6 +393,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _regStateCallable.close();
     _incomingCallCallable.close();
     _callStateCallable.close();
+    _callTsxStateCallable.close();
     _callMediaStateCallable.close();
     _callMediaEventCallable.close();
     _callSdpCreatedCallable.close();

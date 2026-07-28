@@ -1,5 +1,9 @@
 part of '../pjsip_service.dart';
 
+const int _audioIssueNoConcreteCaptureDevice = -900002;
+const int _audioIssueNoConcretePlaybackDevice = -900003;
+const int _audioIssueNoConcreteInputOutputDevice = -900004;
+
 /// PJSIP 音频设备错误处理。
 ///
 /// 这层只做三件事：调用底层声卡切换、把 pj_status 翻译成 UI 文案、控制 Toast
@@ -111,6 +115,65 @@ extension PjsipAudioIssueOperations on PjsipService {
     );
     _audioDeviceSpeakerOnlyFallbackActive = false;
     _lastAudioDeviceIssueToastAt = null;
+  }
+
+  bool _isAudioDeviceAvailabilityIssue(int? status) =>
+      status == _audioIssueNoConcreteCaptureDevice ||
+      status == _audioIssueNoConcretePlaybackDevice ||
+      status == _audioIssueNoConcreteInputOutputDevice;
+
+  /// 根据设备枚举结果同步“没有真实输入/输出设备”的提示。
+  ///
+  /// `系统默认麦克风/扬声器` 是我们为了跟随系统设置手动补进 UI 的选项，不代表
+  /// 机器上真的存在可打开的声卡。Mac mini 这类无内置输入/输出的设备上，需要把
+  /// “无设备”和“无麦克风权限”分开提示，避免用户误以为只要授权就能恢复。
+  void _syncAudioDeviceAvailabilityIssue(
+    _AudioDeviceSnapshot snapshot, {
+    required String reason,
+  }) {
+    final hasConcreteCapture = snapshot.captureDevices.any(
+      (device) => !device.isSystemDefault,
+    );
+    final hasConcretePlayback = snapshot.playbackDevices.any(
+      (device) => !device.isSystemDefault,
+    );
+    final (status, message) = switch ((
+      hasConcreteCapture,
+      hasConcretePlayback,
+    )) {
+      (false, false) => (
+        _audioIssueNoConcreteInputOutputDevice,
+        '没有检测到可用麦克风或扬声器，请连接耳机或音频设备',
+      ),
+      (false, true) => (
+        _audioIssueNoConcreteCaptureDevice,
+        '没有检测到可用麦克风，请连接耳机或输入设备',
+      ),
+      (true, false) => (
+        _audioIssueNoConcretePlaybackDevice,
+        '没有检测到可用扬声器，请连接耳机或输出设备',
+      ),
+      (true, true) => (null, null),
+    };
+
+    if (message == null) {
+      if (_isAudioDeviceAvailabilityIssue(_uiState.audioDeviceIssueStatus)) {
+        _clearAudioDeviceIssue();
+        _addLog('✅ 音频设备已恢复: $reason');
+      }
+      return;
+    }
+
+    if (_uiState.audioDeviceIssueStatus == status &&
+        _uiState.audioDeviceIssueMessage == message) {
+      return;
+    }
+    _uiState = _uiState.copyWith(
+      audioDeviceStatus: message,
+      audioDeviceIssueMessage: message,
+      audioDeviceIssueStatus: status,
+    );
+    _addLog('⚠️ $message ($reason)');
   }
 
   /// PJSIP 声卡成功不代表 macOS 隐私权限恢复，所以权限类异常需要保留。

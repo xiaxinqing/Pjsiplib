@@ -22,6 +22,24 @@ extension _PjsipNativeCallbacks on PjsipService {
     return value.ptr.cast<Utf8>().toDartString(length: value.slen);
   }
 
+  /// 对新来电发送 `180 Ringing` 临时响应。
+  ///
+  /// PJSIP 收到 INVITE 后不会替业务层决定“正在响铃”；只有我们明确回 180，
+  /// 主叫方才会进入 EARLY/振铃态。真正接听仍由 `answerCall(200)` 完成。
+  void _answerIncomingCallRinging(int callId) {
+    final status = _bindings.pjsua_call_answer(
+      callId,
+      180,
+      ffi.nullptr,
+      ffi.nullptr,
+    );
+    if (status == 0) {
+      _addLog('📳 已发送 180 Ringing: call=$callId');
+    } else {
+      _addLog('⚠️ 发送 180 Ringing 失败: call=$callId, pj_status=$status');
+    }
+  }
+
   /// 格式化单条 SDP attribute，输出类似 `a=rtpmap:0 PCMU/8000`。
   ///
   /// 这里主要服务于日志诊断，不参与真实媒体协商。
@@ -173,6 +191,74 @@ extension _PjsipNativeCallbacks on PjsipService {
       return 'USER';
     }
     return 'UNKNOWN($type)';
+  }
+
+  String _sipMethodLabel(pjsip_method method) {
+    final name = _pjString(method.name).trim();
+    if (name.isNotEmpty) return name.toUpperCase();
+    return switch (method.idAsInt) {
+      0 => 'INVITE',
+      1 => 'CANCEL',
+      2 => 'ACK',
+      3 => 'BYE',
+      4 => 'REGISTER',
+      5 => 'OPTIONS',
+      _ => 'OTHER(${method.idAsInt})',
+    };
+  }
+
+  bool _shouldKeepCallTransactionSnapshot(String method) {
+    return method == 'INVITE' ||
+        method == 'CANCEL' ||
+        method == 'BYE' ||
+        method == 'REFER';
+  }
+
+  String _sipTransactionRoleLabel(int role) {
+    return switch (role) {
+      0 => 'UAC',
+      1 => 'UAS',
+      _ => 'UNKNOWN($role)',
+    };
+  }
+
+  String _sipTransactionStateLabel(int state) {
+    return switch (state) {
+      0 => 'NULL',
+      1 => 'CALLING',
+      2 => 'TRYING',
+      3 => 'PROCEEDING',
+      4 => 'COMPLETED',
+      5 => 'CONFIRMED',
+      6 => 'TERMINATED',
+      7 => 'DESTROYED',
+      _ => 'UNKNOWN($state)',
+    };
+  }
+
+  String _sipEventTypeLabel(int type) {
+    return switch (type) {
+      0 => 'UNKNOWN',
+      1 => 'TIMER',
+      2 => 'TX_MSG',
+      3 => 'RX_MSG',
+      4 => 'TRANSPORT_ERROR',
+      5 => 'TSX_STATE',
+      6 => 'USER',
+      _ => 'UNKNOWN($type)',
+    };
+  }
+
+  void _storeCallTransactionSnapshot({
+    required int callId,
+    required CallSipTransactionSnapshot snapshot,
+  }) {
+    final previous = _callTsxSnapshots[callId];
+
+    // 避免后续无状态的过渡事件覆盖已经拿到的 SIP 状态码/原因。
+    if (previous != null && previous.hasStatus && !snapshot.hasStatus) return;
+
+    _callTsxSnapshots[callId] = snapshot;
   }
 
   /// 把 `pjmedia_event_type` 的整数值转换成便于阅读的名称。
@@ -337,6 +423,42 @@ extension _PjsipNativeCallbacks on PjsipService {
       ToastUtil.showError('转接失败：$statusCode');
     });
 
+    // 通话内 SIP transaction 快照回调。
+    //
+    // 只同步复制 INVITE/CANCEL/BYE/REFER 的少量字段到 Dart Map，不打日志、
+    // 不弹提示、不更新 UI。它的唯一用途是当 DISCONNECTED 到达时 call_info
+    // 已被 PJSIP 释放，仍能拿到最近一次 SIP 状态码/原因作为兜底。
+    _callTsxStateCallable = ffi.NativeCallable.listener((
+      int callId,
+      ffi.Pointer<pjsip_transaction> tsx,
+      ffi.Pointer<pjsip_event> event,
+    ) {
+      if (!_uiState.isInitialized || tsx == ffi.nullptr) return;
+
+      final method = _sipMethodLabel(tsx.ref.method);
+      if (!_shouldKeepCallTransactionSnapshot(method)) return;
+
+      final eventType = event == ffi.nullptr
+          ? 'UNKNOWN'
+          : event.ref.typeAsInt == pjsip_event_id_e.PJSIP_EVENT_TSX_STATE.value
+          ? _sipEventTypeLabel(event.ref.body.tsx_state.typeAsInt)
+          : _sipEventTypeLabel(event.ref.typeAsInt);
+
+      _storeCallTransactionSnapshot(
+        callId: callId,
+        snapshot: CallSipTransactionSnapshot(
+          callId: callId,
+          method: method,
+          role: _sipTransactionRoleLabel(tsx.ref.roleAsInt),
+          transactionState: _sipTransactionStateLabel(tsx.ref.stateAsInt),
+          eventType: eventType,
+          statusCode: tsx.ref.status_code,
+          statusText: _pjString(tsx.ref.status_text),
+          updatedAt: DateTime.now(),
+        ),
+      );
+    });
+
     // 账号注册状态回调。
     //
     // 触发时机：
@@ -448,6 +570,9 @@ extension _PjsipNativeCallbacks on PjsipService {
           // pjsua_call_info 属于 Arena；进入 microtask 前必须复制为 Dart 值。
           final callState = info.ref.stateAsInt;
           final mediaStatus = info.ref.media_statusAsInt;
+          if (callState == pjsip_inv_state.PJSIP_INV_STATE_INCOMING.value) {
+            _answerIncomingCallRinging(callId);
+          }
           scheduleMicrotask(() {
             // [T3 handle] 真正更新状态
             _printLog('T3 handle', 'on_incoming_call: 添加 call=$callId');
@@ -535,7 +660,10 @@ extension _PjsipNativeCallbacks on PjsipService {
               sipStatusCode: 0,
               sipStatusText: 'info released',
             );
-            _removeCall(callId);
+            _removeCall(
+              callId,
+              hangupReason: _releasedCallInfoReason(_uiState.calls[callId]),
+            );
           });
           return;
         }

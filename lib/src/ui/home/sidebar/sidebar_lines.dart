@@ -98,11 +98,14 @@ extension _HomeSidebarLines on _MyHomePageState {
                     children: [
                       _buildTooltipText(
                         account.displayName,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                       _buildTooltipText(
                         status,
-                        style: Theme.of(context).textTheme.bodySmall,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: _textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),

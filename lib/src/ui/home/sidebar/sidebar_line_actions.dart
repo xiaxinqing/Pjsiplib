@@ -2,7 +2,7 @@ part of '../../../../main.dart';
 
 /// 侧边栏线路操作模块：负责单条线路菜单以及危险操作确认弹窗。
 extension _HomeSidebarLineActions on _MyHomePageState {
-  /// 打开单条线路操作菜单，支持设默认、刷新、强制重连、暂停和删除。
+  /// 打开单条线路操作菜单，支持设默认、重新注册、断开重连、暂停和删除。
   Future<void> _showLineActionMenu(
     PjsipUIState uiState,
     PjsipService service,
@@ -16,7 +16,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     final action = await showMenu<String>(
       context: context,
       position: _popupMenuPosition(position),
-      constraints: const BoxConstraints(minWidth: 120, maxWidth: 180),
+      constraints: const BoxConstraints(minWidth: 188, maxWidth: 218),
       color: Colors.white,
       elevation: 14,
       shadowColor: _sidebarMenuShadowColor,
@@ -32,13 +32,19 @@ extension _HomeSidebarLineActions on _MyHomePageState {
               _buildTooltipText(
                 account.lineLabel,
                 style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: _textPrimary,
                 ),
               ),
               const SizedBox(height: 4),
-              _buildTooltipText(status),
+              _buildTooltipText(
+                status,
+                style: const TextStyle(
+                  color: _textSecondary,
+                  fontWeight: FontWeight.w400,
+                ),
+              ),
             ],
           ),
         ),
@@ -60,14 +66,14 @@ extension _HomeSidebarLineActions on _MyHomePageState {
               !account.registrationActionInProgress &&
               !(account.registrationEnabled &&
                   account.registrationStatus == null),
-          child: _buildPopupActionRow(AppIcons.refresh, '刷新注册'),
+          child: _buildPopupActionRow(AppIcons.refresh, '重新注册'),
         ),
         PopupMenuItem<String>(
           value: account.registrationActionInProgress
               ? null
               : 'force_reconnect',
           enabled: !account.registrationActionInProgress,
-          child: _buildPopupActionRow(AppIcons.power, '强制重连'),
+          child: _buildPopupActionRow(AppIcons.power, '断开重连'),
         ),
         PopupMenuItem<String>(
           value:
@@ -111,7 +117,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     }
   }
 
-  /// 强制重连前二次确认，避免误触导致线路短暂不可用。
+  /// 断开重连前二次确认，避免误触导致线路短暂不可用。
   Future<bool?> _confirmForceReconnectLine(SipAccountInfo account) {
     return showDialog<bool>(
       context: context,
@@ -147,7 +153,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          '强制重连线路',
+                          '断开重连线路',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -178,14 +184,14 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                     children: [
                       _buildTooltipText(
                         account.lineLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w800),
+                        style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         '${account.registrationStatusText} · ${account.transportLabel}',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: _textSecondary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -210,7 +216,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.power),
-            label: const Text('强制重连'),
+            label: const Text('断开重连'),
           ),
         ],
       ),

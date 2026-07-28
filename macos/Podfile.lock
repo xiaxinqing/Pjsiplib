@@ -7,6 +7,8 @@ PODS:
   - flutter_volume_controller (0.0.1):
     - FlutterMacOS
   - FlutterMacOS (1.0.0)
+  - package_info_plus (0.0.1):
+    - FlutterMacOS
   - restart_app (1.8.3):
     - FlutterMacOS
   - screen_retriever_macos (0.0.1):
@@ -21,6 +23,7 @@ DEPENDENCIES:
   - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - flutter_volume_controller (from `Flutter/ephemeral/.symlinks/plugins/flutter_volume_controller/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
+  - package_info_plus (from `Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos`)
   - restart_app (from `Flutter/ephemeral/.symlinks/plugins/restart_app/macos`)
   - screen_retriever_macos (from `Flutter/ephemeral/.symlinks/plugins/screen_retriever_macos/macos`)
   - tray_manager (from `Flutter/ephemeral/.symlinks/plugins/tray_manager/macos`)
@@ -35,6 +38,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_volume_controller/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
+  package_info_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/package_info_plus/macos
   restart_app:
     :path: Flutter/ephemeral/.symlinks/plugins/restart_app/macos
   screen_retriever_macos:
@@ -49,6 +54,7 @@ SPEC CHECKSUMS:
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   flutter_volume_controller: a2df0f7bd6032155fc517fd3989617f02c2c278b
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
+  package_info_plus: f0052d280d17aa382b932f399edf32507174e870
   restart_app: 85aab0eefe82e62f9caeef4c14145402cf5d1252
   screen_retriever_macos: c5508cc3c66ff0d4db650480cf0ab691e220d933
   tray_manager: 19c369010e59c073f13b82354d78a35f7972d609

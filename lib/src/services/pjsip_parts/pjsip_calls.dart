@@ -903,6 +903,18 @@ extension PjsipCallOperations on PjsipService {
     _lastCallControlOperationAt.remove(callId);
     final endedCall = _uiState.calls[callId];
     if (endedCall != null) {
+      final wasEndedLocally = _locallyEndedCallIds.contains(endedCall.callId);
+      _notifyUnansweredCallEnded(
+        endedCall,
+        wasEndedLocally: wasEndedLocally,
+        sipStatusCode: sipStatusCode,
+        hangupReason: hangupReason,
+      );
+      _notifyConnectedCallEnded(
+        endedCall,
+        wasEndedLocally: wasEndedLocally,
+        hangupReason: hangupReason,
+      );
       _archiveEndedCall(
         endedCall,
         sipStatusCode: sipStatusCode,
@@ -967,6 +979,90 @@ extension PjsipCallOperations on PjsipService {
     }
     _syncCallProgressSounds();
     _hangupSoundPlayedCallIds.remove(callId);
+    _callTsxSnapshots.remove(callId);
+  }
+
+  String? _releasedCallInfoReason(CallInfo? call) {
+    final snapshot = call == null ? null : _callTsxSnapshots[call.callId];
+    final snapshotReason = snapshot?.endReason;
+    if (snapshotReason != null) return snapshotReason;
+
+    if (call == null) return 'call_info 已释放';
+    if (call.connectedAt != null) {
+      if (_locallyEndedCallIds.contains(call.callId)) {
+        return '本机挂断，call_info 已释放';
+      }
+      return '对方或网络侧结束，call_info 已释放';
+    }
+    if (_locallyEndedCallIds.contains(call.callId)) {
+      return '本机结束未接通通话，call_info 已释放';
+    }
+    return '未接通通话已结束，call_info 已释放';
+  }
+
+  void _notifyConnectedCallEnded(
+    CallInfo call, {
+    required bool wasEndedLocally,
+    String? hangupReason,
+  }) {
+    if (call.connectedAt == null) return;
+
+    final phoneNumber = _extractPhoneNumber(call.remoteUri);
+    final reason = hangupReason?.trim();
+    final reasonLabel = reason == null || reason.isEmpty
+        ? '未返回 SIP 状态'
+        : reason;
+    _addLog(
+      'ℹ️ 已接通通话结束: call=${call.callId}, '
+      'number=${phoneNumber.isEmpty ? call.remoteUri : phoneNumber}, '
+      'localEnded=$wasEndedLocally, reason=$reasonLabel',
+    );
+
+    // 本机主动挂断已经由按钮反馈和挂断提示音表达；这里只提示非本机结束。
+    if (wasEndedLocally) return;
+
+    final targetLabel = phoneNumber.isEmpty ? '' : '：$phoneNumber';
+    ToastUtil.showInfo('通话$targetLabel 已结束（$reasonLabel）');
+  }
+
+  void _notifyUnansweredCallEnded(
+    CallInfo call, {
+    required bool wasEndedLocally,
+    int? sipStatusCode,
+    String? hangupReason,
+  }) {
+    if (call.connectedAt != null) return;
+
+    final phoneNumber = _extractPhoneNumber(call.remoteUri);
+    final directionLabel = call.direction == PjsipCallDirection.inbound
+        ? '来电'
+        : '呼出';
+    final statusLabel = _formatCallEndStatus(
+      sipStatusCode: sipStatusCode,
+      hangupReason: hangupReason,
+    );
+    _addLog(
+      'ℹ️ 未接通通话已结束: call=${call.callId}, '
+      'direction=$directionLabel, number=${phoneNumber.isEmpty ? call.remoteUri : phoneNumber}, '
+      'localEnded=$wasEndedLocally, sip=${sipStatusCode ?? 'unknown'}, '
+      'reason=${hangupReason?.trim().isEmpty == false ? hangupReason!.trim() : 'unknown'}',
+    );
+
+    // 本机主动取消外呼或拒接来电时，按钮本身已经给了明确反馈，不再弹 Toast。
+    if (wasEndedLocally) return;
+
+    final targetLabel = phoneNumber.isEmpty ? '' : '：$phoneNumber';
+    ToastUtil.showWarning('$directionLabel$targetLabel 已结束，未接通（$statusLabel）');
+  }
+
+  String _formatCallEndStatus({int? sipStatusCode, String? hangupReason}) {
+    final reason = hangupReason?.trim();
+    final hasReason = reason != null && reason.isNotEmpty;
+    if (sipStatusCode != null && sipStatusCode > 0) {
+      return hasReason ? 'SIP $sipStatusCode $reason' : 'SIP $sipStatusCode';
+    }
+    if (hasReason) return 'PJSIP $reason';
+    return '未返回 SIP 状态';
   }
 
   void _archiveEndedCall(

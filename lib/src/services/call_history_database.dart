@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../app_identity.dart';
+
 part 'call_history_database.g.dart';
 
 enum CallHistoryDirection {
@@ -592,9 +594,11 @@ String _normalizePhoneNumber(String value) {
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final directory = await getApplicationSupportDirectory();
-    final appDirectory = Directory(p.join(directory.path, 'pjsip_lib'));
-    if (!appDirectory.existsSync()) {
-      appDirectory.createSync(recursive: true);
+    final appDirectory = Directory(
+      p.join(directory.path, appStorageDirectoryName),
+    );
+    if (!await appDirectory.exists()) {
+      await appDirectory.create(recursive: true);
     }
     final file = File(p.join(appDirectory.path, 'call_history.sqlite'));
     return NativeDatabase.createInBackground(file);

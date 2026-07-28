@@ -88,6 +88,13 @@ extension _HomeSettings on _MyHomePageState {
                             label: '诊断',
                             onSelected: onSelected,
                           ),
+                          _buildSettingsNavItem(
+                            index: 4,
+                            selectedIndex: selectedIndex,
+                            icon: AppIcons.info,
+                            label: '关于',
+                            onSelected: onSelected,
+                          ),
                           const Spacer(),
                           Text(
                             uiState.isInitialized ? '电话服务已启动' : '电话服务未启动',
@@ -210,6 +217,7 @@ extension _HomeSettings on _MyHomePageState {
       1 => '音频',
       2 => '通话',
       3 => '诊断',
+      4 => '关于',
       _ => '账号',
     };
   }
@@ -220,6 +228,7 @@ extension _HomeSettings on _MyHomePageState {
       1 => '选择输入输出设备，并测试通话音频',
       2 => '配置通话行为、快捷操作和会议状态',
       3 => '查看设备、注册和通话事件日志',
+      4 => '版本信息、应用标识和支持信息',
       _ => '管理 SIP 线路、默认外呼和注册状态',
     };
   }
@@ -236,6 +245,7 @@ extension _HomeSettings on _MyHomePageState {
         1 => _buildAudioSettingsTab(uiState, service),
         2 => _buildCallSettingsTab(uiState, service),
         3 => _buildDiagnosticsTab(uiState, service),
+        4 => _buildAboutSettingsTab(uiState),
         _ => _buildAccountSettingsTab(uiState, service),
       },
     );

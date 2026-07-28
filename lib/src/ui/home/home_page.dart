@@ -5,7 +5,9 @@ enum _WorkspaceSection { dialpad, calls, contacts, history }
 enum _CallNoteMode { customer, conference }
 
 const Duration _conferenceActionCooldownDuration = Duration(milliseconds: 1500);
-const Duration _dialpadKeySoundPageWarmupDelay = Duration(seconds: 3);
+const Duration _dialpadKeySoundPageWarmupDelay = Duration(
+  milliseconds: 1200,
+); //  自动连接声卡，防止卡顿
 const double _contactListRowExtentEstimate = 62;
 
 class MyHomePage extends ConsumerStatefulWidget {
@@ -29,8 +31,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   final TextEditingController _callNoteController = TextEditingController();
   final ScrollController _contactListScrollController = ScrollController();
   final Set<String> _selectedContactIds = <String>{};
-  final Set<String> _hoveredContactCallButtonIds = <String>{};
-  final Set<String> _focusedContactCallButtonIds = <String>{};
   String? _selectedContactDetailId;
   String? _flashingContactId;
   String? _pendingContactRevealId;
@@ -77,10 +77,12 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   Timer? _conferenceActionCooldownTimer;
   bool _conferenceActionCoolingDown = false;
   bool _applicationRestarting = false;
+  late final Future<PackageInfo> _packageInfoFuture;
 
   @override
   void initState() {
     super.initState();
+    _packageInfoFuture = PackageInfo.fromPlatform();
     _lastDialpadValue = _numberController.text;
     _numberController.addListener(_handleNumberControllerChanged);
     unawaited(_windowController.attachCloseToTrayBehavior());
@@ -111,6 +113,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     _numberController.dispose();
     _windowController.detachCloseToTrayBehavior();
     AppTrayController.instance.clearActions();
+    AppDockMenuController.instance.clearActions();
     super.dispose();
   }
 
@@ -171,10 +174,34 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   }
 
   void _bindTrayActions() {
-    AppTrayController.instance.bindActions(
+    AppDockMenuController.instance.bindActions(
       onOpenSettings: () {
         if (!mounted) return;
         _openSettingsDrawer();
+      },
+      onOpenAbout: () {
+        if (!mounted) return;
+        _openSettingsDrawer(tabIndex: 4);
+      },
+      onRestartApplication: _confirmAndRestartApplication,
+    );
+
+    AppTrayController.instance.bindActions(
+      onOpenCalls: () {
+        if (!mounted) return;
+        _selectSection(_WorkspaceSection.calls);
+      },
+      onOpenHistory: () {
+        if (!mounted) return;
+        _selectSection(_WorkspaceSection.history);
+      },
+      onOpenSettings: () {
+        if (!mounted) return;
+        _openSettingsDrawer();
+      },
+      onOpenAbout: () {
+        if (!mounted) return;
+        _openSettingsDrawer(tabIndex: 4);
       },
       onDisconnectAll: () async {
         if (!mounted) return;
@@ -203,6 +230,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       totalLines: uiState.accounts.length,
       incomingRingtoneEnabled: uiState.incomingRingtoneEnabled,
       canDisconnectAll: canDisconnectAll,
+      hasActiveCalls: uiState.calls.isNotEmpty,
     );
   }
 

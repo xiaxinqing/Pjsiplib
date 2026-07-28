@@ -18,6 +18,9 @@ class AddAccountDialog extends StatefulWidget {
 
 class _AddAccountDialogState extends State<AddAccountDialog> {
   static const _defaultStunServer = 'stun.l.google.com:19302';
+  static const _debugUsername = '6523';
+  static const _debugPassword = 'veserve888';
+  static const _debugHost = '139.59.100.15';
 
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _usernameController;
@@ -42,13 +45,13 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     super.initState();
     final account = widget.account;
     _usernameController = TextEditingController(
-      text: account?.username ?? '6523',
+      text: account?.username ?? (kDebugMode ? _debugUsername : ''),
     );
     _passwordController = TextEditingController(
-      text: account?.password ?? 'veserve888',
+      text: account?.password ?? (kDebugMode ? _debugPassword : ''),
     );
     _hostController = TextEditingController(
-      text: account?.host ?? '139.59.100.15',
+      text: account?.host ?? (kDebugMode ? _debugHost : ''),
     );
     _stunServerController = TextEditingController(
       text: account == null ? _defaultStunServer : account.iceConfig.stunServer,

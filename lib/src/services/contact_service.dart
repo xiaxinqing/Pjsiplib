@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io' show Directory, File, Platform;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -26,20 +24,6 @@ class ContactPhoneEntry {
       label: label ?? this.label,
       number: number ?? this.number,
       isPrimary: isPrimary ?? this.isPrimary,
-    );
-  }
-
-  Map<String, Object?> toJson() {
-    return {'label': label, 'number': number, 'isPrimary': isPrimary};
-  }
-
-  static ContactPhoneEntry? fromJson(Map<String, Object?> json) {
-    final number = (json['number'] as String?)?.trim() ?? '';
-    if (number.isEmpty) return null;
-    return ContactPhoneEntry(
-      label: (json['label'] as String?)?.trim() ?? '默认',
-      number: number,
-      isPrimary: json['isPrimary'] as bool? ?? false,
     );
   }
 }
@@ -171,56 +155,6 @@ class ContactEntry {
       updatedAt: updatedAt ?? this.updatedAt,
     );
   }
-
-  Map<String, Object?> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'number': number,
-      'phones': phoneEntries.map((phone) => phone.toJson()).toList(),
-      'company': company,
-      'department': department,
-      'remark': remark,
-      'isFavorite': isFavorite,
-      'createdAt': createdAt?.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
-    };
-  }
-
-  static ContactEntry? fromJson(Map<String, Object?> json) {
-    final id = (json['id'] as String?)?.trim() ?? '';
-    final name = (json['name'] as String?)?.trim() ?? '';
-    final number = (json['number'] as String?)?.trim() ?? '';
-    if (id.isEmpty || name.isEmpty || number.isEmpty) return null;
-    final rawPhones = json['phones'];
-    final phones = rawPhones is List
-        ? rawPhones
-              .whereType<Map>()
-              .map(
-                (item) =>
-                    ContactPhoneEntry.fromJson(Map<String, Object?>.from(item)),
-              )
-              .nonNulls
-              .toList()
-        : const <ContactPhoneEntry>[];
-    return ContactEntry(
-      id: id,
-      name: name,
-      number: number,
-      phones: phones,
-      company: (json['company'] as String?)?.trim() ?? '',
-      department: (json['department'] as String?)?.trim() ?? '',
-      remark: (json['remark'] as String?)?.trim() ?? '',
-      isFavorite: json['isFavorite'] as bool? ?? false,
-      createdAt: _parseDate(json['createdAt'] as String?),
-      updatedAt: _parseDate(json['updatedAt'] as String?),
-    );
-  }
-
-  static DateTime? _parseDate(String? value) {
-    if (value == null || value.isEmpty) return null;
-    return DateTime.tryParse(value);
-  }
 }
 
 class ContactBookState {
@@ -295,25 +229,14 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
     state = state.copyWith(isLoading: true);
     try {
       final database = ref.read(callHistoryDatabaseProvider);
-      var contacts = (await database.listContacts()).map(_fromStored).toList();
-      if (contacts.isEmpty) {
-        final payload = await _readLegacyPayload();
-        contacts = payload == null || payload.isEmpty
-            ? _seedContacts()
-            : _decodeContacts(payload);
-        await database.replaceContacts(contacts.map(_toStored).toList());
-      }
+      final contacts = (await database.listContacts())
+          .map(_fromStored)
+          .toList();
       state = ContactBookState(contacts: _sortContacts(contacts));
     } catch (error) {
-      final fallbackContacts = _seedContacts();
       state = ContactBookState(
-        contacts: fallbackContacts,
-        errorMessage: '联系人加载失败，已使用默认示例',
-      );
-      unawaited(
-        ref
-            .read(callHistoryDatabaseProvider)
-            .replaceContacts(fallbackContacts.map(_toStored).toList()),
+        contacts: const [],
+        errorMessage: '联系人加载失败，请稍后重试',
       );
     }
   }
@@ -405,18 +328,6 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
     }
   }
 
-  List<ContactEntry> _decodeContacts(String payload) {
-    final decoded = jsonDecode(payload);
-    if (decoded is! Map) return const [];
-    final rawContacts = decoded['contacts'];
-    if (rawContacts is! List) return const [];
-    return rawContacts
-        .whereType<Map>()
-        .map((item) => ContactEntry.fromJson(Map<String, Object?>.from(item)))
-        .nonNulls
-        .toList();
-  }
-
   List<ContactEntry> _sortContacts(List<ContactEntry> contacts) {
     final sorted = [...contacts];
     sorted.sort((a, b) {
@@ -424,67 +335,6 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return sorted;
-  }
-
-  List<ContactEntry> _seedContacts() {
-    final now = DateTime.now();
-    return [
-      ContactEntry(
-        id: 'seed-6529',
-        name: '前台',
-        number: '6529',
-        company: '总部',
-        department: '行政',
-        remark: '工作时间优先转接',
-        isFavorite: true,
-        createdAt: now,
-        updatedAt: now,
-      ),
-      ContactEntry(
-        id: 'seed-6530',
-        name: '客服一组',
-        number: '6530',
-        company: '客户中心',
-        department: '一线支持',
-        isFavorite: true,
-        createdAt: now,
-        updatedAt: now,
-      ),
-      ContactEntry(
-        id: 'seed-6531',
-        name: '客服二组',
-        number: '6531',
-        company: '客户中心',
-        department: '升级支持',
-        createdAt: now,
-        updatedAt: now,
-      ),
-      ContactEntry(
-        id: 'seed-6532',
-        name: '技术支持',
-        number: '6532',
-        company: '研发中心',
-        department: '值班支持',
-        createdAt: now,
-        updatedAt: now,
-      ),
-    ];
-  }
-
-  Future<String?> _readLegacyPayload() async {
-    final file = _contactsFile();
-    if (!await file.exists()) return null;
-    return file.readAsString();
-  }
-
-  File _contactsFile() {
-    final home = Platform.environment['HOME'] ?? Directory.systemTemp.path;
-    final basePath = Platform.isWindows
-        ? Platform.environment['APPDATA'] ?? Directory.systemTemp.path
-        : Platform.isLinux
-        ? '$home/.local/share'
-        : '$home/Library/Application Support';
-    return File('$basePath/pjsip_lib/contacts.json');
   }
 
   ContactEntry _fromStored(StoredContactRow row) {

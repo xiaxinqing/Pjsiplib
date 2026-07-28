@@ -296,9 +296,6 @@ extension _ContactListSection on _MyHomePageState {
     final rowColor = shouldFlash && _contactFlashPhase.isEven
         ? _brandGreen.withValues(alpha: 0.16)
         : baseColor;
-    final callButtonActive =
-        _hoveredContactCallButtonIds.contains(contact.id) ||
-        _focusedContactCallButtonIds.contains(contact.id);
     return Material(
       color: rowColor,
       child: InkWell(
@@ -401,12 +398,12 @@ extension _ContactListSection on _MyHomePageState {
                             : _hoverPanel,
                       ),
                     ),
-                    _buildContactCallButton(
-                      uiState,
-                      service,
-                      contact,
-                      active: callButtonActive,
+                    const SizedBox(width: 4),
+                    _CallActionButton(
+                      tooltip: '呼叫',
+                      onPressed: () => _callContact(uiState, service, contact),
                     ),
+
                     PopupMenuButton<_ContactRowAction>(
                       tooltip: '更多操作',
                       onSelected: (action) =>
@@ -434,44 +431,6 @@ extension _ContactListSection on _MyHomePageState {
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildContactCallButton(
-    PjsipUIState uiState,
-    PjsipService service,
-    ContactEntry contact, {
-    required bool active,
-  }) {
-    return Tooltip(
-      message: '呼叫',
-      child: FocusableActionDetector(
-        mouseCursor: SystemMouseCursors.click,
-        onShowHoverHighlight: (hovered) =>
-            _setContactCallButtonHovered(contact.id, hovered),
-        onShowFocusHighlight: (focused) =>
-            _setContactCallButtonFocused(contact.id, focused),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => _callContact(uiState, service, contact),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
-            curve: Curves.easeOut,
-            width: 34,
-            height: 34,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: active ? _callGreen : _subtlePanel,
-              borderRadius: BorderRadius.circular(_radiusSm),
-            ),
-            child: Icon(
-              AppIcons.call,
-              size: _iconMd,
-              color: active ? Colors.white : _textPrimary,
-            ),
           ),
         ),
       ),

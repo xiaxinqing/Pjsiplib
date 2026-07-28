@@ -18,6 +18,8 @@ apply_standard_settings(${BINARY_NAME})
 
 # Add preprocessor definitions for the application ID.
 add_definitions(-DAPPLICATION_ID="${APPLICATION_ID}")
+target_compile_definitions(${BINARY_NAME} PRIVATE
+  APP_ICON_SOURCE_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.png")
 
 # Add dependency libraries. Add any application-specific dependencies here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter)

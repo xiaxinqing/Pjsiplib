@@ -41,30 +41,6 @@ extension _HomeContactCoordinator on _MyHomePageState {
     _update(() {});
   }
 
-  /// 记录联系人行内呼叫按钮 hover 状态，让按钮焦点和行 hover 分离。
-  void _setContactCallButtonHovered(String id, bool hovered) {
-    if (!mounted) return;
-    _update(() {
-      if (hovered) {
-        _hoveredContactCallButtonIds.add(id);
-      } else {
-        _hoveredContactCallButtonIds.remove(id);
-      }
-    });
-  }
-
-  /// 记录联系人行内呼叫按钮键盘焦点状态。
-  void _setContactCallButtonFocused(String id, bool focused) {
-    if (!mounted) return;
-    _update(() {
-      if (focused) {
-        _focusedContactCallButtonIds.add(id);
-      } else {
-        _focusedContactCallButtonIds.remove(id);
-      }
-    });
-  }
-
   /// 切换右侧联系人详情展示对象。
   void _selectContactDetail(String id) {
     if (_selectedContactDetailId == id) return;

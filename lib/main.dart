@@ -1,17 +1,18 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
-import 'src/services/app_window_controller.dart';
-import 'src/services/app_restart_controller.dart';
-import 'src/services/app_tray_controller.dart';
+import 'src/app_identity.dart';
 import 'src/services/call_history_database.dart';
 import 'src/services/contact_service.dart';
+import 'src/services/native_bridge/native_bridge.dart';
 import 'src/services/pjsip_service.dart';
 import 'src/ui/core/app_colors.dart';
 import 'utils/toast_util.dart';
@@ -30,6 +31,7 @@ part 'src/ui/home/sidebar/sidebar_lines.dart';
 part 'src/ui/home/sidebar/sidebar_line_actions.dart';
 part 'src/ui/home/sidebar/sidebar_audio.dart';
 part 'src/ui/home/sidebar/sidebar_shared.dart';
+part 'src/ui/home/shared/call_action_button.dart';
 part 'src/ui/home/home_workspace.dart';
 part 'src/ui/home/dialpad/dialpad_page.dart';
 part 'src/ui/home/dialpad/dialpad_card.dart';
@@ -71,12 +73,14 @@ part 'src/ui/settings/add_account_dialog.dart';
 part 'src/ui/settings/home_settings_audio.dart';
 part 'src/ui/settings/home_settings_call.dart';
 part 'src/ui/settings/home_settings_diagnostics.dart';
+part 'src/ui/settings/home_settings_about.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppWindowController.initializeMainWindow();
-  await AppTrayController.instance.initialize();
   runApp(const ProviderScope(child: MyApp()));
+  AppLaunchSplashController.hideAfterFirstFrame();
+  unawaited(AppTrayController.instance.initialize());
 }
 
 class MyApp extends StatelessWidget {
@@ -88,6 +92,7 @@ class MyApp extends StatelessWidget {
       title: 'VPhone',
       navigatorKey: ToastUtil.navigatorKey,
       debugShowCheckedModeBanner: false,
+      color: AppColors.appBackground,
       theme: _buildAppTheme(),
       home: const MyHomePage(),
     );

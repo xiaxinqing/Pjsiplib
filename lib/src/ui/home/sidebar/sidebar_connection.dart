@@ -85,7 +85,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
     final action = await showMenu<String>(
       context: context,
       position: _popupMenuPosition(position),
-      constraints: const BoxConstraints(minWidth: 112, maxWidth: 162),
+      constraints: const BoxConstraints(minWidth: 210, maxWidth: 240),
       color: Colors.white,
       elevation: 14,
       shadowColor: _sidebarMenuShadowColor,
@@ -102,7 +102,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
                 '连接状态',
                 style: TextStyle(
                   fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: _textPrimary,
                 ),
               ),
@@ -137,7 +137,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
         if (failedAccounts.isNotEmpty)
           PopupMenuItem<String>(
             value: 'retry_failed',
-            child: _buildPopupActionRow(AppIcons.refresh, '刷新异常线路'),
+            child: _buildPopupActionRow(AppIcons.refresh, '重新注册异常线路'),
           ),
         PopupMenuItem<String>(
           value: 'add_line',

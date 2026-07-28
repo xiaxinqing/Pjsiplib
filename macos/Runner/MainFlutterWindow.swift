@@ -3,137 +3,264 @@ import FlutterMacOS
 import AVFoundation
 
 class MainFlutterWindow: NSWindow {
-  private var attentionRequestID: Int = 0
-  private var attentionTimer: Timer?
-  private var attentionPulseCount: Int = 0
-  private let maximumAttentionPulses: Int = 6
+    private var attentionRequestID: Int = 0
+    private var attentionTimer: Timer?
+    private var attentionPulseCount: Int = 0
+    private let maximumAttentionPulses: Int = 6
+    private var launchSplashView: NSView?
+    private var launchSplashFallbackTimer: Timer?
+    private let launchBackgroundColor = NSColor(
+        calibratedRed: 250.0 / 255.0,
+        green: 250.0 / 255.0,
+        blue: 250.0 / 255.0,
+        alpha: 1.0
+    )
 
-  override func awakeFromNib() {
-    titleVisibility = .hidden
-    titlebarAppearsTransparent = true
-    styleMask.insert(.fullSizeContentView)
-    isMovableByWindowBackground = true
+    override func awakeFromNib() {
+        backgroundColor = launchBackgroundColor
+        titleVisibility = .hidden
+        titlebarAppearsTransparent = true
+        styleMask.insert(.fullSizeContentView)
+        isMovableByWindowBackground = true
 
-    let flutterViewController = FlutterViewController()
-    let windowFrame = self.frame
-    self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
+        let flutterViewController = FlutterViewController()
+        flutterViewController.backgroundColor = launchBackgroundColor
+        let windowFrame = self.frame
+        self.contentViewController = flutterViewController
+        flutterViewController.view.wantsLayer = true
+        flutterViewController.view.layer?.backgroundColor = launchBackgroundColor.cgColor
+        installLaunchSplash(on: flutterViewController.view)
+        self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
-    configureWindowAttentionChannel(flutterViewController: flutterViewController)
-    configureAudioPermissionChannel(flutterViewController: flutterViewController)
-
-    super.awakeFromNib()
-  }
-
-  private func configureWindowAttentionChannel(flutterViewController: FlutterViewController) {
-    let channel = FlutterMethodChannel(
-      name: "voip_desk/window_attention",
+    DockMenuCommandBridge.shared.configure(
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+    configureLaunchSplashChannel(flutterViewController: flutterViewController)
+        configureWindowAttentionChannel(flutterViewController: flutterViewController)
+        configureAudioPermissionChannel(flutterViewController: flutterViewController)
 
-    channel.setMethodCallHandler { [weak self] call, result in
-      guard let self = self else {
-        result(nil)
-        return
-      }
-
-      switch call.method {
-      case "requestAttention":
-        self.startAttentionPulses()
-        result(nil)
-      case "clearAttention":
-        self.clearAttentionRequest()
-        result(nil)
-      default:
-        result(FlutterMethodNotImplemented)
-      }
+        super.awakeFromNib()
     }
-  }
 
-  private func configureAudioPermissionChannel(flutterViewController: FlutterViewController) {
-    let channel = FlutterMethodChannel(
-      name: "voip_desk/audio_permission",
-      binaryMessenger: flutterViewController.engine.binaryMessenger
-    )
+    private func installLaunchSplash(on parentView: NSView) {
+        let splashView = NSView(frame: parentView.bounds)
+        splashView.autoresizingMask = [.width, .height]
+        splashView.wantsLayer = true
+        splashView.layer?.backgroundColor = launchBackgroundColor.cgColor
 
-    channel.setMethodCallHandler { [weak self] call, result in
-      guard let self = self else {
-        result(nil)
-        return
-      }
+        let imageView = NSImageView()
+        imageView.image = NSImage(named: "AppIcon") ?? NSApp.applicationIconImage
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.wantsLayer = true
+        imageView.layer?.shadowColor = NSColor.black.cgColor
+        imageView.layer?.shadowOpacity = 0.08
+        imageView.layer?.shadowRadius = 14
+        imageView.layer?.shadowOffset = CGSize(width: 0, height: 8)
 
-      switch call.method {
-      case "microphoneAuthorizationStatus":
-        // Only report the current macOS privacy state. This check cannot
-        // disturb active calls.
-        result(self.microphoneAuthorizationStatusText())
-      case "requestMicrophoneAccess":
-        AVCaptureDevice.requestAccess(for: .audio) { _ in
-          DispatchQueue.main.async {
-            result(self.microphoneAuthorizationStatusText())
-          }
+        let titleLabel = NSTextField(labelWithString: "VPhone")
+        titleLabel.font = NSFont.systemFont(ofSize: 22, weight: .semibold)
+        titleLabel.textColor = NSColor(
+            calibratedRed: 24.0 / 255.0,
+            green: 24.0 / 255.0,
+            blue: 24.0 / 255.0,
+            alpha: 1.0
+        )
+        titleLabel.alignment = .center
+
+        let subtitleLabel = NSTextField(labelWithString: "数据准备中…")
+        subtitleLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
+        subtitleLabel.textColor = NSColor(
+            calibratedRed: 105.0 / 255.0,
+            green: 105.0 / 255.0,
+            blue: 105.0 / 255.0,
+            alpha: 1.0
+        )
+        subtitleLabel.alignment = .center
+
+        let textStackView = NSStackView(views: [titleLabel, subtitleLabel])
+        textStackView.orientation = .vertical
+        textStackView.alignment = .centerX
+        textStackView.spacing = 6
+        textStackView.translatesAutoresizingMaskIntoConstraints = false
+
+        let stackView = NSStackView(views: [imageView, textStackView])
+        stackView.orientation = .vertical
+        stackView.alignment = .centerX
+        stackView.spacing = 20
+        stackView.translatesAutoresizingMaskIntoConstraints = false
+
+        splashView.addSubview(stackView)
+        parentView.addSubview(splashView)
+
+        NSLayoutConstraint.activate([
+            imageView.widthAnchor.constraint(equalToConstant: 92),
+            imageView.heightAnchor.constraint(equalToConstant: 92),
+            stackView.centerXAnchor.constraint(equalTo: splashView.centerXAnchor),
+            stackView.centerYAnchor.constraint(equalTo: splashView.centerYAnchor, constant: -18),
+        ])
+
+        launchSplashView = splashView
+        launchSplashFallbackTimer?.invalidate()
+        // Native-side safety net: the Dart side normally hides the placeholder
+        // after the first Flutter frame. If that message never arrives, do not
+        // leave the user permanently blocked on the startup screen.
+        launchSplashFallbackTimer = Timer.scheduledTimer(withTimeInterval: 8.0, repeats: false) {
+            [weak self] _ in
+            NSLog("VPhone launch splash fallback hide fired.")
+            self?.hideLaunchSplash()
         }
-      case "openMicrophonePrivacySettings":
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
-          NSWorkspace.shared.open(url)
+    }
+
+    private func configureLaunchSplashChannel(flutterViewController: FlutterViewController) {
+        let channel = FlutterMethodChannel(
+            name: "voip_desk/launch_splash",
+            binaryMessenger: flutterViewController.engine.binaryMessenger
+        )
+
+        channel.setMethodCallHandler {
+            [weak self] call, result in
+            switch call.method {
+            case "hide":
+                self?.hideLaunchSplash()
+                result(nil)
+            default:
+                result(FlutterMethodNotImplemented)
+            }
         }
-        result(nil)
-      default:
-        result(FlutterMethodNotImplemented)
-      }
     }
-  }
 
-  private func microphoneAuthorizationStatusText() -> String {
-    let status = AVCaptureDevice.authorizationStatus(for: .audio)
-    switch status {
-    case .authorized:
-      return "authorized"
-    case .denied:
-      return "denied"
-    case .restricted:
-      return "restricted"
-    case .notDetermined:
-      return "notDetermined"
-    @unknown default:
-      return "unknown"
-    }
-  }
+    private func hideLaunchSplash() {
+        launchSplashFallbackTimer?.invalidate()
+        launchSplashFallbackTimer = nil
 
-  private func startAttentionPulses() {
-    clearAttentionRequest()
-    attentionPulseCount = 0
-    pulseAttention()
-    attentionTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) { [weak self] timer in
-      guard let self = self else {
-        timer.invalidate()
-        return
-      }
-      guard self.attentionPulseCount < self.maximumAttentionPulses else {
-        timer.invalidate()
-        self.attentionTimer = nil
-        return
-      }
-      self.pulseAttention()
-    }
-  }
+        guard let splashView = launchSplashView else {
+            return
+        }
+        launchSplashView = nil
 
-  private func pulseAttention() {
-    if attentionRequestID != 0 {
-      NSApp.cancelUserAttentionRequest(attentionRequestID)
+        NSAnimationContext.runAnimationGroup {
+            context in
+            context.duration = 0.16
+            splashView.animator().alphaValue = 0
+        } completionHandler: {
+            splashView.removeFromSuperview()
+        }
     }
-    attentionRequestID = NSApp.requestUserAttention(.criticalRequest)
-    attentionPulseCount += 1
-  }
 
-  private func clearAttentionRequest() {
-    attentionTimer?.invalidate()
-    attentionTimer = nil
-    attentionPulseCount = 0
-    if attentionRequestID != 0 {
-      NSApp.cancelUserAttentionRequest(attentionRequestID)
-      attentionRequestID = 0
+    private func configureWindowAttentionChannel(flutterViewController: FlutterViewController) {
+        let channel = FlutterMethodChannel(
+            name: "voip_desk/window_attention",
+            binaryMessenger: flutterViewController.engine.binaryMessenger
+        )
+
+        channel.setMethodCallHandler {
+            [weak self] call, result in
+            guard let self = self else {
+                result(nil)
+                return
+            }
+
+            switch call.method {
+            case "requestAttention":
+                self.startAttentionPulses()
+                result(nil)
+            case "clearAttention":
+                self.clearAttentionRequest()
+                result(nil)
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
     }
-  }
+
+    private func configureAudioPermissionChannel(flutterViewController: FlutterViewController) {
+        let channel = FlutterMethodChannel(
+            name: "voip_desk/audio_permission",
+            binaryMessenger: flutterViewController.engine.binaryMessenger
+        )
+
+        channel.setMethodCallHandler {
+            [weak self] call, result in
+            guard let self = self else {
+                result(nil)
+                return
+            }
+
+            switch call.method {
+            case "microphoneAuthorizationStatus":
+                // Only report the current macOS privacy state. This check cannot
+                // disturb active calls.
+                result(self.microphoneAuthorizationStatusText())
+            case "requestMicrophoneAccess":
+                AVCaptureDevice.requestAccess(for: .audio) {
+                    _ in
+                    DispatchQueue.main.async {
+                        result(self.microphoneAuthorizationStatusText())
+                    }
+                }
+            case "openMicrophonePrivacySettings":
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone") {
+                    NSWorkspace.shared.open(url)
+                }
+                result(nil)
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
+    }
+
+    private func microphoneAuthorizationStatusText() -> String {
+        let status = AVCaptureDevice.authorizationStatus(for: .audio)
+        switch status {
+        case .authorized:
+            return "authorized"
+        case .denied:
+            return "denied"
+        case .restricted:
+            return "restricted"
+        case .notDetermined:
+            return "notDetermined"
+        @unknown default:
+            return "unknown"
+        }
+    }
+
+    private func startAttentionPulses() {
+        clearAttentionRequest()
+        attentionPulseCount = 0
+        pulseAttention()
+        attentionTimer = Timer.scheduledTimer(withTimeInterval: 1.2, repeats: true) {
+            [weak self] timer in
+            guard let self = self else {
+                timer.invalidate()
+                return
+            }
+            guard self.attentionPulseCount < self.maximumAttentionPulses else {
+                timer.invalidate()
+                self.attentionTimer = nil
+                return
+            }
+            self.pulseAttention()
+        }
+    }
+
+    private func pulseAttention() {
+        if attentionRequestID != 0 {
+            NSApp.cancelUserAttentionRequest(attentionRequestID)
+        }
+        attentionRequestID = NSApp.requestUserAttention(.criticalRequest)
+        attentionPulseCount += 1
+    }
+
+    private func clearAttentionRequest() {
+        attentionTimer?.invalidate()
+        attentionTimer = nil
+        attentionPulseCount = 0
+        if attentionRequestID != 0 {
+            NSApp.cancelUserAttentionRequest(attentionRequestID)
+            attentionRequestID = 0
+        }
+    }
 }
