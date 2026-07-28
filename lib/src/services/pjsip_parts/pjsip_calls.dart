@@ -985,32 +985,48 @@ extension PjsipCallOperations on PjsipService {
 
   CallReleasedInfo _releasedCallInfo(int callId, CallInfo? call) {
     final snapshot = _callSnapshots.getLast(callId);
-    final snapshotReason = snapshot?.customerEndReason;
+    final snapshotReason = snapshot == null
+        ? null
+        : _customerEndReasonForSnapshot(snapshot, call);
     if (snapshotReason != null) {
-      _addLog(
-        '📌 使用通话结束快照: call=$callId, '
-        'status=${snapshot!.statusCode}, reason=$snapshotReason, '
-        'raw=${snapshot.diagnosticReason ?? 'empty'}',
-      );
-      debugPrint(
-        '📌 [call snapshot hit] call=$callId, final=true, '
-        'status=${snapshot.statusCode}, text=${snapshot.statusText}, '
-        'method=${snapshot.method}, role=${snapshot.role}, '
-        'state=${snapshot.transactionState}, event=${snapshot.eventType}, '
-        'updatedAt=${snapshot.updatedAt.toIso8601String()}',
-      );
-      return CallReleasedInfo(
-        reason: snapshotReason,
-        sipStatusCode: snapshot.statusCode > 0 ? snapshot.statusCode : null,
-        fromTransactionSnapshot: true,
-      );
+      // 已接通通话结束时，如果快照还是外呼 INVITE 的 401/407，它只是
+      // Digest 鉴权流程的一环，不代表这通电话最终因为认证失败断开。
+      if (call?.connectedAt != null &&
+          snapshot!.isInviteAuthenticationChallenge) {
+        _addLog(
+          '📌 忽略通话建立前鉴权快照: call=$callId, '
+          'raw=${snapshot.diagnosticReason ?? 'empty'}',
+        );
+      } else {
+        _addLog(
+          '📌 使用通话结束快照: call=$callId, '
+          'status=${snapshot!.statusCode}, reason=$snapshotReason, '
+          'raw=${snapshot.diagnosticReason ?? 'empty'}',
+        );
+        debugPrint(
+          '📌 [call snapshot hit] call=$callId, final=true, '
+          'status=${snapshot.statusCode}, text=${snapshot.statusText}, '
+          'method=${snapshot.method}, role=${snapshot.role}, '
+          'state=${snapshot.transactionState}, event=${snapshot.eventType}, '
+          'updatedAt=${snapshot.updatedAt.toIso8601String()}',
+        );
+        return CallReleasedInfo(
+          reason: snapshotReason,
+          sipStatusCode: snapshot.statusCode > 0 ? snapshot.statusCode : null,
+          fromTransactionSnapshot: true,
+        );
+      }
     }
     final diagnosticReason = snapshot?.diagnosticReason;
     if (diagnosticReason != null) {
-      _addLog('📌 通话结束快照只有临时状态: call=$callId, raw=$diagnosticReason');
+      _addLog(
+        snapshot!.isInviteAuthenticationChallenge && call?.connectedAt != null
+            ? '📌 通话结束快照已忽略，使用已接通兜底原因: call=$callId'
+            : '📌 通话结束快照只有临时状态: call=$callId, raw=$diagnosticReason',
+      );
       debugPrint(
         '📌 [call snapshot provisional] call=$callId, '
-        'status=${snapshot!.statusCode}, text=${snapshot.statusText}, '
+        'status=${snapshot.statusCode}, text=${snapshot.statusText}, '
         'method=${snapshot.method}, role=${snapshot.role}, '
         'state=${snapshot.transactionState}, event=${snapshot.eventType}, '
         'updatedAt=${snapshot.updatedAt.toIso8601String()}',
@@ -1047,9 +1063,7 @@ extension PjsipCallOperations on PjsipService {
 
     final phoneNumber = _extractPhoneNumber(call.remoteUri);
     final reason = hangupReason?.trim();
-    final reasonLabel = reason == null || reason.isEmpty
-        ? '未返回 SIP 状态'
-        : reason;
+    final reasonLabel = reason == null || reason.isEmpty ? '未返回原因' : reason;
     _addLog(
       'ℹ️ 已接通通话结束: call=${call.callId}, '
       'number=${phoneNumber.isEmpty ? call.remoteUri : phoneNumber}, '
@@ -1060,7 +1074,7 @@ extension PjsipCallOperations on PjsipService {
     if (wasEndedLocally) return;
 
     final targetLabel = phoneNumber.isEmpty ? '' : '：$phoneNumber';
-    ToastUtil.showInfo('通话$targetLabel 已结束（$reasonLabel）');
+    ToastUtil.showInfo('通话$targetLabel 已结束');
   }
 
   void _notifyUnansweredCallEnded(
@@ -1075,9 +1089,9 @@ extension PjsipCallOperations on PjsipService {
     final directionLabel = call.direction == PjsipCallDirection.inbound
         ? '来电'
         : '呼出';
-    final statusLabel = _formatCallEndStatus(
+    final statusLabel = _formatUnansweredCallEndStatus(
+      call,
       sipStatusCode: sipStatusCode,
-      hangupReason: hangupReason,
     );
     _addLog(
       'ℹ️ 未接通通话已结束: call=${call.callId}, '
@@ -1090,17 +1104,36 @@ extension PjsipCallOperations on PjsipService {
     if (wasEndedLocally) return;
 
     final targetLabel = phoneNumber.isEmpty ? '' : '：$phoneNumber';
-    ToastUtil.showWarning('$directionLabel$targetLabel 已结束，未接通（$statusLabel）');
+    ToastUtil.showWarning('$directionLabel$targetLabel 未接通，$statusLabel');
   }
 
-  String _formatCallEndStatus({int? sipStatusCode, String? hangupReason}) {
-    final reason = hangupReason?.trim();
-    final hasReason = reason != null && reason.isNotEmpty;
-    if (hasReason) return reason;
-    if (sipStatusCode != null && sipStatusCode > 0) {
-      return _customerSipStatusLabel(sipStatusCode);
-    }
-    return '未返回 SIP 状态';
+  String _formatUnansweredCallEndStatus(CallInfo call, {int? sipStatusCode}) {
+    return _formatSipCallEndReason(
+      sipStatusCode ?? 0,
+      direction: call.direction,
+      wasConnected: false,
+      reachedRinging: _wasOutboundRinging(call),
+    );
+  }
+
+  String? _customerEndReasonForSnapshot(
+    CallSipTransactionSnapshot snapshot,
+    CallInfo? call,
+  ) {
+    if (!snapshot.hasFinalStatus) return null;
+
+    return _formatSipCallEndReason(
+      snapshot.statusCode,
+      direction: call?.direction,
+      wasConnected: call?.connectedAt != null,
+      reachedRinging: _wasOutboundRinging(call),
+      includeSipCode: true,
+    );
+  }
+
+  bool _wasOutboundRinging(CallInfo? call) {
+    return call?.direction == PjsipCallDirection.outbound &&
+        call?.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value;
   }
 
   void _archiveEndedCall(

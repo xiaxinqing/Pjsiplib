@@ -50,10 +50,27 @@ class CallSipTransactionSnapshot {
   /// 客户看到的挂断原因。只有 2xx 及以上才适合保存为结束状态。
   bool get hasFinalStatus => statusCode >= 200;
 
+  /// INVITE 外呼时服务器返回的 401/407 通常只是鉴权挑战，不是通话结束原因。
+  ///
+  /// 这类快照如果在通话接通后仍然保留，不能展示成“账号认证失败”。
+  bool get isInviteAuthenticationChallenge {
+    final normalizedMethod = method.trim().toUpperCase();
+    final normalizedRole = role.trim().toUpperCase();
+    return normalizedMethod == 'INVITE' &&
+        normalizedRole == 'UAC' &&
+        (statusCode == 401 || statusCode == 407);
+  }
+
   /// 给客户看的通话结束原因。为空时由上层继续使用更粗粒度兜底文案。
   String? get customerEndReason {
     if (!hasFinalStatus) return null;
-    return _customerSipStatusLabel(statusCode);
+    return _formatSipCallEndReason(
+      statusCode,
+      direction: null,
+      wasConnected: false,
+      reachedRinging: false,
+      includeSipCode: true,
+    );
   }
 
   /// 原始快照诊断文案，仅用于日志排查，不直接展示给客户。
@@ -86,33 +103,4 @@ class CallReleasedInfo {
 
   /// 是否来自 C 层 `on_call_tsx_state` 安全快照。
   final bool fromTransactionSnapshot;
-}
-
-/// 把常见 SIP 状态码转换为客服和客户都能理解的中文文案。
-///
-/// 文案刻意不暴露 transaction/method 细节；底层细节保留在日志中的
-/// [CallSipTransactionSnapshot.diagnosticReason]，方便开发排查。
-String _customerSipStatusLabel(int statusCode) {
-  final label = switch (statusCode) {
-    200 => '通话已结束',
-    400 => '呼叫请求异常',
-    401 || 407 => '账号认证失败',
-    403 => '没有呼叫权限',
-    404 || 604 => '号码不存在或无法接通',
-    408 || 504 => '呼叫超时',
-    480 => '对方暂时不可用',
-    486 => '对方忙线',
-    487 => '呼叫已取消',
-    488 || 606 => '对方不支持本次通话',
-    500 => '电话服务异常',
-    502 => '网关异常',
-    503 => '电话服务暂不可用',
-    603 => '对方已拒接',
-    >= 300 && < 400 => '呼叫被转移或重定向',
-    >= 400 && < 500 => '呼叫未完成',
-    >= 500 && < 600 => '电话服务异常',
-    >= 600 => '对方无法接听',
-    _ => '通话已结束',
-  };
-  return '$label（SIP $statusCode）';
 }

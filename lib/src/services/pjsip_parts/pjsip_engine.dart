@@ -67,9 +67,10 @@ extension PjsipEngineOperations on PjsipService {
         Directory(_nativeLogDirectoryPath).createSync(recursive: true);
         File(_nativeLogFilePath).writeAsStringSync('');
       } catch (_) {}
-      // 编译期 `PJ_LOG_MAX_LEVEL=6` 只代表动态库允许输出到 6 级；
-      // 运行时也要显式设置到 6，才能看到 DTLS-SRTP/ICE/SDP 协商细节。
-      const runtimePjsipLogLevel = 6;
+      // 编译期 `PJ_LOG_MAX_LEVEL=6` 只代表动态库允许最高输出到 6 级；
+      // 日常开发默认用 4 级（info），能看到关键 SIP/注册/媒体状态，又不会被
+      // trace 级 mutex/ioqueue 日志刷屏。排查 DTLS-SRTP/ICE 细节时再临时调到 6。
+      const runtimePjsipLogLevel = 4;
       logCfg.ref.msg_logging = 1;
       logCfg.ref.level = runtimePjsipLogLevel;
       logCfg.ref.console_level = runtimePjsipLogLevel;

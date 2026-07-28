@@ -32,9 +32,14 @@ target_include_directories(pjsip_ffi PRIVATE
   # pjsua-lib 会把 pjlib 的 PUBLIC 编译宏传给 pjsip_ffi，其中包含
   # PJ_AUTOCONF=1。PJSIP 的 CMake 构建会把 sip_autoconf.h/config_auto.h
   # 生成到 binary dir；显式加入这些目录，避免 wrapper 单独编译时找不到
-  # autoconf 头文件。pjlib-util/scanner.h 也由 pjsip 头文件间接引用，
-  # wrapper 单独编译时同样显式补齐，避免平台间 include 传播差异。
+  # autoconf 头文件。pjlib-util、pjmedia、pjnath 等源码头文件也会被
+  # pjsip/pjsua 头文件间接引用；wrapper 单独编译时同样显式补齐，
+  # 避免平台间 include 传播差异。
+  "${PJPROJECT_ROOT}/pjlib/include"
   "${PJPROJECT_ROOT}/pjlib-util/include"
+  "${PJPROJECT_ROOT}/pjnath/include"
+  "${PJPROJECT_ROOT}/pjmedia/include"
+  "${PJPROJECT_ROOT}/pjsip/include"
   "${CMAKE_CURRENT_BINARY_DIR}/pjproject-build/pjsip/include"
   "${CMAKE_CURRENT_BINARY_DIR}/pjproject-build/pjmedia/include"
   "${CMAKE_CURRENT_BINARY_DIR}/pjproject-build/pjlib/include"

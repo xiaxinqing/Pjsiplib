@@ -28,6 +28,8 @@ part 'pjsip_parts/pjsip_call_models.dart';
 
 part 'pjsip_parts/pjsip_call_transaction_snapshot.dart';
 
+part 'pjsip_parts/pjsip_call_end_reason.dart';
+
 part 'pjsip_parts/pjsip_ui_state.dart';
 
 part 'pjsip_parts/pjsip_callbacks.dart';

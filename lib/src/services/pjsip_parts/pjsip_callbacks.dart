@@ -611,15 +611,45 @@ extension _PjsipNativeCallbacks on PjsipService {
               '触发方判断: 请查看 PJSIP 原生日志中的 BYE/CANCEL/408/487\n'
               'PJSIP 原生日志: $_nativeLogFilePath',
             );
+            final disconnectedCall = _uiState.calls[callId];
+            // 401/407 是已接通通话前的 Digest 鉴权挑战；未接通的 4xx/5xx/6xx
+            // 则统一交给结束原因分类器处理，避免把 Forbidden、Decline 等
+            // 原始 SIP 文案直接给客户看。
+            final ignoreAuthChallenge =
+                disconnectedCall?.connectedAt != null &&
+                (lastStatus == 401 || lastStatus == 407);
+            final useBusinessEndReason =
+                ignoreAuthChallenge ||
+                (disconnectedCall != null &&
+                    disconnectedCall.connectedAt == null &&
+                    disconnectedCall.direction == PjsipCallDirection.outbound &&
+                    lastStatus >= 300);
+            final releasedInfo = ignoreAuthChallenge
+                ? _releasedCallInfo(callId, disconnectedCall)
+                : null;
+            final sipStatusCode = ignoreAuthChallenge
+                ? releasedInfo?.sipStatusCode ?? lastStatus
+                : lastStatus;
+            final hangupReason = ignoreAuthChallenge
+                ? releasedInfo?.reason ?? lastStatusText
+                : useBusinessEndReason
+                ? _formatSipCallEndReason(
+                    lastStatus,
+                    direction: disconnectedCall?.direction,
+                    wasConnected: false,
+                    reachedRinging: _wasOutboundRinging(disconnectedCall),
+                    includeSipCode: true,
+                  )
+                : lastStatusText;
             _logEarlyOutboundDisconnectWithoutAutoRecovery(
-              _uiState.calls[callId],
-              sipStatusCode: lastStatus,
-              sipStatusText: lastStatusText,
+              disconnectedCall,
+              sipStatusCode: sipStatusCode,
+              sipStatusText: hangupReason,
             );
             _removeCall(
               callId,
-              sipStatusCode: lastStatus,
-              hangupReason: lastStatusText,
+              sipStatusCode: sipStatusCode,
+              hangupReason: hangupReason,
             );
           } else {
             if (_blindTransferAutoReleaseCallIds.contains(callId) &&
