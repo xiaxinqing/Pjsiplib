@@ -36,7 +36,16 @@ target_include_directories(pjsip_ffi PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/../pjsip_bridge"
 )
 target_link_libraries(pjsip_ffi PRIVATE pjsua-lib)
-target_compile_definitions(pjsip_ffi PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_definitions(pjsip_ffi PRIVATE
+  WIN32_LEAN_AND_MEAN
+  NOMINMAX
+  # vphone_pjsip_bridge.c 是单独编译进统一 FFI DLL 的，不一定能继承
+  # PJSIP 子工程的 APP_CFLAGS。Windows x64 本身是小端；这里显式声明，
+  # 避免后续改工具链/架构时头文件判断不完整。
+  PJ_AUTOCONF=1
+  PJ_IS_BIG_ENDIAN=0
+  PJ_IS_LITTLE_ENDIAN=1
+)
 set_target_properties(pjsip_ffi PROPERTIES
   OUTPUT_NAME pjsip
   MSVC_RUNTIME_LIBRARY MultiThreadedDLL

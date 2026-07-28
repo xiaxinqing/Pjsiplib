@@ -132,6 +132,9 @@ jobs:
             clang -c "${GITHUB_WORKSPACE}/tool/pjsip_bridge/vphone_pjsip_bridge.c" \
                 -o "${bridge_obj}" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
+                -DPJ_AUTOCONF=1 \
+                -DPJ_IS_BIG_ENDIAN=0 \
+                -DPJ_IS_LITTLE_ENDIAN=1 \
                 -I"${GITHUB_WORKSPACE}/tool/pjsip_bridge" \
                 -I"${PJ_ROOT}/pjlib/include" \
                 -I"${PJ_ROOT}/pjlib-util/include" \

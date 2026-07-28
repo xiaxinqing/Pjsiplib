@@ -30,6 +30,14 @@ add_library(pjsip_ffi SHARED
 target_include_directories(pjsip_ffi PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/../pjsip_bridge"
 )
+target_compile_definitions(pjsip_ffi PRIVATE
+  # vphone_pjsip_bridge.c 是单独编译进统一 FFI 动态库的，不一定能继承
+  # PJSIP 子工程的 APP_CFLAGS。显式声明 autoconf 和小端，避免 ARM/x64
+  # 平台头文件判断大小端时出现 “Endianness must be declared”。
+  PJ_AUTOCONF=1
+  PJ_IS_BIG_ENDIAN=0
+  PJ_IS_LITTLE_ENDIAN=1
+)
 target_link_libraries(pjsip_ffi PRIVATE
   -Wl,--whole-archive
   pjsua-lib

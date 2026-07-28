@@ -87,6 +87,9 @@ clang -c "$ROOT/tool/pjsip_bridge/vphone_pjsip_bridge.c" \
   -o "$BRIDGE_OBJ" \
   -arch x86_64 \
   -mmacosx-version-min="$MACOSX_MIN" \
+  -DPJ_AUTOCONF=1 \
+  -DPJ_IS_BIG_ENDIAN=0 \
+  -DPJ_IS_LITTLE_ENDIAN=1 \
   -I"$ROOT/tool/pjsip_bridge" \
   -I"$WORK/pjlib/include" \
   -I"$WORK/pjlib-util/include" \
