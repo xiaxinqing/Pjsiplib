@@ -59,10 +59,18 @@ class _HistoryItem {
     this.deletedContactId,
     this.accountId,
     this.accountLabel,
+    this.ringingAt,
     this.answeredAt,
+    this.mediaConnectedAt,
     this.endedAt,
+    this.sipStatusCode,
     this.hangupReason,
     this.note,
+    this.timeToRingingMs,
+    this.ringingToAnswerMs,
+    this.answerToMediaMs,
+    this.holdCount = 0,
+    this.holdSeconds = 0,
   });
 
   final String key;
@@ -80,11 +88,19 @@ class _HistoryItem {
   final int? accountId;
   final String? accountLabel;
   final DateTime startedAt;
+  final DateTime? ringingAt;
   final DateTime? answeredAt;
+  final DateTime? mediaConnectedAt;
   final DateTime? endedAt;
   final int durationSeconds;
+  final int? sipStatusCode;
   final String? hangupReason;
   final String? note;
+  final int? timeToRingingMs;
+  final int? ringingToAnswerMs;
+  final int? answerToMediaMs;
+  final int holdCount;
+  final int holdSeconds;
 
   bool get canDelete => databaseId != null && !isLive;
 
@@ -94,6 +110,13 @@ class _HistoryItem {
 
   bool get hasDeletedContactSnapshot =>
       contactId == null && deletedContactId != null;
+
+  bool get hasCallStats =>
+      timeToRingingMs != null ||
+      ringingToAnswerMs != null ||
+      answerToMediaMs != null ||
+      holdCount > 0 ||
+      holdSeconds > 0;
 }
 
 /// 通话记录分组：按日期标签聚合记录列表。

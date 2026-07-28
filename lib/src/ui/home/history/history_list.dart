@@ -13,11 +13,17 @@ extension _HistoryList on _MyHomePageState {
   /// 单栏列表空间更充裕，但线路列仍保持最大宽度，避免把状态和时间推得太远。
   static const double _historyAccountSingleMaxWidth = 250;
 
+  /// 线路列最小宽度，避免窗口变窄时只剩几位号码，影响判断外呼线路。
+  static const double _historyAccountMinWidth = 112;
+
   /// 客户昵称/号码固定宽度；觉得前面太散可以调小，名字被截断就调大。
   static const double _historyPrimaryWidth = 86;
 
   /// 通话时长列固定宽度，使用等宽数字保持纵向对齐。
   static const double _historyDurationColumnWidth = 48;
+
+  /// 状态列固定宽度，保证表头和不同长度的状态标签保持同一列起点。
+  static const double _historyStatusColumnWidth = 72;
 
   /// 拨打时间列固定宽度，方便同一列纵向对齐。
   static const double _historyTimeColumnWidth = 54;
@@ -36,8 +42,12 @@ extension _HistoryList on _MyHomePageState {
     final grouped = _groupHistoryItems(items);
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: grouped.length + 1,
-      itemBuilder: (context, groupIndex) {
+      itemCount: grouped.length + 2,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return _buildHistoryColumnHeader(showDetailInline: showDetailInline);
+        }
+        final groupIndex = index - 1;
         if (groupIndex == grouped.length) {
           return _buildHistoryLoadMoreFooter(
             hasMorePersistedEntries: hasMorePersistedEntries,
@@ -68,6 +78,69 @@ extension _HistoryList on _MyHomePageState {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildHistoryColumnHeader({required bool showDetailInline}) {
+    final accountMaxWidth = showDetailInline
+        ? _historyAccountInlineMaxWidth
+        : _historyAccountSingleMaxWidth;
+    final style = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: _textSecondary,
+      fontWeight: FontWeight.w700,
+    );
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 2),
+      child: Row(
+        children: [
+          const SizedBox(width: 34),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: _historyPrimaryWidth,
+            child: Text('客户', style: style),
+          ),
+          const SizedBox(width: 12),
+          Flexible(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minWidth: _historyAccountMinWidth,
+                maxWidth: accountMaxWidth,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: Text(
+                  '线路',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: style,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          SizedBox(
+            width: _historyStatusColumnWidth,
+            child: Text('状态', style: style),
+          ),
+          const SizedBox(width: 14),
+          SizedBox(
+            width: _historyDurationColumnWidth,
+            child: Text('时长', textAlign: TextAlign.right, style: style),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: _historyTimeColumnWidth,
+            child: Text('时间', textAlign: TextAlign.right, style: style),
+          ),
+          const Spacer(),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: _historyActionColumnWidth,
+            child: Text('操作', textAlign: TextAlign.center, style: style),
+          ),
+        ],
+      ),
     );
   }
 
@@ -168,19 +241,31 @@ extension _HistoryList on _MyHomePageState {
               const SizedBox(width: 12),
               Flexible(
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: accountMaxWidth),
-                  child: Text(
-                    item.accountLabel ?? '未知线路',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                  constraints: BoxConstraints(
+                    minWidth: _historyAccountMinWidth,
+                    maxWidth: accountMaxWidth,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      item.accountLabel ?? '未知线路',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 14),
-              _buildHistoryStatusChip(item),
+              SizedBox(
+                width: _historyStatusColumnWidth,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildHistoryStatusChip(item),
+                ),
+              ),
               const SizedBox(width: 14),
               SizedBox(
                 width: _historyDurationColumnWidth,
@@ -208,7 +293,7 @@ extension _HistoryList on _MyHomePageState {
               SizedBox(
                 width: _historyActionColumnWidth,
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _buildHistoryCallButton(item, service),
                     IconButton(

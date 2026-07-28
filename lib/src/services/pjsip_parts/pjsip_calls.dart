@@ -771,12 +771,51 @@ extension PjsipCallOperations on PjsipService {
   }
 
   void _putCall(CallInfo call, {bool makeActive = false}) {
-    final calls = Map<int, CallInfo>.of(_uiState.calls)..[call.callId] = call;
+    final previous = _uiState.calls[call.callId];
+    final nextCall = _withHoldTimingMetrics(previous, call);
+    final calls = Map<int, CallInfo>.of(_uiState.calls)
+      ..[nextCall.callId] = nextCall;
     _uiState = _uiState.copyWith(
       calls: calls,
-      activeCallId: makeActive ? call.callId : _unset,
+      activeCallId: makeActive ? nextCall.callId : _unset,
     );
     _syncCallProgressSounds();
+  }
+
+  /// 在唯一的通话写入口统计 Hold 次数和累计时长。
+  ///
+  /// 本地按钮、自动保持、远端保持最终都会更新 `isOnHold/isRemoteOnHold`，
+  /// 因此这里做前后状态差分，比在每个操作函数里分别计时更稳。
+  CallInfo _withHoldTimingMetrics(CallInfo? previous, CallInfo next) {
+    if (previous == null) return next;
+
+    final wasHeld = previous.isOnHold || previous.isRemoteOnHold;
+    final isHeld = next.isOnHold || next.isRemoteOnHold;
+    final now = DateTime.now();
+
+    if (!wasHeld && isHeld) {
+      return next.copyWith(
+        holdStartedAt: next.holdStartedAt ?? now,
+        holdCount: next.holdCount + 1,
+      );
+    }
+
+    if (wasHeld && !isHeld) {
+      final holdStartedAt = previous.holdStartedAt;
+      final elapsed = holdStartedAt == null
+          ? Duration.zero
+          : _positiveDuration(now.difference(holdStartedAt));
+      return next.copyWith(
+        holdStartedAt: null,
+        totalHoldDuration: next.totalHoldDuration + elapsed,
+      );
+    }
+
+    if (wasHeld && isHeld && next.holdStartedAt == null) {
+      return next.copyWith(holdStartedAt: previous.holdStartedAt ?? now);
+    }
+
+    return next;
   }
 
   /// 查询通话在 PJSUA conference bridge 中的槽位。
@@ -1174,12 +1213,16 @@ extension PjsipCallOperations on PjsipService {
             remoteUri: call.remoteUri,
             phoneNumber: phoneNumber,
             startedAt: call.startedAt,
+            ringingAt: call.ringingAt,
             answeredAt: call.connectedAt,
+            mediaConnectedAt: call.mediaConnectedAt,
             endedAt: endedAt,
             displayName: contact?.name,
             contactId: contact?.id,
             accountId: call.accountId,
             accountLabel: account?.lineLabel,
+            holdCount: call.holdCount,
+            holdDuration: call.effectiveHoldDuration(endedAt),
             sipStatusCode: sipStatusCode,
             hangupReason: hangupReason?.trim().isEmpty == true
                 ? null

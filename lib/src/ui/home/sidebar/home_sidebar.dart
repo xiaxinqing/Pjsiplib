@@ -42,16 +42,20 @@ extension _HomeSidebar on _MyHomePageState {
     return Row(
       children: [
         Container(
-          width: 32,
-          height: 32,
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: _textPrimary,
+            color: _subtlePanel,
             borderRadius: BorderRadius.circular(_radiusSm),
+            border: Border.all(color: _softBorder),
           ),
-          child: const Icon(
-            AppIcons.appLogo,
-            color: Colors.white,
-            size: _iconMd,
+          child: Image.asset(
+            'assets/tray/tray_icon_macos_template.png',
+            width: 24,
+            height: 24,
+            color: _textPrimary,
+            filterQuality: FilterQuality.high,
           ),
         ),
         const SizedBox(width: 10),

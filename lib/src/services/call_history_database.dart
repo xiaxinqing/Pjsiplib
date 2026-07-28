@@ -59,10 +59,17 @@ class CallHistoryEntries extends Table {
   IntColumn get accountId => integer().nullable()();
   TextColumn get accountLabel => text().nullable()();
   DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get ringingAt => dateTime().nullable()();
   DateTimeColumn get answeredAt => dateTime().nullable()();
+  DateTimeColumn get mediaConnectedAt => dateTime().nullable()();
   DateTimeColumn get endedAt => dateTime()();
   IntColumn get durationSeconds => integer().withDefault(const Constant(0))();
   IntColumn get ringSeconds => integer().withDefault(const Constant(0))();
+  IntColumn get timeToRingingMs => integer().nullable()();
+  IntColumn get ringingToAnswerMs => integer().nullable()();
+  IntColumn get answerToMediaMs => integer().nullable()();
+  IntColumn get holdCount => integer().withDefault(const Constant(0))();
+  IntColumn get holdSeconds => integer().withDefault(const Constant(0))();
   IntColumn get sipStatusCode => integer().nullable()();
   TextColumn get hangupReason => text().nullable()();
   TextColumn get note => text().nullable()();
@@ -140,7 +147,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -160,6 +167,36 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
       }
       if (from < 4) {
         await migrator.addColumn(callHistoryEntries, callHistoryEntries.note);
+      }
+      if (from < 5) {
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.ringingAt,
+        );
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.mediaConnectedAt,
+        );
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.timeToRingingMs,
+        );
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.ringingToAnswerMs,
+        );
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.answerToMediaMs,
+        );
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.holdCount,
+        );
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.holdSeconds,
+        );
       }
     },
   );
@@ -278,11 +315,15 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     required String phoneNumber,
     required DateTime startedAt,
     required DateTime endedAt,
+    DateTime? ringingAt,
     DateTime? answeredAt,
+    DateTime? mediaConnectedAt,
     String? displayName,
     String? contactId,
     int? accountId,
     String? accountLabel,
+    int holdCount = 0,
+    Duration holdDuration = Duration.zero,
     int? sipStatusCode,
     String? hangupReason,
     String? note,
@@ -295,6 +336,9 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
         .inSeconds
         .clamp(0, 1 << 31)
         .toInt();
+    final timeToRingingMs = _positiveMilliseconds(startedAt, ringingAt);
+    final ringingToAnswerMs = _positiveMilliseconds(ringingAt, answeredAt);
+    final answerToMediaMs = _positiveMilliseconds(answeredAt, mediaConnectedAt);
     return addEntry(
       CallHistoryEntriesCompanion.insert(
         callId: callId,
@@ -307,16 +351,30 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
         accountId: Value(accountId),
         accountLabel: Value(accountLabel),
         startedAt: startedAt,
+        ringingAt: Value(ringingAt),
         answeredAt: Value(answeredAt),
+        mediaConnectedAt: Value(mediaConnectedAt),
         endedAt: endedAt,
         durationSeconds: Value(durationSeconds),
         ringSeconds: Value(ringSeconds),
+        timeToRingingMs: Value(timeToRingingMs),
+        ringingToAnswerMs: Value(ringingToAnswerMs),
+        answerToMediaMs: Value(answerToMediaMs),
+        holdCount: Value(holdCount.clamp(0, 1 << 31).toInt()),
+        holdSeconds: Value(holdDuration.inSeconds.clamp(0, 1 << 31).toInt()),
         sipStatusCode: Value(sipStatusCode),
         hangupReason: Value(hangupReason),
         note: Value(note?.trim().isEmpty == true ? null : note?.trim()),
         createdAt: DateTime.now(),
       ),
     );
+  }
+
+  int? _positiveMilliseconds(DateTime? from, DateTime? to) {
+    if (from == null || to == null) return null;
+    final milliseconds = to.difference(from).inMilliseconds;
+    if (milliseconds < 0) return 0;
+    return milliseconds.clamp(0, 1 << 31).toInt();
   }
 
   Future<void> deleteEntry(int id) {

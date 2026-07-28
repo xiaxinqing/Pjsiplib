@@ -30,6 +30,17 @@ class CallInfo {
   /// 通话接通 (进入 CONFIRMED) 的时间戳，用于计时。未接通时为 null。
   final DateTime? connectedAt;
 
+  /// 振铃开始时间。
+  ///
+  /// 外呼：收到 180/183 后进入 EARLY 的时间，表示“对方开始振铃/早期媒体”。
+  /// 来电：本机收到 INVITE 并回 180 的时间，表示“客户已开始等待我们接听”。
+  final DateTime? ringingAt;
+
+  /// 媒体真正 ACTIVE 的时间。
+  ///
+  /// SIP 接通不等于 RTP/SRTP 已可用，这个时间点用于排查“信令通了但没声音”。
+  final DateTime? mediaConnectedAt;
+
   /// 是否由本地发起的暂停 (Hold)
   final bool isOnHold;
 
@@ -43,6 +54,15 @@ class CallInfo {
   /// 当前音频媒体 transport 是否实际堆叠了 SRTP。
   final CallMediaSecurity? mediaSecurity;
 
+  /// 当前这次 Hold 开始的时间。非 Hold 状态为 null。
+  final DateTime? holdStartedAt;
+
+  /// 已完成的累计 Hold 时长。正在 Hold 的一段在归档时再补上。
+  final Duration totalHoldDuration;
+
+  /// 本地/远端进入 Hold 的次数，用于判断客户等待次数。
+  final int holdCount;
+
   CallInfo({
     required this.callId,
     required this.state,
@@ -51,10 +71,15 @@ class CallInfo {
     this.direction = PjsipCallDirection.outbound,
     DateTime? startedAt,
     this.connectedAt,
+    this.ringingAt,
+    this.mediaConnectedAt,
     this.isOnHold = false,
     this.isRemoteOnHold = false,
     this.mediaStatus,
     this.mediaSecurity,
+    this.holdStartedAt,
+    this.totalHoldDuration = Duration.zero,
+    this.holdCount = 0,
   }) : startedAt = startedAt ?? DateTime.now();
 
   CallInfo copyWith({
@@ -64,11 +89,16 @@ class CallInfo {
     Object? accountId = _unset,
     PjsipCallDirection? direction,
     DateTime? startedAt,
-    DateTime? connectedAt,
+    Object? connectedAt = _unset,
+    Object? ringingAt = _unset,
+    Object? mediaConnectedAt = _unset,
     bool? isOnHold,
     bool? isRemoteOnHold,
     Object? mediaStatus = _unset,
     Object? mediaSecurity = _unset,
+    Object? holdStartedAt = _unset,
+    Duration? totalHoldDuration,
+    int? holdCount,
   }) {
     return CallInfo(
       callId: callId ?? this.callId,
@@ -79,7 +109,15 @@ class CallInfo {
           : accountId as int?,
       direction: direction ?? this.direction,
       startedAt: startedAt ?? this.startedAt,
-      connectedAt: connectedAt ?? this.connectedAt,
+      connectedAt: identical(connectedAt, _unset)
+          ? this.connectedAt
+          : connectedAt as DateTime?,
+      ringingAt: identical(ringingAt, _unset)
+          ? this.ringingAt
+          : ringingAt as DateTime?,
+      mediaConnectedAt: identical(mediaConnectedAt, _unset)
+          ? this.mediaConnectedAt
+          : mediaConnectedAt as DateTime?,
       isOnHold: isOnHold ?? this.isOnHold,
       isRemoteOnHold: isRemoteOnHold ?? this.isRemoteOnHold,
       mediaStatus: identical(mediaStatus, _unset)
@@ -88,7 +126,38 @@ class CallInfo {
       mediaSecurity: identical(mediaSecurity, _unset)
           ? this.mediaSecurity
           : mediaSecurity as CallMediaSecurity?,
+      holdStartedAt: identical(holdStartedAt, _unset)
+          ? this.holdStartedAt
+          : holdStartedAt as DateTime?,
+      totalHoldDuration: totalHoldDuration ?? this.totalHoldDuration,
+      holdCount: holdCount ?? this.holdCount,
     );
+  }
+
+  Duration? get timeToRinging => ringingAt == null
+      ? null
+      : _positiveDuration(ringingAt!.difference(startedAt));
+
+  Duration? get ringingToAnswer {
+    final ringing = ringingAt;
+    final answered = connectedAt;
+    if (ringing == null || answered == null) return null;
+    return _positiveDuration(answered.difference(ringing));
+  }
+
+  Duration? get answerToMedia {
+    final answered = connectedAt;
+    final media = mediaConnectedAt;
+    if (answered == null || media == null) return null;
+    return _positiveDuration(media.difference(answered));
+  }
+
+  /// 归档时把“当前还在 Hold 的片段”也算进去。
+  Duration effectiveHoldDuration(DateTime endedAt) {
+    final activeHold = holdStartedAt == null
+        ? Duration.zero
+        : _positiveDuration(endedAt.difference(holdStartedAt!));
+    return totalHoldDuration + activeHold;
   }
 
   /// 是否是等待本机处理的来电。
@@ -146,6 +215,10 @@ class CallInfo {
         return '通话状态: $state';
     }
   }
+}
+
+Duration _positiveDuration(Duration duration) {
+  return duration.isNegative ? Duration.zero : duration;
 }
 
 class CallMediaSecurity {

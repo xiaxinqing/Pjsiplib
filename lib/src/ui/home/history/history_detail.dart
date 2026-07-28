@@ -73,13 +73,151 @@ extension _HistoryDetail on _MyHomePageState {
             ),
             _buildHistoryDetailLine('通话时长', _formatHistoryDuration(item)),
             if (item.hangupReason?.trim().isNotEmpty == true)
-              _buildHistoryDetailLine('结束原因', item.hangupReason!.trim()),
-            const SizedBox(height: 2),
+              _shouldHighlightHistoryEndReason(item)
+                  ? _buildHistoryEndReasonNotice(item)
+                  : _buildHistoryDetailLine('结束原因', item.hangupReason!.trim()),
+            if (item.hasCallStats) ...[
+              const SizedBox(height: 2),
+              _buildHistoryStatsCard(item),
+              const SizedBox(height: 12),
+            ] else
+              const SizedBox(height: 2),
             _buildHistoryNoteArea(item),
           ],
         ),
       ),
     );
+  }
+
+  bool _shouldHighlightHistoryEndReason(_HistoryItem item) {
+    return item.status == CallHistoryStatus.failed ||
+        item.status == CallHistoryStatus.rejected ||
+        item.status == CallHistoryStatus.missed;
+  }
+
+  Widget _buildHistoryEndReasonNotice(_HistoryItem item) {
+    final color = _historyItemColor(item);
+    final reason = item.hangupReason!.trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(_radiusSm),
+          border: Border.all(color: color.withValues(alpha: 0.16)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(AppIcons.info, size: _iconSm, color: color),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _historyListStatusLabel(item),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      reason,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryStatsCard(_HistoryItem item) {
+    final stats = _historyStats(item);
+    if (stats.isEmpty) return const SizedBox.shrink();
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _subtlePanel,
+        borderRadius: BorderRadius.circular(_radiusSm),
+        border: Border.all(color: _softBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(AppIcons.activity, size: _iconSm, color: _textSecondary),
+                const SizedBox(width: 8),
+                Text(
+                  '通话统计',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final stat in stats)
+                  _HistoryStatPill(label: stat.$1, value: stat.$2),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<(String, String)> _historyStats(_HistoryItem item) {
+    final stats = <(String, String)>[];
+    if (item.direction == CallHistoryDirection.outbound &&
+        item.timeToRingingMs != null) {
+      stats.add(('拨号到响铃', _formatHistoryMetricMs(item.timeToRingingMs!)));
+    }
+    if (item.ringingToAnswerMs != null) {
+      stats.add(('响铃到接听', _formatHistoryMetricMs(item.ringingToAnswerMs!)));
+    }
+    if (item.answerToMediaMs != null) {
+      stats.add(('语音建立', _formatHistoryMetricMs(item.answerToMediaMs!)));
+    }
+    if (item.holdCount > 0) {
+      stats.add(('保持次数', '${item.holdCount} 次'));
+    }
+    if (item.holdSeconds > 0) {
+      stats.add(('累计保持', _formatHistoryMetricSeconds(item.holdSeconds)));
+    }
+    return stats;
+  }
+
+  String _formatHistoryMetricMs(int milliseconds) {
+    if (milliseconds < 300) return '即时';
+    if (milliseconds < 1000) return '${milliseconds}ms';
+    if (milliseconds < 10000) {
+      return '${(milliseconds / 1000).toStringAsFixed(1)} 秒';
+    }
+    return _formatHistoryMetricSeconds((milliseconds / 1000).round());
+  }
+
+  String _formatHistoryMetricSeconds(int seconds) {
+    if (seconds < 60) return '$seconds 秒';
+    final minutes = seconds ~/ 60;
+    final remain = seconds % 60;
+    return '$minutes:${remain.toString().padLeft(2, '0')}';
   }
 
   Widget _buildHistoryNoteArea(_HistoryItem item) {
@@ -222,20 +360,24 @@ extension _HistoryDetail on _MyHomePageState {
 
   Widget _buildHistoryStatusChip(_HistoryItem item) {
     final color = _historyItemColor(item);
-    return Container(
+    final label = _historyListStatusLabel(item);
+    final reason = item.hangupReason?.trim();
+    final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(_radiusXs),
       ),
       child: Text(
-        item.statusLabel,
+        label,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w700,
         ),
       ),
     );
+    if (reason == null || reason.isEmpty || reason == label) return chip;
+    return Tooltip(message: reason, child: chip);
   }
 
   Future<void> _showHistoryDetail(_HistoryItem item, PjsipService service) {
@@ -300,6 +442,43 @@ extension _HistoryDetail on _MyHomePageState {
           ],
         );
       },
+    );
+  }
+}
+
+class _HistoryStatPill extends StatelessWidget {
+  const _HistoryStatPill({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: _panelBackground,
+        borderRadius: BorderRadius.circular(_radiusXs),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: _textSecondary),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+          ),
+        ],
+      ),
     );
   }
 }

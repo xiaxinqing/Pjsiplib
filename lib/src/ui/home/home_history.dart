@@ -6,9 +6,9 @@ const int _historyPageSize = 100;
 extension _HomeHistory on _MyHomePageState {
   /// 通话记录达到该宽度后展示右侧详情。
   ///
-  /// 详情内容是选中记录的辅助信息，不需要等页面特别宽才出现；列表行会根据
-  /// 自身宽度隐藏线路列并固定状态/时间列，避免双栏后横向挤压。
-  static const double _historyDetailPaneBreakpoint = 780;
+  /// 详情内容是辅助信息，必须先保证左侧列表可读。双栏比例是 6:4，
+  /// 所以这里需要整体宽度足够大，避免列表区被压到线路和操作列溢出。
+  static const double _historyDetailPaneBreakpoint = 800;
 
   Widget _buildHistoryPage(PjsipUIState uiState, PjsipService service) {
     final database = ref.watch(callHistoryDatabaseProvider);
@@ -177,11 +177,19 @@ extension _HomeHistory on _MyHomePageState {
       accountId: entry.accountId,
       accountLabel: entry.accountLabel,
       startedAt: entry.startedAt,
+      ringingAt: entry.ringingAt,
       answeredAt: entry.answeredAt,
+      mediaConnectedAt: entry.mediaConnectedAt,
       endedAt: entry.endedAt,
       durationSeconds: entry.durationSeconds,
+      sipStatusCode: entry.sipStatusCode,
       hangupReason: entry.hangupReason,
       note: entry.note,
+      timeToRingingMs: entry.timeToRingingMs,
+      ringingToAnswerMs: entry.ringingToAnswerMs,
+      answerToMediaMs: entry.answerToMediaMs,
+      holdCount: entry.holdCount,
+      holdSeconds: entry.holdSeconds,
     );
   }
 
@@ -210,8 +218,15 @@ extension _HomeHistory on _MyHomePageState {
       accountId: call.accountId,
       accountLabel: account?.lineLabel,
       startedAt: call.startedAt,
+      ringingAt: call.ringingAt,
       answeredAt: call.connectedAt,
+      mediaConnectedAt: call.mediaConnectedAt,
       durationSeconds: durationSeconds,
+      timeToRingingMs: call.timeToRinging?.inMilliseconds,
+      ringingToAnswerMs: call.ringingToAnswer?.inMilliseconds,
+      answerToMediaMs: call.answerToMedia?.inMilliseconds,
+      holdCount: call.holdCount,
+      holdSeconds: call.effectiveHoldDuration(DateTime.now()).inSeconds,
     );
   }
 
@@ -302,6 +317,54 @@ extension _HomeHistory on _MyHomePageState {
   String? _historyNoteText(_HistoryItem item) {
     final note = item.note?.trim();
     return note == null || note.isEmpty ? null : note;
+  }
+
+  /// 通话记录列表只展示客服能快速理解的短原因，完整 SIP 原因保留在右侧详情。
+  String _historyListStatusLabel(_HistoryItem item) {
+    if (item.isLive) return item.statusLabel;
+    return switch (item.status) {
+      CallHistoryStatus.completed => item.statusLabel,
+      CallHistoryStatus.missed => item.statusLabel,
+      CallHistoryStatus.rejected =>
+        item.direction == CallHistoryDirection.inbound ? '已拒接' : '对方拒接',
+      CallHistoryStatus.canceled => item.statusLabel,
+      CallHistoryStatus.failed => _historyFailedReasonLabel(item),
+      null => item.statusLabel,
+    };
+  }
+
+  /// SIP 失败码只在列表里归类成稳定短文案，避免把协议细节暴露给客服。
+  String _historyFailedReasonLabel(_HistoryItem item) {
+    final code = item.sipStatusCode;
+    if (code != null) {
+      if (code == 486) return '对方忙线';
+      if (code == 408) return '无人接听';
+      if (code == 404 || code == 484 || code == 604) return '号码无效';
+      if (code == 403) return '对方拒接';
+      if (code == 488 || code == 606) return '媒体失败';
+      if (code == 480 ||
+          code == 410 ||
+          code == 500 ||
+          code == 502 ||
+          code == 503 ||
+          code == 504 ||
+          code == 603) {
+        return '无法接通';
+      }
+    }
+
+    final reason = item.hangupReason?.trim() ?? '';
+    if (reason.contains('拒接') || reason.contains('Decline')) return '对方拒接';
+    if (reason.contains('忙') || reason.contains('Busy')) return '对方忙线';
+    if (reason.contains('超时') || reason.contains('Timeout')) return '无人接听';
+    if (reason.contains('号码') || reason.contains('Not Found')) return '号码无效';
+    if (reason.contains('媒体') || reason.contains('Media')) return '媒体失败';
+    if (reason.contains('不可用') ||
+        reason.contains('无法接通') ||
+        reason.contains('Unavailable')) {
+      return '无法接通';
+    }
+    return '未接通';
   }
 
   Color _historyItemColor(_HistoryItem item) {

@@ -128,6 +128,17 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _ringingAtMeta = const VerificationMeta(
+    'ringingAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> ringingAt = GeneratedColumn<DateTime>(
+    'ringing_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _answeredAtMeta = const VerificationMeta(
     'answeredAt',
   );
@@ -139,6 +150,18 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     type: DriftSqlType.dateTime,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _mediaConnectedAtMeta = const VerificationMeta(
+    'mediaConnectedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> mediaConnectedAt =
+      GeneratedColumn<DateTime>(
+        'media_connected_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.dateTime,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _endedAtMeta = const VerificationMeta(
     'endedAt',
   );
@@ -168,6 +191,63 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
   @override
   late final GeneratedColumn<int> ringSeconds = GeneratedColumn<int>(
     'ring_seconds',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _timeToRingingMsMeta = const VerificationMeta(
+    'timeToRingingMs',
+  );
+  @override
+  late final GeneratedColumn<int> timeToRingingMs = GeneratedColumn<int>(
+    'time_to_ringing_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _ringingToAnswerMsMeta = const VerificationMeta(
+    'ringingToAnswerMs',
+  );
+  @override
+  late final GeneratedColumn<int> ringingToAnswerMs = GeneratedColumn<int>(
+    'ringing_to_answer_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _answerToMediaMsMeta = const VerificationMeta(
+    'answerToMediaMs',
+  );
+  @override
+  late final GeneratedColumn<int> answerToMediaMs = GeneratedColumn<int>(
+    'answer_to_media_ms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _holdCountMeta = const VerificationMeta(
+    'holdCount',
+  );
+  @override
+  late final GeneratedColumn<int> holdCount = GeneratedColumn<int>(
+    'hold_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _holdSecondsMeta = const VerificationMeta(
+    'holdSeconds',
+  );
+  @override
+  late final GeneratedColumn<int> holdSeconds = GeneratedColumn<int>(
+    'hold_seconds',
     aliasedName,
     false,
     type: DriftSqlType.int,
@@ -229,10 +309,17 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     accountId,
     accountLabel,
     startedAt,
+    ringingAt,
     answeredAt,
+    mediaConnectedAt,
     endedAt,
     durationSeconds,
     ringSeconds,
+    timeToRingingMs,
+    ringingToAnswerMs,
+    answerToMediaMs,
+    holdCount,
+    holdSeconds,
     sipStatusCode,
     hangupReason,
     note,
@@ -334,10 +421,25 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     } else if (isInserting) {
       context.missing(_startedAtMeta);
     }
+    if (data.containsKey('ringing_at')) {
+      context.handle(
+        _ringingAtMeta,
+        ringingAt.isAcceptableOrUnknown(data['ringing_at']!, _ringingAtMeta),
+      );
+    }
     if (data.containsKey('answered_at')) {
       context.handle(
         _answeredAtMeta,
         answeredAt.isAcceptableOrUnknown(data['answered_at']!, _answeredAtMeta),
+      );
+    }
+    if (data.containsKey('media_connected_at')) {
+      context.handle(
+        _mediaConnectedAtMeta,
+        mediaConnectedAt.isAcceptableOrUnknown(
+          data['media_connected_at']!,
+          _mediaConnectedAtMeta,
+        ),
       );
     }
     if (data.containsKey('ended_at')) {
@@ -363,6 +465,48 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         ringSeconds.isAcceptableOrUnknown(
           data['ring_seconds']!,
           _ringSecondsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('time_to_ringing_ms')) {
+      context.handle(
+        _timeToRingingMsMeta,
+        timeToRingingMs.isAcceptableOrUnknown(
+          data['time_to_ringing_ms']!,
+          _timeToRingingMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('ringing_to_answer_ms')) {
+      context.handle(
+        _ringingToAnswerMsMeta,
+        ringingToAnswerMs.isAcceptableOrUnknown(
+          data['ringing_to_answer_ms']!,
+          _ringingToAnswerMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('answer_to_media_ms')) {
+      context.handle(
+        _answerToMediaMsMeta,
+        answerToMediaMs.isAcceptableOrUnknown(
+          data['answer_to_media_ms']!,
+          _answerToMediaMsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('hold_count')) {
+      context.handle(
+        _holdCountMeta,
+        holdCount.isAcceptableOrUnknown(data['hold_count']!, _holdCountMeta),
+      );
+    }
+    if (data.containsKey('hold_seconds')) {
+      context.handle(
+        _holdSecondsMeta,
+        holdSeconds.isAcceptableOrUnknown(
+          data['hold_seconds']!,
+          _holdSecondsMeta,
         ),
       );
     }
@@ -451,9 +595,17 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         DriftSqlType.dateTime,
         data['${effectivePrefix}started_at'],
       )!,
+      ringingAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ringing_at'],
+      ),
       answeredAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}answered_at'],
+      ),
+      mediaConnectedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}media_connected_at'],
       ),
       endedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
@@ -466,6 +618,26 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
       ringSeconds: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}ring_seconds'],
+      )!,
+      timeToRingingMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}time_to_ringing_ms'],
+      ),
+      ringingToAnswerMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}ringing_to_answer_ms'],
+      ),
+      answerToMediaMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}answer_to_media_ms'],
+      ),
+      holdCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hold_count'],
+      )!,
+      holdSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}hold_seconds'],
       )!,
       sipStatusCode: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
@@ -505,10 +677,17 @@ class CallHistoryEntry extends DataClass
   final int? accountId;
   final String? accountLabel;
   final DateTime startedAt;
+  final DateTime? ringingAt;
   final DateTime? answeredAt;
+  final DateTime? mediaConnectedAt;
   final DateTime endedAt;
   final int durationSeconds;
   final int ringSeconds;
+  final int? timeToRingingMs;
+  final int? ringingToAnswerMs;
+  final int? answerToMediaMs;
+  final int holdCount;
+  final int holdSeconds;
   final int? sipStatusCode;
   final String? hangupReason;
   final String? note;
@@ -525,10 +704,17 @@ class CallHistoryEntry extends DataClass
     this.accountId,
     this.accountLabel,
     required this.startedAt,
+    this.ringingAt,
     this.answeredAt,
+    this.mediaConnectedAt,
     required this.endedAt,
     required this.durationSeconds,
     required this.ringSeconds,
+    this.timeToRingingMs,
+    this.ringingToAnswerMs,
+    this.answerToMediaMs,
+    required this.holdCount,
+    required this.holdSeconds,
     this.sipStatusCode,
     this.hangupReason,
     this.note,
@@ -556,12 +742,29 @@ class CallHistoryEntry extends DataClass
       map['account_label'] = Variable<String>(accountLabel);
     }
     map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || ringingAt != null) {
+      map['ringing_at'] = Variable<DateTime>(ringingAt);
+    }
     if (!nullToAbsent || answeredAt != null) {
       map['answered_at'] = Variable<DateTime>(answeredAt);
+    }
+    if (!nullToAbsent || mediaConnectedAt != null) {
+      map['media_connected_at'] = Variable<DateTime>(mediaConnectedAt);
     }
     map['ended_at'] = Variable<DateTime>(endedAt);
     map['duration_seconds'] = Variable<int>(durationSeconds);
     map['ring_seconds'] = Variable<int>(ringSeconds);
+    if (!nullToAbsent || timeToRingingMs != null) {
+      map['time_to_ringing_ms'] = Variable<int>(timeToRingingMs);
+    }
+    if (!nullToAbsent || ringingToAnswerMs != null) {
+      map['ringing_to_answer_ms'] = Variable<int>(ringingToAnswerMs);
+    }
+    if (!nullToAbsent || answerToMediaMs != null) {
+      map['answer_to_media_ms'] = Variable<int>(answerToMediaMs);
+    }
+    map['hold_count'] = Variable<int>(holdCount);
+    map['hold_seconds'] = Variable<int>(holdSeconds);
     if (!nullToAbsent || sipStatusCode != null) {
       map['sip_status_code'] = Variable<int>(sipStatusCode);
     }
@@ -596,12 +799,29 @@ class CallHistoryEntry extends DataClass
           ? const Value.absent()
           : Value(accountLabel),
       startedAt: Value(startedAt),
+      ringingAt: ringingAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ringingAt),
       answeredAt: answeredAt == null && nullToAbsent
           ? const Value.absent()
           : Value(answeredAt),
+      mediaConnectedAt: mediaConnectedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(mediaConnectedAt),
       endedAt: Value(endedAt),
       durationSeconds: Value(durationSeconds),
       ringSeconds: Value(ringSeconds),
+      timeToRingingMs: timeToRingingMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timeToRingingMs),
+      ringingToAnswerMs: ringingToAnswerMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ringingToAnswerMs),
+      answerToMediaMs: answerToMediaMs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(answerToMediaMs),
+      holdCount: Value(holdCount),
+      holdSeconds: Value(holdSeconds),
       sipStatusCode: sipStatusCode == null && nullToAbsent
           ? const Value.absent()
           : Value(sipStatusCode),
@@ -630,10 +850,19 @@ class CallHistoryEntry extends DataClass
       accountId: serializer.fromJson<int?>(json['accountId']),
       accountLabel: serializer.fromJson<String?>(json['accountLabel']),
       startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      ringingAt: serializer.fromJson<DateTime?>(json['ringingAt']),
       answeredAt: serializer.fromJson<DateTime?>(json['answeredAt']),
+      mediaConnectedAt: serializer.fromJson<DateTime?>(
+        json['mediaConnectedAt'],
+      ),
       endedAt: serializer.fromJson<DateTime>(json['endedAt']),
       durationSeconds: serializer.fromJson<int>(json['durationSeconds']),
       ringSeconds: serializer.fromJson<int>(json['ringSeconds']),
+      timeToRingingMs: serializer.fromJson<int?>(json['timeToRingingMs']),
+      ringingToAnswerMs: serializer.fromJson<int?>(json['ringingToAnswerMs']),
+      answerToMediaMs: serializer.fromJson<int?>(json['answerToMediaMs']),
+      holdCount: serializer.fromJson<int>(json['holdCount']),
+      holdSeconds: serializer.fromJson<int>(json['holdSeconds']),
       sipStatusCode: serializer.fromJson<int?>(json['sipStatusCode']),
       hangupReason: serializer.fromJson<String?>(json['hangupReason']),
       note: serializer.fromJson<String?>(json['note']),
@@ -655,10 +884,17 @@ class CallHistoryEntry extends DataClass
       'accountId': serializer.toJson<int?>(accountId),
       'accountLabel': serializer.toJson<String?>(accountLabel),
       'startedAt': serializer.toJson<DateTime>(startedAt),
+      'ringingAt': serializer.toJson<DateTime?>(ringingAt),
       'answeredAt': serializer.toJson<DateTime?>(answeredAt),
+      'mediaConnectedAt': serializer.toJson<DateTime?>(mediaConnectedAt),
       'endedAt': serializer.toJson<DateTime>(endedAt),
       'durationSeconds': serializer.toJson<int>(durationSeconds),
       'ringSeconds': serializer.toJson<int>(ringSeconds),
+      'timeToRingingMs': serializer.toJson<int?>(timeToRingingMs),
+      'ringingToAnswerMs': serializer.toJson<int?>(ringingToAnswerMs),
+      'answerToMediaMs': serializer.toJson<int?>(answerToMediaMs),
+      'holdCount': serializer.toJson<int>(holdCount),
+      'holdSeconds': serializer.toJson<int>(holdSeconds),
       'sipStatusCode': serializer.toJson<int?>(sipStatusCode),
       'hangupReason': serializer.toJson<String?>(hangupReason),
       'note': serializer.toJson<String?>(note),
@@ -678,10 +914,17 @@ class CallHistoryEntry extends DataClass
     Value<int?> accountId = const Value.absent(),
     Value<String?> accountLabel = const Value.absent(),
     DateTime? startedAt,
+    Value<DateTime?> ringingAt = const Value.absent(),
     Value<DateTime?> answeredAt = const Value.absent(),
+    Value<DateTime?> mediaConnectedAt = const Value.absent(),
     DateTime? endedAt,
     int? durationSeconds,
     int? ringSeconds,
+    Value<int?> timeToRingingMs = const Value.absent(),
+    Value<int?> ringingToAnswerMs = const Value.absent(),
+    Value<int?> answerToMediaMs = const Value.absent(),
+    int? holdCount,
+    int? holdSeconds,
     Value<int?> sipStatusCode = const Value.absent(),
     Value<String?> hangupReason = const Value.absent(),
     Value<String?> note = const Value.absent(),
@@ -698,10 +941,25 @@ class CallHistoryEntry extends DataClass
     accountId: accountId.present ? accountId.value : this.accountId,
     accountLabel: accountLabel.present ? accountLabel.value : this.accountLabel,
     startedAt: startedAt ?? this.startedAt,
+    ringingAt: ringingAt.present ? ringingAt.value : this.ringingAt,
     answeredAt: answeredAt.present ? answeredAt.value : this.answeredAt,
+    mediaConnectedAt: mediaConnectedAt.present
+        ? mediaConnectedAt.value
+        : this.mediaConnectedAt,
     endedAt: endedAt ?? this.endedAt,
     durationSeconds: durationSeconds ?? this.durationSeconds,
     ringSeconds: ringSeconds ?? this.ringSeconds,
+    timeToRingingMs: timeToRingingMs.present
+        ? timeToRingingMs.value
+        : this.timeToRingingMs,
+    ringingToAnswerMs: ringingToAnswerMs.present
+        ? ringingToAnswerMs.value
+        : this.ringingToAnswerMs,
+    answerToMediaMs: answerToMediaMs.present
+        ? answerToMediaMs.value
+        : this.answerToMediaMs,
+    holdCount: holdCount ?? this.holdCount,
+    holdSeconds: holdSeconds ?? this.holdSeconds,
     sipStatusCode: sipStatusCode.present
         ? sipStatusCode.value
         : this.sipStatusCode,
@@ -728,9 +986,13 @@ class CallHistoryEntry extends DataClass
           ? data.accountLabel.value
           : this.accountLabel,
       startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      ringingAt: data.ringingAt.present ? data.ringingAt.value : this.ringingAt,
       answeredAt: data.answeredAt.present
           ? data.answeredAt.value
           : this.answeredAt,
+      mediaConnectedAt: data.mediaConnectedAt.present
+          ? data.mediaConnectedAt.value
+          : this.mediaConnectedAt,
       endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
       durationSeconds: data.durationSeconds.present
           ? data.durationSeconds.value
@@ -738,6 +1000,19 @@ class CallHistoryEntry extends DataClass
       ringSeconds: data.ringSeconds.present
           ? data.ringSeconds.value
           : this.ringSeconds,
+      timeToRingingMs: data.timeToRingingMs.present
+          ? data.timeToRingingMs.value
+          : this.timeToRingingMs,
+      ringingToAnswerMs: data.ringingToAnswerMs.present
+          ? data.ringingToAnswerMs.value
+          : this.ringingToAnswerMs,
+      answerToMediaMs: data.answerToMediaMs.present
+          ? data.answerToMediaMs.value
+          : this.answerToMediaMs,
+      holdCount: data.holdCount.present ? data.holdCount.value : this.holdCount,
+      holdSeconds: data.holdSeconds.present
+          ? data.holdSeconds.value
+          : this.holdSeconds,
       sipStatusCode: data.sipStatusCode.present
           ? data.sipStatusCode.value
           : this.sipStatusCode,
@@ -763,10 +1038,17 @@ class CallHistoryEntry extends DataClass
           ..write('accountId: $accountId, ')
           ..write('accountLabel: $accountLabel, ')
           ..write('startedAt: $startedAt, ')
+          ..write('ringingAt: $ringingAt, ')
           ..write('answeredAt: $answeredAt, ')
+          ..write('mediaConnectedAt: $mediaConnectedAt, ')
           ..write('endedAt: $endedAt, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('ringSeconds: $ringSeconds, ')
+          ..write('timeToRingingMs: $timeToRingingMs, ')
+          ..write('ringingToAnswerMs: $ringingToAnswerMs, ')
+          ..write('answerToMediaMs: $answerToMediaMs, ')
+          ..write('holdCount: $holdCount, ')
+          ..write('holdSeconds: $holdSeconds, ')
           ..write('sipStatusCode: $sipStatusCode, ')
           ..write('hangupReason: $hangupReason, ')
           ..write('note: $note, ')
@@ -776,7 +1058,7 @@ class CallHistoryEntry extends DataClass
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     callId,
     direction,
@@ -788,15 +1070,22 @@ class CallHistoryEntry extends DataClass
     accountId,
     accountLabel,
     startedAt,
+    ringingAt,
     answeredAt,
+    mediaConnectedAt,
     endedAt,
     durationSeconds,
     ringSeconds,
+    timeToRingingMs,
+    ringingToAnswerMs,
+    answerToMediaMs,
+    holdCount,
+    holdSeconds,
     sipStatusCode,
     hangupReason,
     note,
     createdAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -812,10 +1101,17 @@ class CallHistoryEntry extends DataClass
           other.accountId == this.accountId &&
           other.accountLabel == this.accountLabel &&
           other.startedAt == this.startedAt &&
+          other.ringingAt == this.ringingAt &&
           other.answeredAt == this.answeredAt &&
+          other.mediaConnectedAt == this.mediaConnectedAt &&
           other.endedAt == this.endedAt &&
           other.durationSeconds == this.durationSeconds &&
           other.ringSeconds == this.ringSeconds &&
+          other.timeToRingingMs == this.timeToRingingMs &&
+          other.ringingToAnswerMs == this.ringingToAnswerMs &&
+          other.answerToMediaMs == this.answerToMediaMs &&
+          other.holdCount == this.holdCount &&
+          other.holdSeconds == this.holdSeconds &&
           other.sipStatusCode == this.sipStatusCode &&
           other.hangupReason == this.hangupReason &&
           other.note == this.note &&
@@ -834,10 +1130,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   final Value<int?> accountId;
   final Value<String?> accountLabel;
   final Value<DateTime> startedAt;
+  final Value<DateTime?> ringingAt;
   final Value<DateTime?> answeredAt;
+  final Value<DateTime?> mediaConnectedAt;
   final Value<DateTime> endedAt;
   final Value<int> durationSeconds;
   final Value<int> ringSeconds;
+  final Value<int?> timeToRingingMs;
+  final Value<int?> ringingToAnswerMs;
+  final Value<int?> answerToMediaMs;
+  final Value<int> holdCount;
+  final Value<int> holdSeconds;
   final Value<int?> sipStatusCode;
   final Value<String?> hangupReason;
   final Value<String?> note;
@@ -854,10 +1157,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     this.accountId = const Value.absent(),
     this.accountLabel = const Value.absent(),
     this.startedAt = const Value.absent(),
+    this.ringingAt = const Value.absent(),
     this.answeredAt = const Value.absent(),
+    this.mediaConnectedAt = const Value.absent(),
     this.endedAt = const Value.absent(),
     this.durationSeconds = const Value.absent(),
     this.ringSeconds = const Value.absent(),
+    this.timeToRingingMs = const Value.absent(),
+    this.ringingToAnswerMs = const Value.absent(),
+    this.answerToMediaMs = const Value.absent(),
+    this.holdCount = const Value.absent(),
+    this.holdSeconds = const Value.absent(),
     this.sipStatusCode = const Value.absent(),
     this.hangupReason = const Value.absent(),
     this.note = const Value.absent(),
@@ -875,10 +1185,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     this.accountId = const Value.absent(),
     this.accountLabel = const Value.absent(),
     required DateTime startedAt,
+    this.ringingAt = const Value.absent(),
     this.answeredAt = const Value.absent(),
+    this.mediaConnectedAt = const Value.absent(),
     required DateTime endedAt,
     this.durationSeconds = const Value.absent(),
     this.ringSeconds = const Value.absent(),
+    this.timeToRingingMs = const Value.absent(),
+    this.ringingToAnswerMs = const Value.absent(),
+    this.answerToMediaMs = const Value.absent(),
+    this.holdCount = const Value.absent(),
+    this.holdSeconds = const Value.absent(),
     this.sipStatusCode = const Value.absent(),
     this.hangupReason = const Value.absent(),
     this.note = const Value.absent(),
@@ -903,10 +1220,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     Expression<int>? accountId,
     Expression<String>? accountLabel,
     Expression<DateTime>? startedAt,
+    Expression<DateTime>? ringingAt,
     Expression<DateTime>? answeredAt,
+    Expression<DateTime>? mediaConnectedAt,
     Expression<DateTime>? endedAt,
     Expression<int>? durationSeconds,
     Expression<int>? ringSeconds,
+    Expression<int>? timeToRingingMs,
+    Expression<int>? ringingToAnswerMs,
+    Expression<int>? answerToMediaMs,
+    Expression<int>? holdCount,
+    Expression<int>? holdSeconds,
     Expression<int>? sipStatusCode,
     Expression<String>? hangupReason,
     Expression<String>? note,
@@ -924,10 +1248,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
       if (accountId != null) 'account_id': accountId,
       if (accountLabel != null) 'account_label': accountLabel,
       if (startedAt != null) 'started_at': startedAt,
+      if (ringingAt != null) 'ringing_at': ringingAt,
       if (answeredAt != null) 'answered_at': answeredAt,
+      if (mediaConnectedAt != null) 'media_connected_at': mediaConnectedAt,
       if (endedAt != null) 'ended_at': endedAt,
       if (durationSeconds != null) 'duration_seconds': durationSeconds,
       if (ringSeconds != null) 'ring_seconds': ringSeconds,
+      if (timeToRingingMs != null) 'time_to_ringing_ms': timeToRingingMs,
+      if (ringingToAnswerMs != null) 'ringing_to_answer_ms': ringingToAnswerMs,
+      if (answerToMediaMs != null) 'answer_to_media_ms': answerToMediaMs,
+      if (holdCount != null) 'hold_count': holdCount,
+      if (holdSeconds != null) 'hold_seconds': holdSeconds,
       if (sipStatusCode != null) 'sip_status_code': sipStatusCode,
       if (hangupReason != null) 'hangup_reason': hangupReason,
       if (note != null) 'note': note,
@@ -947,10 +1278,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     Value<int?>? accountId,
     Value<String?>? accountLabel,
     Value<DateTime>? startedAt,
+    Value<DateTime?>? ringingAt,
     Value<DateTime?>? answeredAt,
+    Value<DateTime?>? mediaConnectedAt,
     Value<DateTime>? endedAt,
     Value<int>? durationSeconds,
     Value<int>? ringSeconds,
+    Value<int?>? timeToRingingMs,
+    Value<int?>? ringingToAnswerMs,
+    Value<int?>? answerToMediaMs,
+    Value<int>? holdCount,
+    Value<int>? holdSeconds,
     Value<int?>? sipStatusCode,
     Value<String?>? hangupReason,
     Value<String?>? note,
@@ -968,10 +1306,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
       accountId: accountId ?? this.accountId,
       accountLabel: accountLabel ?? this.accountLabel,
       startedAt: startedAt ?? this.startedAt,
+      ringingAt: ringingAt ?? this.ringingAt,
       answeredAt: answeredAt ?? this.answeredAt,
+      mediaConnectedAt: mediaConnectedAt ?? this.mediaConnectedAt,
       endedAt: endedAt ?? this.endedAt,
       durationSeconds: durationSeconds ?? this.durationSeconds,
       ringSeconds: ringSeconds ?? this.ringSeconds,
+      timeToRingingMs: timeToRingingMs ?? this.timeToRingingMs,
+      ringingToAnswerMs: ringingToAnswerMs ?? this.ringingToAnswerMs,
+      answerToMediaMs: answerToMediaMs ?? this.answerToMediaMs,
+      holdCount: holdCount ?? this.holdCount,
+      holdSeconds: holdSeconds ?? this.holdSeconds,
       sipStatusCode: sipStatusCode ?? this.sipStatusCode,
       hangupReason: hangupReason ?? this.hangupReason,
       note: note ?? this.note,
@@ -1015,8 +1360,14 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     if (startedAt.present) {
       map['started_at'] = Variable<DateTime>(startedAt.value);
     }
+    if (ringingAt.present) {
+      map['ringing_at'] = Variable<DateTime>(ringingAt.value);
+    }
     if (answeredAt.present) {
       map['answered_at'] = Variable<DateTime>(answeredAt.value);
+    }
+    if (mediaConnectedAt.present) {
+      map['media_connected_at'] = Variable<DateTime>(mediaConnectedAt.value);
     }
     if (endedAt.present) {
       map['ended_at'] = Variable<DateTime>(endedAt.value);
@@ -1026,6 +1377,21 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     }
     if (ringSeconds.present) {
       map['ring_seconds'] = Variable<int>(ringSeconds.value);
+    }
+    if (timeToRingingMs.present) {
+      map['time_to_ringing_ms'] = Variable<int>(timeToRingingMs.value);
+    }
+    if (ringingToAnswerMs.present) {
+      map['ringing_to_answer_ms'] = Variable<int>(ringingToAnswerMs.value);
+    }
+    if (answerToMediaMs.present) {
+      map['answer_to_media_ms'] = Variable<int>(answerToMediaMs.value);
+    }
+    if (holdCount.present) {
+      map['hold_count'] = Variable<int>(holdCount.value);
+    }
+    if (holdSeconds.present) {
+      map['hold_seconds'] = Variable<int>(holdSeconds.value);
     }
     if (sipStatusCode.present) {
       map['sip_status_code'] = Variable<int>(sipStatusCode.value);
@@ -1056,10 +1422,17 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
           ..write('accountId: $accountId, ')
           ..write('accountLabel: $accountLabel, ')
           ..write('startedAt: $startedAt, ')
+          ..write('ringingAt: $ringingAt, ')
           ..write('answeredAt: $answeredAt, ')
+          ..write('mediaConnectedAt: $mediaConnectedAt, ')
           ..write('endedAt: $endedAt, ')
           ..write('durationSeconds: $durationSeconds, ')
           ..write('ringSeconds: $ringSeconds, ')
+          ..write('timeToRingingMs: $timeToRingingMs, ')
+          ..write('ringingToAnswerMs: $ringingToAnswerMs, ')
+          ..write('answerToMediaMs: $answerToMediaMs, ')
+          ..write('holdCount: $holdCount, ')
+          ..write('holdSeconds: $holdSeconds, ')
           ..write('sipStatusCode: $sipStatusCode, ')
           ..write('hangupReason: $hangupReason, ')
           ..write('note: $note, ')
@@ -2215,10 +2588,17 @@ typedef $$CallHistoryEntriesTableCreateCompanionBuilder =
       Value<int?> accountId,
       Value<String?> accountLabel,
       required DateTime startedAt,
+      Value<DateTime?> ringingAt,
       Value<DateTime?> answeredAt,
+      Value<DateTime?> mediaConnectedAt,
       required DateTime endedAt,
       Value<int> durationSeconds,
       Value<int> ringSeconds,
+      Value<int?> timeToRingingMs,
+      Value<int?> ringingToAnswerMs,
+      Value<int?> answerToMediaMs,
+      Value<int> holdCount,
+      Value<int> holdSeconds,
       Value<int?> sipStatusCode,
       Value<String?> hangupReason,
       Value<String?> note,
@@ -2237,10 +2617,17 @@ typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
       Value<int?> accountId,
       Value<String?> accountLabel,
       Value<DateTime> startedAt,
+      Value<DateTime?> ringingAt,
       Value<DateTime?> answeredAt,
+      Value<DateTime?> mediaConnectedAt,
       Value<DateTime> endedAt,
       Value<int> durationSeconds,
       Value<int> ringSeconds,
+      Value<int?> timeToRingingMs,
+      Value<int?> ringingToAnswerMs,
+      Value<int?> answerToMediaMs,
+      Value<int> holdCount,
+      Value<int> holdSeconds,
       Value<int?> sipStatusCode,
       Value<String?> hangupReason,
       Value<String?> note,
@@ -2311,8 +2698,18 @@ class $$CallHistoryEntriesTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<DateTime> get ringingAt => $composableBuilder(
+    column: $table.ringingAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<DateTime> get answeredAt => $composableBuilder(
     column: $table.answeredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get mediaConnectedAt => $composableBuilder(
+    column: $table.mediaConnectedAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2328,6 +2725,31 @@ class $$CallHistoryEntriesTableFilterComposer
 
   ColumnFilters<int> get ringSeconds => $composableBuilder(
     column: $table.ringSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get timeToRingingMs => $composableBuilder(
+    column: $table.timeToRingingMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get ringingToAnswerMs => $composableBuilder(
+    column: $table.ringingToAnswerMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get answerToMediaMs => $composableBuilder(
+    column: $table.answerToMediaMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get holdCount => $composableBuilder(
+    column: $table.holdCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get holdSeconds => $composableBuilder(
+    column: $table.holdSeconds,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2416,8 +2838,18 @@ class $$CallHistoryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get ringingAt => $composableBuilder(
+    column: $table.ringingAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get answeredAt => $composableBuilder(
     column: $table.answeredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get mediaConnectedAt => $composableBuilder(
+    column: $table.mediaConnectedAt,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2433,6 +2865,31 @@ class $$CallHistoryEntriesTableOrderingComposer
 
   ColumnOrderings<int> get ringSeconds => $composableBuilder(
     column: $table.ringSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get timeToRingingMs => $composableBuilder(
+    column: $table.timeToRingingMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get ringingToAnswerMs => $composableBuilder(
+    column: $table.ringingToAnswerMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get answerToMediaMs => $composableBuilder(
+    column: $table.answerToMediaMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get holdCount => $composableBuilder(
+    column: $table.holdCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get holdSeconds => $composableBuilder(
+    column: $table.holdSeconds,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2505,8 +2962,16 @@ class $$CallHistoryEntriesTableAnnotationComposer
   GeneratedColumn<DateTime> get startedAt =>
       $composableBuilder(column: $table.startedAt, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get ringingAt =>
+      $composableBuilder(column: $table.ringingAt, builder: (column) => column);
+
   GeneratedColumn<DateTime> get answeredAt => $composableBuilder(
     column: $table.answeredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get mediaConnectedAt => $composableBuilder(
+    column: $table.mediaConnectedAt,
     builder: (column) => column,
   );
 
@@ -2520,6 +2985,29 @@ class $$CallHistoryEntriesTableAnnotationComposer
 
   GeneratedColumn<int> get ringSeconds => $composableBuilder(
     column: $table.ringSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get timeToRingingMs => $composableBuilder(
+    column: $table.timeToRingingMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get ringingToAnswerMs => $composableBuilder(
+    column: $table.ringingToAnswerMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get answerToMediaMs => $composableBuilder(
+    column: $table.answerToMediaMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get holdCount =>
+      $composableBuilder(column: $table.holdCount, builder: (column) => column);
+
+  GeneratedColumn<int> get holdSeconds => $composableBuilder(
+    column: $table.holdSeconds,
     builder: (column) => column,
   );
 
@@ -2591,10 +3079,17 @@ class $$CallHistoryEntriesTableTableManager
                 Value<int?> accountId = const Value.absent(),
                 Value<String?> accountLabel = const Value.absent(),
                 Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> ringingAt = const Value.absent(),
                 Value<DateTime?> answeredAt = const Value.absent(),
+                Value<DateTime?> mediaConnectedAt = const Value.absent(),
                 Value<DateTime> endedAt = const Value.absent(),
                 Value<int> durationSeconds = const Value.absent(),
                 Value<int> ringSeconds = const Value.absent(),
+                Value<int?> timeToRingingMs = const Value.absent(),
+                Value<int?> ringingToAnswerMs = const Value.absent(),
+                Value<int?> answerToMediaMs = const Value.absent(),
+                Value<int> holdCount = const Value.absent(),
+                Value<int> holdSeconds = const Value.absent(),
                 Value<int?> sipStatusCode = const Value.absent(),
                 Value<String?> hangupReason = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -2611,10 +3106,17 @@ class $$CallHistoryEntriesTableTableManager
                 accountId: accountId,
                 accountLabel: accountLabel,
                 startedAt: startedAt,
+                ringingAt: ringingAt,
                 answeredAt: answeredAt,
+                mediaConnectedAt: mediaConnectedAt,
                 endedAt: endedAt,
                 durationSeconds: durationSeconds,
                 ringSeconds: ringSeconds,
+                timeToRingingMs: timeToRingingMs,
+                ringingToAnswerMs: ringingToAnswerMs,
+                answerToMediaMs: answerToMediaMs,
+                holdCount: holdCount,
+                holdSeconds: holdSeconds,
                 sipStatusCode: sipStatusCode,
                 hangupReason: hangupReason,
                 note: note,
@@ -2633,10 +3135,17 @@ class $$CallHistoryEntriesTableTableManager
                 Value<int?> accountId = const Value.absent(),
                 Value<String?> accountLabel = const Value.absent(),
                 required DateTime startedAt,
+                Value<DateTime?> ringingAt = const Value.absent(),
                 Value<DateTime?> answeredAt = const Value.absent(),
+                Value<DateTime?> mediaConnectedAt = const Value.absent(),
                 required DateTime endedAt,
                 Value<int> durationSeconds = const Value.absent(),
                 Value<int> ringSeconds = const Value.absent(),
+                Value<int?> timeToRingingMs = const Value.absent(),
+                Value<int?> ringingToAnswerMs = const Value.absent(),
+                Value<int?> answerToMediaMs = const Value.absent(),
+                Value<int> holdCount = const Value.absent(),
+                Value<int> holdSeconds = const Value.absent(),
                 Value<int?> sipStatusCode = const Value.absent(),
                 Value<String?> hangupReason = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -2653,10 +3162,17 @@ class $$CallHistoryEntriesTableTableManager
                 accountId: accountId,
                 accountLabel: accountLabel,
                 startedAt: startedAt,
+                ringingAt: ringingAt,
                 answeredAt: answeredAt,
+                mediaConnectedAt: mediaConnectedAt,
                 endedAt: endedAt,
                 durationSeconds: durationSeconds,
                 ringSeconds: ringSeconds,
+                timeToRingingMs: timeToRingingMs,
+                ringingToAnswerMs: ringingToAnswerMs,
+                answerToMediaMs: answerToMediaMs,
+                holdCount: holdCount,
+                holdSeconds: holdSeconds,
                 sipStatusCode: sipStatusCode,
                 hangupReason: hangupReason,
                 note: note,

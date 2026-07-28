@@ -461,6 +461,7 @@ extension _PjsipNativeCallbacks on PjsipService {
       using((Arena arena) {
         final info = arena<pjsua_call_info>();
         if (_bindings.pjsua_call_get_info(callId, info) == 0) {
+          final now = DateTime.now();
           final remoteUri = info.ref.remote_info.ptr.cast<Utf8>().toDartString(
             length: info.ref.remote_info.slen,
           );
@@ -480,7 +481,8 @@ extension _PjsipNativeCallbacks on PjsipService {
                 remoteUri: remoteUri,
                 accountId: accId,
                 direction: PjsipCallDirection.inbound,
-                startedAt: DateTime.now(),
+                startedAt: now,
+                ringingAt: now,
                 mediaStatus: mediaStatus,
               ),
             );
@@ -489,23 +491,6 @@ extension _PjsipNativeCallbacks on PjsipService {
       });
     });
 
-    // ⚠️ 关键点：这是 NativeCallable.listener（异步）。
-    //
-    // PJSIP 在它自己的工作线程上调用 on_call_state 时，native 侧会【立即返回】，
-    // 不会等待下面这个 Dart 闭包执行完。整个闭包（包括开头的 pjsua_call_get_info）
-    // 是稍后在 Dart isolate 的事件循环上才被执行的。
-    //
-    // 这对 DISCONNECTED 状态是致命的：PJSIP 在 on_call_state(DISCONNECTED) 返回后
-    // 会【马上释放这个 call】。等本闭包真正跑起来时，call 往往已经被销毁，
-    // pjsua_call_get_info(callId) 会返回非 0。
-    //
-    // 之前“对方主动挂断这边无任何提示”的根因就在这里：旧代码用
-    // `if (get_info == 0) { ... }` 把全部逻辑（打日志 + 清理通话状态）都包住了，
-    // 一旦 get_info 失败，整段被跳过，UI 永远停留在“通话中”。
-    //
-    // 修复：get_info 失败时，判定该 call 已被 PJSIP 释放（等价于 DISCONNECTED），
-    // 照常清理状态。callId 是按值传入的 int，已被安全拷贝，可放心跨异步使用。
-    //
     // 通话状态回调负责：
     // - CALLING/CONNECTING/CONFIRMED/DISCONNECTED 等 SIP dialog 状态同步到 UI。
     // - CONFIRMED 时记录接通时间并启动计时。
@@ -681,6 +666,12 @@ extension _PjsipNativeCallbacks on PjsipService {
             final connectedAt = isConfirmed
                 ? prev?.connectedAt ?? DateTime.now()
                 : null;
+            final isOutboundRinging =
+                direction == PjsipCallDirection.outbound &&
+                callState == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value;
+            final ringingAt = isOutboundRinging
+                ? prev?.ringingAt ?? DateTime.now()
+                : prev?.ringingAt;
             if (isConfirmed) {
               _startCallTimer();
             }
@@ -693,10 +684,15 @@ extension _PjsipNativeCallbacks on PjsipService {
                 direction: direction,
                 startedAt: prev?.startedAt,
                 connectedAt: connectedAt,
+                ringingAt: ringingAt,
+                mediaConnectedAt: prev?.mediaConnectedAt,
                 isOnHold: holdFlags.local,
                 isRemoteOnHold: holdFlags.remote,
                 mediaStatus: mediaStatus,
                 mediaSecurity: mediaSecurity ?? prev?.mediaSecurity,
+                holdStartedAt: prev?.holdStartedAt,
+                totalHoldDuration: prev?.totalHoldDuration ?? Duration.zero,
+                holdCount: prev?.holdCount ?? 0,
               ),
             );
             if (isConfirmed) {
@@ -790,6 +786,11 @@ extension _PjsipNativeCallbacks on PjsipService {
               isRemoteOnHold: holdFlags.remote,
               mediaStatus: mediaStatusInt,
               mediaSecurity: mediaSecurity ?? current.mediaSecurity,
+              mediaConnectedAt:
+                  mediaStatusInt ==
+                      pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value
+                  ? current.mediaConnectedAt ?? DateTime.now()
+                  : _unset,
             ),
           );
           if (mediaStatusInt ==
