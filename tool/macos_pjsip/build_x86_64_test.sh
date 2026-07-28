@@ -79,10 +79,28 @@ while IFS= read -r lib; do
   STATIC_LIBS+=("$lib")
 done < <(find "$WORK" -name '*-x86_64-apple-darwin.a' -type f ! -name 'libpjsdp-*' | sort)
 
+# VPhone 自己的 PJSIP wrapper：
+# 只复制 on_call_tsx_state 里的最后一次 SIP 状态码/原因，不持有 PJSIP
+# 原生指针。这样 Dart 在 call_info 被释放后还能安全读取结束原因。
+BRIDGE_OBJ="$OUT/lib/vphone_pjsip_bridge.o"
+clang -c "$ROOT/tool/pjsip_bridge/vphone_pjsip_bridge.c" \
+  -o "$BRIDGE_OBJ" \
+  -arch x86_64 \
+  -mmacosx-version-min="$MACOSX_MIN" \
+  -I"$ROOT/tool/pjsip_bridge" \
+  -I"$WORK/pjlib/include" \
+  -I"$WORK/pjlib-util/include" \
+  -I"$WORK/pjnath/include" \
+  -I"$WORK/pjmedia/include" \
+  -I"$WORK/pjsip/include" \
+  -I"$OPENSSL_PREFIX/include" \
+  -I"$OPUS_PREFIX/include"
+
 clang -shared \
   -o "$OUT/lib/libpjsip.dylib" \
   -arch x86_64 \
   -mmacosx-version-min="$MACOSX_MIN" \
+  "$BRIDGE_OBJ" \
   -Wl,-all_load "${STATIC_LIBS[@]}" \
   "$OPENSSL_PREFIX/lib/libssl.a" \
   "$OPENSSL_PREFIX/lib/libcrypto.a" \
@@ -110,3 +128,4 @@ cp -R "$WORK/pjsip/include" "$OUT/include/pjsip"
 echo "Built: $OUT/lib/libpjsip.dylib"
 file "$OUT/lib/libpjsip.dylib"
 nm -gU "$OUT/lib/libpjsip.dylib" | grep -E 'pjmedia_transport_srtp_dtls|SSL_CTX_set_tlsext_use_srtp|pjmedia_srtp_enum_keying' || true
+nm -gU "$OUT/lib/libpjsip.dylib" | grep -q 'vphone_get_call_info_snapshot'

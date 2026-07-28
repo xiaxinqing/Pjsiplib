@@ -980,10 +980,16 @@ extension PjsipCallOperations on PjsipService {
     _syncCallProgressSounds();
     _hangupSoundPlayedCallIds.remove(callId);
     _callTsxSnapshots.remove(callId);
+    _callSnapshots.clear(callId);
   }
 
   String? _releasedCallInfoReason(CallInfo? call) {
-    final snapshot = call == null ? null : _callTsxSnapshots[call.callId];
+    final nativeSnapshot = call == null
+        ? null
+        : _callSnapshots.getLast(call.callId);
+    final snapshot =
+        nativeSnapshot ??
+        (call == null ? null : _callTsxSnapshots[call.callId]);
     final snapshotReason = snapshot?.endReason;
     if (snapshotReason != null) return snapshotReason;
 

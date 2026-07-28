@@ -42,3 +42,7 @@ EXPORTS
   pjsua_start
   pjsua_transport_config_default
   pjsua_transport_create
+  vphone_apply_call_snapshot_callbacks
+  vphone_clear_all_call_info_snapshots
+  vphone_clear_call_info_snapshot
+  vphone_get_call_info_snapshot

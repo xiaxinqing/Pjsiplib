@@ -3,6 +3,10 @@ name: Build PJSIP macOS Universal Lib
 on:
   push:
     branches: [ main ]
+    paths:
+      - ".github/workflows/build-pjsip-macos.yml"
+      - "third_path/pjproject/**"
+      - "tool/pjsip_bridge/**"
   workflow_dispatch:
 
 jobs:
@@ -119,12 +123,29 @@ jobs:
             # 使用 -Wl,-all_load 强制链接所有静态库中的符号
             # 过滤掉已知的重复库（例如 libpjsdp 已经包含在 libpjmedia 中）
             local all_static_libs=$(find . -name "*.a" | grep -v "libpjsdp")
+            local bridge_obj="${OUTPUT_DIR}/lib/vphone_pjsip_bridge_$arch.o"
+
+            # VPhone 自己的轻量 wrapper：
+            # 只在 PJSIP 同步回调里复制最后一次 SIP transaction 状态码，
+            # 不保存 pjsip_transaction / pjsip_event 指针，避免 Dart 异步读取
+            # 已释放指针导致 EXC_BAD_ACCESS。
+            clang -c "${GITHUB_WORKSPACE}/tool/pjsip_bridge/vphone_pjsip_bridge.c" \
+                -o "${bridge_obj}" \
+                -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
+                -I"${GITHUB_WORKSPACE}/tool/pjsip_bridge" \
+                -I"${PJ_ROOT}/pjlib/include" \
+                -I"${PJ_ROOT}/pjlib-util/include" \
+                -I"${PJ_ROOT}/pjnath/include" \
+                -I"${PJ_ROOT}/pjmedia/include" \
+                -I"${PJ_ROOT}/pjsip/include" \
+                -I"${GITHUB_WORKSPACE}/deps/$arch/include"
             
             echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
                 -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security -framework Foundation -framework AppKit \
                 -lc++ -lobjc \
+                "${bridge_obj}" \
                 -Wl,-all_load \
                 ${all_static_libs} \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" \
@@ -134,6 +155,7 @@ jobs:
             # 验证符号
             nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "pjsua_create" || (echo "Verification failed: pjsua_create missing" && exit 1)
             nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "pjmedia_transport_srtp_dtls_get_fingerprint" || (echo "Verification failed: DTLS-SRTP symbol missing" && exit 1)
+            nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "vphone_get_call_info_snapshot" || (echo "Verification failed: VPhone call snapshot symbol missing" && exit 1)
           }
 
           build_pjsip "x86_64" "x86_64-apple-darwin"

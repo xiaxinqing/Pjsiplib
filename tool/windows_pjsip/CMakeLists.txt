@@ -29,7 +29,11 @@ add_subdirectory("${PJPROJECT_ROOT}" pjproject-build EXCLUDE_FROM_ALL)
 
 add_library(pjsip_ffi SHARED
   pjsip_ffi_stub.c
+  ../pjsip_bridge/vphone_pjsip_bridge.c
   pjsip_ffi.def
+)
+target_include_directories(pjsip_ffi PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/../pjsip_bridge"
 )
 target_link_libraries(pjsip_ffi PRIVATE pjsua-lib)
 target_compile_definitions(pjsip_ffi PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)

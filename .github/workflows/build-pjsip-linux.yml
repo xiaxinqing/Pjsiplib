@@ -12,6 +12,7 @@ on:
       - ".github/workflows/build-pjsip-linux.yml"
       - "tool/linux_pjsip/**"
       - "tool/windows_pjsip/pjsip_ffi_stub.c"
+      - "tool/pjsip_bridge/**"
       - "third_path/pjproject/**"
 
 jobs:

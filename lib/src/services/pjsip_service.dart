@@ -42,6 +42,8 @@ part 'pjsip_parts/pjsip_audio_errors.dart';
 
 part 'native_bridge/pjsip_audio_permissions.dart';
 
+part 'native_bridge/pjsip_call_snapshot_bridge.dart';
+
 part 'pjsip_parts/pjsip_network.dart';
 
 part 'pjsip_parts/pjsip_persistence.dart';
@@ -52,6 +54,7 @@ class PjsipService extends Notifier<PjsipUIState> {
 
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
+  final _PjsipCallSnapshotRuntime _callSnapshots = _PjsipCallSnapshotRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
   final Set<int> _blindTransferAutoReleaseCallIds = <int>{};
@@ -175,6 +178,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     final dylib = ffi.DynamicLibrary.open(libraryName);
     _bindings = PjsipBindings(dylib);
     _setupAudioRuntime(dylib);
+    _callSnapshots.setup(dylib);
     _setupCallables();
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable
     // 永远不会 close()，pjsua 也不会销毁。
@@ -297,6 +301,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _backgroundHoldScheduledCallIds.clear();
     _locallyReleasedCallIds.clear();
     _callTsxSnapshots.clear();
+    _callSnapshots.clearAll();
     _lastCallControlOperationAt.clear();
     for (final timer in _delayedHangupTimers.values) {
       timer.cancel();
@@ -379,6 +384,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       _backgroundHoldScheduledCallIds.clear();
       _locallyReleasedCallIds.clear();
       _callTsxSnapshots.clear();
+      _callSnapshots.clearAll();
       _lastCallControlOperationAt.clear();
       for (final timer in _delayedHangupTimers.values) {
         timer.cancel();

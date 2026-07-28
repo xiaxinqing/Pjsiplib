@@ -21,14 +21,14 @@ extension PjsipEngineOperations on PjsipService {
       uaCfg.ref.cb.on_reg_state = _regStateCallable.nativeFunction;
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
-      // 暂停直连 on_call_tsx_state。
+      // 不再把 on_call_tsx_state 直接挂到 Dart。
       //
       // PJSIP 传入的 pjsip_transaction / pjsip_event 指针生命周期很短，
       // NativeCallable.listener 会把回调异步投递到 Dart 主线程；等 Dart
       // 读取时指针可能已经失效，macOS crash report 已确认这里有
-      // EXC_BAD_ACCESS 风险。后续如果需要 SIP transaction 状态码，应该改成
-      // 原生侧同步复制字段后再传给 Dart。
-      // uaCfg.ref.cb.on_call_tsx_state = _callTsxStateCallable.nativeFunction;
+      // EXC_BAD_ACCESS 风险。这里改为让 dylib wrapper 在 PJSIP 同步回调内
+      // 复制普通字段，Dart 只读取安全快照。
+      _callSnapshots.applyCallbacks(uaCfg);
       uaCfg.ref.cb.on_call_media_state = _callMediaStateCallable.nativeFunction;
       uaCfg.ref.cb.on_call_media_event = _callMediaEventCallable.nativeFunction;
       uaCfg.ref.cb.on_call_sdp_created = _callSdpCreatedCallable.nativeFunction;

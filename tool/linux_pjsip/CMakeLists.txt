@@ -25,6 +25,10 @@ add_subdirectory("${PJPROJECT_ROOT}" pjproject-build EXCLUDE_FROM_ALL)
 
 add_library(pjsip_ffi SHARED
   ../windows_pjsip/pjsip_ffi_stub.c
+  ../pjsip_bridge/vphone_pjsip_bridge.c
+)
+target_include_directories(pjsip_ffi PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/../pjsip_bridge"
 )
 target_link_libraries(pjsip_ffi PRIVATE
   -Wl,--whole-archive

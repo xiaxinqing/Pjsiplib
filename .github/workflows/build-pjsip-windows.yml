@@ -11,6 +11,7 @@ on:
     paths:
       - ".github/workflows/build-pjsip-windows.yml"
       - "tool/windows_pjsip/**"
+      - "tool/pjsip_bridge/**"
       - "third_path/pjproject/**"
 
 jobs:
