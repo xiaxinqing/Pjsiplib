@@ -32,6 +32,21 @@ jobs:
           vs-version: '[17.0,18.0)'
           msbuild-architecture: x64
 
+      - name: Install NASM
+        shell: pwsh
+        run: |
+          # OpenSSL 的 Windows x64 汇编优化依赖 nasm.exe。
+          # 不安装 NASM 时 Configure 会报 “NASM not found”，并且不会生成 Makefile。
+          # 这里选择安装 NASM，而不是给 OpenSSL 加 no-asm，避免影响 TLS/SRTP
+          # 相关加解密性能。
+          choco install nasm -y --no-progress
+          $nasmPath = 'C:\Program Files\NASM'
+          if (!(Test-Path (Join-Path $nasmPath 'nasm.exe'))) {
+            throw "nasm.exe was not installed at $nasmPath"
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $nasmPath
+          & "$nasmPath\nasm.exe" -v
+
       - name: Verify Windows build tools
         shell: pwsh
         run: |
@@ -55,6 +70,7 @@ jobs:
 
           # Visual Studio 2022 使用 CMake 3.14+
           cmake --version
+          nasm -v
 
       - name: Build pinned OpenSSL LTS
         shell: pwsh
