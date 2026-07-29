@@ -41,7 +41,6 @@ typedef _PjmediaPortDestroyDart = int Function(ffi.Pointer<pjmedia_port>);
 typedef _PjPoolReleaseC = ffi.Void Function(ffi.Pointer<pj_pool_t>);
 typedef _PjPoolReleaseDart = void Function(ffi.Pointer<pj_pool_t>);
 
-// MicroSIP 的音量滑块是 0-100 线性映射到 pjsua_conf_adjust_rx_level(val/100)。
 // 桌面端拖动时线性低段会显得衰减过猛：15% 听起来已经很小。这里保留 UI 的
 // 0-100 语义，只在送入 PJSIP 前做轻微听感曲线，让低段更可控。
 const double _conferenceVolumeTaperPower = 0.58;
@@ -129,6 +128,7 @@ class _PjsipAudioRuntime {
   DateTime? lastHangupSoundAt;
   Timer? dialpadKeySoundTimer;
   Timer? dialpadTonegenDestroyTimer;
+  Timer? soundDeviceIdleReleaseTimer;
   Timer? audioPreferencesDebounceTimer;
   ffi.Pointer<pj_pool_t>? dialpadTonegenPool;
   ffi.Pointer<pjmedia_port>? dialpadTonegenPort;
@@ -471,7 +471,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
           }
           _audio.activeCaptureDeviceSignature = null;
           _audio.activePlaybackDeviceSignature = null;
-          _releaseSoundDeviceIfIdle(reason);
+          _scheduleSoundDeviceReleaseIfIdle(reason);
           return;
         }
 
@@ -731,7 +731,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
         microphoneLevel: 0,
       );
       _addLog('🎙️ 麦克风测试已停止');
-      _releaseSoundDeviceIfIdle('麦克风测试停止');
+      _scheduleSoundDeviceReleaseIfIdle('麦克风测试停止');
       _stopAudioLevelTimerIfIdle();
       return;
     }
@@ -1080,7 +1080,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       );
       _audio.activeCaptureDeviceSignature = null;
       _audio.activePlaybackDeviceSignature = null;
-      _releaseSoundDeviceIfIdle(reason);
+      _scheduleSoundDeviceReleaseIfIdle(reason);
       return false;
     }
 
@@ -1418,6 +1418,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   }
 
   void _releaseSoundDeviceIfIdle(String reason) {
+    _cancelScheduledSoundDeviceRelease();
     if (!_uiState.isInitialized || _shouldKeepSoundDeviceOpen) return;
     final current = using(_currentSoundDeviceIds);
     if (_isNoSoundDevice(current)) {
@@ -1436,8 +1437,33 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _audio.soundDeviceReleasedForIdle = true;
   }
 
+  /// 普通空闲场景的声卡释放防抖。
+  ///
+  /// 来电铃声、回铃音、挂断提示音和连续通话之间经常只间隔几百毫秒。
+  /// 如果每次停止都立刻 `pjsua_set_no_snd_dev()`，下一次播放又要重新打开
+  /// CoreAudio/系统声卡，容易出现首声卡顿。这里延迟几秒再真正释放；期间
+  /// 只要有新通话或提示音开始，[_ensureSoundDeviceOpen] 会取消这次释放。
+  void _scheduleSoundDeviceReleaseIfIdle(String reason) {
+    if (_audio.soundDeviceIdleReleaseTimer != null) return;
+    if (!_uiState.isInitialized || _shouldKeepSoundDeviceOpen) return;
+    _audio.soundDeviceIdleReleaseTimer = Timer(
+      _soundDeviceIdleReleaseDelay,
+      () {
+        _audio.soundDeviceIdleReleaseTimer = null;
+        _releaseSoundDeviceIfIdle(reason);
+        _stopAudioLevelTimerIfIdle();
+      },
+    );
+  }
+
+  void _cancelScheduledSoundDeviceRelease() {
+    _audio.soundDeviceIdleReleaseTimer?.cancel();
+    _audio.soundDeviceIdleReleaseTimer = null;
+  }
+
   bool _ensureSoundDeviceOpen(String reason) {
     if (!_uiState.isInitialized) return false;
+    _cancelScheduledSoundDeviceRelease();
     final current = using(_currentSoundDeviceIds);
     if (!_isNoSoundDevice(current)) {
       if (!_audioDeviceSpeakerOnlyFallbackActive) {
@@ -1507,6 +1533,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   static const Duration _dialpadPageWarmKeepAliveDuration = Duration(
     seconds: 30,
   );
+  static const Duration _soundDeviceIdleReleaseDelay = Duration(seconds: 5);
 
   bool get _hasIncomingCall =>
       _uiState.calls.values.any((call) => call.isIncoming);
@@ -2147,7 +2174,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
     _bindings.pjsua_player_destroy(playerId);
     _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
-    _releaseSoundDeviceIfIdle('扬声器测试停止');
+    _scheduleSoundDeviceReleaseIfIdle('扬声器测试停止');
     _stopAudioLevelTimerIfIdle();
   }
 
@@ -2218,7 +2245,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
         _audio.pjPoolRelease?.call(pool);
       }
     }
-    _releaseSoundDeviceIfIdle('拨号按键音停止');
+    _scheduleSoundDeviceReleaseIfIdle('拨号按键音停止');
     _stopAudioLevelTimerIfIdle();
   }
 
@@ -2231,7 +2258,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     if (_uiState.isInitialized && wasConnected && slot != null && slot >= 0) {
       _bindings.pjsua_conf_disconnect(slot, 0);
     }
-    _releaseSoundDeviceIfIdle('拨号按键音空闲');
+    _scheduleSoundDeviceReleaseIfIdle('拨号按键音空闲');
     _stopAudioLevelTimerIfIdle();
   }
 
@@ -2248,7 +2275,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _bindings.pjsua_conf_disconnect(playerPort, 0);
     }
     _bindings.pjsua_player_destroy(playerId);
-    _releaseSoundDeviceIfIdle(reason);
+    _scheduleSoundDeviceReleaseIfIdle(reason);
     _stopAudioLevelTimerIfIdle();
   }
 

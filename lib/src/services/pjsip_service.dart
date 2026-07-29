@@ -279,6 +279,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopOutgoingRingback();
     _stopHangupSound();
     _stopDialpadKeySound();
+    _cancelScheduledSoundDeviceRelease();
     _stopAudioLevelTimer();
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();
@@ -368,6 +369,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopOutgoingRingback();
     _stopHangupSound();
     _stopDialpadKeySound();
+    _cancelScheduledSoundDeviceRelease();
     _stopAudioLevelTimer();
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();

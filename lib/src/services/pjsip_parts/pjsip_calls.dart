@@ -1011,9 +1011,9 @@ extension PjsipCallOperations on PjsipService {
       _stopCallTimer();
     }
     if (calls.isEmpty) {
-      // 最后一通结束后立刻释放真实声卡；账号仍可保持注册在线，耳机插拔监控
-      // 也继续运行，但 PJSIP 不再占用系统输入/输出设备。
-      _releaseSoundDeviceIfIdle('最后一通结束');
+      // 最后一通结束后延迟释放真实声卡；账号仍可保持注册在线，耳机插拔监控
+      // 也继续运行。延迟释放能避免挂断音/连续来电时反复开关系统声卡。
+      _scheduleSoundDeviceReleaseIfIdle('最后一通结束');
       _stopAudioLevelTimerIfIdle();
     }
     _syncCallProgressSounds();
