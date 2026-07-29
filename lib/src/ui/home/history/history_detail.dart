@@ -72,10 +72,13 @@ extension _HistoryDetail on _MyHomePageState {
                   : DateFormat('yyyy-MM-dd HH:mm:ss').format(item.endedAt!),
             ),
             _buildHistoryDetailLine('通话时长', _formatHistoryDuration(item)),
-            if (item.hangupReason?.trim().isNotEmpty == true)
+            if (_historyEndReasonText(item)?.isNotEmpty == true)
               _shouldHighlightHistoryEndReason(item)
                   ? _buildHistoryEndReasonNotice(item)
-                  : _buildHistoryDetailLine('结束原因', item.hangupReason!.trim()),
+                  : _buildHistoryDetailLine(
+                      '结束原因',
+                      _historyEndReasonText(item)!,
+                    ),
             if (item.hasCallStats) ...[
               const SizedBox(height: 2),
               _buildHistoryStatsCard(item),
@@ -97,7 +100,7 @@ extension _HistoryDetail on _MyHomePageState {
 
   Widget _buildHistoryEndReasonNotice(_HistoryItem item) {
     final color = _historyItemColor(item);
-    final reason = item.hangupReason!.trim();
+    final reason = _historyEndReasonText(item) ?? '';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: DecoratedBox(
@@ -361,7 +364,7 @@ extension _HistoryDetail on _MyHomePageState {
   Widget _buildHistoryStatusChip(_HistoryItem item) {
     final color = _historyItemColor(item);
     final label = _historyListStatusLabel(item);
-    final reason = item.hangupReason?.trim();
+    final reason = _historyEndReasonText(item);
     final chip = Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(

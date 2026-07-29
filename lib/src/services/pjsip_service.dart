@@ -14,6 +14,7 @@ import '../app_identity.dart';
 import '../generated/pjsip_bindings.g.dart';
 import 'call_history_database.dart';
 import 'contact_service.dart';
+import 'sip_call_end_reason_mapper.dart';
 import '../../utils/toast_util.dart';
 
 part 'pjsip_parts/pjsip_log_model.dart';

@@ -8,12 +8,14 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:window_manager/window_manager.dart';
 
 import 'src/app_identity.dart';
 import 'src/services/call_history_database.dart';
 import 'src/services/contact_service.dart';
 import 'src/services/native_bridge/native_bridge.dart';
 import 'src/services/pjsip_service.dart';
+import 'src/services/sip_call_end_reason_mapper.dart';
 import 'src/ui/core/app_colors.dart';
 import 'utils/toast_util.dart';
 
@@ -65,6 +67,7 @@ part 'src/ui/home/history/history_toolbar.dart';
 part 'src/ui/home/history/history_list.dart';
 part 'src/ui/home/history/history_detail.dart';
 part 'src/ui/home/history/history_actions.dart';
+part 'src/ui/home/history/history_reason_formatter.dart';
 part 'src/ui/home/history/history_models.dart';
 part 'src/ui/home/home_helpers.dart';
 part 'src/ui/settings/home_settings.dart';

@@ -1172,7 +1172,8 @@ extension PjsipCallOperations on PjsipService {
 
   bool _wasOutboundRinging(CallInfo? call) {
     return call?.direction == PjsipCallDirection.outbound &&
-        call?.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value;
+        (call?.ringingAt != null ||
+            call?.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value);
   }
 
   void _archiveEndedCall(
