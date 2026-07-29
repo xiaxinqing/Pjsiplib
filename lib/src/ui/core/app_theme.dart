@@ -57,6 +57,7 @@ class AppIcons {
   static const callEnd = LucideIcons.phoneOff300;
   static const calls = LucideIcons.phoneCall300;
   static const incoming = LucideIcons.phoneIncoming300;
+  static const missed = LucideIcons.phoneMissed300;
   static const outgoing = LucideIcons.phoneOutgoing300;
   static const contacts = LucideIcons.users300;
   static const contactAdd = LucideIcons.userPlus300;

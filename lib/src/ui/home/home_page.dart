@@ -5,9 +5,6 @@ enum _WorkspaceSection { dialpad, calls, contacts, history }
 enum _CallNoteMode { customer, conference }
 
 const Duration _conferenceActionCooldownDuration = Duration(milliseconds: 1500);
-const Duration _dialpadKeySoundPageWarmupDelay = Duration(
-  milliseconds: 1200,
-); //  自动连接声卡，防止卡顿
 const double _contactListRowExtentEstimate = 62;
 
 class MyHomePage extends ConsumerStatefulWidget {
@@ -44,14 +41,15 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   Stream<List<CallHistoryEntry>>? _callContextHistoryStream;
   Stream<List<CallHistoryEntry>>? _callsIdleRecentHistoryStream;
   _WorkspaceSection _section = _WorkspaceSection.dialpad;
-  CallHistoryDirection? _historyDirectionFilter;
+  _HistoryCallFilter _historyCallFilter = _HistoryCallFilter.all;
   _HistoryDateFilter _historyDateFilter = _HistoryDateFilter.all;
   Stream<List<CallHistoryEntry>>? _historyEntriesStream;
   String _historyStreamKeyword = '';
-  CallHistoryDirection? _historyStreamDirectionFilter;
+  _HistoryCallFilter _historyStreamCallFilter = _HistoryCallFilter.all;
   _HistoryDateFilter _historyStreamDateFilter = _HistoryDateFilter.all;
   int _historyVisibleLimit = _historyPageSize;
   int _historyStreamVisibleLimit = _historyPageSize;
+  Stream<int>? _unreadMissedCallCountStream;
   Stream<List<CallHistoryEntry>>? _dialpadRecentHistoryStream;
   int? _focusedCallDetailId;
   String? _selectedHistoryItemKey;
@@ -68,7 +66,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   String? _dtmfStatusText;
   bool _dtmfSendFailed = false;
   Timer? _dialpadKeyFeedbackTimer;
-  Timer? _dialpadKeySoundPageWarmupTimer;
   Timer? _contactFlashTimer;
   String? _callNoteControllerKey;
   _CallNoteMode _callNoteMode = _CallNoteMode.customer;
@@ -91,14 +88,12 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       if (!mounted) return;
       if (_isRunningWidgetTest) return;
       unawaited(_warmUpHistoryDatabase());
-      _scheduleDialpadKeySoundPageWarmup();
     });
   }
 
   @override
   void dispose() {
     _dialpadKeyFeedbackTimer?.cancel();
-    _dialpadKeySoundPageWarmupTimer?.cancel();
     _contactFlashTimer?.cancel();
     _conferenceActionCooldownTimer?.cancel();
     for (final timer in _pendingCallOperationTimers.values) {

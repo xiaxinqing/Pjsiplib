@@ -13,6 +13,7 @@ extension _HomeHistory on _MyHomePageState {
   Widget _buildHistoryPage(PjsipUIState uiState, PjsipService service) {
     final database = ref.watch(callHistoryDatabaseProvider);
     final stream = _watchHistoryEntries(database);
+    final unreadMissedStream = _watchUnreadMissedCallCount();
     return StreamBuilder<List<CallHistoryEntry>>(
       stream: stream,
       builder: (context, snapshot) {
@@ -35,6 +36,7 @@ extension _HomeHistory on _MyHomePageState {
               _buildHistoryToolbar(
                 itemCount: items.length,
                 canClearHistory: persistedEntries.isNotEmpty,
+                unreadMissedCountStream: unreadMissedStream,
               ),
               const Divider(height: 1),
               Expanded(
@@ -104,16 +106,17 @@ extension _HomeHistory on _MyHomePageState {
     final queryLimit = _historyVisibleLimit + 1;
     if (_historyEntriesStream == null ||
         _historyStreamKeyword != keyword ||
-        _historyStreamDirectionFilter != _historyDirectionFilter ||
+        _historyStreamCallFilter != _historyCallFilter ||
         _historyStreamDateFilter != _historyDateFilter ||
         _historyStreamVisibleLimit != _historyVisibleLimit) {
       _historyStreamKeyword = keyword;
-      _historyStreamDirectionFilter = _historyDirectionFilter;
+      _historyStreamCallFilter = _historyCallFilter;
       _historyStreamDateFilter = _historyDateFilter;
       _historyStreamVisibleLimit = _historyVisibleLimit;
       _historyEntriesStream = database.watchRecent(
         keyword: keyword,
-        direction: _historyDirectionFilter,
+        direction: _historyCallFilter.direction,
+        missedOnly: _historyCallFilter.missedOnly,
         startedFrom: range?.from,
         startedBefore: range?.before,
         limit: queryLimit,
@@ -185,6 +188,7 @@ extension _HomeHistory on _MyHomePageState {
       sipStatusCode: entry.sipStatusCode,
       hangupReason: entry.hangupReason,
       note: entry.note,
+      missedReadAt: entry.missedReadAt,
       timeToRingingMs: entry.timeToRingingMs,
       ringingToAnswerMs: entry.ringingToAnswerMs,
       answerToMediaMs: entry.answerToMediaMs,
@@ -231,7 +235,10 @@ extension _HomeHistory on _MyHomePageState {
   }
 
   bool _matchesHistoryFilters(_HistoryItem item) {
-    final direction = _historyDirectionFilter;
+    if (_historyCallFilter.missedOnly && !item.isMissedCall) {
+      return false;
+    }
+    final direction = _historyCallFilter.direction;
     if (direction != null && item.direction != direction) return false;
     final range = _historyDateFilter.range();
     if (range != null) {

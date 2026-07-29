@@ -157,6 +157,17 @@ class _PjsipAudioRuntime {
 
   /// 最近一次为了避免空闲占用系统声卡而释放的状态，用来减少重复日志。
   bool soundDeviceReleasedForIdle = false;
+
+  /// 最近一次打开系统声卡失败后的临时熔断信息。
+  ///
+  /// CoreAudio/PJSIP 在默认设备异常时，单次 `pjsua_set_snd_dev` 可能在底层重试
+  /// 多个采样率并阻塞很久。记录失败窗口后，铃声、回铃音、按键音等自动触发路径
+  /// 会在短时间内直接提示异常，避免重复打到 native 侧拖垮页面。
+  int? failedSoundDeviceCaptureId;
+  int? failedSoundDevicePlaybackId;
+  int? failedSoundDeviceStatus;
+  DateTime? failedSoundDeviceUntil;
+  DateTime? lastSoundDeviceCooldownLogAt;
 }
 
 /// 音频设备枚举、切换、静音、电平监测和轻量热插拔轮询。
@@ -411,6 +422,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     bool markManual = true,
     String reason = '用户选择',
     bool forceReapply = false,
+    bool bypassOpenFailureCooldown = false,
   }) {
     if (!_uiState.isInitialized) {
       _addLog('⚠️ PJSIP 尚未初始化，无法切换音频设备');
@@ -458,10 +470,6 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 : markManual
                 ? '已记住手动设备；空闲时不占用声卡'
                 : '空闲中：已释放系统音频设备',
-            audioDeviceIssueMessage:
-                _audioDeviceIssueMessageAfterSuccessfulDeviceApply,
-            audioDeviceIssueStatus:
-                _audioDeviceIssueStatusAfterSuccessfulDeviceApply,
           );
           if (markManual && selectedSystemDefaults) {
             _audio.preferredCaptureDeviceSignature = null;
@@ -514,6 +522,17 @@ extension PjsipAudioDeviceOperations on PjsipService {
           _startAudioLevelTimer();
           _scheduleAudioBridgeReconnectAfterDeviceSwitch(
             '当前设备重新应用: capture=$captureId, playback=$playbackId',
+          );
+          return;
+        }
+
+        if (!bypassOpenFailureCooldown &&
+            _isSoundDeviceOpenCoolingDown(captureId, playbackId)) {
+          _addSoundDeviceCooldownLogIfNeeded(
+            action: '切换音频设备',
+            captureId: captureId,
+            playbackId: playbackId,
+            reason: reason,
           );
           return;
         }
@@ -834,7 +853,28 @@ extension PjsipAudioDeviceOperations on PjsipService {
       markManual: false,
       reason: '修复音频：重新应用当前设备',
       forceReapply: true,
+      bypassOpenFailureCooldown: true,
     );
+
+    if (_isAudioDeviceAvailabilityIssue(_uiState.audioDeviceIssueStatus)) {
+      final message = _uiState.audioDeviceIssueMessage ?? '没有检测到可用音频设备';
+      _showAudioDeviceIssueToast(message);
+      _addLog('⚠️ 修复音频已刷新设备，但跳过打开声卡: $message');
+      return;
+    }
+
+    final opened = _ensureSoundDeviceOpen(
+      '修复音频验证',
+      bypassOpenFailureCooldown: true,
+    );
+    if (!opened) {
+      _addLog('❌ 修复音频验证失败，已保留当前音频异常提示');
+      return;
+    }
+
+    _clearSoundDeviceOpenFailure();
+    _uiState = _uiState.copyWith(audioDeviceStatus: '音频修复完成，设备已可用');
+    _scheduleSoundDeviceReleaseIfIdle('修复音频验证完成');
     _scheduleAudioBridgeReconnectAfterDeviceSwitch('修复音频');
     _addLog('🛠️ 音频修复流程已执行');
   }
@@ -1193,6 +1233,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
     if (_audio.lastDeviceSnapshot != snapshot.signature) {
       _audio.lastDeviceSnapshot = snapshot.signature;
+      _clearSoundDeviceOpenFailure();
       _audio.deviceChangeDebounceTimer?.cancel();
       // 连续变化只保留最后一次处理。蓝牙耳机连接时经常会先出现低采样率端点，
       // 再出现稳定的输入/输出端点。
@@ -1461,7 +1502,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _audio.soundDeviceIdleReleaseTimer = null;
   }
 
-  bool _ensureSoundDeviceOpen(String reason) {
+  bool _ensureSoundDeviceOpen(
+    String reason, {
+    bool bypassOpenFailureCooldown = false,
+  }) {
     if (!_uiState.isInitialized) return false;
     _cancelScheduledSoundDeviceRelease();
     final current = using(_currentSoundDeviceIds);
@@ -1490,6 +1534,17 @@ extension PjsipAudioDeviceOperations on PjsipService {
     final playbackId =
         selectedPlaybackId ??
         pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
+    if (!bypassOpenFailureCooldown &&
+        _isSoundDeviceOpenCoolingDown(captureId, playbackId)) {
+      _addSoundDeviceCooldownLogIfNeeded(
+        action: '打开音频设备',
+        captureId: captureId,
+        playbackId: playbackId,
+        reason: reason,
+      );
+      return false;
+    }
+
     final applyResult = _setSoundDevicesWithIssueHandling(
       captureId: captureId,
       playbackId: playbackId,
@@ -1525,10 +1580,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
   static const String _ringbackAssetPath = 'assets/audio/ringing_loop.wav';
   static const String _hangupAssetPath = 'assets/audio/hangup.wav';
   static const Duration _dialpadKeySoundPathKeepWarmDuration = Duration(
-    seconds: 5,
+    seconds: 10,
   );
   static const Duration _dialpadTonegenIdleDisposeDuration = Duration(
-    seconds: 5,
+    seconds: 10,
   );
   static const Duration _dialpadPageWarmKeepAliveDuration = Duration(
     seconds: 30,

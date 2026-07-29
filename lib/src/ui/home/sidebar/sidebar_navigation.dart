@@ -23,13 +23,35 @@ extension _HomeSidebarNavigation on _MyHomePageState {
           label: '联系人',
           section: _WorkspaceSection.contacts,
         ),
-        _buildNavItem(
-          icon: AppIcons.history,
-          label: '通话记录',
-          section: _WorkspaceSection.history,
-        ),
+        if (_isRunningWidgetTest)
+          _buildNavItem(
+            icon: AppIcons.history,
+            label: '通话记录',
+            section: _WorkspaceSection.history,
+          )
+        else
+          StreamBuilder<int>(
+            stream: _watchUnreadMissedCallCount(),
+            builder: (context, snapshot) {
+              final missedCount = snapshot.data ?? 0;
+              return _buildNavItem(
+                icon: AppIcons.history,
+                label: '通话记录',
+                section: _WorkspaceSection.history,
+                badge: missedCount <= 0 ? null : '$missedCount',
+                badgeColor: _dangerRed,
+              );
+            },
+          ),
       ],
     );
+  }
+
+  /// 侧边栏未接来电 badge 使用缓存流，避免导航区重建时反复创建数据库订阅。
+  Stream<int> _watchUnreadMissedCallCount() {
+    return _unreadMissedCallCountStream ??= ref
+        .read(callHistoryDatabaseProvider)
+        .watchUnreadMissedCallCount();
   }
 
   /// 构建单个导航项，并在点击时切换首页工作区。
@@ -38,6 +60,7 @@ extension _HomeSidebarNavigation on _MyHomePageState {
     required String label,
     required _WorkspaceSection section,
     String? badge,
+    Color? badgeColor,
   }) {
     final selected = _section == section;
     final colors = Theme.of(context).colorScheme;
@@ -75,7 +98,7 @@ extension _HomeSidebarNavigation on _MyHomePageState {
                     height: 20,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: colors.primary,
+                      color: badgeColor ?? colors.primary,
                       borderRadius: BorderRadius.circular(_radiusXs),
                     ),
                     child: Text(

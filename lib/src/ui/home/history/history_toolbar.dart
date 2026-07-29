@@ -5,6 +5,7 @@ extension _HistoryToolbar on _MyHomePageState {
   Widget _buildHistoryToolbar({
     required int itemCount,
     required bool canClearHistory,
+    required Stream<int> unreadMissedCountStream,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
@@ -31,23 +32,27 @@ extension _HistoryToolbar on _MyHomePageState {
             ),
           ),
           const SizedBox(width: 12),
-          SegmentedButton<CallHistoryDirection?>(
+          SegmentedButton<_HistoryCallFilter>(
             segments: const [
-              ButtonSegment(value: null, label: Text('全部')),
+              ButtonSegment(value: _HistoryCallFilter.all, label: Text('全部')),
               ButtonSegment(
-                value: CallHistoryDirection.outbound,
+                value: _HistoryCallFilter.outbound,
                 icon: Icon(AppIcons.outgoing),
                 label: Text('呼出'),
               ),
               ButtonSegment(
-                value: CallHistoryDirection.inbound,
+                value: _HistoryCallFilter.inbound,
                 icon: Icon(AppIcons.incoming),
                 label: Text('来电'),
               ),
+              ButtonSegment(
+                value: _HistoryCallFilter.missed,
+                icon: Icon(AppIcons.missed),
+                label: Text('未接'),
+              ),
             ],
-            selected: {_historyDirectionFilter},
-            onSelectionChanged: (value) =>
-                _setHistoryDirectionFilter(value.first),
+            selected: {_historyCallFilter},
+            onSelectionChanged: (value) => _setHistoryCallFilter(value.first),
             style: ButtonStyle(
               shape: WidgetStatePropertyAll(
                 RoundedRectangleBorder(
@@ -76,6 +81,25 @@ extension _HistoryToolbar on _MyHomePageState {
             ),
           ),
           const Spacer(),
+          StreamBuilder<int>(
+            stream: unreadMissedCountStream,
+            builder: (context, snapshot) {
+              final count = snapshot.data ?? 0;
+              if (count <= 0) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: TextButton.icon(
+                  onPressed: _markAllMissedCallsRead,
+                  icon: const Icon(AppIcons.check),
+                  label: Text('全部已读 ($count)'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _dangerRed,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              );
+            },
+          ),
           Text(
             '$itemCount 条',
             style: Theme.of(

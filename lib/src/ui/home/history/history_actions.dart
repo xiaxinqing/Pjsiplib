@@ -3,6 +3,7 @@ part of '../../../../main.dart';
 /// 通话记录动作层：负责回拨、删除、清空以及添加/查看联系人。
 extension _HistoryActions on _MyHomePageState {
   Future<void> _callHistoryItem(_HistoryItem item, PjsipService service) async {
+    unawaited(_markHistoryItemRead(item));
     if (item.isLive) {
       ToastUtil.showWarning('进行中的通话不能重复回拨');
       return;
@@ -50,6 +51,16 @@ extension _HistoryActions on _MyHomePageState {
     _selectOutgoingAccount(account.accId);
     service.makeCallFromAccount(number, account.accId);
     _selectSection(_WorkspaceSection.calls);
+  }
+
+  Future<void> _markHistoryItemRead(_HistoryItem item) async {
+    final id = item.databaseId;
+    if (id == null || !item.isUnreadMissedCall) return;
+    await ref.read(callHistoryDatabaseProvider).markMissedCallRead(id);
+  }
+
+  Future<void> _markAllMissedCallsRead() async {
+    await ref.read(callHistoryDatabaseProvider).markAllMissedCallsRead();
   }
 
   Future<void> _deleteHistoryEntry(_HistoryItem item) async {

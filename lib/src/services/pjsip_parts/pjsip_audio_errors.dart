@@ -14,6 +14,7 @@ extension PjsipAudioIssueOperations on PjsipService {
   static const int _pjmediaAudioNoDefaultDevice = 420006;
   static const int _pjmediaAudioNotReady = 420007;
   static const Duration _audioIssueToastInterval = Duration(seconds: 6);
+  static const Duration _soundDeviceOpenFailureCooldown = Duration(seconds: 8);
 
   /// 打开或切换 PJSIP 声卡。
   ///
@@ -27,9 +28,23 @@ extension PjsipAudioIssueOperations on PjsipService {
   }) {
     final status = _bindings.pjsua_set_snd_dev(captureId, playbackId);
     if (status == 0) {
+      _clearSoundDeviceOpenFailure();
       _audioDeviceSpeakerOnlyFallbackActive = false;
       _clearAudioDeviceIssue();
       return const _SoundDeviceApplyResult.success();
+    }
+
+    // 只对 PJSIP 明确归类的音频设备错误尝试 speaker-only。CoreAudio 这类未知
+    // native 错误可能已经在底层阻塞重试过，再立即 fallback 会把一次失败放大成
+    // 两轮长阻塞，所以直接记录异常并进入短暂熔断。
+    if (!_shouldTrySpeakerOnlyFallback(status)) {
+      _recordAudioDeviceIssue(
+        status: status,
+        action: action,
+        captureId: captureId,
+        playbackId: playbackId,
+      );
+      return _SoundDeviceApplyResult.failure(status);
     }
 
     final fallbackStatus = using((arena) {
@@ -41,6 +56,7 @@ extension PjsipAudioIssueOperations on PjsipService {
       return _bindings.pjsua_set_snd_dev2(params);
     });
     if (fallbackStatus == 0) {
+      _clearSoundDeviceOpenFailure();
       _recordSpeakerOnlyFallback(
         status: status,
         action: action,
@@ -66,6 +82,11 @@ extension PjsipAudioIssueOperations on PjsipService {
     required int captureId,
     required int playbackId,
   }) {
+    _recordSoundDeviceOpenFailure(
+      captureId: captureId,
+      playbackId: playbackId,
+      status: status,
+    );
     final message = _audioDeviceIssueMessage(status, action: action);
     _audioDeviceSpeakerOnlyFallbackActive = false;
     _uiState = _uiState.copyWith(
@@ -190,12 +211,13 @@ extension PjsipAudioIssueOperations on PjsipService {
 
   /// 把 PJSIP 音频错误码翻译成适合用户看到的文案。
   String _audioDeviceIssueMessage(int status, {required String action}) {
+    final recoveryHint = '请重新插拔音频设备，必要时重启应用或电脑';
     return switch (status) {
       _pjmediaAudioInvalidDevice => '$action失败：当前音频设备已失效，请刷新或重新选择设备',
       _pjmediaAudioNoDevice => '$action失败：没有检测到可用麦克风或扬声器',
       _pjmediaAudioNoDefaultDevice => '$action失败：系统默认麦克风或扬声器不可用',
       _pjmediaAudioNotReady => '$action失败：音频设备暂未就绪，请稍后重试',
-      _ => '$action失败：音频设备不可用，错误码 $status',
+      _ => '$action失败：音频设备不可用，错误码 $status。$recoveryHint',
     };
   }
 
@@ -208,6 +230,85 @@ extension PjsipAudioIssueOperations on PjsipService {
     }
     _lastAudioDeviceIssueToastAt = now;
     ToastUtil.showWarning(message);
+  }
+
+  /// 判断当前失败是否还在熔断窗口内。
+  ///
+  /// 只拦截同一组输入/输出设备，避免“系统默认失败后插上耳机”仍被挡住。设备变化、
+  /// 手动修复、真实打开成功都会清理这组状态。
+  bool _isSoundDeviceOpenCoolingDown(int captureId, int playbackId) {
+    final until = _audio.failedSoundDeviceUntil;
+    if (until == null || DateTime.now().isAfter(until)) {
+      _clearSoundDeviceOpenFailure();
+      return false;
+    }
+    return _audio.failedSoundDeviceCaptureId == captureId &&
+        _audio.failedSoundDevicePlaybackId == playbackId;
+  }
+
+  /// 记录一次声卡打开失败，后续自动触发路径会在冷却期内直接短路。
+  void _recordSoundDeviceOpenFailure({
+    required int captureId,
+    required int playbackId,
+    required int status,
+  }) {
+    _audio.failedSoundDeviceCaptureId = captureId;
+    _audio.failedSoundDevicePlaybackId = playbackId;
+    _audio.failedSoundDeviceStatus = status;
+    _audio.failedSoundDeviceUntil = DateTime.now().add(
+      _soundDeviceOpenFailureCooldown,
+    );
+    _audio.lastSoundDeviceCooldownLogAt = null;
+  }
+
+  /// 清理声卡打开失败熔断状态。
+  void _clearSoundDeviceOpenFailure() {
+    _audio.failedSoundDeviceCaptureId = null;
+    _audio.failedSoundDevicePlaybackId = null;
+    _audio.failedSoundDeviceStatus = null;
+    _audio.failedSoundDeviceUntil = null;
+    _audio.lastSoundDeviceCooldownLogAt = null;
+  }
+
+  /// 熔断期间只偶尔打日志，避免铃声/回铃音连续触发时刷屏。
+  void _addSoundDeviceCooldownLogIfNeeded({
+    required String action,
+    required int captureId,
+    required int playbackId,
+    required String reason,
+  }) {
+    final status = _audio.failedSoundDeviceStatus;
+    final message = status == null
+        ? '$action暂缓：音频设备刚失败，稍后自动重试'
+        : _audioDeviceIssueMessage(status, action: action);
+    _uiState = _uiState.copyWith(
+      audioDeviceStatus: message,
+      audioDeviceIssueMessage: message,
+      audioDeviceIssueStatus: status,
+    );
+    _showAudioDeviceIssueToast(message);
+
+    final now = DateTime.now();
+    final last = _audio.lastSoundDeviceCooldownLogAt;
+    if (last != null && now.difference(last) < const Duration(seconds: 2)) {
+      return;
+    }
+    _audio.lastSoundDeviceCooldownLogAt = now;
+    _addLog(
+      '⏸️ $action已短路: capture=$captureId, playback=$playbackId, '
+      'status=${status ?? 'unknown'}, reason=$reason',
+    );
+  }
+
+  /// 是否值得尝试 PJSIP speaker-only 兜底。
+  ///
+  /// speaker-only 能救“麦克风不可用但扬声器可用”的场景；但对 CoreAudio 原生层
+  /// 未知错误，fallback 常常只是第二次长阻塞，所以这里只接受 PJSIP 明确音频码。
+  bool _shouldTrySpeakerOnlyFallback(int status) {
+    return status == _pjmediaAudioInvalidDevice ||
+        status == _pjmediaAudioNoDevice ||
+        status == _pjmediaAudioNoDefaultDevice ||
+        status == _pjmediaAudioNotReady;
   }
 }
 

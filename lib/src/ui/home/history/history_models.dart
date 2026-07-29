@@ -40,6 +40,20 @@ class _HistoryDateRange {
   final DateTime before;
 }
 
+/// 通话记录类型筛选：比单纯方向多一个“未接”，但未接仍只代表本机漏接来电。
+enum _HistoryCallFilter {
+  all('全部', null, false),
+  outbound('呼出', CallHistoryDirection.outbound, false),
+  inbound('来电', CallHistoryDirection.inbound, false),
+  missed('未接', CallHistoryDirection.inbound, true);
+
+  const _HistoryCallFilter(this.label, this.direction, this.missedOnly);
+
+  final String label;
+  final CallHistoryDirection? direction;
+  final bool missedOnly;
+}
+
 /// 通话记录视图模型：统一数据库记录和实时通话在列表里的展示字段。
 class _HistoryItem {
   const _HistoryItem({
@@ -66,6 +80,7 @@ class _HistoryItem {
     this.sipStatusCode,
     this.hangupReason,
     this.note,
+    this.missedReadAt,
     this.timeToRingingMs,
     this.ringingToAnswerMs,
     this.answerToMediaMs,
@@ -96,6 +111,7 @@ class _HistoryItem {
   final int? sipStatusCode;
   final String? hangupReason;
   final String? note;
+  final DateTime? missedReadAt;
   final int? timeToRingingMs;
   final int? ringingToAnswerMs;
   final int? answerToMediaMs;
@@ -105,6 +121,16 @@ class _HistoryItem {
   bool get canDelete => databaseId != null && !isLive;
 
   bool get canEditNote => databaseId != null && !isLive;
+
+  bool get isMissedCall =>
+      !isLive &&
+      databaseId != null &&
+      direction == CallHistoryDirection.inbound &&
+      status == CallHistoryStatus.missed &&
+      answeredAt == null;
+
+  bool get isUnreadMissedCall =>
+      isMissedCall && answeredAt == null && missedReadAt == null;
 
   bool get hasCurrentContact => contactId != null;
 

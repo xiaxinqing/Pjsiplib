@@ -8,7 +8,6 @@ extension _HomeCallCoordinator on _MyHomePageState {
     _syncPendingCallOperations(previous, next);
     _syncFocusedCallAfterStateChange(next);
     _syncConferenceActionCooldown(next);
-    _syncDialpadKeySoundWarmup(previous, next);
 
     final previousIncomingIds = previous?._ringingCallIds ?? const <int>{};
     final nextIncomingIds = next._ringingCallIds;
@@ -38,7 +37,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
       rootNavigator: true,
     ).popUntil((route) => route.isFirst);
 
-    _dialpadKeySoundPageWarmupTimer?.cancel();
+    // 来电切页前清一下可能残留的拨号按键音路径，避免本地提示音抢占声卡。
     ref.read(pjsipServiceProvider.notifier).releaseDialpadKeySoundSoon();
     _update(() {
       _section = _WorkspaceSection.calls;

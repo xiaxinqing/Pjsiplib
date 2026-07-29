@@ -169,13 +169,14 @@ extension _HistoryList on _MyHomePageState {
         hoverColor: _subtlePanel,
         onHover: showDetailInline
             ? (hovering) {
-                if (hovering) _selectHistoryItem(item.key);
+                if (hovering) _selectHistoryItem(item.key, item);
               }
             : null,
         onTap: () {
           if (showDetailInline) {
-            _selectHistoryItem(item.key);
+            _selectHistoryItem(item.key, item);
           } else {
+            unawaited(_markHistoryItemRead(item));
             _showHistoryDetail(item, service);
           }
         },

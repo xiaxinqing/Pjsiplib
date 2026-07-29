@@ -13,10 +13,10 @@ extension _HomeHistoryCoordinator on _MyHomePageState {
     _update(_resetHistoryPagination);
   }
 
-  /// 设置呼入/呼出筛选条件，并重置分页。
-  void _setHistoryDirectionFilter(CallHistoryDirection? direction) {
+  /// 设置全部/呼出/来电/未接筛选条件，并重置分页。
+  void _setHistoryCallFilter(_HistoryCallFilter filter) {
     _update(() {
-      _historyDirectionFilter = direction;
+      _historyCallFilter = filter;
       _resetHistoryPagination();
     });
   }
@@ -30,7 +30,10 @@ extension _HomeHistoryCoordinator on _MyHomePageState {
   }
 
   /// 选中一条通话记录，用于右侧详情或窄屏弹窗展示。
-  void _selectHistoryItem(String key) {
+  void _selectHistoryItem(String key, [_HistoryItem? item]) {
+    if (item?.isUnreadMissedCall == true) {
+      unawaited(_markHistoryItemRead(item!));
+    }
     if (_selectedHistoryItemKey == key) return;
     _update(() => _selectedHistoryItemKey = key);
   }

@@ -285,6 +285,17 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _missedReadAtMeta = const VerificationMeta(
+    'missedReadAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> missedReadAt = GeneratedColumn<DateTime>(
+    'missed_read_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -323,6 +334,7 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     sipStatusCode,
     hangupReason,
     note,
+    missedReadAt,
     createdAt,
   ];
   @override
@@ -534,6 +546,15 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         note.isAcceptableOrUnknown(data['note']!, _noteMeta),
       );
     }
+    if (data.containsKey('missed_read_at')) {
+      context.handle(
+        _missedReadAtMeta,
+        missedReadAt.isAcceptableOrUnknown(
+          data['missed_read_at']!,
+          _missedReadAtMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -651,6 +672,10 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         DriftSqlType.string,
         data['${effectivePrefix}note'],
       ),
+      missedReadAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}missed_read_at'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -691,6 +716,7 @@ class CallHistoryEntry extends DataClass
   final int? sipStatusCode;
   final String? hangupReason;
   final String? note;
+  final DateTime? missedReadAt;
   final DateTime createdAt;
   const CallHistoryEntry({
     required this.id,
@@ -718,6 +744,7 @@ class CallHistoryEntry extends DataClass
     this.sipStatusCode,
     this.hangupReason,
     this.note,
+    this.missedReadAt,
     required this.createdAt,
   });
   @override
@@ -774,6 +801,9 @@ class CallHistoryEntry extends DataClass
     if (!nullToAbsent || note != null) {
       map['note'] = Variable<String>(note);
     }
+    if (!nullToAbsent || missedReadAt != null) {
+      map['missed_read_at'] = Variable<DateTime>(missedReadAt);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -829,6 +859,9 @@ class CallHistoryEntry extends DataClass
           ? const Value.absent()
           : Value(hangupReason),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
+      missedReadAt: missedReadAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(missedReadAt),
       createdAt: Value(createdAt),
     );
   }
@@ -866,6 +899,7 @@ class CallHistoryEntry extends DataClass
       sipStatusCode: serializer.fromJson<int?>(json['sipStatusCode']),
       hangupReason: serializer.fromJson<String?>(json['hangupReason']),
       note: serializer.fromJson<String?>(json['note']),
+      missedReadAt: serializer.fromJson<DateTime?>(json['missedReadAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -898,6 +932,7 @@ class CallHistoryEntry extends DataClass
       'sipStatusCode': serializer.toJson<int?>(sipStatusCode),
       'hangupReason': serializer.toJson<String?>(hangupReason),
       'note': serializer.toJson<String?>(note),
+      'missedReadAt': serializer.toJson<DateTime?>(missedReadAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -928,6 +963,7 @@ class CallHistoryEntry extends DataClass
     Value<int?> sipStatusCode = const Value.absent(),
     Value<String?> hangupReason = const Value.absent(),
     Value<String?> note = const Value.absent(),
+    Value<DateTime?> missedReadAt = const Value.absent(),
     DateTime? createdAt,
   }) => CallHistoryEntry(
     id: id ?? this.id,
@@ -965,6 +1001,7 @@ class CallHistoryEntry extends DataClass
         : this.sipStatusCode,
     hangupReason: hangupReason.present ? hangupReason.value : this.hangupReason,
     note: note.present ? note.value : this.note,
+    missedReadAt: missedReadAt.present ? missedReadAt.value : this.missedReadAt,
     createdAt: createdAt ?? this.createdAt,
   );
   CallHistoryEntry copyWithCompanion(CallHistoryEntriesCompanion data) {
@@ -1020,6 +1057,9 @@ class CallHistoryEntry extends DataClass
           ? data.hangupReason.value
           : this.hangupReason,
       note: data.note.present ? data.note.value : this.note,
+      missedReadAt: data.missedReadAt.present
+          ? data.missedReadAt.value
+          : this.missedReadAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -1052,6 +1092,7 @@ class CallHistoryEntry extends DataClass
           ..write('sipStatusCode: $sipStatusCode, ')
           ..write('hangupReason: $hangupReason, ')
           ..write('note: $note, ')
+          ..write('missedReadAt: $missedReadAt, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -1084,6 +1125,7 @@ class CallHistoryEntry extends DataClass
     sipStatusCode,
     hangupReason,
     note,
+    missedReadAt,
     createdAt,
   ]);
   @override
@@ -1115,6 +1157,7 @@ class CallHistoryEntry extends DataClass
           other.sipStatusCode == this.sipStatusCode &&
           other.hangupReason == this.hangupReason &&
           other.note == this.note &&
+          other.missedReadAt == this.missedReadAt &&
           other.createdAt == this.createdAt);
 }
 
@@ -1144,6 +1187,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   final Value<int?> sipStatusCode;
   final Value<String?> hangupReason;
   final Value<String?> note;
+  final Value<DateTime?> missedReadAt;
   final Value<DateTime> createdAt;
   const CallHistoryEntriesCompanion({
     this.id = const Value.absent(),
@@ -1171,6 +1215,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     this.sipStatusCode = const Value.absent(),
     this.hangupReason = const Value.absent(),
     this.note = const Value.absent(),
+    this.missedReadAt = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   CallHistoryEntriesCompanion.insert({
@@ -1199,6 +1244,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     this.sipStatusCode = const Value.absent(),
     this.hangupReason = const Value.absent(),
     this.note = const Value.absent(),
+    this.missedReadAt = const Value.absent(),
     required DateTime createdAt,
   }) : callId = Value(callId),
        direction = Value(direction),
@@ -1234,6 +1280,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     Expression<int>? sipStatusCode,
     Expression<String>? hangupReason,
     Expression<String>? note,
+    Expression<DateTime>? missedReadAt,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -1262,6 +1309,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
       if (sipStatusCode != null) 'sip_status_code': sipStatusCode,
       if (hangupReason != null) 'hangup_reason': hangupReason,
       if (note != null) 'note': note,
+      if (missedReadAt != null) 'missed_read_at': missedReadAt,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -1292,6 +1340,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     Value<int?>? sipStatusCode,
     Value<String?>? hangupReason,
     Value<String?>? note,
+    Value<DateTime?>? missedReadAt,
     Value<DateTime>? createdAt,
   }) {
     return CallHistoryEntriesCompanion(
@@ -1320,6 +1369,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
       sipStatusCode: sipStatusCode ?? this.sipStatusCode,
       hangupReason: hangupReason ?? this.hangupReason,
       note: note ?? this.note,
+      missedReadAt: missedReadAt ?? this.missedReadAt,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -1402,6 +1452,9 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     if (note.present) {
       map['note'] = Variable<String>(note.value);
     }
+    if (missedReadAt.present) {
+      map['missed_read_at'] = Variable<DateTime>(missedReadAt.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1436,6 +1489,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
           ..write('sipStatusCode: $sipStatusCode, ')
           ..write('hangupReason: $hangupReason, ')
           ..write('note: $note, ')
+          ..write('missedReadAt: $missedReadAt, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2602,6 +2656,7 @@ typedef $$CallHistoryEntriesTableCreateCompanionBuilder =
       Value<int?> sipStatusCode,
       Value<String?> hangupReason,
       Value<String?> note,
+      Value<DateTime?> missedReadAt,
       required DateTime createdAt,
     });
 typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
@@ -2631,6 +2686,7 @@ typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
       Value<int?> sipStatusCode,
       Value<String?> hangupReason,
       Value<String?> note,
+      Value<DateTime?> missedReadAt,
       Value<DateTime> createdAt,
     });
 
@@ -2765,6 +2821,11 @@ class $$CallHistoryEntriesTableFilterComposer
 
   ColumnFilters<String> get note => $composableBuilder(
     column: $table.note,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get missedReadAt => $composableBuilder(
+    column: $table.missedReadAt,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2908,6 +2969,11 @@ class $$CallHistoryEntriesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get missedReadAt => $composableBuilder(
+    column: $table.missedReadAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -3024,6 +3090,11 @@ class $$CallHistoryEntriesTableAnnotationComposer
   GeneratedColumn<String> get note =>
       $composableBuilder(column: $table.note, builder: (column) => column);
 
+  GeneratedColumn<DateTime> get missedReadAt => $composableBuilder(
+    column: $table.missedReadAt,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -3093,6 +3164,7 @@ class $$CallHistoryEntriesTableTableManager
                 Value<int?> sipStatusCode = const Value.absent(),
                 Value<String?> hangupReason = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<DateTime?> missedReadAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => CallHistoryEntriesCompanion(
                 id: id,
@@ -3120,6 +3192,7 @@ class $$CallHistoryEntriesTableTableManager
                 sipStatusCode: sipStatusCode,
                 hangupReason: hangupReason,
                 note: note,
+                missedReadAt: missedReadAt,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -3149,6 +3222,7 @@ class $$CallHistoryEntriesTableTableManager
                 Value<int?> sipStatusCode = const Value.absent(),
                 Value<String?> hangupReason = const Value.absent(),
                 Value<String?> note = const Value.absent(),
+                Value<DateTime?> missedReadAt = const Value.absent(),
                 required DateTime createdAt,
               }) => CallHistoryEntriesCompanion.insert(
                 id: id,
@@ -3176,6 +3250,7 @@ class $$CallHistoryEntriesTableTableManager
                 sipStatusCode: sipStatusCode,
                 hangupReason: hangupReason,
                 note: note,
+                missedReadAt: missedReadAt,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

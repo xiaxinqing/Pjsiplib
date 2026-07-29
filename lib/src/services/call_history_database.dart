@@ -73,6 +73,7 @@ class CallHistoryEntries extends Table {
   IntColumn get sipStatusCode => integer().nullable()();
   TextColumn get hangupReason => text().nullable()();
   TextColumn get note => text().nullable()();
+  DateTimeColumn get missedReadAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
 }
 
@@ -147,7 +148,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     : super(executor ?? _openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -198,6 +199,12 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
           callHistoryEntries.holdSeconds,
         );
       }
+      if (from < 6) {
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.missedReadAt,
+        );
+      }
     },
   );
 
@@ -246,6 +253,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
   Stream<List<CallHistoryEntry>> watchRecent({
     String keyword = '',
     CallHistoryDirection? direction,
+    bool missedOnly = false,
     DateTime? startedFrom,
     DateTime? startedBefore,
     int limit = 100,
@@ -257,6 +265,15 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
 
     if (direction != null) {
       query.where((table) => table.direction.equals(direction.storageKey));
+    }
+    if (missedOnly) {
+      // 未接提醒只统计“别人打进来且本机没有接通”的记录，不包含呼出失败。
+      query.where(
+        (table) =>
+            table.direction.equals(CallHistoryDirection.inbound.storageKey) &
+            table.status.equals(CallHistoryStatus.missed.storageKey) &
+            table.answeredAt.isNull(),
+      );
     }
     if (startedFrom != null) {
       query.where((table) => table.startedAt.isBiggerOrEqualValue(startedFrom));
@@ -275,6 +292,23 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
       );
     }
     return query.watch();
+  }
+
+  Stream<int> watchUnreadMissedCallCount() {
+    final countExpression = callHistoryEntries.id.count();
+    final query = selectOnly(callHistoryEntries)
+      ..addColumns([countExpression])
+      ..where(
+        callHistoryEntries.direction.equals(
+              CallHistoryDirection.inbound.storageKey,
+            ) &
+            callHistoryEntries.status.equals(
+              CallHistoryStatus.missed.storageKey,
+            ) &
+            callHistoryEntries.answeredAt.isNull() &
+            callHistoryEntries.missedReadAt.isNull(),
+      );
+    return query.map((row) => row.read(countExpression) ?? 0).watchSingle();
   }
 
   Stream<List<CallHistoryEntry>> watchRecentForContact({
@@ -390,6 +424,27 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     )..where((table) => table.id.equals(id))).write(
       CallHistoryEntriesCompanion(note: Value(value.isEmpty ? null : value)),
     );
+  }
+
+  Future<void> markMissedCallRead(int id) {
+    return (update(
+      callHistoryEntries,
+    )..where((table) => table.id.equals(id))).write(
+      CallHistoryEntriesCompanion(missedReadAt: Value(DateTime.now())),
+    );
+  }
+
+  Future<void> markAllMissedCallsRead() {
+    return (update(callHistoryEntries)..where(
+          (table) =>
+              table.direction.equals(CallHistoryDirection.inbound.storageKey) &
+              table.status.equals(CallHistoryStatus.missed.storageKey) &
+              table.answeredAt.isNull() &
+              table.missedReadAt.isNull(),
+        ))
+        .write(
+          CallHistoryEntriesCompanion(missedReadAt: Value(DateTime.now())),
+        );
   }
 
   Future<void> clearAll() {
