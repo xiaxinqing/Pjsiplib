@@ -89,7 +89,7 @@ extension _HistoryToolbar on _MyHomePageState {
               return Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: TextButton.icon(
-                  onPressed: _markAllMissedCallsRead,
+                  onPressed: () => _confirmMarkAllMissedCallsRead(count),
                   icon: const Icon(AppIcons.check),
                   label: Text('全部已读 ($count)'),
                   style: TextButton.styleFrom(

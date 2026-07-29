@@ -331,7 +331,7 @@ extension _HomeHistory on _MyHomePageState {
     return switch (item.status) {
       CallHistoryStatus.completed => _callGreen,
       CallHistoryStatus.missed => _dangerRed,
-      CallHistoryStatus.rejected => Colors.orange.shade700,
+      CallHistoryStatus.rejected => _textSecondary,
       CallHistoryStatus.failed => _dangerRed,
       CallHistoryStatus.canceled => _textSecondary,
       null => _textSecondary,

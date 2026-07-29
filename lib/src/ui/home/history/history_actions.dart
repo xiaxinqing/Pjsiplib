@@ -63,6 +63,34 @@ extension _HistoryActions on _MyHomePageState {
     await ref.read(callHistoryDatabaseProvider).markAllMissedCallsRead();
   }
 
+  Future<void> _confirmMarkAllMissedCallsRead(int count) async {
+    if (count <= 0) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.22),
+      builder: (context) => AlertDialog(
+        title: const Text('全部标记为已读'),
+        content: SizedBox(
+          width: 380,
+          child: Text('将 $count 条未读未接来电标记为已读，列表中的未读红点会被清除。'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.of(context).pop(true),
+            icon: const Icon(AppIcons.check),
+            label: const Text('全部已读'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    await _markAllMissedCallsRead();
+  }
+
   Future<void> _deleteHistoryEntry(_HistoryItem item) async {
     final id = item.databaseId;
     if (id == null) return;

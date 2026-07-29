@@ -156,6 +156,7 @@ extension _HistoryList on _MyHomePageState {
         : item.phoneNumber;
     final selected = showDetailInline && selectedKey == item.key;
     final note = _historyNoteText(item);
+    final unreadMissed = item.isUnreadMissedCall;
 
     final accountMaxWidth = showDetailInline
         ? _historyAccountInlineMaxWidth
@@ -184,21 +185,40 @@ extension _HistoryList on _MyHomePageState {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
           child: Row(
             children: [
-              Container(
-                width: 34,
-                height: 34,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: statusColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(_radiusSm),
-                ),
-                child: Icon(
-                  item.direction == CallHistoryDirection.inbound
-                      ? AppIcons.incoming
-                      : AppIcons.outgoing,
-                  size: _iconMd,
-                  color: statusColor,
-                ),
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(_radiusSm),
+                    ),
+                    child: Icon(
+                      item.direction == CallHistoryDirection.inbound
+                          ? AppIcons.incoming
+                          : AppIcons.outgoing,
+                      size: _iconMd,
+                      color: statusColor,
+                    ),
+                  ),
+                  if (unreadMissed)
+                    Positioned(
+                      top: -2,
+                      right: -2,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _dangerRed,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.4),
+                        ),
+                      ),
+                    ),
+                ],
               ),
               const SizedBox(width: 12),
               SizedBox(
