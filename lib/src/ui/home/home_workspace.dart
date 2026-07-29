@@ -1,6 +1,6 @@
 part of '../../../main.dart';
 
-/// 工作区壳层：负责顶部栏、全局操作入口，以及按当前栏目切换主内容。
+/// 工作区：负责顶部栏、全局操作入口，以及按当前栏目切换主内容。
 extension _HomeWorkspace on _MyHomePageState {
   Widget _buildWorkspace(PjsipUIState uiState, PjsipService service) {
     return Column(

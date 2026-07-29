@@ -1,4 +1,6 @@
 PODS:
+  - app_badge_control_flutter (0.1.2):
+    - FlutterMacOS
   - connectivity_plus (0.0.1):
     - FlutterMacOS
   - flutter_secure_storage_darwin (10.0.0):
@@ -19,6 +21,7 @@ PODS:
     - FlutterMacOS
 
 DEPENDENCIES:
+  - app_badge_control_flutter (from `Flutter/ephemeral/.symlinks/plugins/app_badge_control_flutter/macos`)
   - connectivity_plus (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos`)
   - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - flutter_volume_controller (from `Flutter/ephemeral/.symlinks/plugins/flutter_volume_controller/macos`)
@@ -30,6 +33,8 @@ DEPENDENCIES:
   - window_manager (from `Flutter/ephemeral/.symlinks/plugins/window_manager/macos`)
 
 EXTERNAL SOURCES:
+  app_badge_control_flutter:
+    :path: Flutter/ephemeral/.symlinks/plugins/app_badge_control_flutter/macos
   connectivity_plus:
     :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos
   flutter_secure_storage_darwin:
@@ -50,6 +55,7 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/window_manager/macos
 
 SPEC CHECKSUMS:
+  app_badge_control_flutter: 04b1b178ed76fae5cd1efc4e94169c91136cd164
   connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   flutter_volume_controller: a2df0f7bd6032155fc517fd3989617f02c2c278b

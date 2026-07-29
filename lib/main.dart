@@ -25,6 +25,7 @@ part 'src/ui/home/shell/home_page_coordinator.dart';
 part 'src/ui/home/shell/home_call_coordinator.dart';
 part 'src/ui/home/shell/home_contact_coordinator.dart';
 part 'src/ui/home/shell/home_history_coordinator.dart';
+part 'src/ui/home/shell/home_app_badge_coordinator.dart';
 part 'src/ui/home/shell/home_dialogs.dart';
 part 'src/ui/home/sidebar/home_sidebar.dart';
 part 'src/ui/home/sidebar/sidebar_navigation.dart';

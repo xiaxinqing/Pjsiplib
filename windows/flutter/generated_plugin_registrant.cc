@@ -6,6 +6,7 @@
 
 #include "generated_plugin_registrant.h"
 
+#include <app_badge_control_flutter/app_badge_control_flutter_plugin_c_api.h>
 #include <connectivity_plus/connectivity_plus_windows_plugin.h>
 #include <flutter_secure_storage_windows/flutter_secure_storage_windows_plugin.h>
 #include <flutter_volume_controller/flutter_volume_controller_plugin_c_api.h>
@@ -15,6 +16,8 @@
 #include <window_manager/window_manager_plugin.h>
 
 void RegisterPlugins(flutter::PluginRegistry* registry) {
+  AppBadgeControlFlutterPluginCApiRegisterWithRegistrar(
+      registry->GetRegistrarForPlugin("AppBadgeControlFlutterPluginCApi"));
   ConnectivityPlusWindowsPluginRegisterWithRegistrar(
       registry->GetRegistrarForPlugin("ConnectivityPlusWindowsPlugin"));
   FlutterSecureStorageWindowsPluginRegisterWithRegistrar(

@@ -5,6 +5,7 @@
 import FlutterMacOS
 import Foundation
 
+import app_badge_control_flutter
 import connectivity_plus
 import flutter_secure_storage_darwin
 import flutter_volume_controller
@@ -15,6 +16,7 @@ import tray_manager
 import window_manager
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
+  AppBadgeControlFlutterPlugin.register(with: registry.registrar(forPlugin: "AppBadgeControlFlutterPlugin"))
   ConnectivityPlusPlugin.register(with: registry.registrar(forPlugin: "ConnectivityPlusPlugin"))
   FlutterSecureStorageDarwinPlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStorageDarwinPlugin"))
   FlutterVolumeControllerPlugin.register(with: registry.registrar(forPlugin: "FlutterVolumeControllerPlugin"))

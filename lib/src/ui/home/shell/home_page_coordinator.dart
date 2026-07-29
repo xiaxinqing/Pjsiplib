@@ -5,7 +5,23 @@ extension _HomePageCoordinator on _MyHomePageState {
   /// 切换首页工作区。
   void _selectSection(_WorkspaceSection section) {
     if (_section == section) return;
+    _dialpadPageWarmupTimer?.cancel();
     _update(() => _section = section);
+    if (section == _WorkspaceSection.dialpad) {
+      _scheduleDialpadPageWarmup();
+    }
+  }
+
+  /// 进入拨号页后延迟预热按键音路径，避免首次按键时才同步打开声卡。
+  void _scheduleDialpadPageWarmup() {
+    _dialpadPageWarmupTimer?.cancel();
+    _dialpadPageWarmupTimer = Timer(_dialpadPageWarmupDelay, () {
+      _dialpadPageWarmupTimer = null;
+      if (!mounted || _section != _WorkspaceSection.dialpad) return;
+      ref
+          .read(pjsipServiceProvider.notifier)
+          .prepareDialpadKeySound(keepAlive: _dialpadPageWarmupKeepAlive);
+    });
   }
 
   /// 根据账号注册状态同步默认外呼线路，避免选中已不可用账号。

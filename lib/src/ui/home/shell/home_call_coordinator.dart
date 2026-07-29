@@ -13,12 +13,20 @@ extension _HomeCallCoordinator on _MyHomePageState {
     final nextIncomingIds = next._ringingCallIds;
     final newIncomingIds = nextIncomingIds.difference(previousIncomingIds);
     final hasNewIncomingCall = newIncomingIds.isNotEmpty;
+    final incomingCountChanged =
+        previousIncomingIds.length != nextIncomingIds.length;
+
+    if (incomingCountChanged) {
+      unawaited(
+        AppBadgeController.instance.setIncomingCallCount(
+          nextIncomingIds.length,
+        ),
+      );
+    }
 
     if (hasNewIncomingCall) {
       _showIncomingCallSurface(newIncomingIds.reduce(math.min));
-      _windowController.notifyIncomingCall(
-        incomingCallCount: nextIncomingIds.length,
-      );
+      _windowController.notifyIncomingCall();
       return;
     }
 

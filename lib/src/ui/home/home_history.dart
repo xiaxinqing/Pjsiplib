@@ -1,6 +1,6 @@
 part of '../../../main.dart';
 
-const int _historyPageSize = 100;
+const int _historyPageSize = 50;
 
 /// 通话记录页入口：负责历史数据流、实时通话合并、筛选匹配和通用格式化。
 extension _HomeHistory on _MyHomePageState {
@@ -18,11 +18,18 @@ extension _HomeHistory on _MyHomePageState {
       stream: stream,
       builder: (context, snapshot) {
         final rawPersistedEntries = snapshot.data ?? const <CallHistoryEntry>[];
-        final hasMorePersistedEntries =
-            rawPersistedEntries.length > _historyVisibleLimit;
-        final persistedEntries = hasMorePersistedEntries
-            ? rawPersistedEntries.take(_historyVisibleLimit).toList()
+        final firstPageHasMore = rawPersistedEntries.length > _historyPageSize;
+        final firstPageEntries = rawPersistedEntries.length > _historyPageSize
+            ? rawPersistedEntries.take(_historyPageSize).toList()
             : rawPersistedEntries;
+        final persistedEntries = _mergeHistoryPersistedEntries(
+          firstPageEntries,
+          _historyLoadedMoreEntries,
+        );
+        _historyCurrentPersistedEntries = persistedEntries;
+        final hasMorePersistedEntries = _historyLoadedMoreEntries.isEmpty
+            ? firstPageHasMore
+            : _historyHasMoreAfterLoaded;
         final items = _buildHistoryItems(uiState, persistedEntries);
         final selected = _selectedHistoryItem(items);
         return DecoratedBox(
@@ -62,6 +69,7 @@ extension _HomeHistory on _MyHomePageState {
                               showDetailInline: false,
                               hasMorePersistedEntries: hasMorePersistedEntries,
                               persistedEntryCount: persistedEntries.length,
+                              isLoadingMore: _historyLoadingMore,
                             );
                           }
                           return Row(
@@ -77,6 +85,7 @@ extension _HomeHistory on _MyHomePageState {
                                   hasMorePersistedEntries:
                                       hasMorePersistedEntries,
                                   persistedEntryCount: persistedEntries.length,
+                                  isLoadingMore: _historyLoadingMore,
                                 ),
                               ),
                               const VerticalDivider(width: 1),
@@ -103,26 +112,46 @@ extension _HomeHistory on _MyHomePageState {
   ) {
     final keyword = _historySearchController.text.trim();
     final range = _historyDateFilter.range();
-    final queryLimit = _historyVisibleLimit + 1;
     if (_historyEntriesStream == null ||
         _historyStreamKeyword != keyword ||
         _historyStreamCallFilter != _historyCallFilter ||
-        _historyStreamDateFilter != _historyDateFilter ||
-        _historyStreamVisibleLimit != _historyVisibleLimit) {
+        _historyStreamDateFilter != _historyDateFilter) {
       _historyStreamKeyword = keyword;
       _historyStreamCallFilter = _historyCallFilter;
       _historyStreamDateFilter = _historyDateFilter;
-      _historyStreamVisibleLimit = _historyVisibleLimit;
       _historyEntriesStream = database.watchRecent(
         keyword: keyword,
         direction: _historyCallFilter.direction,
         missedOnly: _historyCallFilter.missedOnly,
         startedFrom: range?.from,
         startedBefore: range?.before,
-        limit: queryLimit,
+        limit: _historyPageSize + 1,
       );
     }
     return _historyEntriesStream!;
+  }
+
+  List<CallHistoryEntry> _mergeHistoryPersistedEntries(
+    List<CallHistoryEntry> firstPage,
+    List<CallHistoryEntry> loadedMore,
+  ) {
+    final seenIds = <int>{};
+    final entries = <CallHistoryEntry>[];
+    for (final entry in [...firstPage, ...loadedMore]) {
+      if (seenIds.add(entry.id)) entries.add(entry);
+    }
+    entries.sort((a, b) {
+      final started = b.startedAt.compareTo(a.startedAt);
+      if (started != 0) return started;
+      return b.id.compareTo(a.id);
+    });
+    return entries;
+  }
+
+  _HistoryPageCursor? _historyCursorForEntries(List<CallHistoryEntry> entries) {
+    if (entries.isEmpty) return null;
+    final last = entries.last;
+    return _HistoryPageCursor(startedAt: last.startedAt, id: last.id);
   }
 
   List<_HistoryItem> _buildHistoryItems(

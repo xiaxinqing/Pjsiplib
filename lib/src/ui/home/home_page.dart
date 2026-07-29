@@ -5,6 +5,8 @@ enum _WorkspaceSection { dialpad, calls, contacts, history }
 enum _CallNoteMode { customer, conference }
 
 const Duration _conferenceActionCooldownDuration = Duration(milliseconds: 1500);
+const Duration _dialpadPageWarmupDelay = Duration(milliseconds: 800);
+const Duration _dialpadPageWarmupKeepAlive = Duration(seconds: 30);
 const double _contactListRowExtentEstimate = 62;
 
 class MyHomePage extends ConsumerStatefulWidget {
@@ -47,9 +49,13 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   String _historyStreamKeyword = '';
   _HistoryCallFilter _historyStreamCallFilter = _HistoryCallFilter.all;
   _HistoryDateFilter _historyStreamDateFilter = _HistoryDateFilter.all;
-  int _historyVisibleLimit = _historyPageSize;
-  int _historyStreamVisibleLimit = _historyPageSize;
+  final List<CallHistoryEntry> _historyLoadedMoreEntries = <CallHistoryEntry>[];
+  List<CallHistoryEntry> _historyCurrentPersistedEntries = <CallHistoryEntry>[];
+  bool _historyLoadingMore = false;
+  bool _historyHasMoreAfterLoaded = false;
+  String? _historyLoadMoreToken;
   Stream<int>? _unreadMissedCallCountStream;
+  StreamSubscription<int>? _unreadMissedBadgeSubscription;
   Stream<List<CallHistoryEntry>>? _dialpadRecentHistoryStream;
   int? _focusedCallDetailId;
   String? _selectedHistoryItemKey;
@@ -66,6 +72,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   String? _dtmfStatusText;
   bool _dtmfSendFailed = false;
   Timer? _dialpadKeyFeedbackTimer;
+  Timer? _dialpadPageWarmupTimer;
   Timer? _contactFlashTimer;
   String? _callNoteControllerKey;
   _CallNoteMode _callNoteMode = _CallNoteMode.customer;
@@ -88,12 +95,16 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       if (!mounted) return;
       if (_isRunningWidgetTest) return;
       unawaited(_warmUpHistoryDatabase());
+      _bindUnreadMissedAppBadge();
+      _scheduleDialpadPageWarmup();
     });
   }
 
   @override
   void dispose() {
     _dialpadKeyFeedbackTimer?.cancel();
+    _dialpadPageWarmupTimer?.cancel();
+    unawaited(_unreadMissedBadgeSubscription?.cancel());
     _contactFlashTimer?.cancel();
     _conferenceActionCooldownTimer?.cancel();
     for (final timer in _pendingCallOperationTimers.values) {

@@ -38,6 +38,7 @@ extension _HistoryList on _MyHomePageState {
     required bool showDetailInline,
     required bool hasMorePersistedEntries,
     required int persistedEntryCount,
+    required bool isLoadingMore,
   }) {
     final grouped = _groupHistoryItems(items);
     return ListView.builder(
@@ -52,6 +53,7 @@ extension _HistoryList on _MyHomePageState {
           return _buildHistoryLoadMoreFooter(
             hasMorePersistedEntries: hasMorePersistedEntries,
             persistedEntryCount: persistedEntryCount,
+            isLoadingMore: isLoadingMore,
           );
         }
         final group = grouped[groupIndex];
@@ -386,15 +388,25 @@ extension _HistoryList on _MyHomePageState {
   Widget _buildHistoryLoadMoreFooter({
     required bool hasMorePersistedEntries,
     required int persistedEntryCount,
+    required bool isLoadingMore,
   }) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
       child: Center(
         child: hasMorePersistedEntries
             ? OutlinedButton.icon(
-                onPressed: _loadMoreHistoryEntries,
-                icon: const Icon(AppIcons.next),
-                label: Text('加载更多 · 已显示 $persistedEntryCount 条'),
+                onPressed: isLoadingMore ? null : _loadMoreHistoryEntries,
+                icon: isLoadingMore
+                    ? const SizedBox.square(
+                        dimension: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(AppIcons.next),
+                label: Text(
+                  isLoadingMore
+                      ? '正在加载更多'
+                      : '加载更多 · 已显示 $persistedEntryCount 条',
+                ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: _softBorder),
                   shape: RoundedRectangleBorder(

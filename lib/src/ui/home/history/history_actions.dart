@@ -61,6 +61,8 @@ extension _HistoryActions on _MyHomePageState {
 
   Future<void> _markAllMissedCallsRead() async {
     await ref.read(callHistoryDatabaseProvider).markAllMissedCallsRead();
+    if (!mounted) return;
+    _update(_resetHistoryPagination);
   }
 
   Future<void> _confirmMarkAllMissedCallsRead(int count) async {
@@ -102,6 +104,11 @@ extension _HistoryActions on _MyHomePageState {
       _selectedHistoryItemKey = null;
     }
     await ref.read(callHistoryDatabaseProvider).deleteEntry(id);
+    if (!mounted) return;
+    _update(() {
+      _historyLoadedMoreEntries.removeWhere((entry) => entry.id == id);
+      _historyCurrentPersistedEntries.removeWhere((entry) => entry.id == id);
+    });
   }
 
   Future<bool> _showCallHistoryConfirm({
@@ -331,7 +338,7 @@ extension _HistoryActions on _MyHomePageState {
           FilledButton(
             onPressed: () {
               Navigator.of(context).pop();
-              _selectedHistoryItemKey = null;
+              _update(_resetHistoryPagination);
               ref.read(callHistoryDatabaseProvider).clearAll();
             },
             style: FilledButton.styleFrom(backgroundColor: _dangerRed),

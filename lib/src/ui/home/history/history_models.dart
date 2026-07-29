@@ -40,6 +40,17 @@ class _HistoryDateRange {
   final DateTime before;
 }
 
+/// 通话记录分页游标：记录当前列表最后一条数据库记录的位置。
+///
+/// 列表按 startedAt desc, id desc 排序，所以“加载更多”需要同时带上时间和 id，
+/// 避免同一秒内多条记录或新记录插入顶部时造成分页重复/漏项。
+class _HistoryPageCursor {
+  const _HistoryPageCursor({required this.startedAt, required this.id});
+
+  final DateTime startedAt;
+  final int id;
+}
+
 /// 通话记录类型筛选：比单纯方向多一个“未接”，但未接仍只代表本机漏接来电。
 enum _HistoryCallFilter {
   all('全部', null, false),

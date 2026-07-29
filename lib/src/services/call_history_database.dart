@@ -260,7 +260,10 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
   }) {
     final normalizedKeyword = keyword.trim().toLowerCase();
     final query = select(callHistoryEntries)
-      ..orderBy([(table) => OrderingTerm.desc(table.startedAt)])
+      ..orderBy([
+        (table) => OrderingTerm.desc(table.startedAt),
+        (table) => OrderingTerm.desc(table.id),
+      ])
       ..limit(limit);
 
     if (direction != null) {
@@ -292,6 +295,64 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
       );
     }
     return query.watch();
+  }
+
+  Future<List<CallHistoryEntry>> listRecentPage({
+    String keyword = '',
+    CallHistoryDirection? direction,
+    bool missedOnly = false,
+    DateTime? startedFrom,
+    DateTime? startedBefore,
+    DateTime? cursorStartedAt,
+    int? cursorId,
+    int limit = 100,
+  }) {
+    final normalizedKeyword = keyword.trim().toLowerCase();
+    final query = select(callHistoryEntries)
+      ..orderBy([
+        (table) => OrderingTerm.desc(table.startedAt),
+        (table) => OrderingTerm.desc(table.id),
+      ])
+      ..limit(limit);
+
+    if (direction != null) {
+      query.where((table) => table.direction.equals(direction.storageKey));
+    }
+    if (missedOnly) {
+      // 未接分页也只取“别人打进来且本机没有接通”的记录，和未读统计保持一致。
+      query.where(
+        (table) =>
+            table.direction.equals(CallHistoryDirection.inbound.storageKey) &
+            table.status.equals(CallHistoryStatus.missed.storageKey) &
+            table.answeredAt.isNull(),
+      );
+    }
+    if (startedFrom != null) {
+      query.where((table) => table.startedAt.isBiggerOrEqualValue(startedFrom));
+    }
+    if (startedBefore != null) {
+      query.where((table) => table.startedAt.isSmallerThanValue(startedBefore));
+    }
+    if (cursorStartedAt != null && cursorId != null) {
+      // 游标分页按 started_at desc, id desc 排序，避免新通话插入顶部后 offset 错位。
+      query.where(
+        (table) =>
+            table.startedAt.isSmallerThanValue(cursorStartedAt) |
+            (table.startedAt.equals(cursorStartedAt) &
+                table.id.isSmallerThanValue(cursorId)),
+      );
+    }
+    if (normalizedKeyword.isNotEmpty) {
+      query.where(
+        (table) =>
+            table.phoneNumber.lower().contains(normalizedKeyword) |
+            table.remoteUri.lower().contains(normalizedKeyword) |
+            table.displayName.lower().contains(normalizedKeyword) |
+            table.accountLabel.lower().contains(normalizedKeyword) |
+            table.note.lower().contains(normalizedKeyword),
+      );
+    }
+    return query.get();
   }
 
   Stream<int> watchUnreadMissedCallCount() {

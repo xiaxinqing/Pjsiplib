@@ -70,12 +70,11 @@ class AppWindowController with WindowListener {
     unawaited(_hideWindowInsteadOfClosing());
   }
 
-  Future<void> notifyIncomingCall({required int incomingCallCount}) async {
+  Future<void> notifyIncomingCall() async {
     if (!isDesktop) return;
 
     await _restoreAndFocus();
     await _requestUserAttention();
-    await _setBadge(incomingCallCount);
     await _pulseAlwaysOnTop();
   }
 
@@ -85,7 +84,6 @@ class AppWindowController with WindowListener {
     _attentionResetTimer?.cancel();
     _attentionResetTimer = null;
     await _safeWindowCall(() => windowManager.setAlwaysOnTop(false));
-    await _safeWindowCall(() => windowManager.setBadgeLabel());
     await _safePlatformCall('clearAttention');
   }
 
@@ -114,13 +112,6 @@ class AppWindowController with WindowListener {
 
   Future<void> _requestUserAttention() async {
     await _safePlatformCall('requestAttention');
-  }
-
-  Future<void> _setBadge(int incomingCallCount) async {
-    if (!Platform.isMacOS) return;
-    await _safeWindowCall(
-      () => windowManager.setBadgeLabel(incomingCallCount.toString()),
-    );
   }
 
   Future<void> _pulseAlwaysOnTop() async {

@@ -39,13 +39,77 @@ extension _HomeHistoryCoordinator on _MyHomePageState {
   }
 
   /// 加载下一页通话记录。
-  void _loadMoreHistoryEntries() {
-    _update(() => _historyVisibleLimit += _historyPageSize);
+  Future<void> _loadMoreHistoryEntries() async {
+    if (_historyLoadingMore) return;
+    final cursor = _historyCursorForEntries(_historyCurrentPersistedEntries);
+    if (cursor == null) return;
+
+    final keyword = _historySearchController.text.trim();
+    final range = _historyDateFilter.range();
+    final token = _historyPagingToken();
+    _update(() {
+      _historyLoadingMore = true;
+      _historyLoadMoreToken = token;
+    });
+
+    try {
+      final entries = await ref
+          .read(callHistoryDatabaseProvider)
+          .listRecentPage(
+            keyword: keyword,
+            direction: _historyCallFilter.direction,
+            missedOnly: _historyCallFilter.missedOnly,
+            startedFrom: range?.from,
+            startedBefore: range?.before,
+            cursorStartedAt: cursor.startedAt,
+            cursorId: cursor.id,
+            limit: _historyPageSize + 1,
+          );
+      if (!mounted || _historyLoadMoreToken != token) return;
+
+      final pageEntries = entries.length > _historyPageSize
+          ? entries.take(_historyPageSize).toList()
+          : entries;
+      _update(() {
+        _historyLoadedMoreEntries
+          ..addAll(pageEntries)
+          ..sort((a, b) {
+            final started = b.startedAt.compareTo(a.startedAt);
+            if (started != 0) return started;
+            return b.id.compareTo(a.id);
+          });
+        _historyHasMoreAfterLoaded = entries.length > _historyPageSize;
+        _historyLoadingMore = false;
+        _historyLoadMoreToken = null;
+      });
+    } catch (error) {
+      if (!mounted || _historyLoadMoreToken != token) return;
+      _update(() {
+        _historyLoadingMore = false;
+        _historyLoadMoreToken = null;
+      });
+      debugPrint('加载更多通话记录失败: $error');
+      ToastUtil.showError('加载更多通话记录失败，请稍后重试');
+    }
   }
 
   /// 将通话记录分页和详情选中状态恢复到初始值。
   void _resetHistoryPagination() {
-    _historyVisibleLimit = _historyPageSize;
+    _historyLoadedMoreEntries.clear();
+    _historyCurrentPersistedEntries = <CallHistoryEntry>[];
+    _historyHasMoreAfterLoaded = false;
+    _historyLoadingMore = false;
+    _historyLoadMoreToken = null;
+    _historyEntriesStream = null;
     _selectedHistoryItemKey = null;
+  }
+
+  /// 当前分页查询条件的快照，用来丢弃筛选切换后的旧异步结果。
+  String _historyPagingToken() {
+    return [
+      _historySearchController.text.trim(),
+      _historyCallFilter.name,
+      _historyDateFilter.name,
+    ].join('\n');
   }
 }
