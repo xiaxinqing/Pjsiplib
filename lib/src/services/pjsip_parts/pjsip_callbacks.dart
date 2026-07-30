@@ -569,6 +569,25 @@ extension _PjsipNativeCallbacks on PjsipService {
         final lastStatusText = _pjString(info.ref.last_status_text);
         final snapshot = _callSnapshot(info.ref);
         final mediaSecurity = _readCallMediaSecurity(callId, info.ref, arena);
+        final prevBeforeAsync = _uiState.calls[callId];
+        final isRingingSipStatus = lastStatus == 180 || lastStatus == 183;
+        final isOutboundRingingBeforeAsync =
+            (callState == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value ||
+                isRingingSipStatus) &&
+            (prevBeforeAsync?.direction == PjsipCallDirection.outbound ||
+                !_knownIncomingCallIds.contains(callId));
+        if (isOutboundRingingBeforeAsync) {
+          // EARLY/180/183 可能和后续断开回调挨得很近；先同步缓存，避免归档时
+          // 只拿到 CALLING 阶段的旧 CallInfo，导致未接通外呼没有响铃统计。
+          final cachedAt = _outboundRingingAtByCallId.putIfAbsent(
+            callId,
+            DateTime.now,
+          );
+          _addLog(
+            '📈 外呼响铃时间已记录: call=$callId, '
+            'state=$callState, lastSip=$lastStatus, at=${cachedAt.toIso8601String()}',
+          );
+        }
 
         scheduleMicrotask(() {
           // [T3 handle] get_info 成功分支
@@ -668,10 +687,16 @@ extension _PjsipNativeCallbacks on PjsipService {
                 : null;
             final isOutboundRinging =
                 direction == PjsipCallDirection.outbound &&
-                callState == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value;
+                (callState == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value ||
+                    isRingingSipStatus);
             final ringingAt = isOutboundRinging
-                ? prev?.ringingAt ?? DateTime.now()
+                ? prev?.ringingAt ??
+                      _outboundRingingAtByCallId[callId] ??
+                      DateTime.now()
                 : prev?.ringingAt;
+            if (isOutboundRinging) {
+              _outboundRingingAtByCallId.putIfAbsent(callId, () => ringingAt!);
+            }
             if (isConfirmed) {
               _startCallTimer();
             }

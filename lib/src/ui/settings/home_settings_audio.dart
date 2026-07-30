@@ -78,6 +78,9 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                       icon: AppIcons.microphone,
                       value: _selectedCaptureDeviceValue(uiState),
                       devices: uiState.captureDevices,
+                      automaticMode:
+                          uiState.audioDeviceMode ==
+                          PjsipAudioDeviceMode.automatic,
                       onChanged: (value) {
                         if (value != null) {
                           service.setAudioDevices(captureDeviceId: value);
@@ -125,6 +128,9 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                       icon: AppIcons.speaker,
                       value: _selectedPlaybackDeviceValue(uiState),
                       devices: uiState.playbackDevices,
+                      automaticMode:
+                          uiState.audioDeviceMode ==
+                          PjsipAudioDeviceMode.automatic,
                       onChanged: (value) {
                         if (value != null) {
                           service.setAudioDevices(playbackDeviceId: value);
@@ -618,11 +624,16 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
     required int? value,
     required List<PjsipAudioDevice> devices,
     required ValueChanged<int?> onChanged,
+    required bool automaticMode,
   }) {
-    return DropdownButtonFormField<int>(
+    final dropdown = DropdownButtonFormField<int>(
       isExpanded: true,
       initialValue: value,
-      decoration: InputDecoration(labelText: label, prefixIcon: Icon(icon)),
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        helperText: automaticMode ? '自动跟随系统设备' : null,
+      ),
       items: devices
           .map(
             (device) => DropdownMenuItem<int>(
@@ -631,7 +642,14 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
             ),
           )
           .toList(),
-      onChanged: onChanged,
+      onChanged: automaticMode ? null : onChanged,
+    );
+    if (!automaticMode) return dropdown;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => ToastUtil.showInfo('自动模式下跟随系统音频设备，无法手动选择'),
+      child: IgnorePointer(child: dropdown),
     );
   }
 

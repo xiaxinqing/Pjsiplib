@@ -432,7 +432,10 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
         .clamp(0, 1 << 31)
         .toInt();
     final timeToRingingMs = _positiveMilliseconds(startedAt, ringingAt);
-    final ringingToAnswerMs = _positiveMilliseconds(ringingAt, answeredAt);
+    // 同一个字段记录“响铃阶段耗时”：已接通时是响铃到接听，未接通时是响铃到结束。
+    // 这样通话记录详情不需要为未接通外呼额外维护一套统计字段。
+    final ringingEndAt = answeredAt ?? endedAt;
+    final ringingToAnswerMs = _positiveMilliseconds(ringingAt, ringingEndAt);
     final answerToMediaMs = _positiveMilliseconds(answeredAt, mediaConnectedAt);
     return addEntry(
       CallHistoryEntriesCompanion.insert(

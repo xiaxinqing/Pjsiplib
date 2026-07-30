@@ -1019,6 +1019,7 @@ extension PjsipCallOperations on PjsipService {
     _syncCallProgressSounds();
     _hangupSoundPlayedCallIds.remove(callId);
     _knownIncomingCallIds.remove(callId);
+    _outboundRingingAtByCallId.remove(callId);
     _callSnapshots.clear(callId);
   }
 
@@ -1173,6 +1174,7 @@ extension PjsipCallOperations on PjsipService {
   bool _wasOutboundRinging(CallInfo? call) {
     return call?.direction == PjsipCallDirection.outbound &&
         (call?.ringingAt != null ||
+            _outboundRingingAtByCallId.containsKey(call?.callId) ||
             call?.state == pjsip_inv_state.PJSIP_INV_STATE_EARLY.value);
   }
 
@@ -1199,6 +1201,20 @@ extension PjsipCallOperations on PjsipService {
     final personalNote = _callNotes.remove(call.callId)?.trim();
     final sharedNote = _sharedConferenceNotes.remove(call.callId)?.trim();
     final transferTarget = _blindTransferTargets.remove(call.callId)?.trim();
+    final ringingAt =
+        call.ringingAt ??
+        (call.direction == PjsipCallDirection.outbound
+            ? _outboundRingingAtByCallId[call.callId]
+            : null);
+    if (call.direction == PjsipCallDirection.outbound) {
+      final timeToRinging = ringingAt?.difference(call.startedAt);
+      _addLog(
+        timeToRinging == null
+            ? '📈 外呼归档未拿到响铃时间: call=${call.callId}'
+            : '📈 外呼响铃统计归档: call=${call.callId}, '
+                  '拨号到响铃=${timeToRinging.inMilliseconds}ms',
+      );
+    }
     final note = _composeCallHistoryNote(
       personalNote: personalNote,
       sharedNote: sharedNote,
@@ -1214,7 +1230,7 @@ extension PjsipCallOperations on PjsipService {
             remoteUri: call.remoteUri,
             phoneNumber: phoneNumber,
             startedAt: call.startedAt,
-            ringingAt: call.ringingAt,
+            ringingAt: ringingAt,
             answeredAt: call.connectedAt,
             mediaConnectedAt: call.mediaConnectedAt,
             endedAt: endedAt,

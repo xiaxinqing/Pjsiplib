@@ -65,6 +65,9 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Set<int> _backgroundHoldScheduledCallIds = <int>{};
   final Set<int> _locallyReleasedCallIds = <int>{};
   final Set<int> _knownIncomingCallIds = <int>{};
+  // 外呼进入 EARLY 时立即缓存响铃时间。未接通快速断开时，PJSIP 可能已释放
+  // call_info，归档只能拿到旧 CallInfo；这个缓存用于补齐“拨号到响铃”统计。
+  final Map<int, DateTime> _outboundRingingAtByCallId = <int, DateTime>{};
   final Map<int, DateTime> _lastCallControlOperationAt = <int, DateTime>{};
   final Map<int, Timer> _delayedHangupTimers = <int, Timer>{};
   final Map<int, Timer> _hangupCleanupTimers = <int, Timer>{};
@@ -301,6 +304,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _backgroundHoldScheduledCallIds.clear();
     _locallyReleasedCallIds.clear();
     _knownIncomingCallIds.clear();
+    _outboundRingingAtByCallId.clear();
     _callSnapshots.clearAll();
     _lastCallControlOperationAt.clear();
     for (final timer in _delayedHangupTimers.values) {
@@ -385,6 +389,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       _backgroundHoldScheduledCallIds.clear();
       _locallyReleasedCallIds.clear();
       _knownIncomingCallIds.clear();
+      _outboundRingingAtByCallId.clear();
       _callSnapshots.clearAll();
       _lastCallControlOperationAt.clear();
       for (final timer in _delayedHangupTimers.values) {

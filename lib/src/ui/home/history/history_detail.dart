@@ -193,7 +193,10 @@ extension _HistoryDetail on _MyHomePageState {
       stats.add(('拨号到响铃', _formatHistoryMetricMs(item.timeToRingingMs!)));
     }
     if (item.ringingToAnswerMs != null) {
-      stats.add(('响铃到接听', _formatHistoryMetricMs(item.ringingToAnswerMs!)));
+      stats.add((
+        item.answeredAt == null ? '响铃时长' : '响铃到接听',
+        _formatHistoryMetricMs(item.ringingToAnswerMs!),
+      ));
     }
     if (item.answerToMediaMs != null) {
       stats.add(('语音建立', _formatHistoryMetricMs(item.answerToMediaMs!)));
