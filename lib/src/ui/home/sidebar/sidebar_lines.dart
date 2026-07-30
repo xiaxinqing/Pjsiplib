@@ -70,52 +70,64 @@ extension _HomeSidebarLines on _MyHomePageState {
   ) {
     final isDefault = uiState.defaultAccountId == account.accId;
     final color = account.isRegistered ? _brandGreen : Colors.orange.shade700;
+    final identityPrefix = account.lineName.trim().isEmpty
+        ? ''
+        : '${account.username} · ';
     final status = isDefault
-        ? '默认外呼 · ${account.transportLabel}'
-        : '${account.registrationStatusText} · ${account.transportLabel}';
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
+        ? '$identityPrefix默认外呼 · ${account.transportLabel}'
+        : '$identityPrefix${account.registrationStatusText} · ${account.transportLabel}';
+    return GestureDetector(
+      onSecondaryTapDown: (details) => _showLineActionMenu(
+        uiState,
+        service,
+        account,
+        details.globalPosition,
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Material(
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          onTapDown: (details) => _showLineActionMenu(
-            uiState,
-            service,
-            account,
-            details.globalPosition,
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
-            child: Row(
-              children: [
-                Icon(Icons.circle, size: 9, color: color),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTooltipText(
-                        account.displayName,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
-                      ),
-                      _buildTooltipText(
-                        status,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _textSecondary,
-                          fontWeight: FontWeight.w500,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(8),
+            onTapDown: (details) => _showLineActionMenu(
+              uiState,
+              service,
+              account,
+              details.globalPosition,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+              child: Row(
+                children: [
+                  Icon(Icons.circle, size: 9, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildTooltipText(
+                          account.displayName,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
                         ),
-                      ),
-                    ],
+                        _buildTooltipText(
+                          status,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: _textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                Icon(
-                  isDefault ? AppIcons.outgoing : AppIcons.more,
-                  size: isDefault ? 14 : 18,
-                  color: _textSecondary,
-                ),
-              ],
+                  Icon(
+                    isDefault ? AppIcons.outgoing : AppIcons.more,
+                    size: isDefault ? 14 : 18,
+                    color: _textSecondary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

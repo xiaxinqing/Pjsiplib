@@ -94,30 +94,48 @@ class _PersistedSeatEnvironment {
 
 class _PersistedSipLine {
   const _PersistedSipLine({
+    required this.lineName,
     required this.username,
+    required this.authUsername,
+    required this.sipDisplayName,
+    required this.outboundProxy,
     required this.password,
     required this.host,
     required this.transport,
     required this.mediaSecurity,
     required this.iceConfig,
     required this.turnConfig,
+    required this.ipv6Enabled,
     required this.registrationEnabled,
   });
 
+  final String lineName;
   final String username;
+  final String authUsername;
+  final String sipDisplayName;
+  final String outboundProxy;
   final String password;
   final String host;
   final SipTransport transport;
   final MediaSecurityConfig mediaSecurity;
   final IceConfig iceConfig;
   final TurnConfig turnConfig;
+  final bool ipv6Enabled;
   final bool registrationEnabled;
 
   bool get isValid => username.isNotEmpty && host.isNotEmpty;
 
   Map<String, Object?> toJson() {
     return {
+      // lineName 是本地备注名，只用于 UI 展示；不会参与 SIP 注册。
+      'lineName': lineName,
       'username': username,
+      // authUsername 只用于 SIP Digest 鉴权；为空时注册逻辑会回退到 username。
+      'authUsername': authUsername,
+      // sipDisplayName 会写入 SIP From 显示名；和本地 lineName 独立保存。
+      'sipDisplayName': sipDisplayName,
+      // outboundProxy 是账号级 Route 代理，注册/呼叫请求都会先经过它。
+      'outboundProxy': outboundProxy,
       'password': password,
       'host': host,
       'transport': transport.name,
@@ -132,6 +150,8 @@ class _PersistedSipLine {
         'password': turnConfig.password,
         'transport': turnConfig.transport.storageKey,
       },
+      // IPv6 是账号级网络策略；默认关闭用于减少 SDP 候选，降低 UDP INVITE 过大风险。
+      'ipv6Enabled': ipv6Enabled,
       'registrationEnabled': registrationEnabled,
     };
   }
@@ -156,7 +176,11 @@ class _PersistedSipLine {
         : const <String, Object?>{};
     final turnTransportName = turnJson['transport'] as String?;
     return _PersistedSipLine(
+      lineName: (json['lineName'] as String?)?.trim() ?? '',
       username: (json['username'] as String?)?.trim() ?? '',
+      authUsername: (json['authUsername'] as String?)?.trim() ?? '',
+      sipDisplayName: (json['sipDisplayName'] as String?)?.trim() ?? '',
+      outboundProxy: (json['outboundProxy'] as String?)?.trim() ?? '',
       password: json['password'] as String? ?? '',
       host: (json['host'] as String?)?.trim() ?? '',
       transport: transport,
@@ -180,6 +204,7 @@ class _PersistedSipLine {
           orElse: () => TurnTransport.udp,
         ),
       ),
+      ipv6Enabled: json['ipv6Enabled'] as bool? ?? false,
       registrationEnabled: json['registrationEnabled'] as bool? ?? true,
     );
   }
@@ -305,13 +330,18 @@ extension PjsipPersistenceOperations on PjsipService {
       for (final line in environment.lines) {
         if (_isDisposed) return;
         await register(
+          lineName: line.lineName,
           username: line.username,
+          authUsername: line.authUsername,
+          sipDisplayName: line.sipDisplayName,
+          outboundProxy: line.outboundProxy,
           password: line.password,
           host: line.host,
           transport: line.transport,
           mediaSecurity: line.mediaSecurity,
           iceConfig: line.iceConfig,
           turnConfig: line.turnConfig,
+          ipv6Enabled: line.ipv6Enabled,
           registrationEnabled: line.registrationEnabled,
           fromRestore: true,
         );
@@ -367,13 +397,18 @@ extension PjsipPersistenceOperations on PjsipService {
         lines: [
           for (final account in accounts)
             _PersistedSipLine(
+              lineName: account.lineName,
               username: account.username,
+              authUsername: account.authUsername,
+              sipDisplayName: account.sipDisplayName,
+              outboundProxy: account.outboundProxy,
               password: account.password,
               host: account.host,
               transport: account.transport,
               mediaSecurity: account.mediaSecurity,
               iceConfig: account.iceConfig,
               turnConfig: account.turnConfig,
+              ipv6Enabled: account.ipv6Enabled,
               registrationEnabled: account.registrationEnabled,
             ),
         ],
@@ -393,13 +428,18 @@ extension PjsipPersistenceOperations on PjsipService {
       final normalizedHost = _normalizeSipHost(line.host, line.transport);
       final account = SipAccountInfo(
         accId: nextPlaceholderId,
+        lineName: line.lineName,
         username: line.username,
+        authUsername: line.authUsername,
+        sipDisplayName: line.sipDisplayName,
+        outboundProxy: line.outboundProxy,
         password: line.password,
         host: normalizedHost,
         transport: line.transport,
         mediaSecurity: line.mediaSecurity,
         iceConfig: line.iceConfig,
         turnConfig: line.turnConfig,
+        ipv6Enabled: line.ipv6Enabled,
         registrationStatus: line.registrationEnabled ? null : 0,
         registrationStatusText: line.registrationEnabled ? '恢复中' : '已暂停',
         registrationExpires: line.registrationEnabled ? null : 0,

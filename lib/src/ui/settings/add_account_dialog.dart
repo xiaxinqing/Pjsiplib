@@ -23,9 +23,14 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   static const _debugHost = '139.59.100.15';
 
   final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _lineNameController;
   late final TextEditingController _usernameController;
+  late final TextEditingController _authUsernameController;
+  late final TextEditingController _sipDisplayNameController;
+  late final TextEditingController _outboundProxyController;
   late final TextEditingController _passwordController;
   late final TextEditingController _hostController;
+  late final TextEditingController _portController;
   late final TextEditingController _stunServerController;
   late final TextEditingController _turnServerController;
   late final TextEditingController _turnUsernameController;
@@ -34,25 +39,41 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   var _hideTurnPassword = true;
   var _selectedTransport = SipTransport.udp;
   var _selectedMediaEncryption = MediaEncryptionMode.none;
-  var _iceEnabled = true;
+  var _iceEnabled = false;
   var _turnEnabled = false;
+  var _ipv6Enabled = false;
   var _selectedTurnTransport = TurnTransport.udp;
+  var _advancedExpanded = false;
 
   bool get _isEditing => widget.account != null;
+  bool get _usesUdpWithIce =>
+      _selectedTransport == SipTransport.udp && _iceEnabled;
 
   @override
   void initState() {
     super.initState();
     final account = widget.account;
+    _lineNameController = TextEditingController(text: account?.lineName ?? '');
     _usernameController = TextEditingController(
       text: account?.username ?? (kDebugMode ? _debugUsername : ''),
+    );
+    _authUsernameController = TextEditingController(
+      text: account?.authUsername ?? '',
+    );
+    _sipDisplayNameController = TextEditingController(
+      text: account?.sipDisplayName ?? '',
+    );
+    _outboundProxyController = TextEditingController(
+      text: account?.outboundProxy ?? '',
     );
     _passwordController = TextEditingController(
       text: account?.password ?? (kDebugMode ? _debugPassword : ''),
     );
-    _hostController = TextEditingController(
-      text: account?.host ?? (kDebugMode ? _debugHost : ''),
+    final hostParts = _splitHostAndPort(
+      account?.host ?? (kDebugMode ? _debugHost : ''),
     );
+    _hostController = TextEditingController(text: hostParts.host);
+    _portController = TextEditingController(text: hostParts.port);
     _stunServerController = TextEditingController(
       text: account == null ? _defaultStunServer : account.iceConfig.stunServer,
     );
@@ -68,16 +89,38 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     _selectedTransport = account?.transport ?? SipTransport.udp;
     _selectedMediaEncryption =
         account?.mediaSecurity.mode ?? MediaEncryptionMode.none;
-    _iceEnabled = account?.iceConfig.enabled ?? true;
+    // UDP 携带 ICE 时 SDP 会明显变大，部分网络或 Asterisk 前置链路会丢弃
+    // UDP 分片，表现成“客户端发出 INVITE，但服务端没有任何反应”。
+    // 所以新建线路默认不主动打开 ICE；需要复杂 NAT 穿透时由用户显式开启。
+    _iceEnabled = account?.iceConfig.enabled ?? false;
     _turnEnabled = account?.turnConfig.enabled ?? false;
+    _ipv6Enabled = account?.ipv6Enabled ?? false;
     _selectedTurnTransport = account?.turnConfig.transport ?? TurnTransport.udp;
+    // 编辑已有线路时，如果高级网络配置不是默认值，直接展开，避免用户错过。
+    _advancedExpanded =
+        (account?.authUsername.trim().isNotEmpty ?? false) ||
+        (account?.sipDisplayName.trim().isNotEmpty ?? false) ||
+        (account?.outboundProxy.trim().isNotEmpty ?? false) ||
+        (account != null &&
+            account.mediaSecurity.mode != MediaEncryptionMode.none) ||
+        account?.turnConfig.enabled == true ||
+        account?.ipv6Enabled == true ||
+        account?.iceConfig.enabled == false ||
+        (account != null &&
+            account.iceConfig.stunServer.trim().isNotEmpty &&
+            account.iceConfig.stunServer.trim() != _defaultStunServer);
   }
 
   @override
   void dispose() {
+    _lineNameController.dispose();
     _usernameController.dispose();
+    _authUsernameController.dispose();
+    _sipDisplayNameController.dispose();
+    _outboundProxyController.dispose();
     _passwordController.dispose();
     _hostController.dispose();
+    _portController.dispose();
     _stunServerController.dispose();
     _turnServerController.dispose();
     _turnUsernameController.dispose();
@@ -107,7 +150,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 12, 14),
+                padding: const EdgeInsets.fromLTRB(20, 15, 12, 13),
                 child: Row(
                   children: [
                     Icon(
@@ -120,8 +163,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                       child: Text(
                         _isEditing ? '编辑线路' : '添加线路',
                         style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
                           color: _textPrimary,
                         ),
                       ),
@@ -146,6 +189,18 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      _buildSectionLabel(AppIcons.account, '账号信息'),
+                      const SizedBox(height: 10),
+                      TextFormField(
+                        controller: _lineNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: '线路名称（可选）',
+                          helperText: '仅用于本地显示，例如“客服一线”或“默认外呼”',
+                          prefixIcon: Icon(AppIcons.line),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       TextFormField(
                         controller: _usernameController,
                         textInputAction: TextInputAction.next,
@@ -176,18 +231,50 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _hostController,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _submit(),
-                        decoration: const InputDecoration(
-                          labelText: '服务器',
-                          helperText: '未填写端口时：UDP/TCP 默认 5060，TLS 默认 5061',
-                          prefixIcon: Icon(AppIcons.host),
-                        ),
-                        validator: _requiredValidator,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _hostController,
+                              textInputAction: TextInputAction.next,
+                              decoration: const InputDecoration(
+                                labelText: '服务器地址',
+                                prefixIcon: Icon(AppIcons.host),
+                              ),
+                              validator: _requiredValidator,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          SizedBox(
+                            width: 112,
+                            child: TextFormField(
+                              controller: _portController,
+                              keyboardType: TextInputType.number,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly,
+                              ],
+                              textInputAction: TextInputAction.done,
+                              onFieldSubmitted: (_) => _submit(),
+                              decoration: InputDecoration(
+                                labelText: '端口',
+                                hintText: '${_selectedTransport.defaultPort}',
+                              ),
+                              validator: _portValidator,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 6),
+                      Text(
+                        '端口可不填，当前 ${_selectedTransport.label} 默认 ${_selectedTransport.defaultPort}',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+                      ),
+                      const SizedBox(height: 18),
+                      _buildSectionLabel(AppIcons.network, '连接方式'),
+                      const SizedBox(height: 10),
                       _buildTransportSelector(context),
                       const SizedBox(height: 12),
                       _buildMediaEncryptionSelector(context),
@@ -236,23 +323,37 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     );
   }
 
-  Widget _buildTransportSelector(BuildContext context) {
-    return DropdownButtonFormField<SipTransport>(
-      key: ValueKey(_selectedTransport),
-      initialValue: _selectedTransport,
-      decoration: const InputDecoration(
-        labelText: '传输协议',
-        prefixIcon: Icon(AppIcons.transport),
-      ),
-      items: [
-        for (final transport in SipTransport.values)
-          DropdownMenuItem<SipTransport>(
-            value: transport,
-            child: Text('${transport.label} · ${transport.description}'),
+  Widget _buildSectionLabel(IconData icon, String label) {
+    final color = _textPrimary.withValues(alpha: 0.68);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: color,
+            ),
           ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTransportSelector(BuildContext context) {
+    return _buildSelectMenu<SipTransport>(
+      label: '传输协议',
+      icon: AppIcons.transport,
+      value: _selectedTransport,
+      values: SipTransport.values,
+      titleBuilder: (transport) =>
+          '${transport.label} · ${transport.description}',
+      subtitleBuilder: (transport) => '默认端口 ${transport.defaultPort}',
       onChanged: (transport) {
-        if (transport == null) return;
         setState(() {
           _selectedTransport = transport;
           // TLS 只保护 SIP 信令；首次切到 TLS 时自动推荐媒体也走 DTLS-SRTP。
@@ -260,6 +361,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
               _selectedMediaEncryption == MediaEncryptionMode.none) {
             _selectedMediaEncryption = MediaEncryptionMode.dtlsSrtp;
           }
+          // 从 TLS/TCP 切到 UDP 时不强制关闭 ICE，避免用户已经明确配置的
+          // NAT 策略丢失；下方会给出风险提示，保存时再二次确认。
         });
       },
     );
@@ -271,24 +374,14 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<MediaEncryptionMode>(
-          key: ValueKey(_selectedMediaEncryption),
-          initialValue: _selectedMediaEncryption,
-          decoration: const InputDecoration(
-            labelText: '媒体加密',
-            prefixIcon: Icon(AppIcons.security),
-          ),
-          items: [
-            for (final mode in MediaEncryptionMode.values)
-              DropdownMenuItem<MediaEncryptionMode>(
-                value: mode,
-                child: Text(mode.label),
-              ),
-          ],
-          onChanged: (mode) {
-            if (mode == null) return;
-            setState(() => _selectedMediaEncryption = mode);
-          },
+        _buildSelectMenu<MediaEncryptionMode>(
+          label: '媒体加密',
+          icon: AppIcons.security,
+          value: _selectedMediaEncryption,
+          values: MediaEncryptionMode.values,
+          titleBuilder: (mode) => mode.label,
+          subtitleBuilder: _mediaEncryptionDescription,
+          onChanged: (mode) => setState(() => _selectedMediaEncryption = mode),
         ),
         if (showWarning) ...[
           const SizedBox(height: 8),
@@ -303,7 +396,212 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     );
   }
 
+  /// 构建弹窗表单里的桌面选择菜单，替代默认 Dropdown 的 Material 弹层样式。
+  Widget _buildSelectMenu<T>({
+    required String label,
+    required IconData icon,
+    required T value,
+    required List<T> values,
+    required String Function(T value) titleBuilder,
+    String Function(T value)? subtitleBuilder,
+    required ValueChanged<T> onChanged,
+  }) {
+    final selectedTitle = titleBuilder(value);
+    final selectedSubtitle = subtitleBuilder?.call(value);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final menuWidth = constraints.hasBoundedWidth
+            ? constraints.maxWidth
+            : 320.0;
+        return MenuAnchor(
+          alignmentOffset: const Offset(0, 8),
+          style: MenuStyle(
+            backgroundColor: const WidgetStatePropertyAll(_panelBackground),
+            elevation: const WidgetStatePropertyAll(18),
+            shadowColor: WidgetStatePropertyAll(
+              Colors.black.withValues(alpha: 0.22),
+            ),
+            surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+            padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(vertical: 4),
+            ),
+            shape: WidgetStatePropertyAll(
+              RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: BorderSide(color: _textPrimary.withValues(alpha: 0.12)),
+              ),
+            ),
+          ),
+          menuChildren: [
+            for (final item in values)
+              _buildSelectMenuItem<T>(
+                width: menuWidth,
+                item: item,
+                selected: item == value,
+                title: titleBuilder(item),
+                subtitle: subtitleBuilder?.call(item),
+                onSelected: onChanged,
+              ),
+          ],
+          builder: (context, controller, child) {
+            return Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(7),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(7),
+                hoverColor: _brandGreen.withValues(alpha: 0.05),
+                onTap: controller.isOpen ? controller.close : controller.open,
+                child: Container(
+                  constraints: const BoxConstraints(minHeight: 54),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _subtlePanel,
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: controller.isOpen
+                          ? _brandGreen.withValues(alpha: 0.62)
+                          : Colors.transparent,
+                      width: controller.isOpen ? 1.1 : 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(icon, size: 18, color: _textSecondary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: _textSecondary,
+                                    fontSize: 11,
+                                  ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              selectedSubtitle == null
+                                  ? selectedTitle
+                                  : '$selectedTitle · $selectedSubtitle',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: _textPrimary,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        controller.isOpen
+                            ? AppIcons.chevronUp
+                            : AppIcons.chevronDown,
+                        size: 17,
+                        color: _textSecondary,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSelectMenuItem<T>({
+    required double width,
+    required T item,
+    required bool selected,
+    required String title,
+    required String? subtitle,
+    required ValueChanged<T> onSelected,
+  }) {
+    return MenuItemButton(
+      onPressed: () => onSelected(item),
+      style: ButtonStyle(
+        minimumSize: WidgetStatePropertyAll(Size(width, 42)),
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        ),
+        overlayColor: WidgetStatePropertyAll(
+          _brandGreen.withValues(alpha: 0.08),
+        ),
+      ),
+      child: SizedBox(
+        width: math.max(0, width - 20),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 18,
+              child: selected
+                  ? const Icon(AppIcons.check, size: 16, color: _brandGreen)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: selected ? _brandGreen : _textPrimary,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _textSecondary.withValues(alpha: 0.82),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildAdvancedSettingsSection(BuildContext context) {
+    final stunServer = _stunServerController.text.trim();
+    final accountHints = [
+      if (_authUsernameController.text.trim().isNotEmpty) '认证用户名',
+      if (_sipDisplayNameController.text.trim().isNotEmpty) 'SIP 显示名',
+      if (_outboundProxyController.text.trim().isNotEmpty) '出站代理',
+    ];
+    final summary = [
+      accountHints.isEmpty ? '账号默认' : accountHints.join('、'),
+      _iceEnabled ? 'ICE' : '无 ICE',
+      stunServer.isEmpty || stunServer == _defaultStunServer
+          ? '默认 STUN'
+          : '自定义 STUN',
+      _ipv6Enabled ? 'IPv6' : '仅 IPv4',
+      if (_turnEnabled) 'TURN',
+    ].join(' · ');
+
     return Material(
       color: _subtlePanel,
       shape: RoundedRectangleBorder(
@@ -311,150 +609,398 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
         side: const BorderSide(color: _softBorder),
       ),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(12, 12, 12, 4),
-            child: Row(
-              children: [
-                Icon(AppIcons.tune, size: 20, color: _textPrimary),
-                SizedBox(width: 10),
-                Text(
-                  '高级设置',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: _textPrimary,
-                  ),
-                ),
-              ],
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          key: ValueKey(_advancedExpanded),
+          initiallyExpanded: _advancedExpanded,
+          onExpansionChanged: (expanded) =>
+              setState(() => _advancedExpanded = expanded),
+          tilePadding: const EdgeInsets.fromLTRB(12, 4, 10, 4),
+          childrenPadding: EdgeInsets.zero,
+          leading: const Icon(AppIcons.tune, size: 19, color: _textSecondary),
+          title: const Text(
+            '高级设置',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: _textPrimary,
             ),
           ),
-          SwitchListTile.adaptive(
-            value: _iceEnabled,
-            onChanged: (enabled) => setState(() {
-              _iceEnabled = enabled;
-              if (!enabled) _turnEnabled = false;
-            }),
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            secondary: const Icon(AppIcons.hub),
-            title: const Text('启用 ICE'),
-            subtitle: const Text('用于复杂 NAT 网络下协商媒体地址'),
-          ),
-          const Divider(height: 1),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-            child: TextFormField(
-              controller: _stunServerController,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(
-                labelText: 'STUN 服务器',
-                helperText: '清空则使用默认 STUN，多个可用逗号或空格分隔',
-                hintText: _defaultStunServer,
-                prefixIcon: Icon(AppIcons.public),
-              ),
+          subtitle: Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              summary,
+              style: const TextStyle(fontSize: 12, color: _textSecondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
-          const Divider(height: 1),
-          SwitchListTile.adaptive(
-            value: _turnEnabled,
-            onChanged: (enabled) => setState(() {
-              _turnEnabled = enabled;
-              // TURN 是 ICE 的中继候选来源；开启 TURN 时顺手打开 ICE，避免用户
-              // 填了 TURN 但媒体协商里没有 relay candidate。
-              if (enabled) _iceEnabled = true;
-            }),
-            dense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
-            secondary: const Icon(AppIcons.swap),
-            title: const Text('启用 TURN'),
-            subtitle: const Text('无法直连媒体时使用中继服务器'),
-          ),
-          if (_turnEnabled) ...[
+          children: [
+            const Divider(height: 1),
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: _turnServerController,
-                    textInputAction: TextInputAction.next,
-                    decoration: const InputDecoration(
-                      labelText: 'TURN 服务器',
-                      hintText: 'turn.example.com:3478',
-                      prefixIcon: Icon(AppIcons.cloud),
-                    ),
-                    validator: (value) {
-                      if (!_turnEnabled) return null;
-                      return _requiredValidator(value);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
+                  _buildAdvancedGroup(
+                    context,
+                    icon: AppIcons.account,
+                    title: '高级账号',
                     children: [
-                      Expanded(
-                        child: TextFormField(
-                          controller: _turnUsernameController,
-                          textInputAction: TextInputAction.next,
-                          decoration: const InputDecoration(
-                            labelText: 'TURN 用户名',
-                            prefixIcon: Icon(AppIcons.person),
-                          ),
+                      TextFormField(
+                        controller: _authUsernameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: '认证用户名（可选）',
+                          helperText: '不填则使用线路账号，仅用于 SIP 注册鉴权',
+                          prefixIcon: Icon(AppIcons.key),
                         ),
+                        onChanged: (_) => setState(() {}),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: DropdownButtonFormField<TurnTransport>(
-                          key: ValueKey(_selectedTurnTransport),
-                          initialValue: _selectedTurnTransport,
-                          decoration: const InputDecoration(
-                            labelText: 'TURN 协议',
-                            prefixIcon: Icon(AppIcons.transport),
-                          ),
-                          items: [
-                            for (final transport in TurnTransport.values)
-                              DropdownMenuItem<TurnTransport>(
-                                value: transport,
-                                child: Text(transport.label),
-                              ),
-                          ],
-                          onChanged: (transport) {
-                            if (transport == null) return;
-                            setState(() => _selectedTurnTransport = transport);
-                          },
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _sipDisplayNameController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'SIP 显示名称（可选）',
+                          helperText: '可能显示给对端或服务端；仅本地改名请使用线路名称',
+                          prefixIcon: Icon(AppIcons.person),
                         ),
+                        onChanged: (_) => setState(() {}),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _turnPasswordController,
-                    obscureText: _hideTurnPassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
-                    decoration: InputDecoration(
-                      labelText: 'TURN 密码',
-                      prefixIcon: const Icon(AppIcons.key),
-                      suffixIcon: IconButton(
-                        tooltip: _hideTurnPassword ? '显示密码' : '隐藏密码',
-                        onPressed: () => setState(
-                          () => _hideTurnPassword = !_hideTurnPassword,
+                  const SizedBox(height: 10),
+                  _buildAdvancedGroup(
+                    context,
+                    icon: AppIcons.network,
+                    title: '高级网络',
+                    children: [
+                      TextFormField(
+                        controller: _outboundProxyController,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'SIP 出站代理（可选）',
+                          helperText: '例如 sip:proxy.example.com:5060；不填则直连服务器',
+                          prefixIcon: Icon(AppIcons.route),
                         ),
-                        icon: Icon(
-                          _hideTurnPassword
-                              ? AppIcons.visible
-                              : AppIcons.hidden,
+                        onChanged: (_) => setState(() {}),
+                      ),
+                      const SizedBox(height: 12),
+                      const Divider(height: 1),
+                      const SizedBox(height: 4),
+                      SwitchListTile.adaptive(
+                        value: _ipv6Enabled,
+                        onChanged: (enabled) =>
+                            setState(() => _ipv6Enabled = enabled),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        secondary: const Icon(AppIcons.public),
+                        title: const Text('启用 IPv6'),
+                        subtitle: const Text('默认关闭，减少 SIP/媒体候选和报文体积'),
+                      ),
+                      const Divider(height: 1),
+                      SwitchListTile.adaptive(
+                        value: _iceEnabled,
+                        onChanged: (enabled) => setState(() {
+                          _iceEnabled = enabled;
+                          if (!enabled) _turnEnabled = false;
+                        }),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        secondary: const Icon(AppIcons.hub),
+                        title: const Text('启用 ICE'),
+                        subtitle: const Text('用于复杂 NAT 网络下协商媒体地址'),
+                      ),
+                      if (_usesUdpWithIce)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                          child: _buildUdpIceWarning(context),
+                        ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 160),
+                        child: _iceEnabled
+                            ? Column(
+                                key: const ValueKey('ice-enabled'),
+                                children: [
+                                  const Divider(height: 1),
+                                  Padding(
+                                    padding: const EdgeInsets.fromLTRB(
+                                      12,
+                                      12,
+                                      12,
+                                      12,
+                                    ),
+                                    child: TextFormField(
+                                      controller: _stunServerController,
+                                      textInputAction: TextInputAction.next,
+                                      decoration: const InputDecoration(
+                                        labelText: 'STUN 服务器',
+                                        helperText: '清空则使用默认 STUN，多个可用逗号或空格分隔',
+                                        hintText: _defaultStunServer,
+                                        prefixIcon: Icon(AppIcons.public),
+                                      ),
+                                      onChanged: (_) => setState(() {}),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('ice-disabled'),
+                              ),
+                      ),
+                      const Divider(height: 1),
+                      SwitchListTile.adaptive(
+                        value: _turnEnabled,
+                        onChanged: _iceEnabled
+                            ? (enabled) => setState(() {
+                                _turnEnabled = enabled;
+                                // TURN 是 ICE 的中继候选来源；开启 TURN 时顺手打开 ICE，避免用户
+                                // 填了 TURN 但媒体协商里没有 relay candidate。
+                                if (enabled) _iceEnabled = true;
+                              })
+                            : null,
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        secondary: const Icon(AppIcons.swap),
+                        title: const Text('启用 TURN'),
+                        subtitle: Text(
+                          _iceEnabled ? '无法直连媒体时使用中继服务器' : '需要先启用 ICE',
                         ),
                       ),
-                    ),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 160),
+                        child: _turnEnabled
+                            ? Padding(
+                                key: const ValueKey('turn-enabled'),
+                                padding: const EdgeInsets.fromLTRB(
+                                  12,
+                                  0,
+                                  12,
+                                  14,
+                                ),
+                                child: Column(
+                                  children: [
+                                    const SizedBox(height: 10),
+                                    TextFormField(
+                                      controller: _turnServerController,
+                                      textInputAction: TextInputAction.next,
+                                      decoration: const InputDecoration(
+                                        labelText: 'TURN 服务器',
+                                        hintText: 'turn.example.com:3478',
+                                        prefixIcon: Icon(AppIcons.cloud),
+                                      ),
+                                      validator: (value) {
+                                        if (!_turnEnabled) return null;
+                                        return _requiredValidator(value);
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: _turnUsernameController,
+                                            textInputAction:
+                                                TextInputAction.next,
+                                            decoration: const InputDecoration(
+                                              labelText: 'TURN 用户名',
+                                              prefixIcon: Icon(AppIcons.person),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: _buildSelectMenu<TurnTransport>(
+                                            label: 'TURN 协议',
+                                            icon: AppIcons.transport,
+                                            value: _selectedTurnTransport,
+                                            values: TurnTransport.values,
+                                            titleBuilder: (transport) =>
+                                                transport.label,
+                                            subtitleBuilder:
+                                                _turnTransportDescription,
+                                            onChanged: (transport) => setState(
+                                              () => _selectedTurnTransport =
+                                                  transport,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextFormField(
+                                      controller: _turnPasswordController,
+                                      obscureText: _hideTurnPassword,
+                                      textInputAction: TextInputAction.done,
+                                      onFieldSubmitted: (_) => _submit(),
+                                      decoration: InputDecoration(
+                                        labelText: 'TURN 密码',
+                                        prefixIcon: const Icon(AppIcons.key),
+                                        suffixIcon: IconButton(
+                                          tooltip: _hideTurnPassword
+                                              ? '显示密码'
+                                              : '隐藏密码',
+                                          onPressed: () => setState(
+                                            () => _hideTurnPassword =
+                                                !_hideTurnPassword,
+                                          ),
+                                          icon: Icon(
+                                            _hideTurnPassword
+                                                ? AppIcons.visible
+                                                : AppIcons.hidden,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : const SizedBox.shrink(
+                                key: ValueKey('turn-disabled'),
+                              ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
+  }
+
+  Widget _buildAdvancedGroup(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required List<Widget> children,
+  }) {
+    final titleColor = _textPrimary.withValues(alpha: 0.78);
+    final baseInputTheme = Theme.of(context).inputDecorationTheme;
+    return Theme(
+      data: Theme.of(context).copyWith(
+        inputDecorationTheme: baseInputTheme.copyWith(
+          filled: true,
+          fillColor: _subtlePanel,
+          border: _advancedFieldBorder(_softBorder),
+          enabledBorder: _advancedFieldBorder(_softBorder),
+          focusedBorder: _advancedFieldBorder(
+            _brandGreen.withValues(alpha: 0.55),
+            width: 1.1,
+          ),
+          errorBorder: _advancedFieldBorder(
+            Theme.of(context).colorScheme.error.withValues(alpha: 0.72),
+          ),
+          focusedErrorBorder: _advancedFieldBorder(
+            Theme.of(context).colorScheme.error,
+            width: 1.1,
+          ),
+        ),
+      ),
+      child: Material(
+        color: _panelBackground,
+        elevation: 0.6,
+        shadowColor: Colors.black.withValues(alpha: 0.06),
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: const BorderSide(color: _softBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, size: 16, color: titleColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: titleColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...children,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUdpIceWarning(BuildContext context) {
+    final warningColor = Colors.orange.shade800;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: Colors.orange.shade100),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(AppIcons.info, size: 16, color: warningColor),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'UDP 开启 ICE 会让 INVITE 报文变大，部分网络会丢弃 UDP 分片，可能出现服务端收不到呼叫。建议改用 TCP/TLS，或关闭 ICE。',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: warningColor,
+                  height: 1.35,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  OutlineInputBorder _advancedFieldBorder(Color color, {double width = 0.8}) {
+    return OutlineInputBorder(
+      borderRadius: BorderRadius.circular(7),
+      borderSide: BorderSide(color: color, width: width),
+    );
+  }
+
+  String _mediaEncryptionDescription(MediaEncryptionMode mode) {
+    return switch (mode) {
+      MediaEncryptionMode.none => '兼容性最好',
+      MediaEncryptionMode.sdesSrtp => '建议配合 TLS',
+      MediaEncryptionMode.dtlsSrtp => 'Asterisk DTLS 常用',
+      MediaEncryptionMode.optionalDtlsFirst => '兼容加密与非加密',
+      MediaEncryptionMode.optionalSdesFirst => '兼容旧 SRTP 配置',
+    };
+  }
+
+  String _turnTransportDescription(TurnTransport transport) {
+    return switch (transport) {
+      TurnTransport.udp => '默认中继传输',
+      TurnTransport.tcp => '网络限制时更稳',
+      TurnTransport.tls => '企业网络穿透更友好',
+    };
   }
 
   String? _requiredValidator(String? value) {
@@ -462,9 +1008,63 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     return null;
   }
 
-  void _submit() {
+  String? _portValidator(String? value) {
+    final portText = value?.trim() ?? '';
+    if (portText.isEmpty) return null;
+    final port = int.tryParse(portText);
+    if (port == null || port < 1 || port > 65535) return '端口无效';
+    return null;
+  }
+
+  ({String host, String port}) _splitHostAndPort(String rawValue) {
+    final value = rawValue.trim();
+    if (value.isEmpty) return (host: '', port: '');
+
+    final bracketEnd = value.startsWith('[') ? value.indexOf(']') : -1;
+    if (bracketEnd > 0 &&
+        bracketEnd + 1 < value.length &&
+        value[bracketEnd + 1] == ':') {
+      final port = value.substring(bracketEnd + 2);
+      if (_isPortText(port)) {
+        return (host: value.substring(0, bracketEnd + 1), port: port);
+      }
+      return (host: value, port: '');
+    }
+
+    final colonIndex = value.lastIndexOf(':');
+    if (colonIndex <= 0 || colonIndex == value.length - 1) {
+      return (host: value, port: '');
+    }
+    // 只拆常见的 host:port；裸 IPv6 地址包含多个冒号，保持原样，避免误切。
+    if (value.indexOf(':') != colonIndex) return (host: value, port: '');
+
+    final port = value.substring(colonIndex + 1);
+    if (!_isPortText(port)) return (host: value, port: '');
+    return (host: value.substring(0, colonIndex), port: port);
+  }
+
+  bool _isPortText(String value) {
+    final port = int.tryParse(value);
+    return port != null && port >= 1 && port <= 65535;
+  }
+
+  String _buildHostValue() {
+    final hostText = _hostController.text.trim();
+    final portText = _portController.text.trim();
+    if (portText.isEmpty) return hostText;
+
+    final host = _splitHostAndPort(hostText).host;
+    return '$host:$portText';
+  }
+
+  Future<void> _submit() async {
     if (!widget.isNetworkAvailable) return;
+    if (_turnEnabled && _turnServerController.text.trim().isEmpty) {
+      setState(() => _advancedExpanded = true);
+      return;
+    }
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    if (_usesUdpWithIce && !await _confirmUdpIceRisk()) return;
 
     final mediaSecurity = MediaSecurityConfig(mode: _selectedMediaEncryption);
     final iceConfig = IceConfig(
@@ -479,28 +1079,63 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
       transport: _selectedTurnTransport,
     );
     final account = widget.account;
+    final host = _buildHostValue();
     if (account == null) {
       widget.service.register(
+        lineName: _lineNameController.text.trim(),
         username: _usernameController.text.trim(),
+        authUsername: _authUsernameController.text.trim(),
+        sipDisplayName: _sipDisplayNameController.text.trim(),
+        outboundProxy: _outboundProxyController.text.trim(),
         password: _passwordController.text,
-        host: _hostController.text.trim(),
+        host: host,
         transport: _selectedTransport,
         mediaSecurity: mediaSecurity,
         iceConfig: iceConfig,
         turnConfig: turnConfig,
+        ipv6Enabled: _ipv6Enabled,
       );
     } else {
       widget.service.updateAccount(
         accId: account.accId,
+        lineName: _lineNameController.text.trim(),
         username: _usernameController.text.trim(),
+        authUsername: _authUsernameController.text.trim(),
+        sipDisplayName: _sipDisplayNameController.text.trim(),
+        outboundProxy: _outboundProxyController.text.trim(),
         password: _passwordController.text,
-        host: _hostController.text.trim(),
+        host: host,
         transport: _selectedTransport,
         mediaSecurity: mediaSecurity,
         iceConfig: iceConfig,
         turnConfig: turnConfig,
+        ipv6Enabled: _ipv6Enabled,
       );
     }
+    if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  Future<bool> _confirmUdpIceRisk() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('确认启用 UDP + ICE'),
+        content: const Text(
+          'UDP 开启 ICE 可能导致 SIP 报文过大，在部分网络下外呼无响应。更推荐使用 TCP/TLS，或关闭 ICE。\n\n仍然保存这个配置吗？',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('返回修改'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('仍然保存'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 }

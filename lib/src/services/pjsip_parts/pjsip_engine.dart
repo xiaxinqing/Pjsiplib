@@ -84,6 +84,9 @@ extension PjsipEngineOperations on PjsipService {
       // 与 MicroSIP 当前测试配置对齐：不使用 Google STUN，避免把与 Asterisk
       // 信令出口不一致的公网地址写进媒体 SDP。
       uaCfg.ref.stun_srv_cnt = 0;
+      // 全局 STUN 不主动尝试 IPv6 fallback。IPv6 是否参与每条线路的 SIP/媒体
+      // 候选由账号级开关控制；默认减少 ICE/SDP 体积，避免 UDP INVITE 过大。
+      uaCfg.ref.stun_try_ipv6 = 0;
       // X-nat 是 PJSIP 的非标准 NAT 诊断字段，关闭后 SDP 更接近 MicroSIP。
       uaCfg.ref.nat_type_in_sdp = 0;
 
@@ -209,13 +212,18 @@ extension PjsipEngineOperations on PjsipService {
   }
 
   Future<void> register({
+    String lineName = '',
     required String username,
+    String authUsername = '',
+    String sipDisplayName = '',
+    String outboundProxy = '',
     required String password,
     required String host,
     SipTransport transport = SipTransport.udp,
     MediaSecurityConfig? mediaSecurity,
     IceConfig? iceConfig,
     TurnConfig turnConfig = const TurnConfig(),
+    bool ipv6Enabled = false,
     bool registrationEnabled = true,
     bool fromRestore = false,
   }) async {
@@ -224,7 +232,14 @@ extension PjsipEngineOperations on PjsipService {
       ToastUtil.showWarning('当前网络不可用，暂不发起注册');
       return;
     }
+    final normalizedLineName = lineName.trim();
     final normalizedUsername = username.trim();
+    final normalizedAuthUsername = authUsername.trim();
+    final normalizedSipDisplayName = sipDisplayName.trim();
+    final normalizedOutboundProxy = outboundProxy.trim();
+    final effectiveAuthUsername = normalizedAuthUsername.isEmpty
+        ? normalizedUsername
+        : normalizedAuthUsername;
     final normalizedHost = _normalizeSipHost(host, transport);
     final normalizedHostKey = _sipHostIdentityKey(normalizedHost);
     if (fromRestore) {
@@ -273,6 +288,7 @@ extension PjsipEngineOperations on PjsipService {
         turnConfig.isUsable && !requestedIceConfig.enabled
         ? requestedIceConfig.copyWith(enabled: true)
         : requestedIceConfig;
+    _logUdpIceRiskIfNeeded(transport, effectiveIceConfig);
     final transportId = _ensureSipTransport(transport);
     if (transportId == null) {
       ToastUtil.showError('${transport.label} 传输初始化失败');
@@ -285,10 +301,17 @@ extension PjsipEngineOperations on PjsipService {
       accCfg.ref.register_on_acc_add = registrationEnabled ? 1 : 0;
       // MicroSIP 默认账号 keep-alive 是 15 秒，用于维持 SIP/NAT 信令通道。
       accCfg.ref.ka_interval = 15;
+      _configureAccountIpv6(accCfg, ipv6Enabled);
       _configureStunServersIfNeeded(effectiveIceConfig, arena);
       _configureAccountStun(accCfg, effectiveIceConfig);
       _configureAccountIce(accCfg, effectiveIceConfig, turnConfig, arena);
       _configureAccountMediaSecurity(accCfg, effectiveMediaSecurity, transport);
+      _configureAccountOutboundProxy(
+        accCfg,
+        normalizedOutboundProxy,
+        transport,
+        arena,
+      );
       if (effectiveMediaSecurity.usesSrtp) {
         _addLog(
           '🔐 SRTP 配置已写入: mode=${effectiveMediaSecurity.mode.label}, '
@@ -299,9 +322,11 @@ extension PjsipEngineOperations on PjsipService {
       }
       _pjStr(
         accCfg.ref.id,
-        'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
-          allocator: arena,
-        ),
+        _accountSipIdentity(
+          username: normalizedUsername,
+          host: normalizedHost,
+          sipDisplayName: normalizedSipDisplayName,
+        ).toNativeUtf8(allocator: arena),
       );
       _pjStr(
         accCfg.ref.reg_uri,
@@ -324,7 +349,12 @@ extension PjsipEngineOperations on PjsipService {
       final cred = accCfg.ref.cred_info[0];
       _pjStr(cred.realm, '*'.toNativeUtf8(allocator: arena));
       _pjStr(cred.scheme, 'digest'.toNativeUtf8(allocator: arena));
-      _pjStr(cred.username, normalizedUsername.toNativeUtf8(allocator: arena));
+      // 认证用户名只参与 SIP Digest 鉴权；为空时沿用线路账号。
+      // SIP URI/From/Contact 仍使用线路账号，避免服务器侧分机身份被改乱。
+      _pjStr(
+        cred.username,
+        effectiveAuthUsername.toNativeUtf8(allocator: arena),
+      );
       cred.data_type = 0;
       _pjStr(cred.data, password.toNativeUtf8(allocator: arena));
       final pAccId = arena<ffi.Int>();
@@ -339,13 +369,18 @@ extension PjsipEngineOperations on PjsipService {
       }
       final account = SipAccountInfo(
         accId: pAccId.value,
+        lineName: normalizedLineName,
         username: normalizedUsername,
+        authUsername: normalizedAuthUsername,
+        sipDisplayName: normalizedSipDisplayName,
+        outboundProxy: normalizedOutboundProxy,
         password: password,
         host: normalizedHost,
         transport: transport,
         mediaSecurity: effectiveMediaSecurity,
         iceConfig: effectiveIceConfig,
         turnConfig: turnConfig,
+        ipv6Enabled: ipv6Enabled,
         registrationStatus: registrationEnabled ? null : 0,
         registrationStatusText: registrationEnabled ? '注册中' : '已暂停',
         registrationExpires: registrationEnabled ? null : 0,
@@ -376,6 +411,11 @@ extension PjsipEngineOperations on PjsipService {
       if (stunServers.isNotEmpty) {
         _addLog('🌐 STUN 服务器: ${stunServers.join(', ')}');
       }
+      if (normalizedOutboundProxy.isNotEmpty) {
+        _addLog(
+          '🧭 SIP 出站代理: ${_normalizeOutboundProxyUri(normalizedOutboundProxy, transport)}',
+        );
+      }
       if (effectiveIceConfig.enabled) {
         final turn = turnConfig.isUsable
             ? '，TURN=${turnConfig.transport.label}:${turnConfig.server.trim()}'
@@ -390,13 +430,18 @@ extension PjsipEngineOperations on PjsipService {
 
   Future<void> updateAccount({
     required int accId,
+    required String lineName,
     required String username,
+    required String authUsername,
+    required String sipDisplayName,
+    required String outboundProxy,
     required String password,
     required String host,
     required SipTransport transport,
     required MediaSecurityConfig mediaSecurity,
     required IceConfig iceConfig,
     required TurnConfig turnConfig,
+    required bool ipv6Enabled,
   }) async {
     final original = _uiState.accounts[accId];
     if (original == null || original.isRestoringPlaceholder) return;
@@ -419,7 +464,14 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
 
+    final normalizedLineName = lineName.trim();
     final normalizedUsername = username.trim();
+    final normalizedAuthUsername = authUsername.trim();
+    final normalizedSipDisplayName = sipDisplayName.trim();
+    final normalizedOutboundProxy = outboundProxy.trim();
+    final effectiveAuthUsername = normalizedAuthUsername.isEmpty
+        ? normalizedUsername
+        : normalizedAuthUsername;
     final normalizedHost = _normalizeSipHost(host, transport);
     final normalizedHostKey = _sipHostIdentityKey(normalizedHost);
     final duplicate = _uiState.accounts.values.any(
@@ -439,6 +491,7 @@ extension PjsipEngineOperations on PjsipService {
     final effectiveIceConfig = turnConfig.isUsable && !iceConfig.enabled
         ? iceConfig.copyWith(enabled: true)
         : iceConfig;
+    _logUdpIceRiskIfNeeded(transport, effectiveIceConfig);
     final transportId = _ensureSipTransport(transport);
     if (transportId == null) {
       ToastUtil.showError('${transport.label} 传输初始化失败');
@@ -451,15 +504,24 @@ extension PjsipEngineOperations on PjsipService {
       accCfg.ref.transport_id = transportId;
       accCfg.ref.register_on_acc_add = original.registrationEnabled ? 1 : 0;
       accCfg.ref.ka_interval = 15;
+      _configureAccountIpv6(accCfg, ipv6Enabled);
       _configureStunServersIfNeeded(effectiveIceConfig, arena);
       _configureAccountStun(accCfg, effectiveIceConfig);
       _configureAccountIce(accCfg, effectiveIceConfig, turnConfig, arena);
       _configureAccountMediaSecurity(accCfg, mediaSecurity, transport);
+      _configureAccountOutboundProxy(
+        accCfg,
+        normalizedOutboundProxy,
+        transport,
+        arena,
+      );
       _pjStr(
         accCfg.ref.id,
-        'sip:$normalizedUsername@$normalizedHost'.toNativeUtf8(
-          allocator: arena,
-        ),
+        _accountSipIdentity(
+          username: normalizedUsername,
+          host: normalizedHost,
+          sipDisplayName: normalizedSipDisplayName,
+        ).toNativeUtf8(allocator: arena),
       );
       _pjStr(
         accCfg.ref.reg_uri,
@@ -479,7 +541,12 @@ extension PjsipEngineOperations on PjsipService {
       final cred = accCfg.ref.cred_info[0];
       _pjStr(cred.realm, '*'.toNativeUtf8(allocator: arena));
       _pjStr(cred.scheme, 'digest'.toNativeUtf8(allocator: arena));
-      _pjStr(cred.username, normalizedUsername.toNativeUtf8(allocator: arena));
+      // 认证用户名只参与 SIP Digest 鉴权；为空时沿用线路账号。
+      // SIP URI/From/Contact 仍使用线路账号，避免服务器侧分机身份被改乱。
+      _pjStr(
+        cred.username,
+        effectiveAuthUsername.toNativeUtf8(allocator: arena),
+      );
       cred.data_type = 0;
       _pjStr(cred.data, password.toNativeUtf8(allocator: arena));
       final status = _bindings.pjsua_acc_modify(accId, accCfg);
@@ -494,13 +561,18 @@ extension PjsipEngineOperations on PjsipService {
 
     final shouldRegister = original.registrationEnabled;
     final updated = original.copyWith(
+      lineName: normalizedLineName,
       username: normalizedUsername,
+      authUsername: normalizedAuthUsername,
+      sipDisplayName: normalizedSipDisplayName,
+      outboundProxy: normalizedOutboundProxy,
       password: password,
       host: normalizedHost,
       transport: transport,
       mediaSecurity: mediaSecurity,
       iceConfig: effectiveIceConfig,
       turnConfig: turnConfig,
+      ipv6Enabled: ipv6Enabled,
       registrationStatus: shouldRegister ? null : 0,
       registrationStatusText: shouldRegister ? '注册中' : '已暂停',
       registrationExpires: shouldRegister ? null : 0,
@@ -559,6 +631,14 @@ extension PjsipEngineOperations on PjsipService {
     return transport == SipTransport.tls
         ? const MediaSecurityConfig(mode: MediaEncryptionMode.dtlsSrtp)
         : const MediaSecurityConfig();
+  }
+
+  void _logUdpIceRiskIfNeeded(SipTransport transport, IceConfig iceConfig) {
+    if (transport != SipTransport.udp || !iceConfig.enabled) return;
+    _addLog(
+      '⚠️ 当前线路使用 UDP + ICE：ICE 会增大 INVITE/SDP，部分网络丢弃 UDP 分片时，'
+      '可能表现为外呼后服务端无日志。建议优先改用 TCP/TLS，或关闭 ICE。',
+    );
   }
 
   void _configureStunServersIfNeeded(IceConfig iceConfig, Arena arena) {
@@ -644,6 +724,20 @@ extension PjsipEngineOperations on PjsipService {
         pjsua_stun_use.PJSUA_STUN_RETRY_ON_FAILURE.value;
   }
 
+  void _configureAccountIpv6(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    bool enabled,
+  ) {
+    // 账号级 IPv6 策略：这里只控制 PJSIP 是否在 SIP/媒体配置里使用 IPv6。
+    // 它不是系统 IPv6 开关。默认关闭能减少 ICE/SDP candidate 数量，降低
+    // UDP INVITE 过大、分片后被 PBX/网络链路丢弃的概率。
+    final mode = enabled
+        ? pjsua_ipv6_use.PJSUA_IPV6_ENABLED_PREFER_IPV4
+        : pjsua_ipv6_use.PJSUA_IPV6_DISABLED;
+    accCfg.ref.ipv6_sip_useAsInt = mode.value;
+    accCfg.ref.ipv6_media_useAsInt = mode.value;
+  }
+
   void _configureAccountIce(
     ffi.Pointer<pjsua_acc_config> accCfg,
     IceConfig iceConfig,
@@ -693,6 +787,54 @@ extension PjsipEngineOperations on PjsipService {
     );
     staticCred.data_typeAsInt = pj_stun_passwd_type.PJ_STUN_PASSWD_PLAIN.value;
     _pjStr(staticCred.data, turnConfig.password.toNativeUtf8(allocator: arena));
+  }
+
+  String _accountSipIdentity({
+    required String username,
+    required String host,
+    required String sipDisplayName,
+  }) {
+    final uri = 'sip:$username@$host';
+    final displayName = sipDisplayName.trim();
+    if (displayName.isEmpty) return uri;
+
+    // SIP display-name 可能进入 From 头，例如 "客服一线" <sip:1001@example.com>。
+    // 本地线路名 lineName 不走这里，避免用户为了 UI 改名影响服务器侧身份。
+    final escapedDisplayName = displayName
+        .replaceAll(r'\', r'\\')
+        .replaceAll('"', r'\"');
+    return '"$escapedDisplayName" <$uri>';
+  }
+
+  void _configureAccountOutboundProxy(
+    ffi.Pointer<pjsua_acc_config> accCfg,
+    String outboundProxy,
+    SipTransport transport,
+    Arena arena,
+  ) {
+    final proxyUri = _normalizeOutboundProxyUri(outboundProxy, transport);
+    if (proxyUri.isEmpty) return;
+
+    // PJSIP 的 account proxy 是 Route 集合，REGISTER/INVITE 等请求都会先走它。
+    // 这里仅使用第一个代理，避免普通账号弹窗变成复杂代理链配置。
+    accCfg.ref.proxy_cnt = 1;
+    _pjStr(accCfg.ref.proxy[0], proxyUri.toNativeUtf8(allocator: arena));
+  }
+
+  String _normalizeOutboundProxyUri(
+    String outboundProxy,
+    SipTransport transport,
+  ) {
+    final value = outboundProxy.trim();
+    if (value.isEmpty) return '';
+    if (value.startsWith(RegExp(r'sips?:', caseSensitive: false))) {
+      return value;
+    }
+    final hasTransport = value.toLowerCase().contains(';transport=');
+    final transportParam = hasTransport
+        ? ''
+        : ';transport=${transport.uriParam}';
+    return 'sip:$value$transportParam';
   }
 
   void _configureAccountMediaSecurity(
@@ -954,7 +1096,7 @@ extension PjsipEngineOperations on PjsipService {
       _addLog(
         '❌ ${enabled ? '刷新注册' : '暂停注册'}线路失败: ${account.lineLabel}, pj_status=$status',
       );
-      ToastUtil.showError(enabled ? '刷新注册失败' : '暂停线路失败');
+      ToastUtil.showError(enabled ? '刷新失败' : '停止线路失败');
       return;
     }
     if (!enabled) {
@@ -972,18 +1114,18 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     if (_uiState.calls.values.any((call) => call.accountId == accId)) {
-      _addLog('⚠️ 线路仍有通话，不能强制重连: ${account.lineLabel}');
-      ToastUtil.showWarning('线路仍有通话，不能强制重连');
+      _addLog('⚠️ 线路仍有通话，不能重启线路: ${account.lineLabel}');
+      ToastUtil.showWarning('线路仍有通话，不能重启');
       return;
     }
     if (!_uiState.isNetworkAvailable) {
-      _addLog('⚠️ 当前网络不可用，暂不能强制重连线路: ${account.lineLabel}');
+      _addLog('⚠️ 当前网络不可用，暂不能重启线路: ${account.lineLabel}');
       ToastUtil.showWarning('当前网络不可用');
       return;
     }
-    _hangupNativeCallsIfUiIdle('强制重连前');
-    _refreshStunServersForCurrentAccounts('强制重连前');
-    _startOutgoingMediaRecoveryCooldown('强制重连，等待 ICE/STUN 媒体传输重建');
+    _hangupNativeCallsIfUiIdle('重启线路前');
+    _refreshStunServersForCurrentAccounts('重启线路前');
+    _startOutgoingMediaRecoveryCooldown('重启线路，等待 ICE/STUN 媒体传输重建');
 
     final shouldUnregister =
         account.registrationEnabled &&
@@ -1002,7 +1144,7 @@ extension PjsipEngineOperations on PjsipService {
     unawaited(_persistSeatEnvironment());
 
     final networkRecoveryRequested = requestSipNetworkRecovery(
-      reason: '强制重连线路 ${account.lineLabel}',
+      reason: '重启线路 ${account.lineLabel}',
     );
 
     try {
@@ -1021,16 +1163,16 @@ extension PjsipEngineOperations on PjsipService {
     var unregisterSent = false;
     final shouldUnregisterNow = shouldUnregister && !networkRecoveryRequested;
     if (shouldUnregisterNow) {
-      // 没有触发 IP Change 时，强制重连就是先发注销 REGISTER，再延迟重新注册。
+      // 没有触发 IP Change 时，重启线路就是先发注销 REGISTER，再延迟重新注册。
       // 如果正在做 IP Change，则等 transport/listener 稳定后在 _completeForceReconnectAccount()
       // 里再注销，避免注销请求发到正在重建的旧通道。
       final unregisterStatus = _bindings.pjsua_acc_set_registration(accId, 0);
       if (unregisterStatus == 0) {
         unregisterSent = true;
-        _addLog('🔄 强制重连：已发送线路注销请求: ${account.lineLabel}');
+        _addLog('🔄 重启线路：已发送线路注销请求: ${account.lineLabel}');
       } else {
         _addLog(
-          '⚠️ 强制重连：注销请求失败，将直接重新注册: ${account.lineLabel}, pj_status=$unregisterStatus',
+          '⚠️ 重启线路：注销请求失败，将直接重新注册: ${account.lineLabel}, pj_status=$unregisterStatus',
         );
       }
     }
@@ -1046,7 +1188,7 @@ extension PjsipEngineOperations on PjsipService {
         unregisterBeforeRegister: shouldUnregister && networkRecoveryRequested,
       ),
     );
-    ToastUtil.showSuccess('已开始强制重连');
+    ToastUtil.showSuccess('已开始重启线路');
   }
 
   Future<void> _completeForceReconnectAccount(
@@ -1075,11 +1217,11 @@ extension PjsipEngineOperations on PjsipService {
 
       final unregisterStatus = _bindings.pjsua_acc_set_registration(accId, 0);
       if (unregisterStatus == 0) {
-        _addLog('🔄 强制重连：网络恢复后已发送线路注销请求: ${account.lineLabel}');
+        _addLog('🔄 重启线路：网络恢复后已发送线路注销请求: ${account.lineLabel}');
         await Future<void>.delayed(const Duration(milliseconds: 450));
       } else {
         _addLog(
-          '⚠️ 强制重连：网络恢复后注销请求失败，将直接重新注册: ${account.lineLabel}, pj_status=$unregisterStatus',
+          '⚠️ 重启线路：网络恢复后注销请求失败，将直接重新注册: ${account.lineLabel}, pj_status=$unregisterStatus',
         );
       }
       if (_isDisposed || !_uiState.isInitialized) return;
@@ -1110,12 +1252,12 @@ extension PjsipEngineOperations on PjsipService {
         _uiState = _uiState.copyWith(accounts: rollbackAccounts);
         unawaited(_persistSeatEnvironment());
       }
-      _addLog('❌ 强制重连线路失败: ${account.lineLabel}, pj_status=$status');
-      ToastUtil.showError('强制重连失败');
+      _addLog('❌ 重启线路失败: ${account.lineLabel}, pj_status=$status');
+      ToastUtil.showError('重启线路失败');
       return;
     }
 
-    _addLog('🌐 强制重连：已重新发送注册请求: ${account.lineLabel}');
+    _addLog('🌐 重启线路：已重新发送注册请求: ${account.lineLabel}');
   }
 
   void disconnectAllAccounts() {

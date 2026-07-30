@@ -73,8 +73,11 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
       (call) => call.accountId == account.accId,
     );
     final isRestarting = uiState.isPhoneServiceRestarting;
+    final identity = account.lineName.trim().isEmpty
+        ? account.host
+        : account.lineLabel;
     final detail =
-        '${account.host} · ${account.transportLabel}'
+        '$identity · ${account.transportLabel}'
         '${account.mediaSecurity.usesSrtp ? ' · ${account.mediaSecurity.mode.label}' : ''}'
         ' · STUN'
         '${account.iceConfig.enabled ? ' · ICE' : ''}'
@@ -109,18 +112,12 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                   ],
                 ),
               ),
-              if (isDefault)
-                const Chip(
-                  visualDensity: VisualDensity.compact,
-                  label: Text('默认外呼'),
-                )
-              else
-                TextButton(
-                  onPressed: account.isRegistered && !isRestarting
-                      ? () => service.setDefaultAccount(account.accId)
-                      : null,
-                  child: const Text('设为默认'),
-                ),
+              _buildDefaultRouteButton(
+                account: account,
+                isDefault: isDefault,
+                isRestarting: isRestarting,
+                onSetDefault: () => service.setDefaultAccount(account.accId),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -138,7 +135,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     ? null
                     : () => service.setAccountRegistration(account.accId, true),
                 icon: const Icon(AppIcons.refresh),
-                label: const Text('刷新注册'),
+                label: const Text('刷新'),
               ),
               TextButton.icon(
                 onPressed:
@@ -155,7 +152,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                         service.forceReconnectAccount(account.accId);
                       },
                 icon: const Icon(AppIcons.power),
-                label: const Text('强制重连'),
+                label: const Text('重启'),
               ),
               TextButton.icon(
                 onPressed:
@@ -166,7 +163,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     : () =>
                           service.setAccountRegistration(account.accId, false),
                 icon: const Icon(AppIcons.pause),
-                label: const Text('暂停'),
+                label: const Text('停止'),
               ),
               TextButton.icon(
                 onPressed:
@@ -196,6 +193,51 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  /// 构建“设为默认外呼”按钮。
+  ///
+  /// 视觉规则：
+  /// - 当前默认线路：绿色、不可点击；
+  /// - 在线但非默认：深色、可点击；
+  /// - 离线或电话服务重启中：灰色、不可点击。
+  Widget _buildDefaultRouteButton({
+    required SipAccountInfo account,
+    required bool isDefault,
+    required bool isRestarting,
+    required VoidCallback onSetDefault,
+  }) {
+    final canSetDefault = account.isRegistered && !isDefault && !isRestarting;
+    final foregroundColor = isDefault
+        ? _brandGreen
+        : canSetDefault
+        ? _textPrimary
+        : _textSecondary;
+    final backgroundColor = isDefault
+        ? _brandGreen.withValues(alpha: 0.1)
+        : canSetDefault
+        ? Colors.white
+        : _subtlePanel;
+    final borderColor = isDefault
+        ? _brandGreen.withValues(alpha: 0.24)
+        : canSetDefault
+        ? _textPrimary.withValues(alpha: 0.18)
+        : _softBorder;
+
+    return OutlinedButton.icon(
+      onPressed: canSetDefault ? onSetDefault : null,
+      icon: Icon(isDefault ? AppIcons.check : AppIcons.outgoing, size: _iconSm),
+      label: Text(isDefault ? '默认外呼' : '设为默认外呼'),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: foregroundColor,
+        disabledForegroundColor: foregroundColor,
+        backgroundColor: backgroundColor,
+        disabledBackgroundColor: backgroundColor,
+        side: BorderSide(color: borderColor),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        visualDensity: VisualDensity.compact,
       ),
     );
   }

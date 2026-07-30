@@ -66,16 +66,20 @@ extension _HomeSidebarShared on _MyHomePageState {
     IconData icon,
     String label, {
     bool destructive = false,
+    Color? color,
   }) {
-    final color = destructive ? Colors.red.shade700 : null;
+    final effectiveColor = color ?? (destructive ? Colors.red.shade700 : null);
     return Row(
       children: [
-        Icon(icon, size: _iconMd, color: color),
+        Icon(icon, size: _iconMd, color: effectiveColor),
         const SizedBox(width: 10),
         Expanded(
           child: _buildTooltipText(
             label,
-            style: TextStyle(color: color, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: effectiveColor,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],

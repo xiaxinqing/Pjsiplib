@@ -1,8 +1,8 @@
 part of '../../../../main.dart';
 
-/// 侧边栏线路操作模块：负责单条线路菜单以及危险操作确认弹窗。
+/// 侧边栏线路操作模块：负责单条线路菜单、编辑入口以及危险操作确认弹窗。
 extension _HomeSidebarLineActions on _MyHomePageState {
-  /// 打开单条线路操作菜单，支持设默认、重新注册、断开重连、暂停和删除。
+  /// 打开单条线路操作菜单，支持设默认、刷新、重启、停止、编辑和删除。
   Future<void> _showLineActionMenu(
     PjsipUIState uiState,
     PjsipService service,
@@ -10,6 +10,13 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     Offset position,
   ) async {
     final isDefault = uiState.defaultAccountId == account.accId;
+    final canSetDefault = account.isRegistered && !isDefault;
+    final defaultColor = isDefault
+        ? _brandGreen
+        : canSetDefault
+        ? _textPrimary
+        : _textSecondary;
+    final defaultLabel = isDefault ? '默认外呼' : '设为默认外呼';
     final status = isDefault
         ? '默认外呼 · ${account.registrationStatusText} · ${account.transportLabel}'
         : '${account.registrationStatusText} · ${account.transportLabel}';
@@ -49,12 +56,15 @@ extension _HomeSidebarLineActions on _MyHomePageState {
           ),
         ),
         const PopupMenuDivider(height: 1),
-        if (!isDefault)
-          PopupMenuItem<String>(
-            value: account.isRegistered ? 'set_default' : null,
-            enabled: account.isRegistered,
-            child: _buildPopupActionRow(AppIcons.outgoing, '设为默认外呼'),
+        PopupMenuItem<String>(
+          value: canSetDefault ? 'set_default' : null,
+          enabled: canSetDefault,
+          child: _buildPopupActionRow(
+            isDefault ? AppIcons.check : AppIcons.outgoing,
+            defaultLabel,
+            color: defaultColor,
           ),
+        ),
         PopupMenuItem<String>(
           value:
               account.registrationActionInProgress ||
@@ -66,14 +76,14 @@ extension _HomeSidebarLineActions on _MyHomePageState {
               !account.registrationActionInProgress &&
               !(account.registrationEnabled &&
                   account.registrationStatus == null),
-          child: _buildPopupActionRow(AppIcons.refresh, '重新注册'),
+          child: _buildPopupActionRow(AppIcons.refresh, '刷新'),
         ),
         PopupMenuItem<String>(
           value: account.registrationActionInProgress
               ? null
               : 'force_reconnect',
           enabled: !account.registrationActionInProgress,
-          child: _buildPopupActionRow(AppIcons.power, '断开重连'),
+          child: _buildPopupActionRow(AppIcons.power, '重启'),
         ),
         PopupMenuItem<String>(
           value:
@@ -84,16 +94,17 @@ extension _HomeSidebarLineActions on _MyHomePageState {
           enabled:
               !account.registrationActionInProgress &&
               account.registrationEnabled,
-          child: _buildPopupActionRow(AppIcons.pause, '暂停线路'),
+          child: _buildPopupActionRow(AppIcons.pause, '停止'),
+        ),
+        PopupMenuItem<String>(
+          value: account.registrationActionInProgress ? null : 'edit',
+          enabled: !account.registrationActionInProgress,
+          child: _buildPopupActionRow(AppIcons.edit, '编辑'),
         ),
         PopupMenuItem<String>(
           value: account.registrationActionInProgress ? null : 'delete',
           enabled: !account.registrationActionInProgress,
-          child: _buildPopupActionRow(
-            AppIcons.delete,
-            '删除线路',
-            destructive: true,
-          ),
+          child: _buildPopupActionRow(AppIcons.delete, '删除', destructive: true),
         ),
       ],
     );
@@ -110,6 +121,8 @@ extension _HomeSidebarLineActions on _MyHomePageState {
         service.forceReconnectAccount(account.accId);
       case 'pause':
         service.setAccountRegistration(account.accId, false);
+      case 'edit':
+        _showEditAccountDialog(uiState, service, account);
       case 'delete':
         final confirmed = await _confirmDeleteLine(account);
         if (confirmed != true || !mounted) return;
@@ -117,7 +130,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     }
   }
 
-  /// 断开重连前二次确认，避免误触导致线路短暂不可用。
+  /// 重启线路前二次确认，避免误触导致线路短暂不可用。
   Future<bool?> _confirmForceReconnectLine(SipAccountInfo account) {
     return showDialog<bool>(
       context: context,
@@ -153,7 +166,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          '断开重连线路',
+                          '重启线路',
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
@@ -216,7 +229,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.power),
-            label: const Text('断开重连'),
+            label: const Text('重启'),
           ),
         ],
       ),

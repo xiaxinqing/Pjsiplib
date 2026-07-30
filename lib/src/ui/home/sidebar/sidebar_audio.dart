@@ -14,71 +14,75 @@ extension _HomeSidebarAudio on _MyHomePageState {
     );
     final hasIssue = uiState.hasAudioDeviceIssue;
     final issueColor = Colors.orange.shade700;
-    return Material(
-      color: _panelBackground.withValues(alpha: 0.72),
-      borderRadius: BorderRadius.circular(_radiusSm),
-      child: InkWell(
-        hoverColor: _hoverPanel,
+    return GestureDetector(
+      onSecondaryTapDown: (details) =>
+          _showAudioStatusMenu(uiState, service, details.globalPosition),
+      child: Material(
+        color: _panelBackground.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(_radiusSm),
-        onTapDown: (details) =>
-            _showAudioStatusMenu(uiState, service, details.globalPosition),
-        child: Container(
-          padding: const EdgeInsets.all(11),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_radiusSm),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '音频',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: hasIssue ? issueColor : _textPrimary,
-                      ),
-                    ),
-                  ),
-                  if (hasIssue) ...[
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: issueColor.withValues(alpha: 0.10),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
+        child: InkWell(
+          hoverColor: _hoverPanel,
+          borderRadius: BorderRadius.circular(_radiusSm),
+          onTapDown: (details) =>
+              _showAudioStatusMenu(uiState, service, details.globalPosition),
+          child: Container(
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(_radiusSm),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
                       child: Text(
-                        '异常',
+                        '音频',
                         style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                          color: issueColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: hasIssue ? issueColor : _textPrimary,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    if (hasIssue) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: issueColor.withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          '异常',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: issueColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Icon(AppIcons.next, size: _iconSm, color: _textSecondary),
                   ],
-                  Icon(AppIcons.next, size: _iconSm, color: _textSecondary),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _buildTinyDeviceLine(
-                AppIcons.microphone,
-                mic,
-                iconColor: hasIssue ? issueColor : null,
-              ),
-              const SizedBox(height: 8),
-              _buildTinyDeviceLine(
-                AppIcons.speaker,
-                speaker,
-                iconColor: hasIssue ? issueColor : null,
-              ),
-            ],
+                ),
+                const SizedBox(height: 8),
+                _buildTinyDeviceLine(
+                  AppIcons.microphone,
+                  mic,
+                  iconColor: hasIssue ? issueColor : null,
+                ),
+                const SizedBox(height: 8),
+                _buildTinyDeviceLine(
+                  AppIcons.speaker,
+                  speaker,
+                  iconColor: hasIssue ? issueColor : null,
+                ),
+              ],
+            ),
           ),
         ),
       ),

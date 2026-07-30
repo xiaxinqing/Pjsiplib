@@ -63,6 +63,16 @@ enum MediaEncryptionMode {
   bool get isOptional =>
       this == MediaEncryptionMode.optionalDtlsFirst ||
       this == MediaEncryptionMode.optionalSdesFirst;
+
+  String get modeSummary {
+    return switch (this) {
+      MediaEncryptionMode.none => '不加密 RTP',
+      MediaEncryptionMode.sdesSrtp => 'SDES-SRTP',
+      MediaEncryptionMode.dtlsSrtp => 'DTLS-SRTP',
+      MediaEncryptionMode.optionalDtlsFirst => '可选 SRTP',
+      MediaEncryptionMode.optionalSdesFirst => '可选 SRTP',
+    };
+  }
 }
 
 class MediaSecurityConfig {
@@ -133,13 +143,32 @@ class TurnConfig {
 /// registrationStatus 展示线路是否在线，外呼默认使用 defaultAccountId。
 class SipAccountInfo {
   final int accId;
+
+  /// 本地线路名称，仅用于 VPhone 自己的界面展示，不会写入 SIP From/Contact。
+  final String lineName;
   final String username;
+
+  /// SIP Digest 鉴权用户名。为空时使用 username，适配“线路号”和“认证账号”不同的服务器。
+  final String authUsername;
+
+  /// SIP From 显示名称。这个字段可能被服务器转发给对端，和本地线路名称不是一回事。
+  final String sipDisplayName;
+
+  /// 账号级 SIP 出站代理。为空时请求直接发往注册服务器。
+  final String outboundProxy;
   final String password;
   final String host;
   final SipTransport transport;
   final MediaSecurityConfig mediaSecurity;
   final IceConfig iceConfig;
   final TurnConfig turnConfig;
+
+  /// 账号级 IPv6 开关。
+  ///
+  /// 这里只控制 PJSIP 是否为这条线路生成 IPv6 的 SIP/媒体地址候选；
+  /// 不会修改系统网络。默认关闭可以减少 ICE/SDP 体积，避免 UDP INVITE
+  /// 过大导致部分服务器或网络链路收不到请求。
+  final bool ipv6Enabled;
   final int? registrationStatus;
   final String registrationStatusText;
   final int? registrationExpires;
@@ -148,13 +177,18 @@ class SipAccountInfo {
 
   SipAccountInfo({
     required this.accId,
+    this.lineName = '',
     required this.username,
+    this.authUsername = '',
+    this.sipDisplayName = '',
+    this.outboundProxy = '',
     this.password = '',
     required this.host,
     this.transport = SipTransport.udp,
     this.mediaSecurity = const MediaSecurityConfig(),
     this.iceConfig = const IceConfig(),
     this.turnConfig = const TurnConfig(),
+    this.ipv6Enabled = false,
     this.registrationStatus,
     this.registrationStatusText = '注册中',
     this.registrationExpires,
@@ -164,13 +198,18 @@ class SipAccountInfo {
 
   SipAccountInfo copyWith({
     int? accId,
+    String? lineName,
     String? username,
+    String? authUsername,
+    String? sipDisplayName,
+    String? outboundProxy,
     String? password,
     String? host,
     SipTransport? transport,
     MediaSecurityConfig? mediaSecurity,
     IceConfig? iceConfig,
     TurnConfig? turnConfig,
+    bool? ipv6Enabled,
     Object? registrationStatus = _unset,
     String? registrationStatusText,
     Object? registrationExpires = _unset,
@@ -179,13 +218,18 @@ class SipAccountInfo {
   }) {
     return SipAccountInfo(
       accId: accId ?? this.accId,
+      lineName: lineName ?? this.lineName,
       username: username ?? this.username,
+      authUsername: authUsername ?? this.authUsername,
+      sipDisplayName: sipDisplayName ?? this.sipDisplayName,
+      outboundProxy: outboundProxy ?? this.outboundProxy,
       password: password ?? this.password,
       host: host ?? this.host,
       transport: transport ?? this.transport,
       mediaSecurity: mediaSecurity ?? this.mediaSecurity,
       iceConfig: iceConfig ?? this.iceConfig,
       turnConfig: turnConfig ?? this.turnConfig,
+      ipv6Enabled: ipv6Enabled ?? this.ipv6Enabled,
       registrationStatus: identical(registrationStatus, _unset)
           ? this.registrationStatus
           : registrationStatus as int?,
@@ -207,7 +251,15 @@ class SipAccountInfo {
 
   bool get isRestoringPlaceholder => accId < 0;
 
-  String get displayName => username;
+  String get displayName {
+    final name = lineName.trim();
+    return name.isEmpty ? username : name;
+  }
+
+  String get effectiveAuthUsername {
+    final authName = authUsername.trim();
+    return authName.isEmpty ? username : authName;
+  }
 
   String get lineLabel => '$username@$host';
 

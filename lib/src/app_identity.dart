@@ -8,4 +8,4 @@ const String appDisplayName = 'VPhone';
 const String appCompanyName = 'VeServe Company Limited';
 const String appBundleIdentifier = 'com.veserve.vphone';
 const String appStorageDirectoryName = 'veserve_vphone';
-const String appSupportEmail = 'support@veserve.com';
+const String appSupportEmail = 'contact@veservecompany.com';
