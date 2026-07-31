@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io' show Platform, Process;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
@@ -11,6 +12,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/app_identity.dart';
+import 'src/services/app_shutdown_coordinator.dart';
 import 'src/services/call_history_database.dart';
 import 'src/services/contact_service.dart';
 import 'src/services/native_bridge/native_bridge.dart';

@@ -36,11 +36,11 @@ extension _HomeDialogs on _MyHomePageState {
     );
   }
 
-  /// 打开设置抽屉，并同步当前选中的设置分组。
+  /// 打开设置抽屉。
+  ///
+  /// 设置页的选中分组只保存在弹窗内部，避免音频测试等服务状态更新时触发首页重建，
+  /// 导致用户看到设置页“自己跳页”。
   void _openSettingsDrawer({int tabIndex = 0}) {
-    if (_settingsTabIndex != tabIndex) {
-      _update(() => _settingsTabIndex = tabIndex);
-    }
     if (tabIndex == 1) {
       unawaited(
         ref
@@ -65,9 +65,6 @@ extension _HomeDialogs on _MyHomePageState {
                   selectedIndex: selectedIndex,
                   onSelected: (index) {
                     setDialogState(() => selectedIndex = index);
-                    if (_settingsTabIndex != index && mounted) {
-                      _update(() => _settingsTabIndex = index);
-                    }
                     if (index == 1) {
                       unawaited(
                         service.checkMicrophonePermission(reason: '切换到音频设置'),
@@ -80,6 +77,9 @@ extension _HomeDialogs on _MyHomePageState {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      if (!mounted) return;
+      ref.read(pjsipServiceProvider.notifier).cancelAudioTests();
+    });
   }
 }

@@ -103,6 +103,15 @@ class PjsipUIState {
   /// 是否正在进行麦克风测试。开启后即使没有通话，也会显示输入电平。
   final bool isMicrophoneTesting;
 
+  /// 麦克风测试当前阶段，用于区分“录音中”“准备播放”和“播放录音”。
+  final PjsipMicrophoneTestPhase microphoneTestPhase;
+
+  /// 麦克风测试录音阶段剩余秒数。
+  ///
+  /// 只在 [microphoneTestPhase] 为 recording 时有意义。放在状态层而不是 UI 层，
+  /// 是为了让按钮、日志或后续其他入口看到同一份测试进度。
+  final int microphoneTestRemainingSeconds;
+
   /// 是否正在播放扬声器测试音。
   final bool isSpeakerTesting;
 
@@ -168,6 +177,8 @@ class PjsipUIState {
     this.microphoneVolume = 100,
     this.speakerVolume = 100,
     this.isMicrophoneTesting = false,
+    this.microphoneTestPhase = PjsipMicrophoneTestPhase.idle,
+    this.microphoneTestRemainingSeconds = 0,
     this.isSpeakerTesting = false,
     this.audioDeviceMode = PjsipAudioDeviceMode.automatic,
     this.audioDeviceStatus = '自动选择设备',
@@ -209,6 +220,8 @@ class PjsipUIState {
     int? microphoneVolume,
     int? speakerVolume,
     bool? isMicrophoneTesting,
+    PjsipMicrophoneTestPhase? microphoneTestPhase,
+    int? microphoneTestRemainingSeconds,
     bool? isSpeakerTesting,
     PjsipAudioDeviceMode? audioDeviceMode,
     String? audioDeviceStatus,
@@ -261,6 +274,9 @@ class PjsipUIState {
       microphoneVolume: microphoneVolume ?? this.microphoneVolume,
       speakerVolume: speakerVolume ?? this.speakerVolume,
       isMicrophoneTesting: isMicrophoneTesting ?? this.isMicrophoneTesting,
+      microphoneTestPhase: microphoneTestPhase ?? this.microphoneTestPhase,
+      microphoneTestRemainingSeconds:
+          microphoneTestRemainingSeconds ?? this.microphoneTestRemainingSeconds,
       isSpeakerTesting: isSpeakerTesting ?? this.isSpeakerTesting,
       audioDeviceMode: audioDeviceMode ?? this.audioDeviceMode,
       audioDeviceStatus: audioDeviceStatus ?? this.audioDeviceStatus,

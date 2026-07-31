@@ -6,6 +6,12 @@ part of '../pjsip_service.dart';
 /// 只有设备不可用时才回退。
 enum PjsipAudioDeviceMode { automatic, manual }
 
+/// 麦克风测试阶段。
+///
+/// 测试输入不是实时回放，避免麦克风和扬声器互相啸叫；流程是先录一小段，
+/// 等 PJSIP 把 WAV 文件写完整，再通过当前 PJSIP 输出设备播放给用户确认。
+enum PjsipMicrophoneTestPhase { idle, recording, preparingPlayback, playing }
+
 /// PJSIP 枚举出来的一条音频设备信息。
 ///
 /// 注意：这里描述的是 PJSIP/CoreAudio 看到的“底层音频端点”，不一定等同于

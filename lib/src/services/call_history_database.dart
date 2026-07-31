@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart';
@@ -146,6 +147,10 @@ class StoredContactPhoneRow {
 class CallHistoryDatabase extends _$CallHistoryDatabase {
   CallHistoryDatabase([QueryExecutor? executor])
     : super(executor ?? _openConnection());
+
+  final Set<Future<void>> _pendingWrites = <Future<void>>{};
+  Future<void>? _closeFuture;
+  bool _acceptingWrites = true;
 
   @override
   int get schemaVersion => 6;
@@ -399,7 +404,10 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
   }
 
   Future<void> addEntry(CallHistoryEntriesCompanion entry) {
-    return into(callHistoryEntries).insert(entry).then((_) {});
+    return _trackWrite(
+      'addEntry',
+      () => into(callHistoryEntries).insert(entry).then((_) {}),
+    );
   }
 
   Future<void> recordCall({
@@ -476,43 +484,63 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
   }
 
   Future<void> deleteEntry(int id) {
-    return (delete(
-      callHistoryEntries,
-    )..where((table) => table.id.equals(id))).go().then((_) {});
+    return _trackWrite(
+      'deleteEntry',
+      () => (delete(
+        callHistoryEntries,
+      )..where((table) => table.id.equals(id))).go().then((_) {}),
+    );
   }
 
   Future<void> updateEntryNote(int id, String note) {
     final value = note.trim();
-    return (update(
-      callHistoryEntries,
-    )..where((table) => table.id.equals(id))).write(
-      CallHistoryEntriesCompanion(note: Value(value.isEmpty ? null : value)),
+    return _trackWrite(
+      'updateEntryNote',
+      () => (update(callHistoryEntries)..where((table) => table.id.equals(id)))
+          .write(
+            CallHistoryEntriesCompanion(
+              note: Value(value.isEmpty ? null : value),
+            ),
+          ),
     );
   }
 
   Future<void> markMissedCallRead(int id) {
-    return (update(
-      callHistoryEntries,
-    )..where((table) => table.id.equals(id))).write(
-      CallHistoryEntriesCompanion(missedReadAt: Value(DateTime.now())),
+    return _trackWrite(
+      'markMissedCallRead',
+      () => (update(callHistoryEntries)..where((table) => table.id.equals(id)))
+          .write(
+            CallHistoryEntriesCompanion(missedReadAt: Value(DateTime.now())),
+          ),
     );
   }
 
   Future<void> markAllMissedCallsRead() {
-    return (update(callHistoryEntries)..where(
-          (table) =>
-              table.direction.equals(CallHistoryDirection.inbound.storageKey) &
-              table.status.equals(CallHistoryStatus.missed.storageKey) &
-              table.answeredAt.isNull() &
-              table.missedReadAt.isNull(),
-        ))
-        .write(
-          CallHistoryEntriesCompanion(missedReadAt: Value(DateTime.now())),
-        );
+    return _trackWrite(
+      'markAllMissedCallsRead',
+      () =>
+          (update(callHistoryEntries)..where(
+                (table) =>
+                    table.direction.equals(
+                      CallHistoryDirection.inbound.storageKey,
+                    ) &
+                    table.status.equals(CallHistoryStatus.missed.storageKey) &
+                    table.answeredAt.isNull() &
+                    table.missedReadAt.isNull(),
+              ))
+              .write(
+                CallHistoryEntriesCompanion(
+                  missedReadAt: Value(DateTime.now()),
+                ),
+              ),
+    );
   }
 
   Future<void> clearAll() {
-    return delete(callHistoryEntries).go().then((_) {});
+    return _trackWrite(
+      'clearAll',
+      () => delete(callHistoryEntries).go().then((_) {}),
+    );
   }
 
   Future<List<StoredContactRow>> listContacts() async {
@@ -586,19 +614,23 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     return query.map((row) => row.read(countExpression) ?? 0).getSingle();
   }
 
-  Future<void> replaceContacts(List<StoredContactRow> contacts) async {
-    await transaction(() async {
-      await delete(dbContactPhones).go();
-      await delete(dbContacts).go();
-      for (final contact in contacts) {
-        await _upsertContactRow(contact);
-      }
+  Future<void> replaceContacts(List<StoredContactRow> contacts) {
+    return _trackWrite('replaceContacts', () async {
+      await transaction(() async {
+        await delete(dbContactPhones).go();
+        await delete(dbContacts).go();
+        for (final contact in contacts) {
+          await _upsertContactRow(contact);
+        }
+      });
     });
   }
 
-  Future<void> upsertContact(StoredContactRow contact) async {
-    await transaction(() async {
-      await _upsertContactRow(contact);
+  Future<void> upsertContact(StoredContactRow contact) {
+    return _trackWrite('upsertContact', () async {
+      await transaction(() async {
+        await _upsertContactRow(contact);
+      });
     });
   }
 
@@ -664,23 +696,82 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     );
   }
 
-  Future<void> deleteContact(String id) async {
-    await transaction(() async {
-      await (delete(
-        dbContactPhones,
-      )..where((table) => table.contactId.equals(id))).go();
-      await (delete(dbContacts)..where((table) => table.id.equals(id))).go();
+  Future<void> deleteContact(String id) {
+    return _trackWrite('deleteContact', () async {
+      await transaction(() async {
+        await (delete(
+          dbContactPhones,
+        )..where((table) => table.contactId.equals(id))).go();
+        await (delete(dbContacts)..where((table) => table.id.equals(id))).go();
+      });
     });
   }
 
-  Future<void> deleteContacts(Set<String> ids) async {
-    if (ids.isEmpty) return;
-    await transaction(() async {
-      await (delete(
-        dbContactPhones,
-      )..where((table) => table.contactId.isIn(ids))).go();
-      await (delete(dbContacts)..where((table) => table.id.isIn(ids))).go();
+  Future<void> deleteContacts(Set<String> ids) {
+    if (ids.isEmpty) return Future<void>.value();
+    return _trackWrite('deleteContacts', () async {
+      await transaction(() async {
+        await (delete(
+          dbContactPhones,
+        )..where((table) => table.contactId.isIn(ids))).go();
+        await (delete(dbContacts)..where((table) => table.id.isIn(ids))).go();
+      });
     });
+  }
+
+  /// Registers one database mutation so app shutdown can wait for every write
+  /// that was accepted before the database starts closing.
+  Future<T> _trackWrite<T>(String operation, Future<T> Function() action) {
+    if (!_acceptingWrites) {
+      return Future<T>.error(
+        StateError('Database is closing; rejected write: $operation'),
+      );
+    }
+
+    final completion = Completer<void>();
+    final token = completion.future;
+    _pendingWrites.add(token);
+
+    late final Future<T> result;
+    try {
+      result = Future<T>.sync(action);
+    } catch (error, stackTrace) {
+      _pendingWrites.remove(token);
+      completion.complete();
+      return Future<T>.error(error, stackTrace);
+    }
+
+    unawaited(
+      result.then<void>(
+        (_) {
+          _pendingWrites.remove(token);
+          if (!completion.isCompleted) completion.complete();
+        },
+        onError: (Object _, StackTrace _) {
+          _pendingWrites.remove(token);
+          if (!completion.isCompleted) completion.complete();
+        },
+      ),
+    );
+    return result;
+  }
+
+  /// Waits until all writes accepted before shutdown have reached SQLite.
+  Future<void> waitForPendingWrites() async {
+    while (_pendingWrites.isNotEmpty) {
+      await Future.wait<void>(List<Future<void>>.of(_pendingWrites));
+    }
+  }
+
+  @override
+  Future<void> close() {
+    return _closeFuture ??= _closeGracefully();
+  }
+
+  Future<void> _closeGracefully() async {
+    _acceptingWrites = false;
+    await waitForPendingWrites();
+    await super.close();
   }
 
   List<StoredContactPhoneRow> _normalizedStoredPhones(
@@ -778,12 +869,29 @@ LazyDatabase _openConnection() {
       await appDirectory.create(recursive: true);
     }
     final file = File(p.join(appDirectory.path, 'call_history.sqlite'));
-    return NativeDatabase.createInBackground(file);
+
+    // Drift 默认会缓存 sqlite3_stmt 以复用相同 SQL。macOS 上存在低频的
+    // sqlite3_finalize / EXC_BAD_ACCESS 上游问题，且发生在线程和调用栈与本项目
+    // 收集到的崩溃一致：https://github.com/simolus3/drift/issues/3771
+    //
+    // 在官方明确修复前，仅对 macOS 关闭 prepared statement 缓存，缩短 native
+    // statement 的持有和复用周期；后台数据库 isolate 仍然保留，Windows/Linux
+    // 也继续使用 Drift 默认缓存，避免扩大此次规避措施的影响范围。
+    return NativeDatabase.createInBackground(
+      file,
+      cachePreparedStatements: !Platform.isMacOS,
+    );
   });
 }
 
 final callHistoryDatabaseProvider = Provider<CallHistoryDatabase>((ref) {
   final database = CallHistoryDatabase();
-  ref.onDispose(database.close);
+  // 这是应用级数据库单例，整个进程只创建一次。
+  //
+  // 不把 close 绑定到 Provider dispose，是为了避免页面/ProviderScope 生命周期
+  // 干扰正在执行的通话记录写入。真正退出应用时，由
+  // AppShutdownCoordinator 显式 close，让 Drift/SQLite 在 Flutter engine
+  // shutdown 前有序清理，避免 sqlite3_finalize 落到 Dart isolate 的
+  // NativeFinalizer 收尾阶段。
   return database;
 });

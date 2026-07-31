@@ -55,12 +55,85 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
         ),
         const SizedBox(height: 18),
         _buildSettingsSection(
+          title: '音频路由',
+          icon: AppIcons.automatic,
+          children: [
+            SegmentedButton<PjsipAudioDeviceMode>(
+              style: ButtonStyle(
+                side: const WidgetStatePropertyAll(
+                  BorderSide(color: _softBorder),
+                ),
+                shape: WidgetStatePropertyAll(
+                  RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(_radiusSm),
+                  ),
+                ),
+              ),
+              segments: const [
+                ButtonSegment(
+                  value: PjsipAudioDeviceMode.automatic,
+                  icon: Icon(AppIcons.automatic),
+                  label: Text('跟随系统'),
+                ),
+                ButtonSegment(
+                  value: PjsipAudioDeviceMode.manual,
+                  icon: Icon(AppIcons.tune),
+                  label: Text('尝试指定'),
+                ),
+              ],
+              selected: {uiState.audioDeviceMode},
+              onSelectionChanged: (values) {
+                service.setAutomaticAudioDeviceSelection(
+                  values.first == PjsipAudioDeviceMode.automatic,
+                );
+              },
+            ),
+            const SizedBox(height: 10),
+            Text(
+              uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic
+                  ? '建议保持跟随系统，插拔耳机时自动刷新音频路径。'
+                  : '适合排查问题；macOS 通话音频可能仍跟随系统声音设置。',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+            ),
+            const SizedBox(height: 10),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: uiState.allowInCallAudioDeviceSwitch,
+              onChanged: service.setAllowInCallAudioDeviceSwitch,
+              secondary: const Icon(AppIcons.refresh),
+              title: const Text('通话中自动切换'),
+              subtitle: const Text('耳机插拔时恢复音频路径'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _buildSettingsSection(
           title: '输入与输出',
           icon: AppIcons.devices,
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
                 final twoColumn = constraints.maxWidth >= 560;
+                final microphoneTestLabel =
+                    switch (uiState.microphoneTestPhase) {
+                      PjsipMicrophoneTestPhase.recording =>
+                        uiState.microphoneTestRemainingSeconds > 0
+                            ? '录音中 ${uiState.microphoneTestRemainingSeconds}s'
+                            : '录音中',
+                      PjsipMicrophoneTestPhase.preparingPlayback => '准备播放',
+                      PjsipMicrophoneTestPhase.playing => '播放中',
+                      PjsipMicrophoneTestPhase.idle => '录音测试',
+                    };
+                final microphoneTestIcon =
+                    switch (uiState.microphoneTestPhase) {
+                      PjsipMicrophoneTestPhase.recording => AppIcons.stop,
+                      PjsipMicrophoneTestPhase.preparingPlayback =>
+                        AppIcons.activity,
+                      PjsipMicrophoneTestPhase.playing => AppIcons.speaker,
+                      PjsipMicrophoneTestPhase.idle => AppIcons.microphone,
+                    };
                 final cards = [
                   _buildAudioDeviceCard(
                     icon: uiState.isMicrophoneMuted
@@ -91,14 +164,8 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                       onPressed: () => service.setMicrophoneTesting(
                         !uiState.isMicrophoneTesting,
                       ),
-                      icon: Icon(
-                        uiState.isMicrophoneTesting
-                            ? AppIcons.stop
-                            : AppIcons.microphone,
-                      ),
-                      label: Text(
-                        uiState.isMicrophoneTesting ? '停止测试' : '测试输入',
-                      ),
+                      icon: Icon(microphoneTestIcon),
+                      label: Text(microphoneTestLabel),
                     ),
                     secondaryAction: TextButton.icon(
                       onPressed: () => service.setMicrophoneMuted(
@@ -175,60 +242,6 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
             ),
           ],
         ),
-        const SizedBox(height: 18),
-        _buildSettingsSection(
-          title: '策略',
-          icon: AppIcons.automatic,
-          children: [
-            SegmentedButton<PjsipAudioDeviceMode>(
-              style: ButtonStyle(
-                side: const WidgetStatePropertyAll(
-                  BorderSide(color: _softBorder),
-                ),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(_radiusSm),
-                  ),
-                ),
-              ),
-              segments: const [
-                ButtonSegment(
-                  value: PjsipAudioDeviceMode.automatic,
-                  icon: Icon(AppIcons.automatic),
-                  label: Text('自动'),
-                ),
-                ButtonSegment(
-                  value: PjsipAudioDeviceMode.manual,
-                  icon: Icon(AppIcons.tune),
-                  label: Text('手动'),
-                ),
-              ],
-              selected: {uiState.audioDeviceMode},
-              onSelectionChanged: (values) {
-                service.setAutomaticAudioDeviceSelection(
-                  values.first == PjsipAudioDeviceMode.automatic,
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic,
-              onChanged: service.setAutomaticAudioDeviceSelection,
-              secondary: const Icon(AppIcons.automatic),
-              title: const Text('自动选择设备'),
-              subtitle: const Text('优先耳机/蓝牙设备'),
-            ),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: uiState.allowInCallAudioDeviceSwitch,
-              onChanged: service.setAllowInCallAudioDeviceSwitch,
-              secondary: const Icon(AppIcons.refresh),
-              title: const Text('通话中自动切换'),
-              subtitle: const Text('耳机插拔时恢复音频路径'),
-            ),
-          ],
-        ),
       ],
     );
   }
@@ -288,8 +301,8 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                         hasIssue
                             ? '音频设备需要处理'
                             : automatic
-                            ? '自动音频路由'
-                            : '手动音频路由',
+                            ? '跟随系统声音'
+                            : '尝试指定设备',
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -320,6 +333,20 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                       ),
                       icon: const Icon(AppIcons.refresh),
                     ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => unawaited(_openSystemSoundSettings()),
+                      tooltip: '打开系统声音设置',
+                      style: IconButton.styleFrom(
+                        fixedSize: const Size(38, 38),
+                        backgroundColor: _subtlePanel,
+                        foregroundColor: hasIssue ? issueColor : _textPrimary,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(_radiusSm),
+                        ),
+                      ),
+                      icon: const Icon(AppIcons.settings),
+                    ),
                     if (showRepairAction) ...[
                       const SizedBox(width: 8),
                       FilledButton.tonalIcon(
@@ -340,6 +367,28 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
         ),
       ),
     );
+  }
+
+  /// 打开操作系统的声音设置页。
+  ///
+  /// macOS 的 PJSIP/CoreAudio 在 VoiceProcessingIO 下可能忽略具体设备 ID，
+  /// 因此设置页给用户一个明确的系统入口，比在应用里做过多判断更可靠。
+  Future<void> _openSystemSoundSettings() async {
+    try {
+      if (Platform.isMacOS) {
+        await Process.run('open', [
+          'x-apple.systempreferences:com.apple.Sound-Settings.extension',
+        ]);
+        return;
+      }
+      if (Platform.isWindows) {
+        await Process.run('cmd', ['/c', 'start', 'ms-settings:sound']);
+        return;
+      }
+    } catch (_) {
+      // 下面统一提示即可，避免系统设置 URI 差异影响主流程。
+    }
+    ToastUtil.showInfo('请在系统设置中打开声音设置');
   }
 
   Widget _buildMicrophonePermissionRow(
@@ -632,7 +681,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        helperText: automaticMode ? '自动跟随系统设备' : null,
+        helperText: automaticMode ? '跟随系统声音设置' : '尝试指定，可能受系统路由影响',
       ),
       items: devices
           .map(
@@ -648,7 +697,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
 
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: () => ToastUtil.showInfo('自动模式下跟随系统音频设备，无法手动选择'),
+      onTap: () => ToastUtil.showInfo('跟随系统模式下，请到系统声音设置切换输入和输出'),
       child: IgnorePointer(child: dropdown),
     );
   }
@@ -728,6 +777,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
               ).textTheme.bodySmall?.copyWith(color: Colors.white),
             ),
             child: Slider(
+              padding: EdgeInsets.zero,
               value: value.clamp(0, 100).toDouble(),
               min: 0,
               max: 100,

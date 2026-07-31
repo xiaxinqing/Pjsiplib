@@ -110,6 +110,9 @@ class PjsipService extends Notifier<PjsipUIState> {
   Set<ConnectivityResult>? _lastConnectivityTypes;
   bool _connectivityMonitorStarted = false;
   bool _isDisposed = false;
+  bool _cleanupCompleted = false;
+  bool _nativeCallablesClosed = false;
+  Future<void>? _applicationShutdownFuture;
   DateTime? _outgoingMediaRecoveryUntil;
   String? _outgoingMediaRecoveryReason;
   DateTime? _lastAudioDeviceIssueToastAt;
@@ -355,7 +358,65 @@ class PjsipService extends Notifier<PjsipUIState> {
     _addLog('⏹ 引擎已关闭');
   }
 
+  /// Stops every PJSIP producer before the app closes its local database.
+  ///
+  /// `pjsua_destroy()` can enqueue final call-state callbacks from a native
+  /// worker thread. The short event-loop grace period lets those callbacks
+  /// archive their final call records before the database rejects new writes.
+  Future<void> shutdownForApplicationExit() {
+    return _applicationShutdownFuture ??= _shutdownForApplicationExit();
+  }
+
+  Future<void> _shutdownForApplicationExit() async {
+    _startupWarmupTimer?.cancel();
+    _startupWarmupTimer = null;
+    _networkChangeTimer?.cancel();
+    _networkChangeTimer = null;
+    _connectivityMonitorStarted = false;
+    try {
+      await _connectivitySubscription?.cancel();
+    } catch (error) {
+      debugPrint(
+        'Cancel connectivity monitoring during shutdown failed: $error',
+      );
+    }
+    _connectivitySubscription = null;
+
+    if (state.isInitialized) {
+      stop();
+    }
+
+    // NativeCallable.listener delivers native callbacks asynchronously. Once
+    // pjsua_destroy() has returned, this delay only drains callbacks that were
+    // already queued; it does not keep the SIP engine alive.
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    try {
+      await _seatPersistQueue;
+    } catch (error) {
+      debugPrint('Wait for account persistence during shutdown failed: $error');
+    }
+
+    _isDisposed = true;
+    _closeNativeCallablesOnce();
+  }
+
+  void _closeNativeCallablesOnce() {
+    if (_nativeCallablesClosed) return;
+    _nativeCallablesClosed = true;
+    _regStateCallable.close();
+    _incomingCallCallable.close();
+    _callStateCallable.close();
+    _callMediaStateCallable.close();
+    _callMediaEventCallable.close();
+    _callSdpCreatedCallable.close();
+    _callTransferStatusCallable.close();
+    _ipChangeProgressCallable.close();
+  }
+
   void _cleanup() {
+    if (_cleanupCompleted) return;
+    _cleanupCompleted = true;
     _isDisposed = true;
     _connectivitySubscription?.cancel();
     _connectivitySubscription = null;
@@ -402,14 +463,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       _hangupCleanupTimers.clear();
       _sipTransportIds.clear();
     }
-    _regStateCallable.close();
-    _incomingCallCallable.close();
-    _callStateCallable.close();
-    _callMediaStateCallable.close();
-    _callMediaEventCallable.close();
-    _callSdpCreatedCallable.close();
-    _callTransferStatusCallable.close();
-    _ipChangeProgressCallable.close();
+    _closeNativeCallablesOnce();
   }
 }
 

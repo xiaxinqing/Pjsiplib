@@ -5,6 +5,7 @@ final class DockMenuCommandBridge {
   static let shared = DockMenuCommandBridge()
 
   private var channel: FlutterMethodChannel?
+  var isConfigured: Bool { channel != nil }
 
   private init() {}
 
@@ -13,15 +14,31 @@ final class DockMenuCommandBridge {
       name: "voip_desk/dock_menu",
       binaryMessenger: binaryMessenger
     )
+    channel?.setMethodCallHandler { call, result in
+      switch call.method {
+      case "requestApplicationTermination":
+        // Reply before entering AppKit's termination negotiation. AppDelegate
+        // will immediately call Flutter back and await prepareToTerminate.
+        result(nil)
+        DispatchQueue.main.async {
+          NSApp.terminate(nil)
+        }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
   }
 
-  func invoke(_ method: String) {
-    channel?.invokeMethod(method, arguments: nil)
+  func invoke(_ method: String, result: FlutterResult? = nil) {
+    channel?.invokeMethod(method, arguments: nil, result: result)
   }
 }
 
 @main
 class AppDelegate: FlutterAppDelegate {
+  private var isPreparingTermination = false
+  private var isReadyToTerminate = false
+
   override func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
     let menu = NSMenu()
     menu.addItem(dockMenuItem(
@@ -84,6 +101,36 @@ class AppDelegate: FlutterAppDelegate {
 
   @objc private func terminateFromDockMenu() {
     NSApp.terminate(self)
+  }
+
+  override func applicationShouldTerminate(
+    _ sender: NSApplication
+  ) -> NSApplication.TerminateReply {
+    if isReadyToTerminate {
+      return .terminateNow
+    }
+    if isPreparingTermination {
+      return .terminateLater
+    }
+    guard DockMenuCommandBridge.shared.isConfigured else {
+      return .terminateNow
+    }
+
+    isPreparingTermination = true
+    NSLog("VPhone waiting for Flutter shutdown preparation.")
+    DockMenuCommandBridge.shared.invoke("prepareToTerminate") {
+      [weak self] _ in
+      DispatchQueue.main.async {
+        guard let self, self.isPreparingTermination else {
+          return
+        }
+        self.isPreparingTermination = false
+        self.isReadyToTerminate = true
+        NSLog("VPhone Flutter shutdown preparation completed.")
+        sender.reply(toApplicationShouldTerminate: true)
+      }
+    }
+    return .terminateLater
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

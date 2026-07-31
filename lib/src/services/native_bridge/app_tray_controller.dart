@@ -7,6 +7,7 @@ import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
 
 import '../../app_identity.dart';
+import 'app_dock_menu_controller.dart';
 import 'app_window_controller.dart';
 
 class AppTrayController with tray.TrayListener {
@@ -26,6 +27,7 @@ class AppTrayController with tray.TrayListener {
   static const _exitAppKey = 'exit_app';
 
   bool _initialized = false;
+  bool _exiting = false;
   String? _menuSignature;
   VoidCallback? _onOpenCalls;
   VoidCallback? _onOpenHistory;
@@ -33,6 +35,7 @@ class AppTrayController with tray.TrayListener {
   VoidCallback? _onOpenAbout;
   Future<void> Function()? _onDisconnectAll;
   Future<void> Function()? _onRestartApplication;
+  Future<void> Function()? _onExitApplication;
   ValueChanged<bool>? _onIncomingRingtoneChanged;
 
   void bindActions({
@@ -42,6 +45,7 @@ class AppTrayController with tray.TrayListener {
     required VoidCallback onOpenAbout,
     required Future<void> Function() onDisconnectAll,
     required Future<void> Function() onRestartApplication,
+    required Future<void> Function() onExitApplication,
     required ValueChanged<bool> onIncomingRingtoneChanged,
   }) {
     _onOpenCalls = onOpenCalls;
@@ -50,6 +54,7 @@ class AppTrayController with tray.TrayListener {
     _onOpenAbout = onOpenAbout;
     _onDisconnectAll = onDisconnectAll;
     _onRestartApplication = onRestartApplication;
+    _onExitApplication = onExitApplication;
     _onIncomingRingtoneChanged = onIncomingRingtoneChanged;
   }
 
@@ -60,6 +65,7 @@ class AppTrayController with tray.TrayListener {
     _onOpenAbout = null;
     _onDisconnectAll = null;
     _onRestartApplication = null;
+    _onExitApplication = null;
     _onIncomingRingtoneChanged = null;
   }
 
@@ -243,9 +249,27 @@ class AppTrayController with tray.TrayListener {
     await _onRestartApplication?.call();
   }
 
+  /// Exits through Flutter first so app-level resources can be closed before
+  /// the Flutter engine starts shutting down Dart isolates.
+  Future<void> exitApplication() async {
+    await _exitApplication();
+  }
+
   Future<void> _exitApplication() async {
     if (!AppWindowController.isDesktop) return;
+    if (_exiting) return;
+    _exiting = true;
 
+    if (Platform.isMacOS) {
+      final requested = await AppDockMenuController.instance
+          .requestApplicationTermination();
+      if (requested) return;
+    }
+
+    // Other desktop platforms do not currently expose an AppDelegate-style
+    // terminate-later handshake, so prepare resources before destroying the
+    // desktop window.
+    await _onExitApplication?.call();
     await _safeWindowCall(() => windowManager.setPreventClose(false));
     await _safeTrayCall(() => tray.trayManager.destroy());
     await _safeWindowCall(() => windowManager.destroy());

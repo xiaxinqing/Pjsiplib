@@ -45,6 +45,11 @@ typedef _PjPoolReleaseDart = void Function(ffi.Pointer<pj_pool_t>);
 // 0-100 语义，只在送入 PJSIP 前做轻微听感曲线，让低段更可控。
 const double _conferenceVolumeTaperPower = 0.58;
 const Duration _audioVolumePersistDebounce = Duration(milliseconds: 450);
+const int _microphoneTestRecordSeconds = 3;
+const Duration _microphoneTestPlaybackPrepareDelay = Duration(
+  milliseconds: 500,
+);
+const int _pjmediaFileNoLoop = 1;
 
 final class _PjmediaToneDigit extends ffi.Struct {
   @ffi.Int8()
@@ -138,8 +143,18 @@ class _PjsipAudioRuntime {
   bool dialpadTonegenUnavailableLogged = false;
   DateTime? lastDialpadKeySoundAt;
   Future<void>? audioPreferencesWrite;
+  Timer? microphoneTestTimer;
+
+  /// 麦克风测试的本轮任务编号，用来让旧倒计时回调自动失效。
+  ///
+  /// 手动点击停止时会取消 timer，但 Dart 已经进入执行队列的 timer 回调仍可能继续跑。
+  /// 所以这里额外用编号区分“当前有效的一轮录音”，避免手动停止和自动倒计时同时触发播放。
+  int microphoneTestRunId = 0;
+  File? microphoneTestWavFile;
   int? microphoneTestRecorderId;
   int? microphoneTestRecorderPort;
+  int? microphoneTestPlayerId;
+  int? microphoneTestPlayerPort;
 
   /// 手动模式下，用户选择的输入设备签名。
   ///
@@ -317,12 +332,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
     if (!_uiState.isInitialized) return;
 
     if (enabled) {
-      // 回到自动模式时清空手动偏好，让策略重新按“耳机优先、系统默认兜底”选择。
+      // 回到跟随系统模式时清空手动偏好，让策略重新按“耳机优先、系统默认兜底”选择。
       _audio.preferredCaptureDeviceSignature = null;
       _audio.preferredPlaybackDeviceSignature = null;
       _uiState = _uiState.copyWith(
         audioDeviceMode: PjsipAudioDeviceMode.automatic,
-        audioDeviceStatus: '自动选择设备：优先耳机，其次系统默认',
+        audioDeviceStatus: '跟随系统设备：优先耳机，其次系统默认',
       );
       await _refreshAudioDevices(
         reason: '启用自动选择',
@@ -343,9 +358,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
     );
     _uiState = _uiState.copyWith(
       audioDeviceMode: PjsipAudioDeviceMode.manual,
-      audioDeviceStatus: '手动选择设备',
+      audioDeviceStatus: '尝试指定设备',
     );
-    _addLog('🎧 已切换为手动音频设备选择');
+    _addLog('🎧 已切换为尝试指定音频设备');
   }
 
   /// 设置是否允许“通话中自动切换新设备”。
@@ -466,9 +481,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 ? PjsipAudioDeviceMode.manual
                 : _uiState.audioDeviceMode,
             audioDeviceStatus: markManual && selectedSystemDefaults
-                ? '使用系统默认音频设备；空闲时不占用声卡'
+                ? '跟随系统输入/输出；空闲时不占用声卡'
                 : markManual
-                ? '已记住手动设备；空闲时不占用声卡'
+                ? '已记住尝试指定设备；空闲时不占用声卡'
                 : '空闲中：已释放系统音频设备',
           );
           if (markManual && selectedSystemDefaults) {
@@ -502,9 +517,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
                 ? PjsipAudioDeviceMode.manual
                 : _uiState.audioDeviceMode,
             audioDeviceStatus: markManual && selectedSystemDefaults
-                ? '使用系统默认音频设备'
+                ? '跟随系统输入/输出'
                 : markManual
-                ? '手动选择设备'
+                ? '尝试指定设备'
                 : _uiState.audioDeviceStatus,
             audioDeviceIssueMessage:
                 _audioDeviceIssueMessageAfterSuccessfulDeviceApply,
@@ -562,8 +577,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
           selectedPlaybackDeviceId: playbackId,
           audioDeviceMode: nextMode,
           audioDeviceStatus: markManual && selectedSystemDefaults
-              ? '使用系统默认音频设备'
-              : (markManual ? '手动选择设备' : reason),
+              ? '跟随系统输入/输出'
+              : (markManual ? '尝试指定设备' : reason),
         );
         if (markManual && selectedSystemDefaults) {
           _audio.preferredCaptureDeviceSignature = null;
@@ -744,9 +759,29 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
 
     if (!enabled) {
+      final shouldPreparePlayback =
+          _uiState.microphoneTestPhase == PjsipMicrophoneTestPhase.recording &&
+          _audio.microphoneTestRecorderId != null &&
+          _audio.microphoneTestWavFile != null;
+      if (shouldPreparePlayback) {
+        final wavFile = _audio.microphoneTestWavFile!;
+        _audio.microphoneTestTimer?.cancel();
+        _audio.microphoneTestTimer = null;
+        final finishRunId = ++_audio.microphoneTestRunId;
+        unawaited(_finishMicrophoneRecordingAndPlay(wavFile, finishRunId));
+        return;
+      }
+
+      _audio.microphoneTestTimer?.cancel();
+      _audio.microphoneTestTimer = null;
+      _audio.microphoneTestRunId++;
       _stopMicrophoneTestRecorder();
+      _stopMicrophoneTestPlayer(updateUi: false);
+      _audio.microphoneTestWavFile = null;
       _uiState = _uiState.copyWith(
         isMicrophoneTesting: false,
+        microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+        microphoneTestRemainingSeconds: 0,
         microphoneLevel: 0,
       );
       _addLog('🎙️ 麦克风测试已停止');
@@ -755,7 +790,16 @@ extension PjsipAudioDeviceOperations on PjsipService {
       return;
     }
 
-    _uiState = _uiState.copyWith(isMicrophoneTesting: true, microphoneLevel: 0);
+    _stopMicrophoneTestRecorder();
+    _stopMicrophoneTestPlayer(updateUi: false);
+    _audio.microphoneTestWavFile = null;
+    final testRunId = ++_audio.microphoneTestRunId;
+    _uiState = _uiState.copyWith(
+      isMicrophoneTesting: true,
+      microphoneTestPhase: PjsipMicrophoneTestPhase.recording,
+      microphoneTestRemainingSeconds: _microphoneTestRecordSeconds,
+      microphoneLevel: 0,
+    );
     await setAudioDevices(
       captureDeviceId: _uiState.selectedCaptureDeviceId,
       playbackDeviceId: _uiState.selectedPlaybackDeviceId,
@@ -763,9 +807,14 @@ extension PjsipAudioDeviceOperations on PjsipService {
       reason: '麦克风测试：打开当前音频设备',
       forceReapply: true,
     );
+    if (!_uiState.isInitialized ||
+        !_uiState.isMicrophoneTesting ||
+        _uiState.microphoneTestPhase != PjsipMicrophoneTestPhase.recording) {
+      return;
+    }
 
-    _stopMicrophoneTestRecorder();
     final wavFile = await _prepareMicrophoneTestWavFile();
+    _audio.microphoneTestWavFile = wavFile;
     using((Arena arena) {
       final filename = arena<pj_str_t>();
       final path = wavFile.path.toNativeUtf8(allocator: arena);
@@ -776,13 +825,16 @@ extension PjsipAudioDeviceOperations on PjsipService {
         filename,
         0,
         ffi.nullptr,
-        0,
+        -1,
         0,
         recorderId,
       );
       if (status != 0) {
+        _audio.microphoneTestWavFile = null;
         _uiState = _uiState.copyWith(
           isMicrophoneTesting: false,
+          microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+          microphoneTestRemainingSeconds: 0,
           microphoneLevel: 0,
         );
         _releaseSoundDeviceIfIdle('麦克风测试创建失败');
@@ -796,8 +848,11 @@ extension PjsipAudioDeviceOperations on PjsipService {
       );
       if (recorderPort < 0) {
         _bindings.pjsua_recorder_destroy(recorderId.value);
+        _audio.microphoneTestWavFile = null;
         _uiState = _uiState.copyWith(
           isMicrophoneTesting: false,
+          microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+          microphoneTestRemainingSeconds: 0,
           microphoneLevel: 0,
         );
         _releaseSoundDeviceIfIdle('麦克风测试端口获取失败');
@@ -809,8 +864,11 @@ extension PjsipAudioDeviceOperations on PjsipService {
       final connectStatus = _bindings.pjsua_conf_connect(0, recorderPort);
       if (connectStatus != 0) {
         _bindings.pjsua_recorder_destroy(recorderId.value);
+        _audio.microphoneTestWavFile = null;
         _uiState = _uiState.copyWith(
           isMicrophoneTesting: false,
+          microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+          microphoneTestRemainingSeconds: 0,
           microphoneLevel: 0,
         );
         _releaseSoundDeviceIfIdle('麦克风测试连接失败');
@@ -822,7 +880,202 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _audio.microphoneTestRecorderId = recorderId.value;
       _audio.microphoneTestRecorderPort = recorderPort;
       _startAudioLevelTimer();
-      _addLog('🎙️ 麦克风测试已开始，请对着麦克风说话');
+      _audio.microphoneTestTimer = Timer.periodic(const Duration(seconds: 1), (
+        timer,
+      ) {
+        final isOldRun = _audio.microphoneTestRunId != testRunId;
+        if (!_uiState.isInitialized ||
+            !_uiState.isMicrophoneTesting ||
+            _uiState.microphoneTestPhase !=
+                PjsipMicrophoneTestPhase.recording ||
+            isOldRun) {
+          timer.cancel();
+          if (identical(_audio.microphoneTestTimer, timer)) {
+            _audio.microphoneTestTimer = null;
+          }
+          return;
+        }
+
+        final nextSeconds = math
+            .max(0, _uiState.microphoneTestRemainingSeconds - 1)
+            .toInt();
+        if (nextSeconds <= 0) {
+          timer.cancel();
+          if (identical(_audio.microphoneTestTimer, timer)) {
+            _audio.microphoneTestTimer = null;
+          }
+          unawaited(_finishMicrophoneRecordingAndPlay(wavFile, testRunId));
+          return;
+        }
+
+        _uiState = _uiState.copyWith(
+          microphoneTestRemainingSeconds: nextSeconds,
+        );
+      });
+      _addLog('🎙️ 麦克风测试录音中，请对着麦克风说话');
+    });
+  }
+
+  /// 取消设置页里的临时音频测试。
+  ///
+  /// 这个方法专门给“设置弹窗关闭 / 应用退出”这类收尾场景使用：
+  /// - 不把录音中的测试转入播放阶段；
+  /// - 直接断开并销毁 recorder/player；
+  /// - 清理 timer 和 UI 电平，避免弹窗关闭后继续占用声卡或后台录音。
+  void cancelAudioTests() {
+    final hadAudioTest =
+        _uiState.isMicrophoneTesting ||
+        _uiState.isSpeakerTesting ||
+        _audio.microphoneTestTimer != null ||
+        _audio.speakerTestTimer != null ||
+        _audio.microphoneTestRecorderId != null ||
+        _audio.microphoneTestPlayerId != null ||
+        _audio.speakerTestPlayerId != null;
+    if (!hadAudioTest) return;
+
+    _audio.microphoneTestTimer?.cancel();
+    _audio.microphoneTestTimer = null;
+    _audio.microphoneTestRunId++;
+    _audio.speakerTestTimer?.cancel();
+    _audio.speakerTestTimer = null;
+
+    _stopMicrophoneTestRecorder();
+    _stopMicrophoneTestPlayer(updateUi: false);
+    _stopSpeakerTestPlayer(updateUi: false);
+    _audio.microphoneTestWavFile = null;
+
+    _uiState = _uiState.copyWith(
+      isMicrophoneTesting: false,
+      isSpeakerTesting: false,
+      microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+      microphoneTestRemainingSeconds: 0,
+      microphoneLevel: 0,
+      speakerLevel: 0,
+    );
+    _scheduleSoundDeviceReleaseIfIdle('设置页关闭，取消音频测试');
+    _stopAudioLevelTimerIfIdle();
+  }
+
+  /// 录音阶段结束后，销毁 recorder 让 WAV 落盘，再用 PJSIP player 播放。
+  ///
+  /// 这里仍然走 PJSIP conference bridge，用户听到的是软电话当前输出设备，
+  /// 不是 Flutter 或系统默认提示音。
+  Future<void> _finishMicrophoneRecordingAndPlay(
+    File wavFile,
+    int testRunId,
+  ) async {
+    _audio.microphoneTestTimer = null;
+    if (!_uiState.isInitialized ||
+        !_uiState.isMicrophoneTesting ||
+        _audio.microphoneTestRunId != testRunId) {
+      return;
+    }
+
+    _uiState = _uiState.copyWith(
+      microphoneTestPhase: PjsipMicrophoneTestPhase.preparingPlayback,
+      microphoneTestRemainingSeconds: 0,
+      microphoneLevel: 0,
+    );
+    _stopMicrophoneTestRecorder();
+    // PJSIP 官方 systest 在销毁 recorder 后会等待一小段时间再创建 player。
+    // WAV 头和数据长度在 recorder close 时才最终写入，立刻播放可能得到
+    // PJMEDIA_EWAVETOOSHORT(220182)。
+    await Future<void>.delayed(_microphoneTestPlaybackPrepareDelay);
+    if (!_uiState.isInitialized ||
+        !_uiState.isMicrophoneTesting ||
+        _audio.microphoneTestRunId != testRunId) {
+      return;
+    }
+
+    final fileSize = await wavFile.exists() ? await wavFile.length() : 0;
+    if (fileSize <= 44) {
+      _audio.microphoneTestWavFile = null;
+      _uiState = _uiState.copyWith(
+        isMicrophoneTesting: false,
+        microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+        microphoneTestRemainingSeconds: 0,
+        microphoneLevel: 0,
+      );
+      _releaseSoundDeviceIfIdle('麦克风测试录音为空');
+      _stopAudioLevelTimerIfIdle();
+      _addLog('❌ 麦克风测试录音为空或太短: size=$fileSize bytes');
+      return;
+    }
+
+    _uiState = _uiState.copyWith(
+      microphoneTestPhase: PjsipMicrophoneTestPhase.playing,
+      microphoneTestRemainingSeconds: 0,
+      microphoneLevel: 0,
+    );
+
+    using((Arena arena) {
+      final filename = arena<pj_str_t>();
+      final path = wavFile.path.toNativeUtf8(allocator: arena);
+      _pjStr(filename.ref, path);
+
+      final playerId = arena<pjsua_player_id>();
+      // 麦克风测试是“录多少播多少”，这里明确禁止 WAV 循环，避免手动提前停止后
+      // 短录音在固定销毁时间内从头再播一遍。
+      const noLoopPlayback = _pjmediaFileNoLoop;
+      final status = _bindings.pjsua_player_create(
+        filename,
+        noLoopPlayback,
+        playerId,
+      );
+      if (status != 0) {
+        _audio.microphoneTestWavFile = null;
+        _uiState = _uiState.copyWith(
+          isMicrophoneTesting: false,
+          microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+          microphoneTestRemainingSeconds: 0,
+          microphoneLevel: 0,
+        );
+        _releaseSoundDeviceIfIdle('麦克风测试播放创建失败');
+        _stopAudioLevelTimerIfIdle();
+        _addLog('❌ 麦克风测试录音播放失败: pj_status=$status');
+        return;
+      }
+
+      final playerPort = _bindings.pjsua_player_get_conf_port(playerId.value);
+      if (playerPort < 0) {
+        _bindings.pjsua_player_destroy(playerId.value);
+        _audio.microphoneTestWavFile = null;
+        _uiState = _uiState.copyWith(
+          isMicrophoneTesting: false,
+          microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+          microphoneTestRemainingSeconds: 0,
+          microphoneLevel: 0,
+        );
+        _releaseSoundDeviceIfIdle('麦克风测试播放端口获取失败');
+        _stopAudioLevelTimerIfIdle();
+        _addLog('❌ 麦克风测试录音播放端口获取失败');
+        return;
+      }
+
+      final connectStatus = _bindings.pjsua_conf_connect(playerPort, 0);
+      if (connectStatus != 0) {
+        _bindings.pjsua_player_destroy(playerId.value);
+        _audio.microphoneTestWavFile = null;
+        _uiState = _uiState.copyWith(
+          isMicrophoneTesting: false,
+          microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+          microphoneTestRemainingSeconds: 0,
+          microphoneLevel: 0,
+        );
+        _releaseSoundDeviceIfIdle('麦克风测试播放连接失败');
+        _stopAudioLevelTimerIfIdle();
+        _addLog('❌ 麦克风测试录音播放连接失败: pj_status=$connectStatus');
+        return;
+      }
+
+      _audio.microphoneTestPlayerId = playerId.value;
+      _audio.microphoneTestPlayerPort = playerPort;
+      _audio.microphoneTestTimer = Timer(
+        const Duration(milliseconds: 3300),
+        () {
+          _stopMicrophoneTestPlayer();
+        },
+      );
     });
   }
 
@@ -958,11 +1211,11 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
 
     // PJSIP 默认设备 -1/-2 不一定出现在枚举列表中，所以这里手动补进去。
-    // 大厂软电话一般也会提供“系统默认”选项，让 App 跟随系统声音设置变化。
+    // 大厂软电话一般也会提供“跟随系统”选项，让 App 跟随系统声音设置变化。
     final rawCaptureDevices = <PjsipAudioDevice>[
       const PjsipAudioDevice(
         id: -1,
-        name: '系统默认麦克风',
+        name: '跟随系统输入',
         driver: 'default',
         inputCount: 1,
         outputCount: 0,
@@ -972,7 +1225,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     final rawPlaybackDevices = <PjsipAudioDevice>[
       const PjsipAudioDevice(
         id: -2,
-        name: '系统默认扬声器',
+        name: '跟随系统输出',
         driver: 'default',
         inputCount: 0,
         outputCount: 1,
@@ -1034,7 +1287,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   /// 不能说明它适合给用户当麦克风。例如显示器、MacBook 扬声器、某些 Aggregate
   /// Device 也可能带 input channel。这里按产品语义收敛成软电话可选麦克风：
   ///
-  /// - 保留“系统默认麦克风”，让用户可以跟随系统设置。
+  /// - 保留“跟随系统输入”，让用户可以跟随系统设置。
   /// - 排除虚拟/聚合设备：BlackHole、Teams Audio、VPAU Aggregate 等。
   /// - 排除明显是播放端的名称：扬声器、speaker、DisplayPort/HDMI/显示器。
   /// - 其他具备输入能力的真实设备保留，比如蓝牙耳机、内置麦克风、iPhone 麦克风。
@@ -2097,10 +2350,18 @@ extension PjsipAudioDeviceOperations on PjsipService {
       final hasConnectedCall = _uiState.calls.values.any(
         (call) => call.isConnected,
       );
+      final microphoneTestRecording =
+          _uiState.isMicrophoneTesting &&
+          _uiState.microphoneTestPhase == PjsipMicrophoneTestPhase.recording;
+      final microphoneTestPlaying =
+          _uiState.isMicrophoneTesting &&
+          _uiState.microphoneTestPhase == PjsipMicrophoneTestPhase.playing;
       final shouldReadMicrophoneLevel =
-          hasConnectedCall || _uiState.isMicrophoneTesting;
+          hasConnectedCall || microphoneTestRecording;
       final shouldReadSpeakerLevel =
-          hasConnectedCall || _uiState.isSpeakerTesting;
+          hasConnectedCall ||
+          _uiState.isSpeakerTesting ||
+          microphoneTestPlaying;
       if (!shouldReadMicrophoneLevel && !shouldReadSpeakerLevel) {
         if (_uiState.microphoneLevel != 0 || _uiState.speakerLevel != 0) {
           _uiState = _uiState.copyWith(microphoneLevel: 0, speakerLevel: 0);
@@ -2133,7 +2394,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
             );
           }
         }
-        final fallbackSpeakerLevel = _uiState.isSpeakerTesting ? 210 : 0;
+        final fallbackSpeakerLevel =
+            _uiState.isSpeakerTesting || microphoneTestPlaying ? 210 : 0;
         _uiState = _uiState.copyWith(
           microphoneLevel:
               shouldReadMicrophoneLevel && !_uiState.isMicrophoneMuted
@@ -2214,7 +2476,36 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _bindings.pjsua_recorder_destroy(recorderId);
   }
 
-  void _stopSpeakerTestPlayer() {
+  void _stopMicrophoneTestPlayer({bool updateUi = true}) {
+    _audio.microphoneTestTimer?.cancel();
+    _audio.microphoneTestTimer = null;
+
+    final playerId = _audio.microphoneTestPlayerId;
+    final playerPort = _audio.microphoneTestPlayerPort;
+    _audio.microphoneTestWavFile = null;
+    _audio.microphoneTestPlayerId = null;
+    _audio.microphoneTestPlayerPort = null;
+
+    if (_uiState.isInitialized && playerId != null) {
+      if (playerPort != null && playerPort >= 0) {
+        _bindings.pjsua_conf_disconnect(playerPort, 0);
+      }
+      _bindings.pjsua_player_destroy(playerId);
+    }
+
+    if (!updateUi) return;
+    _uiState = _uiState.copyWith(
+      isMicrophoneTesting: false,
+      microphoneTestPhase: PjsipMicrophoneTestPhase.idle,
+      microphoneTestRemainingSeconds: 0,
+      microphoneLevel: 0,
+      speakerLevel: 0,
+    );
+    _scheduleSoundDeviceReleaseIfIdle('麦克风测试播放停止');
+    _stopAudioLevelTimerIfIdle();
+  }
+
+  void _stopSpeakerTestPlayer({bool updateUi = true}) {
     _audio.speakerTestTimer?.cancel();
     _audio.speakerTestTimer = null;
 
@@ -2228,6 +2519,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _bindings.pjsua_conf_disconnect(playerPort, 0);
     }
     _bindings.pjsua_player_destroy(playerId);
+    if (!updateUi) return;
     _uiState = _uiState.copyWith(isSpeakerTesting: false, speakerLevel: 0);
     _scheduleSoundDeviceReleaseIfIdle('扬声器测试停止');
     _stopAudioLevelTimerIfIdle();
@@ -2552,8 +2844,8 @@ class PjsipAudioDevicePolicy {
             shouldSwitch &&
             (!hasAnyCall || !captureAvailable || !playbackAvailable),
         status: preferredCapture == null || preferredPlayback == null
-            ? '手动设备不可用，已准备回退到可用设备'
-            : '手动选择设备',
+            ? '指定设备不可用，已准备回退到可用设备'
+            : '尝试指定设备',
       );
     }
 
@@ -2601,10 +2893,10 @@ class PjsipAudioDevicePolicy {
       playbackDeviceId: nextPlaybackId,
       shouldSwitch: shouldSwitch,
       status: usingExternal
-          ? '自动选择设备：已优先使用耳机/蓝牙设备'
+          ? '跟随系统设备：已优先使用耳机/蓝牙设备'
           : usingBuiltIn
-          ? '自动选择设备：已切到内置麦克风/扬声器'
-          : '自动选择设备：使用系统默认设备',
+          ? '跟随系统设备：已切到内置麦克风/扬声器'
+          : '跟随系统输入/输出',
     );
   }
 

@@ -321,6 +321,31 @@ void main() {
     expect(cleared.single.note, isNull);
   });
 
+  test('数据库关闭会等待已接受的写入并拒绝新写入', () async {
+    final database = CallHistoryDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final startedAt = DateTime(2026, 7, 31, 10);
+
+    final writes = List<Future<void>>.generate(
+      20,
+      (index) => database.recordCall(
+        callId: index,
+        direction: CallHistoryDirection.outbound,
+        status: CallHistoryStatus.canceled,
+        remoteUri: 'sip:$index@pbx.example.com',
+        phoneNumber: '$index',
+        startedAt: startedAt.add(Duration(seconds: index)),
+        endedAt: startedAt.add(Duration(seconds: index + 1)),
+      ),
+    );
+
+    final closeFuture = database.close();
+    await Future.wait(writes);
+    await closeFuture;
+
+    await expectLater(database.clearAll(), throwsA(isA<StateError>()));
+  });
+
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

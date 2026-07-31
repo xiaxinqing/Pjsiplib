@@ -324,13 +324,17 @@ extension _HistoryDetail on _MyHomePageState {
               child: const Text('取消'),
             ),
             FilledButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.of(dialogContext).pop();
-                unawaited(
-                  ref
+                try {
+                  await ref
                       .read(callHistoryDatabaseProvider)
-                      .updateEntryNote(databaseId, controller.text),
-                );
+                      .updateEntryNote(databaseId, controller.text);
+                } catch (error, stackTrace) {
+                  debugPrint('Update call history note failed: $error');
+                  debugPrint('$stackTrace');
+                  ToastUtil.showError('保存通话备注失败，请稍后重试');
+                }
               },
               icon: const Icon(AppIcons.save),
               label: const Text('保存'),

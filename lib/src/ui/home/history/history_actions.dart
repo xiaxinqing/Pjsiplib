@@ -336,10 +336,16 @@ extension _HistoryActions on _MyHomePageState {
             child: const Text('取消'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
               _update(_resetHistoryPagination);
-              ref.read(callHistoryDatabaseProvider).clearAll();
+              try {
+                await ref.read(callHistoryDatabaseProvider).clearAll();
+              } catch (error, stackTrace) {
+                debugPrint('Clear call history failed: $error');
+                debugPrint('$stackTrace');
+                ToastUtil.showError('清空通话记录失败，请稍后重试');
+              }
             },
             style: FilledButton.styleFrom(backgroundColor: _dangerRed),
             child: const Text('清空'),

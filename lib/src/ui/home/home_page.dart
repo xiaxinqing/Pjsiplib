@@ -60,7 +60,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   int? _focusedCallDetailId;
   String? _selectedHistoryItemKey;
   int? _selectedOutgoingAccountId;
-  int _settingsTabIndex = 0;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
   late String _lastDialpadValue;
@@ -81,6 +80,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   Timer? _conferenceActionCooldownTimer;
   bool _conferenceActionCoolingDown = false;
   bool _applicationRestarting = false;
+  Future<void>? _applicationExitFuture;
   late final Future<PackageInfo> _packageInfoFuture;
 
   @override
@@ -190,6 +190,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         _openSettingsDrawer(tabIndex: 4);
       },
       onRestartApplication: _confirmAndRestartApplication,
+      onExitApplication: _prepareForApplicationExit,
     );
 
     AppTrayController.instance.bindActions(
@@ -217,12 +218,28 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
         ref.read(pjsipServiceProvider.notifier).disconnectAllAccounts();
       },
       onRestartApplication: _confirmAndRestartApplication,
+      onExitApplication: _prepareForApplicationExit,
       onIncomingRingtoneChanged: (enabled) {
         ref
             .read(pjsipServiceProvider.notifier)
             .setIncomingRingtoneEnabled(enabled);
       },
     );
+  }
+
+  Future<void> _prepareForApplicationExit() async {
+    return _applicationExitFuture ??= _performApplicationExitPreparation();
+  }
+
+  Future<void> _performApplicationExitPreparation() async {
+    try {
+      await _unreadMissedBadgeSubscription?.cancel();
+      _unreadMissedBadgeSubscription = null;
+    } catch (_) {
+      // 退出时取消角标订阅失败不影响应用关闭。
+    }
+
+    await ref.read(appShutdownCoordinatorProvider).shutdown();
   }
 
   Future<void> _syncTrayMenu(PjsipUIState uiState) {
@@ -247,9 +264,13 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     if (confirmed != true || !mounted) return;
 
     _update(() => _applicationRestarting = true);
+    // restart_app 会终止当前进程。先复用正常退出流程，确保 PJSIP 回调、
+    // 通话记录写入和 Drift worker 都在进程被杀死前完成收尾。
+    await _prepareForApplicationExit();
     final accepted = await AppRestartController.instance.restartApplication();
-    if (!accepted && mounted) {
-      _update(() => _applicationRestarting = false);
+    if (!accepted) {
+      // 资源已完成关闭，重启失败后不能继续留在当前进程中操作已关闭的数据库。
+      await AppTrayController.instance.exitApplication();
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'call_history_database.dart';
@@ -266,8 +267,9 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
     state = state.copyWith(
       contacts: _sortContacts([...state.contacts, contact]),
     );
-    unawaited(
+    _persist(
       ref.read(callHistoryDatabaseProvider).upsertContact(_toStored(contact)),
+      'add contact',
     );
   }
 
@@ -278,10 +280,11 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
         if (item.id == contact.id) updatedContact else item,
     ];
     state = state.copyWith(contacts: _sortContacts(next));
-    unawaited(
+    _persist(
       ref
           .read(callHistoryDatabaseProvider)
           .upsertContact(_toStored(updatedContact)),
+      'update contact',
     );
   }
 
@@ -289,7 +292,10 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
     state = state.copyWith(
       contacts: state.contacts.where((contact) => contact.id != id).toList(),
     );
-    unawaited(ref.read(callHistoryDatabaseProvider).deleteContact(id));
+    _persist(
+      ref.read(callHistoryDatabaseProvider).deleteContact(id),
+      'delete contact',
+    );
   }
 
   void deleteContacts(Set<String> ids) {
@@ -299,7 +305,10 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
           .where((contact) => !ids.contains(contact.id))
           .toList(),
     );
-    unawaited(ref.read(callHistoryDatabaseProvider).deleteContacts(ids));
+    _persist(
+      ref.read(callHistoryDatabaseProvider).deleteContacts(ids),
+      'delete contacts',
+    );
   }
 
   void toggleFavorite(String id) {
@@ -322,10 +331,22 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
       }
     }
     if (contact != null) {
-      unawaited(
+      _persist(
         ref.read(callHistoryDatabaseProvider).upsertContact(_toStored(contact)),
+        'toggle favorite contact',
       );
     }
+  }
+
+  /// Keeps optimistic UI updates responsive while making persistence failures
+  /// observable instead of leaving an unhandled future in the root isolate.
+  void _persist(Future<void> operation, String label) {
+    unawaited(
+      operation.catchError((Object error, StackTrace stackTrace) {
+        debugPrint('Contact persistence failed ($label): $error');
+        debugPrint('$stackTrace');
+      }),
+    );
   }
 
   List<ContactEntry> _sortContacts(List<ContactEntry> contacts) {
