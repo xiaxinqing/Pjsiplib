@@ -172,6 +172,7 @@ extension _HomeHistory on _MyHomePageState {
     PjsipUIState uiState,
     List<CallHistoryEntry> persistedEntries,
   ) {
+    final contactIndex = _historyContactIndexForCurrentContacts();
     final persistedKeys = persistedEntries
         .map(
           (entry) => _archivedCallKey(
@@ -186,11 +187,17 @@ extension _HomeHistory on _MyHomePageState {
             _archivedCallKey(callId: call.callId, startedAt: call.startedAt),
           ),
         )
-        .map((call) => _liveHistoryItem(uiState, call))
+        .map(
+          (call) => _liveHistoryItem(uiState, call, contactIndex: contactIndex),
+        )
         .where(_matchesHistoryFilters)
         .toList();
-    final items = [...liveItems, ...persistedEntries.map(_persistedHistoryItem)]
-      ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
+    final items = [
+      ...liveItems,
+      ...persistedEntries.map(
+        (entry) => _persistedHistoryItem(entry, contactIndex: contactIndex),
+      ),
+    ]..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return items;
   }
 
@@ -205,9 +212,15 @@ extension _HomeHistory on _MyHomePageState {
     return items.first;
   }
 
-  _HistoryItem _persistedHistoryItem(CallHistoryEntry entry) {
+  _HistoryItem _persistedHistoryItem(
+    CallHistoryEntry entry, {
+    Map<String, ContactEntry>? contactIndex,
+  }) {
     final status = CallHistoryStatus.fromStorage(entry.status);
-    final contact = _findHistoryContact(entry.phoneNumber);
+    final contact = _findHistoryContact(
+      entry.phoneNumber,
+      contactIndex: contactIndex,
+    );
     return _HistoryItem(
       key: 'history:${entry.id}',
       databaseId: entry.id,
@@ -240,12 +253,19 @@ extension _HomeHistory on _MyHomePageState {
     );
   }
 
-  _HistoryItem _liveHistoryItem(PjsipUIState uiState, CallInfo call) {
+  _HistoryItem _liveHistoryItem(
+    PjsipUIState uiState,
+    CallInfo call, {
+    Map<String, ContactEntry>? contactIndex,
+  }) {
     final direction = call.direction == PjsipCallDirection.inbound
         ? CallHistoryDirection.inbound
         : CallHistoryDirection.outbound;
     final phoneNumber = _extractHistoryPhoneNumber(call.remoteUri);
-    final contact = _findHistoryContact(phoneNumber);
+    final contact = _findHistoryContact(
+      phoneNumber,
+      contactIndex: contactIndex,
+    );
     final account = call.accountId == null
         ? null
         : uiState.accounts[call.accountId];
@@ -301,9 +321,34 @@ extension _HomeHistory on _MyHomePageState {
     ].any((value) => value.toLowerCase().contains(keyword));
   }
 
-  ContactEntry? _findHistoryContact(String phoneNumber) {
+  /// 返回当前联系人列表对应的号码索引，同一份联系人状态只构建一次。
+  Map<String, ContactEntry> _historyContactIndexForCurrentContacts() {
+    final contacts = ref.watch(contactBookProvider).contacts;
+    if (identical(_historyContactIndexSource, contacts)) {
+      return _historyContactIndex;
+    }
+
+    final index = <String, ContactEntry>{};
+    for (final contact in contacts) {
+      for (final phone in contact.phoneEntries) {
+        final normalized = _normalizeHistoryPhoneNumber(phone.number);
+        if (normalized.isNotEmpty) {
+          index.putIfAbsent(normalized, () => contact);
+        }
+      }
+    }
+    _historyContactIndexSource = contacts;
+    _historyContactIndex = index;
+    return index;
+  }
+
+  ContactEntry? _findHistoryContact(
+    String phoneNumber, {
+    Map<String, ContactEntry>? contactIndex,
+  }) {
     final normalized = _normalizeHistoryPhoneNumber(phoneNumber);
     if (normalized.isEmpty) return null;
+    if (contactIndex != null) return contactIndex[normalized];
     for (final contact in ref.watch(contactBookProvider).contacts) {
       if (contact.phoneEntries.any(
         (phone) => _normalizeHistoryPhoneNumber(phone.number) == normalized,
@@ -325,17 +370,19 @@ extension _HomeHistory on _MyHomePageState {
     return '呼叫中';
   }
 
-  List<_HistoryGroup> _groupHistoryItems(List<_HistoryItem> items) {
-    final groups = <_HistoryGroup>[];
+  /// 将日期标题和记录行展平，交给 ListView 按可视区域懒加载。
+  List<_HistoryListEntry> _flattenHistoryItems(List<_HistoryItem> items) {
+    final entries = <_HistoryListEntry>[];
+    String? lastLabel;
     for (final item in items) {
       final label = _formatHistoryGroupLabel(item.startedAt);
-      if (groups.isEmpty || groups.last.label != label) {
-        groups.add(_HistoryGroup(label, [item]));
-      } else {
-        groups.last.items.add(item);
+      if (label != lastLabel) {
+        entries.add(_HistoryListEntry.header(label));
+        lastLabel = label;
       }
+      entries.add(_HistoryListEntry.item(item));
     }
-    return groups;
+    return entries;
   }
 
   String _formatHistoryGroupLabel(DateTime time) {

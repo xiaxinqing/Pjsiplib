@@ -65,6 +65,9 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   _HistoryDateFilter _historyStreamDateFilter = _HistoryDateFilter.all;
   final List<CallHistoryEntry> _historyLoadedMoreEntries = <CallHistoryEntry>[];
   List<CallHistoryEntry> _historyCurrentPersistedEntries = <CallHistoryEntry>[];
+  List<ContactEntry>? _historyContactIndexSource;
+  Map<String, ContactEntry> _historyContactIndex =
+      const <String, ContactEntry>{};
   bool _historyLoadingMore = false;
   bool _historyHasMoreAfterLoaded = false;
   String? _historyLoadMoreToken;

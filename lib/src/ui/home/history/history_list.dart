@@ -40,44 +40,41 @@ extension _HistoryList on _MyHomePageState {
     required int persistedEntryCount,
     required bool isLoadingMore,
   }) {
-    final grouped = _groupHistoryItems(items);
+    final entries = _flattenHistoryItems(items);
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: grouped.length + 2,
+      itemCount: entries.length + 2,
       itemBuilder: (context, index) {
         if (index == 0) {
           return _buildHistoryColumnHeader(showDetailInline: showDetailInline);
         }
-        final groupIndex = index - 1;
-        if (groupIndex == grouped.length) {
+        final entryIndex = index - 1;
+        if (entryIndex == entries.length) {
           return _buildHistoryLoadMoreFooter(
             hasMorePersistedEntries: hasMorePersistedEntries,
             persistedEntryCount: persistedEntryCount,
             isLoadingMore: isLoadingMore,
           );
         }
-        final group = grouped[groupIndex];
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
-              child: Text(
-                group.label,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                  color: _textSecondary,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+        final entry = entries[entryIndex];
+        final item = entry.item;
+        if (item != null) {
+          return _buildHistoryRow(
+            item,
+            service: service,
+            selectedKey: selectedKey,
+            showDetailInline: showDetailInline,
+          );
+        }
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
+          child: Text(
+            entry.label!,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: _textSecondary,
+              fontWeight: FontWeight.w700,
             ),
-            for (final item in group.items)
-              _buildHistoryRow(
-                item,
-                service: service,
-                selectedKey: selectedKey,
-                showDetailInline: showDetailInline,
-              ),
-          ],
+          ),
         );
       },
     );

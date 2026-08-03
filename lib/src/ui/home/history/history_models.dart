@@ -156,10 +156,15 @@ class _HistoryItem {
       holdSeconds > 0;
 }
 
-/// 通话记录分组：按日期标签聚合记录列表。
-class _HistoryGroup {
-  _HistoryGroup(this.label, this.items);
+/// 通话记录懒加载节点：表示一个日期标题或一条通话记录。
+///
+/// 日期标题和记录行位于 ListView 的同一层，避免同一天的记录被包进 Column 后
+/// 在首帧一次性全部构建。
+class _HistoryListEntry {
+  const _HistoryListEntry.header(this.label) : item = null;
 
-  final String label;
-  final List<_HistoryItem> items;
+  const _HistoryListEntry.item(this.item) : label = null;
+
+  final String? label;
+  final _HistoryItem? item;
 }
