@@ -8,11 +8,50 @@ extension PjsipNetworkOperations on PjsipService {
   static const Duration _outgoingMediaRecoveryCooldown = Duration(
     milliseconds: 2500,
   );
+  static const Duration _automaticRegistrationRecoveryDelay = Duration(
+    seconds: 1,
+  );
+  static const Duration _automaticRegistrationCooldown = Duration(seconds: 10);
   // 参考 MicroSIP 的恢复节奏：网络变化只触发一次延迟处理，不把每一次
   // connectivity 抖动都立刻变成 pjsua_handle_ip_change()。VPN/Wi-Fi
   // 切换时系统可能连续上报多次路由变化，过于频繁地重建 PJSIP transport
   // 反而会让 ICE/STUN socket 一直处在 teardown/rebuild 过程中。
   static const Duration _sipIpChangeMinInterval = Duration(seconds: 8);
+
+  /// 监听应用重新进入前台。
+  ///
+  /// 桌面系统休眠或应用长期处于后台时，网络类型可能仍然是 Wi-Fi，但原有
+  /// SIP transport/REGISTER 已经失效。这里不直接重启线路，只在前台稳定一秒后
+  /// 检查希望在线的账号，并对异常账号补发一次 REGISTER。
+  void _startAppLifecycleMonitoring() {
+    if (_appLifecycleListener != null || _isDisposed) return;
+    _appLifecycleListener = AppLifecycleListener(
+      onResume: () => unawaited(_handleApplicationResumed()),
+    );
+  }
+
+  Future<void> _handleApplicationResumed() async {
+    if (_isDisposed) return;
+    _addLog('🌤 应用已回到前台，准备检查线路注册状态');
+
+    try {
+      final results = await _connectivity.checkConnectivity();
+      if (_isDisposed) return;
+      _onConnectivityResults(results);
+    } catch (error) {
+      if (_isDisposed) return;
+      _addLog('⚠️ 前台恢复时检查网络失败，将沿用当前网络状态: $error');
+    }
+
+    if (!_uiState.isNetworkAvailable) return;
+    // 网络类型变化时先让现有 IP Change 流程完成，完成回调会再次安排检查。
+    if (_pendingIpChange ||
+        _ipChangeInProgress ||
+        _uiState.networkState == PjsipNetworkState.waitingForStableNetwork) {
+      return;
+    }
+    _scheduleAutomaticRegistrationRecovery(reason: '应用回到前台');
+  }
 
   /// 启动 connectivity_plus 首次检测与持续监听。整个 PjsipService 生命周期
   /// 只启动一次；Provider 销毁时由 _cleanup() 取消订阅。
@@ -161,7 +200,7 @@ extension PjsipNetworkOperations on PjsipService {
     if (_pendingIpChange) {
       _requestSipIpChange(reason: '网络变化', force: false);
     } else {
-      retrySipRegistration();
+      _scheduleAutomaticRegistrationRecovery(reason: '网络恢复');
     }
   }
 
@@ -172,30 +211,151 @@ extension PjsipNetworkOperations on PjsipService {
         _uiState.accounts.isEmpty) {
       return;
     }
+
     var failed = false;
+    var refreshed = 0;
+    for (final account in _uiState.accounts.values) {
+      if (!account.registrationEnabled ||
+          account.registrationActionInProgress) {
+        continue;
+      }
+      if (_bindings.pjsua_acc_is_valid(account.accId) == 0) continue;
+      if (account.registrationStatus == 401 ||
+          account.registrationStatus == 403) {
+        _addLog('⚠️ 跳过认证失败线路的手动重注册: ${account.lineLabel}');
+        continue;
+      }
+
+      final status = _bindings.pjsua_acc_set_registration(account.accId, 1);
+      if (status == 0) {
+        refreshed++;
+        _addLog('🌐 SIP 重新注册请求已发送: ${account.lineLabel}');
+      } else {
+        failed = true;
+        _addLog('❌ SIP 重新注册失败: ${account.lineLabel}, pj_status=$status');
+      }
+    }
+
+    if (refreshed > 0 && !failed) {
+      _uiState = _uiState.copyWith(networkState: PjsipNetworkState.recovering);
+    } else if (failed) {
+      _uiState = _uiState.copyWith(networkState: PjsipNetworkState.failed);
+    }
+  }
+
+  /// 安排一次事件驱动的异常线路检查。
+  ///
+  /// 新事件会覆盖尚未执行的旧事件，不创建周期轮询。每条线路还有独立冷却时间，
+  /// 即使前后台和网络事件连续到达，也不会形成 REGISTER 重试循环。
+  void _scheduleAutomaticRegistrationRecovery({
+    required String reason,
+    Duration delay = _automaticRegistrationRecoveryDelay,
+  }) {
+    if (_isDisposed) return;
+    _automaticRegistrationRecoveryTimer?.cancel();
+    _automaticRegistrationRecoveryTimer = Timer(delay, () {
+      _automaticRegistrationRecoveryTimer = null;
+      _recoverAbnormalRegistrations(reason);
+    });
+    _addLog('🌐 已安排线路状态检查: $reason，${delay.inMilliseconds}ms 后执行');
+  }
+
+  /// 检查 PJSIP 原生账号状态，并只刷新“希望在线但当前异常”的线路。
+  void _recoverAbnormalRegistrations(String reason) {
+    if (!_uiState.isInitialized ||
+        !_uiState.isNetworkAvailable ||
+        _uiState.accounts.isEmpty) {
+      return;
+    }
+
+    if (_ipChangeInProgress || _pendingIpChange) {
+      _addLog('🌐 网络恢复仍在处理中，暂缓线路状态检查: $reason');
+      return;
+    }
+
+    final now = DateTime.now();
+    var failed = false;
+    var attempted = 0;
+    var alreadyOnline = 0;
     for (final account in _uiState.accounts.values) {
       if (!account.registrationEnabled) {
         _addLog('⏸ 跳过已暂停线路的自动重注册: ${account.lineLabel}');
         continue;
       }
-      if (account.registrationStatus == 401 ||
-          account.registrationStatus == 403) {
+      if (_bindings.pjsua_acc_is_valid(account.accId) == 0) {
+        _addLog('⚠️ 跳过无效的 PJSIP 线路: ${account.lineLabel}');
+        continue;
+      }
+
+      var nativeStatus = account.registrationStatus;
+      var nativeExpires = account.registrationExpires;
+      final infoRead = using((Arena arena) {
+        final info = arena<pjsua_acc_info>();
+        final status = _bindings.pjsua_acc_get_info(account.accId, info);
+        if (status != 0) return false;
+        nativeStatus = info.ref.statusAsInt;
+        nativeExpires = info.ref.expires;
+        return true;
+      });
+      if (!infoRead) {
+        // 原生状态读取失败时不使用可能过期的 Flutter 缓存发起注册。
+        // 等下一次前台或网络事件再检查，避免与账号编辑/删除发生竞争。
+        _addLog('⚠️ 无法读取线路原生注册状态，本轮跳过: ${account.lineLabel}');
+        continue;
+      }
+
+      if (nativeStatus == 200 && nativeExpires != 0) {
+        alreadyOnline++;
+        continue;
+      }
+      if (nativeStatus == 401 || nativeStatus == 403) {
         _addLog('⚠️ 跳过认证失败线路的自动重注册: ${account.lineLabel}');
         continue;
       }
+      if (nativeStatus != null && nativeStatus! >= 100 && nativeStatus! < 200) {
+        _addLog('⏳ 原生 REGISTER 正在处理中，本轮跳过: ${account.lineLabel}');
+        continue;
+      }
+
+      // 正常的手动刷新/重启仍由原流程完成；但如果原生已经给出最终失败状态，
+      // 说明 Flutter 的处理中标记可能因休眠丢失回调而滞留，允许本轮自愈。
+      final hasDefinitiveFailure = nativeStatus != null && nativeStatus! >= 300;
+      if (account.registrationActionInProgress && !hasDefinitiveFailure) {
+        _addLog('⏳ 跳过正在处理注册的线路: ${account.lineLabel}');
+        continue;
+      }
+
+      final lastAttemptAt = _lastAutomaticRegistrationAttemptAt[account.accId];
+      if (lastAttemptAt != null &&
+          now.difference(lastAttemptAt) < _automaticRegistrationCooldown) {
+        _addLog('⏳ 自动重注册仍在冷却中: ${account.lineLabel}');
+        continue;
+      }
+
       final status = _bindings.pjsua_acc_set_registration(account.accId, 1);
       if (status == 0) {
-        _addLog('🌐 SIP 重新注册请求已发送: acc=${account.accId}');
+        attempted++;
+        _lastAutomaticRegistrationAttemptAt[account.accId] = now;
+        _addLog('🌐 自动重新注册请求已发送: ${account.lineLabel}, trigger=$reason');
       } else {
         failed = true;
-        _addLog('❌ SIP 重新注册失败: acc=${account.accId}, pj_status=$status');
+        _lastAutomaticRegistrationAttemptAt[account.accId] = now;
+        _addLog('❌ 自动重新注册请求失败: ${account.lineLabel}, pj_status=$status');
       }
     }
-    if (!failed) {
-      _uiState = _uiState.copyWith(networkState: PjsipNetworkState.recovering);
-    } else {
-      _uiState = _uiState.copyWith(networkState: PjsipNetworkState.failed);
-    }
+
+    // 自动恢复不建立第二套 UI 状态机。最终账号与网络状态统一由
+    // on_reg_state 回调更新；这里仅记录同步提交请求是否失败。
+    _addLog(
+      '🌐 线路状态检查完成: trigger=$reason, '
+      'online=$alreadyOnline, refreshed=$attempted, failed=$failed',
+    );
+  }
+
+  void _cancelAutomaticRegistrationRecovery() {
+    _automaticRegistrationRecoveryTimer?.cancel();
+    _automaticRegistrationRecoveryTimer = null;
+    _lastAutomaticRegistrationAttemptAt.clear();
   }
 
   bool requestSipNetworkRecovery({required String reason}) {
@@ -265,6 +425,7 @@ extension PjsipNetworkOperations on PjsipService {
       _ipChangeInProgress = false;
       _uiState = _uiState.copyWith(networkState: PjsipNetworkState.failed);
       _addLog('❌ PJSIP 拒绝 IP Change 请求: pj_status=$status');
+      _scheduleAutomaticRegistrationRecovery(reason: 'IP Change 请求失败后的兜底检查');
       return;
     }
 
@@ -306,6 +467,8 @@ extension PjsipNetworkOperations on PjsipService {
         const Duration(seconds: 2),
         _recoverAfterNetworkChange,
       );
+    } else if (_uiState.isNetworkAvailable) {
+      _scheduleAutomaticRegistrationRecovery(reason: 'IP Change 完成');
     }
   }
 

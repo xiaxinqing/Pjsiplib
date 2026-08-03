@@ -163,6 +163,9 @@ class MainFlutterWindow: NSWindow {
             }
 
             switch call.method {
+            case "presentIncomingCallWindow":
+                self.presentIncomingCallWindow()
+                result(nil)
             case "requestAttention":
                 self.startAttentionPulses()
                 result(nil)
@@ -172,6 +175,40 @@ class MainFlutterWindow: NSWindow {
             default:
                 result(FlutterMethodNotImplemented)
             }
+        }
+    }
+
+    /// Presents an incoming call on the Space the user is currently viewing.
+    ///
+    /// `makeKeyAndOrderFront` and Flutter's `windowManager.focus()` only raise
+    /// a window inside its existing macOS Space. When VPhone is already active
+    /// on another Space, those calls do not bring the call UI to the user. We
+    /// temporarily opt into `moveToActiveSpace`, present the existing main
+    /// window, then restore its previous collection behavior so normal window
+    /// navigation is unchanged after the incoming-call transition.
+    private func presentIncomingCallWindow() {
+        let previousCollectionBehavior = collectionBehavior
+        var incomingCallBehavior = previousCollectionBehavior
+        // AppKit does not allow these two Space behaviors at the same time.
+        incomingCallBehavior.remove(.canJoinAllSpaces)
+        incomingCallBehavior.insert(.moveToActiveSpace)
+        collectionBehavior = incomingCallBehavior
+
+        NSApp.unhide(self)
+        if isMiniaturized {
+            deminiaturize(self)
+        }
+        makeKeyAndOrderFront(self)
+        orderFrontRegardless()
+        NSRunningApplication.current.activate(options: [
+            .activateAllWindows,
+            .activateIgnoringOtherApps,
+        ])
+
+        // Keep moveToActiveSpace only for this presentation. Restoring it on
+        // the next run-loop turn avoids changing the user's later Space rules.
+        DispatchQueue.main.async { [weak self] in
+            self?.collectionBehavior = previousCollectionBehavior
         }
     }
 

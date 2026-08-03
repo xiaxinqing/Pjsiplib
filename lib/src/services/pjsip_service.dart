@@ -94,8 +94,12 @@ class PjsipService extends Notifier<PjsipUIState> {
   Timer? _logFlushTimer;
   Timer? _startupWarmupTimer;
   Timer? _networkChangeTimer;
+  Timer? _automaticRegistrationRecoveryTimer;
   Timer? _ipChangeTimeoutTimer;
   Timer? _outgoingMediaRecoveryTimer;
+  AppLifecycleListener? _appLifecycleListener;
+  final Map<int, DateTime> _lastAutomaticRegistrationAttemptAt =
+      <int, DateTime>{};
   final List<PjsipLog> _pendingLogs = <PjsipLog>[];
   bool _ipChangeInProgress = false;
   bool _ipChangeHadError = false;
@@ -191,6 +195,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
     scheduleMicrotask(_loadAudioPreferences);
     scheduleMicrotask(_startConnectivityMonitoring);
+    scheduleMicrotask(_startAppLifecycleMonitoring);
     _scheduleStartupWarmup();
     return PjsipUIState(logs: []);
   }
@@ -290,6 +295,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();
     _networkChangeTimer?.cancel();
+    _cancelAutomaticRegistrationRecovery();
     _ipChangeTimeoutTimer?.cancel();
     _outgoingMediaRecoveryTimer?.cancel();
     _ipChangeInProgress = false;
@@ -372,6 +378,9 @@ class PjsipService extends Notifier<PjsipUIState> {
     _startupWarmupTimer = null;
     _networkChangeTimer?.cancel();
     _networkChangeTimer = null;
+    _cancelAutomaticRegistrationRecovery();
+    _appLifecycleListener?.dispose();
+    _appLifecycleListener = null;
     _connectivityMonitorStarted = false;
     try {
       await _connectivitySubscription?.cancel();
@@ -439,6 +448,9 @@ class PjsipService extends Notifier<PjsipUIState> {
     _stopAudioDeviceMonitoring();
     _cancelPendingAudioBridgeReconnects();
     _networkChangeTimer?.cancel();
+    _cancelAutomaticRegistrationRecovery();
+    _appLifecycleListener?.dispose();
+    _appLifecycleListener = null;
     _ipChangeTimeoutTimer?.cancel();
     _outgoingMediaRecoveryTimer?.cancel();
     _ipChangeInProgress = false;

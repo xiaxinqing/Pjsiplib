@@ -228,13 +228,23 @@ class ContactBookNotifier extends Notifier<ContactBookState> {
 
   Future<void> _loadContacts() async {
     state = state.copyWith(isLoading: true);
+    final stopwatch = Stopwatch()..start();
     try {
       final database = ref.read(callHistoryDatabaseProvider);
-      final contacts = (await database.listContacts())
-          .map(_fromStored)
-          .toList();
-      state = ContactBookState(contacts: _sortContacts(contacts));
+      final storedContacts = await database.listContacts();
+      final databaseElapsed = stopwatch.elapsedMilliseconds;
+      final contacts = storedContacts.map(_fromStored).toList();
+      final sortedContacts = _sortContacts(contacts);
+      stopwatch.stop();
+      debugPrint(
+        '⏱ 联系人首次加载: 数据库=${databaseElapsed}ms, '
+        '转换与排序=${stopwatch.elapsedMilliseconds - databaseElapsed}ms, '
+        '总计=${stopwatch.elapsedMilliseconds}ms, 数量=${sortedContacts.length}',
+      );
+      state = ContactBookState(contacts: sortedContacts);
     } catch (error) {
+      stopwatch.stop();
+      debugPrint('⏱ 联系人首次加载失败: ${stopwatch.elapsedMilliseconds}ms, $error');
       state = ContactBookState(
         contacts: const [],
         errorMessage: '联系人加载失败，请稍后重试',

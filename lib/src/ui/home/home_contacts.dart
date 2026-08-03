@@ -9,8 +9,17 @@ extension _HomeContacts on _MyHomePageState {
   static const double _contactDetailPaneBreakpoint = 780;
 
   Widget _buildContactsPage(PjsipUIState uiState, PjsipService service) {
+    _traceWorkspacePageBuild(_WorkspaceSection.contacts);
     final contactState = ref.watch(contactBookProvider);
     final contacts = _filteredContacts(contactState);
+    if (!contactState.isLoading) {
+      _traceWorkspacePageDataReady(
+        _WorkspaceSection.contacts,
+        summary:
+            '全部=${contactState.contacts.length}, 当前显示=${contacts.length}, '
+            '错误=${contactState.errorMessage != null}',
+      );
+    }
     _schedulePendingContactReveal(contactState, contacts);
     final validSelectedIds = contactState.contacts
         .where((contact) => _selectedContactIds.contains(contact.id))

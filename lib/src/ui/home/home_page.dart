@@ -4,6 +4,20 @@ enum _WorkspaceSection { dialpad, calls, contacts, history }
 
 enum _CallNoteMode { customer, conference }
 
+/// 记录联系人/通话记录从工作区切换到完整内容绘制完成的单次性能采样。
+class _WorkspacePageLoadTrace {
+  _WorkspacePageLoadTrace({required this.id, required this.section})
+    : stopwatch = (Stopwatch()..start());
+
+  final int id;
+  final _WorkspaceSection section;
+  final Stopwatch stopwatch;
+  bool buildLogged = false;
+  bool dataLogged = false;
+  bool contentFrameScheduled = false;
+  bool completed = false;
+}
+
 const Duration _conferenceActionCooldownDuration = Duration(milliseconds: 1500);
 const Duration _dialpadPageWarmupDelay = Duration(milliseconds: 800);
 const Duration _dialpadPageWarmupKeepAlive = Duration(seconds: 30);
@@ -82,6 +96,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   bool _applicationRestarting = false;
   Future<void>? _applicationExitFuture;
   late final Future<PackageInfo> _packageInfoFuture;
+  int _workspacePageLoadTraceSequence = 0;
+  _WorkspacePageLoadTrace? _workspacePageLoadTrace;
 
   @override
   void initState() {

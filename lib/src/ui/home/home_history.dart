@@ -11,6 +11,7 @@ extension _HomeHistory on _MyHomePageState {
   static const double _historyDetailPaneBreakpoint = 800;
 
   Widget _buildHistoryPage(PjsipUIState uiState, PjsipService service) {
+    _traceWorkspacePageBuild(_WorkspaceSection.history);
     final database = ref.watch(callHistoryDatabaseProvider);
     final stream = _watchHistoryEntries(database);
     final unreadMissedStream = _watchUnreadMissedCallCount();
@@ -32,6 +33,19 @@ extension _HomeHistory on _MyHomePageState {
             : _historyHasMoreAfterLoaded;
         final items = _buildHistoryItems(uiState, persistedEntries);
         final selected = _selectedHistoryItem(items);
+        if (snapshot.hasError) {
+          _traceWorkspacePageDataReady(
+            _WorkspaceSection.history,
+            summary: '查询失败=${snapshot.error}',
+          );
+        } else if (snapshot.hasData) {
+          _traceWorkspacePageDataReady(
+            _WorkspaceSection.history,
+            summary:
+                '查询返回=${rawPersistedEntries.length}, '
+                '页面条目=${items.length}, 已加载更多=${_historyLoadedMoreEntries.length}',
+          );
+        }
         return DecoratedBox(
           decoration: BoxDecoration(
             color: _panelBackground,

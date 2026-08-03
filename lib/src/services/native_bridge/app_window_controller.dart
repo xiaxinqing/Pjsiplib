@@ -74,6 +74,12 @@ class AppWindowController with WindowListener {
     if (!isDesktop) return;
 
     await _restoreAndFocus();
+    if (Platform.isMacOS) {
+      // window_manager can restore and focus a window in the current Space,
+      // but it cannot reliably bring a window across macOS Spaces. Let AppKit
+      // perform that final presentation step for incoming calls.
+      await _safePlatformCall('presentIncomingCallWindow');
+    }
     await _requestUserAttention();
     await _pulseAlwaysOnTop();
   }
