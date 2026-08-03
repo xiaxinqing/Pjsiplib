@@ -14,6 +14,7 @@ import '../app_identity.dart';
 import '../generated/pjsip_bindings.g.dart';
 import 'call_history_database.dart';
 import 'contact_service.dart';
+import 'native_bridge/audio_device_change_controller.dart';
 import 'sip_call_end_reason_mapper.dart';
 import '../../utils/toast_util.dart';
 
@@ -57,6 +58,8 @@ class PjsipService extends Notifier<PjsipUIState> {
 
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
+  final AudioDeviceChangeController _audioDeviceChangeController =
+      AudioDeviceChangeController();
   final _PjsipCallSnapshotRuntime _callSnapshots = _PjsipCallSnapshotRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};

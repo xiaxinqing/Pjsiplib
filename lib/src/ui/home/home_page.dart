@@ -283,8 +283,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     if (confirmed != true || !mounted) return;
 
     _update(() => _applicationRestarting = true);
-    // restart_app 会终止当前进程。先复用正常退出流程，确保 PJSIP 回调、
-    // 通话记录写入和 Drift worker 都在进程被杀死前完成收尾。
+    // restart_app 会终止当前进程。先复用正常退出流程，确保 PJSIP 回调停止，
+    // 并等待已接收的通话记录写入完成；原生数据库连接由进程退出统一回收。
     await _prepareForApplicationExit();
     final accepted = await AppRestartController.instance.restartApplication();
     if (!accepted) {

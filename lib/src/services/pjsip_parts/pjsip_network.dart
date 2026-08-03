@@ -32,7 +32,7 @@ extension PjsipNetworkOperations on PjsipService {
 
   Future<void> _handleApplicationResumed() async {
     if (_isDisposed) return;
-    _addLog('🌤 应用已回到前台，准备检查线路注册状态');
+    _addLog('应用已回到前台，准备检查线路注册状态');
 
     try {
       final results = await _connectivity.checkConnectivity();

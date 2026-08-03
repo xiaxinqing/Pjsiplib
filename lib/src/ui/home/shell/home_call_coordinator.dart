@@ -25,7 +25,12 @@ extension _HomeCallCoordinator on _MyHomePageState {
     }
 
     if (hasNewIncomingCall) {
-      _showIncomingCallSurface(newIncomingIds.reduce(math.min));
+      final callId = newIncomingIds.reduce(math.min);
+      debugPrint(
+        '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+        'call=$callId UI 已收到新来电，准备切换主舞台并唤起窗口',
+      );
+      _showIncomingCallSurface(callId);
       _windowController.notifyIncomingCall();
       return;
     }
@@ -54,6 +59,13 @@ extension _HomeCallCoordinator on _MyHomePageState {
       _dtmfSentPreview = '';
       _dtmfStatusText = null;
       _dtmfSendFailed = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      debugPrint(
+        '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+        'call=$callId 来电主舞台首帧已绘制',
+      );
     });
   }
 

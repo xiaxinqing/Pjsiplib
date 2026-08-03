@@ -11,11 +11,11 @@ final appShutdownCoordinatorProvider = Provider<AppShutdownCoordinator>((ref) {
   );
 });
 
-/// Coordinates process shutdown across native SIP callbacks and local storage.
+/// 协调 PJSIP 回调和本地数据库的应用退出流程。
 ///
-/// The order is intentional: stop PJSIP and other write producers first, wait
-/// for accepted database writes, then close Drift before Flutter destroys the
-/// Dart isolate. Repeated exit requests share the same future.
+/// 顺序不能颠倒：先停止可能产生通话记录的 PJSIP，再等待数据库已接收的写入。
+/// 退出进程时不显式关闭 Drift 原生连接，避免 macOS 上 sqlite3_close 与后台
+/// isolate 销毁竞态。重复退出请求会复用同一个 Future。
 class AppShutdownCoordinator {
   AppShutdownCoordinator({
     required this._pjsipService,
@@ -44,10 +44,14 @@ class AppShutdownCoordinator {
     }
 
     try {
-      await _database.close();
-      debugPrint('Call history database closed before application exit.');
+      await _database.prepareForProcessExit();
+      debugPrint(
+        'Call history database writes drained before application exit.',
+      );
     } catch (error, stackTrace) {
-      debugPrint('Call history database close before exit failed: $error');
+      debugPrint(
+        'Wait for call history database writes before exit failed: $error',
+      );
       debugPrint('$stackTrace');
     }
 

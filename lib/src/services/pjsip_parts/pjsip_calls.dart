@@ -779,6 +779,12 @@ extension PjsipCallOperations on PjsipService {
       calls: calls,
       activeCallId: makeActive ? nextCall.callId : _unset,
     );
+    if (previous == null && nextCall.isIncoming) {
+      debugPrint(
+        '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+        'call=${nextCall.callId} 已写入 PJSIP UI 状态，准备启动铃声',
+      );
+    }
     _syncCallProgressSounds();
   }
 

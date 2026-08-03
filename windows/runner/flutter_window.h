@@ -10,6 +10,8 @@
 
 #include "win32_window.h"
 
+class AudioDeviceChangeMonitor;
+
 // A window that does nothing but host a Flutter view.
 class FlutterWindow : public Win32Window {
  public:
@@ -28,6 +30,8 @@ class FlutterWindow : public Win32Window {
   void ConfigureWindowAttentionChannel();
   void RequestUserAttention();
   void ClearUserAttention();
+  void ConfigureAudioDeviceChangeChannel();
+  void NotifyAudioDevicesChanged();
 
   // The project to run.
   flutter::DartProject project_;
@@ -37,6 +41,9 @@ class FlutterWindow : public Win32Window {
 
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_attention_channel_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      audio_device_change_channel_;
+  AudioDeviceChangeMonitor* audio_device_change_monitor_ = nullptr;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

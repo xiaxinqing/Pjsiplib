@@ -3,6 +3,7 @@ import FlutterMacOS
 import AVFoundation
 
 class MainFlutterWindow: NSWindow {
+    private let audioDeviceChangeMonitor = AudioDeviceChangeMonitor()
     private var attentionRequestID: Int = 0
     private var attentionTimer: Timer?
     private var attentionPulseCount: Int = 0
@@ -39,6 +40,9 @@ class MainFlutterWindow: NSWindow {
     configureLaunchSplashChannel(flutterViewController: flutterViewController)
         configureWindowAttentionChannel(flutterViewController: flutterViewController)
         configureAudioPermissionChannel(flutterViewController: flutterViewController)
+        audioDeviceChangeMonitor.configure(
+            binaryMessenger: flutterViewController.engine.binaryMessenger
+        )
 
         super.awakeFromNib()
     }

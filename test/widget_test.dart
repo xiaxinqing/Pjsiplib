@@ -346,6 +346,29 @@ void main() {
     await expectLater(database.clearAll(), throwsA(isA<StateError>()));
   });
 
+  test('进程退出准备会等待写入但不主动关闭数据库连接', () async {
+    final database = CallHistoryDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final startedAt = DateTime(2026, 8, 3, 10);
+
+    final write = database.recordCall(
+      callId: 101,
+      direction: CallHistoryDirection.outbound,
+      status: CallHistoryStatus.canceled,
+      remoteUri: 'sip:101@pbx.example.com',
+      phoneNumber: '101',
+      startedAt: startedAt,
+      endedAt: startedAt.add(const Duration(seconds: 1)),
+    );
+
+    await database.prepareForProcessExit();
+    await write;
+
+    final rows = await database.listRecentPage(limit: 10);
+    expect(rows, hasLength(1));
+    await expectLater(database.clearAll(), throwsA(isA<StateError>()));
+  });
+
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
     await tester.pumpWidget(
       ProviderScope(

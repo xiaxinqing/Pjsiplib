@@ -4,3 +4,4 @@ export 'app_restart_controller.dart';
 export 'app_tray_controller.dart';
 export 'app_badge_controller.dart';
 export 'app_window_controller.dart';
+export 'audio_device_change_controller.dart';

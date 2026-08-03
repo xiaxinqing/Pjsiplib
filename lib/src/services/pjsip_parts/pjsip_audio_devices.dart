@@ -81,11 +81,16 @@ class _PjsipAudioRuntime {
   _PjmediaPortDestroyDart? pjmediaPortDestroy;
   _PjPoolReleaseDart? pjPoolRelease;
 
-  /// 没有通话时的设备轮询间隔。
+  /// Linux 或原生监听不可用时，没有通话的设备轮询间隔。
   Duration idlePollInterval = const Duration(seconds: 2);
 
-  /// 通话中的设备轮询间隔。通话中用户更在意耳机插拔，所以通常比空闲时更快。
+  /// Linux 或原生监听不可用时，通话中的设备轮询间隔。
   Duration inCallPollInterval = const Duration(seconds: 2);
+
+  /// macOS/Windows 原生事件监听启用后的低频兜底检查。
+  ///
+  /// 系统事件是主要路径；这个检查只覆盖驱动漏报、睡眠恢复等少数边界情况。
+  Duration nativeFallbackPollInterval = const Duration(seconds: 30);
 
   /// 设备变化防抖时间。
   ///
@@ -110,6 +115,9 @@ class _PjsipAudioRuntime {
   Timer? levelTimer;
   Timer? devicePollTimer;
   Timer? deviceChangeDebounceTimer;
+  bool nativeDeviceEventsActive = false;
+  bool nativeDeviceEventsStarting = false;
+  int deviceMonitorSession = 0;
   Timer? speakerTestTimer;
   final List<Timer> bridgeReconnectTimers = <Timer>[];
 
@@ -196,7 +204,7 @@ class _PjsipAudioRuntime {
 /// 1. 从 PJSIP 枚举麦克风/扬声器设备。
 /// 2. 过滤掉不适合通话的虚拟设备、聚合设备、方向错误设备。
 /// 3. 根据自动/手动策略调用 `pjsua_set_snd_dev` 切换设备。
-/// 4. 用轻量轮询监听耳机插拔和蓝牙设备变化。
+/// 4. macOS/Windows 使用系统事件监听设备变化，Linux 使用轻量轮询。
 /// 5. 通话中切换设备后，重新连接 PJSIP conference bridge，恢复声音路径。
 ///
 /// 这里刻意把“原始设备列表”和“通话可用设备列表”分开：
@@ -1432,15 +1440,62 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
   }
 
-  /// 启动轻量设备热插拔轮询。
+  /// 启动音频设备热插拔监控。
   ///
-  /// 桌面端要监听有线耳机和蓝牙耳机插拔，最理想是接入系统原生事件。
-  /// 当前开发阶段用轮询实现：每隔一段时间读一次设备快照，发现签名变化后再刷新。
-  ///
-  /// 如果 timer 已经存在，说明轮询已经启动，直接返回，避免重复开多个 timer。
+  /// macOS/Windows 优先注册系统事件监听；成功后仅保留 30 秒低频兜底检查。
+  /// Linux 或原生桥不可用时，继续使用原来的 2 秒快照轮询。
   void _startAudioDeviceMonitoring() {
-    if (_audio.devicePollTimer != null) return;
+    if (_audio.nativeDeviceEventsActive ||
+        _audio.nativeDeviceEventsStarting ||
+        _audio.devicePollTimer != null) {
+      return;
+    }
+
+    if (_audioDeviceChangeController.isSupported) {
+      _audio.nativeDeviceEventsStarting = true;
+      final session = ++_audio.deviceMonitorSession;
+      unawaited(_startNativeAudioDeviceMonitoring(session));
+      return;
+    }
+
     _scheduleNextAudioDevicePoll();
+  }
+
+  /// 注册原生设备事件；失败时自动降级为轮询，不影响音频功能。
+  Future<void> _startNativeAudioDeviceMonitoring(int session) async {
+    final started = await _audioDeviceChangeController.startMonitoring(
+      _onNativeAudioDevicesChanged,
+    );
+
+    if (session != _audio.deviceMonitorSession) {
+      // 新一轮引擎会话可能正在注册同一个单例桥接。只有没有更新的注册任务执行时，
+      // 才停止本轮过期监听，避免误关掉新会话刚启用的监听。
+      if (started && !_audio.nativeDeviceEventsStarting) {
+        await _audioDeviceChangeController.stopMonitoring();
+      }
+      return;
+    }
+    _audio.nativeDeviceEventsStarting = false;
+
+    if (!_uiState.isInitialized || _isDisposed) {
+      if (started) await _audioDeviceChangeController.stopMonitoring();
+      return;
+    }
+
+    _audio.nativeDeviceEventsActive = started;
+    _addLog(started ? '🎧 已启用系统音频设备变化监听，30 秒低频兜底' : '⚠️ 系统音频设备监听不可用，已回退到轮询');
+    _scheduleNextAudioDevicePoll();
+  }
+
+  /// 原生系统通知只负责唤醒 Dart；实际刷新仍走既有防抖和策略入口。
+  void _onNativeAudioDevicesChanged() {
+    if (!_uiState.isInitialized || _isDisposed) return;
+    _clearSoundDeviceOpenFailure();
+    _audio.deviceChangeDebounceTimer?.cancel();
+    _audio.deviceChangeDebounceTimer = Timer(
+      audioDeviceChangeDebounceInterval,
+      () => _handleAudioDeviceChanged(reason: '系统设备事件'),
+    );
   }
 
   /// 安排下一次设备轮询。
@@ -1449,7 +1504,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
   /// 好处是：如果一次设备枚举稍慢，不会出现多个轮询任务重叠执行。
   void _scheduleNextAudioDevicePoll() {
     if (!_uiState.isInitialized || _isDisposed) return;
-    final interval = _uiState.calls.isEmpty
+    final interval = _audio.nativeDeviceEventsActive
+        ? _audio.nativeFallbackPollInterval
+        : _uiState.calls.isEmpty
         ? audioDeviceIdlePollInterval
         : audioDeviceInCallPollInterval;
     _audio.devicePollTimer = Timer(interval, _pollAudioDevicesOnce);
@@ -1468,7 +1525,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _audio.devicePollTimer = null;
     if (!_uiState.isInitialized || _isDisposed) return;
 
-    _refreshAudioDriverListIfSafe(reason: '设备轮询', logResult: false);
+    final pollReason = _audio.nativeDeviceEventsActive ? '设备兜底检查' : '设备轮询';
+    _refreshAudioDriverListIfSafe(reason: pollReason, logResult: false);
     final snapshot = using(_readAudioDeviceSnapshot);
     if (snapshot == null) {
       _scheduleNextAudioDevicePoll();
@@ -1476,7 +1534,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
     // 轮询不只发现“列表变了”，也顺手校准无设备类异常。这样 Mac mini
     // 从无麦克风/扬声器到插上耳机时，不必重启应用就能恢复侧边栏状态。
-    _syncAudioDeviceAvailabilityIssue(snapshot, reason: '设备轮询');
+    _syncAudioDeviceAvailabilityIssue(snapshot, reason: pollReason);
 
     // 首次轮询只建立基线，不触发“设备变化”。否则启动后会误认为设备发生变化。
     if (_audio.lastDeviceSnapshot == null) {
@@ -1492,7 +1550,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       // 再出现稳定的输入/输出端点。
       _audio.deviceChangeDebounceTimer = Timer(
         audioDeviceChangeDebounceInterval,
-        () => _handleAudioDeviceChanged(),
+        () => _handleAudioDeviceChanged(reason: pollReason),
       );
     }
 
@@ -1503,25 +1561,29 @@ extension PjsipAudioDeviceOperations on PjsipService {
   ///
   /// 这里会刷新设备列表、打印日志，并允许自动策略切换设备。
   /// 例如耳机拔掉后，它会重新枚举设备，然后策略通常会回退到系统默认 -1/-2。
-  void _handleAudioDeviceChanged() {
+  void _handleAudioDeviceChanged({String reason = '设备变化'}) {
     if (!_uiState.isInitialized || _isDisposed) return;
     unawaited(
       _refreshAudioDevices(
-        reason: '设备变化',
+        reason: reason,
         logResult: true,
         allowAutomaticSwitch: true,
       ),
     );
   }
 
-  /// 停止设备热插拔轮询。
+  /// 停止设备热插拔监控。
   ///
   /// 引擎关闭或 Notifier dispose 时必须调用，避免 timer 继续访问已经销毁的 PJSIP。
   void _stopAudioDeviceMonitoring() {
+    _audio.deviceMonitorSession++;
     _audio.devicePollTimer?.cancel();
     _audio.devicePollTimer = null;
     _audio.deviceChangeDebounceTimer?.cancel();
     _audio.deviceChangeDebounceTimer = null;
+    _audio.nativeDeviceEventsStarting = false;
+    _audio.nativeDeviceEventsActive = false;
+    unawaited(_audioDeviceChangeController.stopMonitoring());
     _audio.lastDeviceSnapshot = null;
   }
 
@@ -2158,6 +2220,14 @@ extension PjsipAudioDeviceOperations on PjsipService {
     required void Function(bool value) setMissingLogged,
     required VoidCallback clearStarting,
   }) async {
+    final traceIncomingRingtone = reason == '来电铃声';
+    final traceWatch = traceIncomingRingtone ? (Stopwatch()..start()) : null;
+    if (traceIncomingRingtone) {
+      debugPrint(
+        '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+        '铃声启动任务开始',
+      );
+    }
     try {
       if (getPlayerId() != null || !_uiState.isInitialized) return;
 
@@ -2169,8 +2239,28 @@ extension PjsipAudioDeviceOperations on PjsipService {
       );
       if (file == null) return;
       if (!shouldStillPlay()) return;
+      if (traceIncomingRingtone) {
+        debugPrint(
+          '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+          '铃声文件已就绪，累计=${traceWatch!.elapsedMilliseconds}ms，'
+          '准备打开声卡',
+        );
+      }
 
-      if (!_ensureSoundDeviceOpen(reason)) return;
+      final soundDeviceWatch = traceIncomingRingtone
+          ? (Stopwatch()..start())
+          : null;
+      final soundDeviceOpened = _ensureSoundDeviceOpen(reason);
+      if (traceIncomingRingtone) {
+        soundDeviceWatch!.stop();
+        debugPrint(
+          '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+          '打开声卡完成，成功=$soundDeviceOpened，'
+          '本次=${soundDeviceWatch.elapsedMilliseconds}ms，'
+          '累计=${traceWatch!.elapsedMilliseconds}ms',
+        );
+      }
+      if (!soundDeviceOpened) return;
       using((Arena arena) {
         final filename = arena<pj_str_t>();
         final path = file.path.toNativeUtf8(allocator: arena);
@@ -2211,8 +2301,15 @@ extension PjsipAudioDeviceOperations on PjsipService {
         setPlayer(playerId.value, playerPort);
         setMissingLogged(false);
         _addLog('🔔 $reason已开始播放');
+        if (traceIncomingRingtone) {
+          debugPrint(
+            '⏱ 来电首帧追踪 t=${DateTime.now().toIso8601String()} | '
+            '铃声播放器已连接，总耗时=${traceWatch!.elapsedMilliseconds}ms',
+          );
+        }
       });
     } finally {
+      traceWatch?.stop();
       clearStarting();
     }
   }

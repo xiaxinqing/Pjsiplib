@@ -150,6 +150,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
 
   final Set<Future<void>> _pendingWrites = <Future<void>>{};
   Future<void>? _closeFuture;
+  Future<void>? _processExitPreparationFuture;
   bool _acceptingWrites = true;
 
   @override
@@ -763,14 +764,28 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     }
   }
 
+  /// 为进程退出准备数据库，但不主动关闭 SQLite 原生连接。
+  ///
+  /// 退出时 Flutter engine 与 Drift 后台 isolate 会同时进入销毁阶段。在 macOS
+  /// 上显式调用 [close] 可能让 `sqlite3_close` 与 isolate/native finalizer 竞态，
+  /// 进而触发 EXC_BAD_ACCESS。这里先拒绝新写入并等待已接收事务完成，数据已经
+  /// 按 SQLite 事务语义落盘；随后由操作系统随进程统一回收连接资源。
+  Future<void> prepareForProcessExit() {
+    return _processExitPreparationFuture ??= _prepareForProcessExit();
+  }
+
+  Future<void> _prepareForProcessExit() async {
+    _acceptingWrites = false;
+    await waitForPendingWrites();
+  }
+
   @override
   Future<void> close() {
     return _closeFuture ??= _closeGracefully();
   }
 
   Future<void> _closeGracefully() async {
-    _acceptingWrites = false;
-    await waitForPendingWrites();
+    await prepareForProcessExit();
     await super.close();
   }
 
@@ -890,8 +905,8 @@ final callHistoryDatabaseProvider = Provider<CallHistoryDatabase>((ref) {
   //
   // 不把 close 绑定到 Provider dispose，是为了避免页面/ProviderScope 生命周期
   // 干扰正在执行的通话记录写入。真正退出应用时，由
-  // AppShutdownCoordinator 显式 close，让 Drift/SQLite 在 Flutter engine
-  // shutdown 前有序清理，避免 sqlite3_finalize 落到 Dart isolate 的
-  // NativeFinalizer 收尾阶段。
+  // AppShutdownCoordinator 只等待已接收写入完成，不在进程退出阶段显式
+  // sqlite3_close。macOS 上后台 Drift isolate 与 Flutter engine 同时销毁时，
+  // 主动关闭原生连接存在低频竞态；进程退出后由系统统一回收资源更可靠。
   return database;
 });
