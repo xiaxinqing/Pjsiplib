@@ -79,6 +79,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   int? _selectedOutgoingAccountId;
   bool _showInCallDialpad = false;
   bool _showDiagnosticLogs = true;
+  bool _exportingDiagnosticLogs = false;
   late String _lastDialpadValue;
   bool _normalizingDialpadNumber = false;
   String? _activeDialpadKey;

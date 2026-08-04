@@ -14,6 +14,7 @@ import '../app_identity.dart';
 import '../generated/pjsip_bindings.g.dart';
 import 'call_history_database.dart';
 import 'contact_service.dart';
+import 'diagnostic_log_exporter.dart';
 import 'native_bridge/audio_device_change_controller.dart';
 import 'sip_call_end_reason_mapper.dart';
 import '../../utils/toast_util.dart';
@@ -251,6 +252,37 @@ class PjsipService extends Notifier<PjsipUIState> {
     _logFlushTimer = null;
     _pendingLogs.clear();
     state = state.copyWith(logs: const []);
+  }
+
+  /// 导出当前诊断信息，并返回用户选择的保存路径。
+  ///
+  /// 导出前立即合并尚未刷入 UI 的日志，避免最后几十毫秒发生的注册或通话事件
+  /// 丢失。原生日志由导出器直接读取，不会停止或重启 PJSIP 日志写入。
+  Future<String?> exportDiagnosticLogs() async {
+    _logFlushTimer?.cancel();
+    _logFlushTimer = null;
+    _flushPendingLogs();
+
+    final snapshot = state;
+    final uiLogLines = snapshot.logs
+        .map((log) => '[${log.time.toIso8601String()}] ${log.message}')
+        .toList(growable: false);
+    return DiagnosticLogExporter.export(
+      uiLogLines: uiLogLines,
+      nativeLogFilePath: _nativeLogFilePath,
+      runtimeSummary: <String, String>{
+        '电话服务': snapshot.isInitialized ? '已启动' : '未启动',
+        '网络': snapshot.isNetworkAvailable ? '可用' : '不可用',
+        '网络恢复状态': snapshot.networkState.name,
+        '线路数量': '${snapshot.accounts.length}',
+        '活动通话数量': '${snapshot.calls.length}',
+        '音频模式': snapshot.audioDeviceMode.name,
+        '音频状态': snapshot.audioDeviceStatus,
+        '音频异常': snapshot.audioDeviceIssueMessage ?? '无',
+        '输入设备 ID': '${snapshot.selectedCaptureDeviceId ?? '未选择'}',
+        '输出设备 ID': '${snapshot.selectedPlaybackDeviceId ?? '未选择'}',
+      },
+    );
   }
 
   // 每秒重建一次 state，驱动 UI 上的通话时长刷新。connectedAt 不变，因此

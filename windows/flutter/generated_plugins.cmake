@@ -5,6 +5,7 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_badge_control_flutter
   connectivity_plus
+  file_selector_windows
   flutter_secure_storage_windows
   flutter_volume_controller
   restart_app

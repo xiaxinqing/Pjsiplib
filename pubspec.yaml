@@ -52,6 +52,7 @@ dependencies:
   restart_app: ^1.8.3
   package_info_plus: ^10.2.1
   app_badge_control_flutter: ^0.1.2
+  file_selector: ^1.1.0
 
 #生成Pjsip的绑定文件
 ffigen:

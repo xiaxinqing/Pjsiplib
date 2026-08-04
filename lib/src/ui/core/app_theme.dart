@@ -46,6 +46,7 @@ class AppIcons {
   static const edit = LucideIcons.squarePen300;
   static const save = LucideIcons.save300;
   static const copy = LucideIcons.copy300;
+  static const export = LucideIcons.download300;
   static const delete = LucideIcons.trash2300;
   static const refresh = LucideIcons.refreshCw300;
   static const power = LucideIcons.power300;
