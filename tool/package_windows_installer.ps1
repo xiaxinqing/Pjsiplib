@@ -35,9 +35,11 @@ function Add-VisualCppRuntime([string]$ReleaseDir) {
     }
 
     $visualStudioRoots = @(
-        (Join-Path ${env:ProgramFiles} "Microsoft Visual Studio\2022"),
-        (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022")
-    ) | Where-Object { $_ -and (Test-Path $_) }
+        @(
+            (Join-Path ${env:ProgramFiles} "Microsoft Visual Studio\2022"),
+            (Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\2022")
+        ) | Where-Object { $_ -and (Test-Path $_) }
+    )
 
     $crtDirectories = foreach ($visualStudioRoot in $visualStudioRoots) {
         foreach ($editionDirectory in Get-ChildItem -Path $visualStudioRoot -Directory -ErrorAction SilentlyContinue) {
@@ -72,11 +74,16 @@ function Find-InnoSetupCompiler {
         return $command.Source
     }
 
+    # Keep the pipeline result wrapped in an array. Without the outer @(...),
+    # PowerShell unwraps a single path to a string and $candidates[0] becomes
+    # the first character (usually "C") instead of the complete executable path.
     $candidates = @(
-        (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
-        (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
-    ) | Where-Object { $_ -and (Test-Path $_) }
+        @(
+            (Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"),
+            (Join-Path $env:ProgramFiles "Inno Setup 6\ISCC.exe"),
+            (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe")
+        ) | Where-Object { $_ -and (Test-Path $_) }
+    )
 
     if ($candidates.Count -gt 0) {
         return $candidates[0]
