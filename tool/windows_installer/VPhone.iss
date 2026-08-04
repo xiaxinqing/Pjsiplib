@@ -58,7 +58,7 @@ VersionInfoProductVersion={#AppVersion}
 Name: "chinesesimp"; MessagesFile: "languages\ChineseSimplified.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："; Flags: unchecked
+Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "快捷方式："
 
 [Files]
 ; Flutter Windows Release 目录必须整体安装，不能只复制 VPhone.exe。
