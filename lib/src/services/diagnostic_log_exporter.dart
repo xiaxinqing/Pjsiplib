@@ -57,15 +57,33 @@ class DiagnosticLogExporter {
   }
 
   /// PJSIP 可能仍在追加文件，读取失败时把原因写进导出文件，不让整个导出失败。
+  ///
+  /// Windows 原生日志可能混入当前系统代码页字符（例如音频设备名称），不能假定
+  /// 整个文件始终是 UTF-8。先严格按 UTF-8 解码，失败后再使用系统编码；最后的
+  /// UTF-8 容错解码保证个别异常字节不会让整份诊断日志无法导出。
   static Future<String> _readNativeLog(String path) async {
     try {
       final file = File(path);
       if (!await file.exists()) {
         return '[PJSIP 原生日志文件不存在]';
       }
-      return await file.readAsString();
+      final bytes = await file.readAsBytes();
+      return _decodeNativeLog(bytes);
     } catch (error) {
       return '[读取 PJSIP 原生日志失败: $error]';
+    }
+  }
+
+  /// 兼容 UTF-8、Windows 本地代码页及少量损坏字节的原生日志。
+  static String _decodeNativeLog(Uint8List bytes) {
+    try {
+      return utf8.decode(bytes);
+    } on FormatException {
+      try {
+        return systemEncoding.decode(bytes);
+      } catch (_) {
+        return utf8.decode(bytes, allowMalformed: true);
+      }
     }
   }
 
