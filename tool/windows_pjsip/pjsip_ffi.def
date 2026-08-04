@@ -1,31 +1,51 @@
 LIBRARY pjsip
 EXPORTS
   pj_get_version
+  pj_pool_release
+  pjmedia_aud_dev_refresh
+  pjmedia_port_destroy
+  pjmedia_tonegen_create
+  pjmedia_tonegen_play_digits
   pjsua_acc_add
   pjsua_acc_config_default
   pjsua_acc_del2
   pjsua_acc_del_param_default
   pjsua_acc_get_info
+  pjsua_acc_is_valid
+  pjsua_acc_modify
+  pjsua_acc_refresh_transport
   pjsua_acc_set_default
   pjsua_acc_set_registration
+  pjsua_acc_set_transport
   pjsua_call_answer
   pjsua_call_dial_dtmf
+  pjsua_call_dump
+  pjsua_call_get_count
   pjsua_call_get_info
+  pjsua_call_get_med_transport_info
   pjsua_call_hangup
+  pjsua_call_hangup_all
   pjsua_call_is_active
   pjsua_call_make_call
   pjsua_call_reinvite
   pjsua_call_set_hold
   pjsua_call_setting_default
+  pjsua_call_xfer
   pjsua_codec_set_priority
+  pjsua_conf_add_port
+  pjsua_conf_adjust_rx_level
   pjsua_conf_connect
   pjsua_conf_disconnect
+  pjsua_conf_get_port_info
   pjsua_conf_get_signal_level
+  pjsua_conf_remove_port
   pjsua_config_default
   pjsua_create
   pjsua_destroy
+  pjsua_destroy2
   pjsua_enum_aud_devs
   pjsua_enum_codecs
+  pjsua_enum_conf_ports
   pjsua_get_snd_dev
   pjsua_handle_ip_change
   pjsua_init
@@ -35,13 +55,18 @@ EXPORTS
   pjsua_player_create
   pjsua_player_destroy
   pjsua_player_get_conf_port
+  pjsua_pool_create
   pjsua_recorder_create
   pjsua_recorder_destroy
   pjsua_recorder_get_conf_port
+  pjsua_set_no_snd_dev
   pjsua_set_snd_dev
+  pjsua_set_snd_dev2
+  pjsua_snd_dev_param_default
   pjsua_start
   pjsua_transport_config_default
   pjsua_transport_create
+  pjsua_update_stun_servers
   vphone_apply_call_snapshot_callbacks
   vphone_clear_all_call_info_snapshots
   vphone_clear_call_info_snapshot
