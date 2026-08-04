@@ -1,5 +1,8 @@
 # VPhone Windows 安装器
 
+安装器使用 `languages/ChineseSimplified.isl` 提供简体中文界面。该文件随项目维护，
+无需再把语言文件复制到 Inno Setup 的安装目录。
+
 ## 开发机首次准备
 
 1. 在 Windows 安装 Flutter，并确认 `flutter doctor` 中 Windows 开发环境正常。
@@ -34,4 +37,3 @@ powershell -ExecutionPolicy Bypass -File .\tool\package_windows_installer.ps1 -S
 - 安装后会创建开始菜单入口，并提供可选的桌面快捷方式和标准卸载入口。
 - 未使用受信任代码签名证书时，Windows SmartScreen 可能显示安全提醒。内部测试可以选择“更多信息 -> 仍要运行”；正式对外分发前应给最终安装器添加代码签名和时间戳。
 - 不要只发送 `VPhone.exe`，Flutter 的 `data` 目录和相邻 DLL 都是运行所必需的。
-
