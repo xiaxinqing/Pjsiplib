@@ -48,6 +48,8 @@ part 'native_bridge/pjsip_audio_permissions.dart';
 
 part 'native_bridge/pjsip_call_snapshot_bridge.dart';
 
+part 'native_bridge/pjsip_windows_audio_devices.dart';
+
 part 'pjsip_parts/pjsip_network.dart';
 
 part 'pjsip_parts/pjsip_persistence.dart';

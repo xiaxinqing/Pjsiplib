@@ -81,6 +81,12 @@ class _PjsipAudioRuntime {
   _PjmediaPortDestroyDart? pjmediaPortDestroy;
   _PjPoolReleaseDart? pjPoolRelease;
 
+  /// Windows 专用的声卡枚举函数。
+  ///
+  /// Windows 的 `pjmedia_aud_dev_info.name` 是 128 字节，不能使用在 macOS
+  /// 上生成的 64 字节 FFI 结构，因此需要单独 lookup 并按 Windows ABI 调用。
+  _PjsuaEnumWindowsAudioDevicesDart? pjsuaEnumWindowsAudioDevices;
+
   /// Linux 或原生监听不可用时，没有通话的设备轮询间隔。
   Duration idlePollInterval = const Duration(seconds: 2);
 
@@ -279,6 +285,18 @@ extension PjsipAudioDeviceOperations on PjsipService {
   ///
   /// 如果查找失败，不让 App 崩溃；后续仍然可以枚举 PJSIP 当前缓存里的设备。
   void _setupAudioRuntime(ffi.DynamicLibrary dylib) {
+    if (Platform.isWindows) {
+      try {
+        _audio.pjsuaEnumWindowsAudioDevices = dylib
+            .lookupFunction<
+              _PjsuaEnumWindowsAudioDevicesC,
+              _PjsuaEnumWindowsAudioDevicesDart
+            >('pjsua_enum_aud_devs');
+      } catch (_) {
+        _audio.pjsuaEnumWindowsAudioDevices = null;
+      }
+    }
+
     try {
       _audio.pjmediaAudDevRefresh = dylib
           .lookupFunction<_PjmediaAudDevRefreshC, _PjmediaAudDevRefreshDart>(
@@ -1208,15 +1226,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
   /// 返回值同时包含 raw 列表和过滤后的列表：raw 用来诊断，filtered 用来 UI/策略。
   _AudioDeviceSnapshot? _readAudioDeviceSnapshot(Arena arena) {
     const maxDevices = 64;
-    final devices = arena<pjmedia_aud_dev_info>(maxDevices);
-    final count = arena<ffi.UnsignedInt>();
-    count.value = maxDevices;
-
-    final status = _bindings.pjsua_enum_aud_devs(devices, count);
-    if (status != 0) {
-      _addLog('❌ 枚举音频设备失败: pj_status=$status');
-      return null;
-    }
+    final nativeDevices = _enumerateAudioDevices(arena, maxDevices);
+    if (nativeDevices == null) return null;
 
     // PJSIP 默认设备 -1/-2 不一定出现在枚举列表中，所以这里手动补进去。
     // 大厂软电话一般也会提供“跟随系统”选项，让 App 跟随系统声音设置变化。
@@ -1241,16 +1252,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       ),
     ];
 
-    for (var i = 0; i < count.value; i++) {
-      final info = devices[i];
-      final device = PjsipAudioDevice(
-        id: info.id,
-        name: _nativeCharArrayToString(info.name, 64),
-        driver: _nativeCharArrayToString(info.driver, 32),
-        inputCount: info.input_count,
-        outputCount: info.output_count,
-        defaultSampleRate: info.default_samples_per_sec,
-      );
+    for (final device in nativeDevices) {
       if (device.canCapture) rawCaptureDevices.add(device);
       if (device.canPlayback) rawPlaybackDevices.add(device);
     }
@@ -1287,6 +1289,61 @@ extension PjsipAudioDeviceOperations on PjsipService {
       currentCaptureId: currentCaptureId,
       currentPlaybackId: currentPlaybackId,
     );
+  }
+
+  /// 按当前平台的原生 ABI 枚举声卡，并转换为统一的业务模型。
+  ///
+  /// Windows 设备名缓冲区为 128 字节，其他桌面平台为 64 字节。平台差异只在
+  /// 这个边界函数内处理，后续设备过滤、自动切换和 UI 都不需要知道 FFI 布局。
+  List<PjsipAudioDevice>? _enumerateAudioDevices(Arena arena, int maxDevices) {
+    final count = arena<ffi.UnsignedInt>();
+    count.value = maxDevices;
+
+    if (Platform.isWindows) {
+      final enumerate = _audio.pjsuaEnumWindowsAudioDevices;
+      if (enumerate == null) {
+        _addLog('❌ Windows 音频设备枚举函数不可用');
+        return null;
+      }
+
+      final devices = arena<_WindowsPjmediaAudioDeviceInfo>(maxDevices);
+      final status = enumerate(devices, count);
+      if (status != 0) {
+        _addLog('❌ 枚举音频设备失败: pj_status=$status');
+        return null;
+      }
+
+      return [
+        for (var i = 0; i < count.value; i++)
+          PjsipAudioDevice(
+            id: devices[i].id,
+            name: _nativeCharArrayToString(devices[i].name, 128),
+            driver: _nativeCharArrayToString(devices[i].driver, 32),
+            inputCount: devices[i].inputCount,
+            outputCount: devices[i].outputCount,
+            defaultSampleRate: devices[i].defaultSamplesPerSec,
+          ),
+      ];
+    }
+
+    final devices = arena<pjmedia_aud_dev_info>(maxDevices);
+    final status = _bindings.pjsua_enum_aud_devs(devices, count);
+    if (status != 0) {
+      _addLog('❌ 枚举音频设备失败: pj_status=$status');
+      return null;
+    }
+
+    return [
+      for (var i = 0; i < count.value; i++)
+        PjsipAudioDevice(
+          id: devices[i].id,
+          name: _nativeCharArrayToString(devices[i].name, 64),
+          driver: _nativeCharArrayToString(devices[i].driver, 32),
+          inputCount: devices[i].input_count,
+          outputCount: devices[i].output_count,
+          defaultSampleRate: devices[i].default_samples_per_sec,
+        ),
+    ];
   }
 
   /// 输入设备过滤规则。
