@@ -10,7 +10,7 @@ $InstallerScript = Join-Path $RootDir "tool\windows_installer\VPhone.iss"
 $DistDir = Join-Path $RootDir "dist"
 
 function Find-WindowsReleaseDirectory {
-    # Flutter 新旧版本使用过下面两种目录结构，优先采用当前常见的 x64 路径。
+    # Support both the current and legacy Flutter Windows release layouts.
     $candidates = @(
         (Join-Path $RootDir "build\windows\x64\runner\Release"),
         (Join-Path $RootDir "build\windows\runner\Release")
@@ -20,12 +20,12 @@ function Find-WindowsReleaseDirectory {
             return $candidate
         }
     }
-    throw "未找到 Flutter Windows Release 目录，请先确认 flutter build windows --release 已成功。"
+    throw "Flutter Windows Release directory was not found. Run flutter build windows --release first."
 }
 
 function Add-VisualCppRuntime([string]$ReleaseDir) {
-    # Flutter 官方要求传统安装包同时分发这些 VC++ 运行库。采用 app-local
-    # 方式后，同事的电脑无需预装 Visual Studio，也无需由安装器申请管理员权限。
+    # Ship the VC++ runtime app-locally so end users do not need Visual Studio
+    # or a separate administrator-level runtime installer.
     $runtimeFiles = @("msvcp140.dll", "vcruntime140.dll", "vcruntime140_1.dll")
     $missingFiles = @($runtimeFiles | Where-Object {
         -not (Test-Path (Join-Path $ReleaseDir $_))
@@ -53,17 +53,17 @@ function Add-VisualCppRuntime([string]$ReleaseDir) {
     }
     $crtDirectory = $crtDirectories | Sort-Object FullName -Descending | Select-Object -First 1
     if (-not $crtDirectory) {
-        throw "未找到 Visual C++ x64 运行库，请确认 Visual Studio 已安装“使用 C++ 的桌面开发”组件。"
+        throw "Visual C++ x64 runtime was not found. Install the Desktop development with C++ workload in Visual Studio."
     }
 
     foreach ($fileName in $missingFiles) {
         $sourcePath = Join-Path $crtDirectory.FullName $fileName
         if (-not (Test-Path $sourcePath)) {
-            throw "Visual C++ 运行库目录缺少：$sourcePath"
+            throw "Visual C++ runtime file is missing: $sourcePath"
         }
         Copy-Item -Force $sourcePath (Join-Path $ReleaseDir $fileName)
     }
-    Write-Host "已附带 Visual C++ 运行库：$($runtimeFiles -join ', ')"
+    Write-Host "Bundled Visual C++ runtime: $($runtimeFiles -join ', ')"
 }
 
 function Find-InnoSetupCompiler {
@@ -83,18 +83,18 @@ function Find-InnoSetupCompiler {
     }
 
     throw @"
-未找到 Inno Setup 6。
-请先从 https://jrsoftware.org/isdl.php 安装 Inno Setup，然后重新运行本脚本。
+Inno Setup 6 was not found.
+Install it from https://jrsoftware.org/isdl.php and run this script again.
 "@
 }
 
 if (-not (Test-Path $PubspecPath)) {
-    throw "未找到 pubspec.yaml：$PubspecPath"
+    throw "pubspec.yaml was not found: $PubspecPath"
 }
 
 $versionMatch = Select-String -Path $PubspecPath -Pattern '^version:\s*([^+\s]+)(?:\+([^\s]+))?' | Select-Object -First 1
 if (-not $versionMatch) {
-    throw "无法从 pubspec.yaml 读取版本号。"
+    throw "Unable to read the version from pubspec.yaml."
 }
 
 $VersionName = $versionMatch.Matches[0].Groups[1].Value
@@ -110,12 +110,12 @@ try {
         Write-Host "Building VPhone $VersionName+$BuildNumber for Windows..." -ForegroundColor Cyan
         & flutter pub get
         if ($LASTEXITCODE -ne 0) {
-            throw "flutter pub get 失败，退出码：$LASTEXITCODE"
+            throw "flutter pub get failed with exit code $LASTEXITCODE."
         }
 
         & flutter build windows --release
         if ($LASTEXITCODE -ne 0) {
-            throw "Flutter Windows Release 构建失败，退出码：$LASTEXITCODE"
+            throw "Flutter Windows Release build failed with exit code $LASTEXITCODE."
         }
     }
 
@@ -136,13 +136,13 @@ try {
     foreach ($fileName in $requiredFiles) {
         $filePath = Join-Path $ReleaseDir $fileName
         if (-not (Test-Path $filePath)) {
-            throw "Release 目录缺少运行依赖：$fileName"
+            throw "Required runtime file is missing from the Release directory: $fileName"
         }
     }
 
     $FlutterAssets = Join-Path $ReleaseDir "data\flutter_assets"
     if (-not (Test-Path $FlutterAssets)) {
-        throw "Release 目录缺少 Flutter 资源：$FlutterAssets"
+        throw "Flutter assets are missing from the Release directory: $FlutterAssets"
     }
 
     New-Item -ItemType Directory -Force -Path $DistDir | Out-Null
@@ -156,17 +156,17 @@ try {
         "/DOutputDir=$DistDir" `
         $InstallerScript
     if ($LASTEXITCODE -ne 0) {
-        throw "Inno Setup 打包失败，退出码：$LASTEXITCODE"
+        throw "Inno Setup failed with exit code $LASTEXITCODE."
     }
 
     $InstallerPath = Join-Path $DistDir "VPhone-Setup-$VersionName.exe"
     if (-not (Test-Path $InstallerPath)) {
-        throw "安装器生成完成，但未找到预期文件：$InstallerPath"
+        throw "Inno Setup completed but the expected installer was not found: $InstallerPath"
     }
 
     $hash = Get-FileHash -Algorithm SHA256 -Path $InstallerPath
     Write-Host ""
-    Write-Host "Windows 安装器已生成：" -ForegroundColor Green
+    Write-Host "Windows installer created:" -ForegroundColor Green
     Write-Host $InstallerPath
     Write-Host "SHA-256: $($hash.Hash)"
 }
