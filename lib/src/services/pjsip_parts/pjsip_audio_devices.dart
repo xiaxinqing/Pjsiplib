@@ -529,6 +529,14 @@ extension PjsipAudioDeviceOperations on PjsipService {
         if (!forceReapply &&
             captureId == current.captureId &&
             playbackId == current.playbackId) {
+          if (Platform.isWindows) {
+            _addLog(
+              '🎧 Windows 音频设备未变化，跳过声卡重开: '
+              'capture=${_audioDeviceDescriptionForLog(_uiState.captureDevices, captureId)}, '
+              'playback=${_audioDeviceDescriptionForLog(_uiState.playbackDevices, playbackId)} '
+              '($reason)',
+            );
+          }
           final selectedSystemDefaults =
               captureId ==
                   pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value &&
@@ -580,6 +588,15 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
         // 真正告诉 PJSIP 切换输入/输出设备。这里的 ID 可以是真实设备 ID，
         // 也可以是 PJSUA_SND_DEFAULT_CAPTURE_DEV/PJSUA_SND_DEFAULT_PLAYBACK_DEV。
+        if (Platform.isWindows) {
+          _addLog(
+            '🎧 Windows 准备应用音频设备: '
+            'current=${current.captureId}/${current.playbackId}, '
+            'capture=${_audioDeviceDescriptionForLog(_uiState.captureDevices, captureId)}, '
+            'playback=${_audioDeviceDescriptionForLog(_uiState.playbackDevices, playbackId)}, '
+            'force=$forceReapply, calls=${_uiState.calls.length} ($reason)',
+          );
+        }
         final applyResult = _setSoundDevicesWithIssueHandling(
           captureId: captureId,
           playbackId: playbackId,
@@ -1495,6 +1512,25 @@ extension PjsipAudioDeviceOperations on PjsipService {
         'signature=${device.signature}',
       );
     }
+  }
+
+  /// 把设备 ID 转成适合诊断 Windows 蓝牙 profile 的可读信息。
+  ///
+  /// Windows 蓝牙耳机通常同时暴露 A2DP 与 Hands-Free/HFP 端点。仅打印数字 ID
+  /// 无法判断 PJSIP 实际选中了哪一种，因此在声卡切换日志中同时记录名称、驱动、
+  /// 采样率和输入输出通道数。找不到设备时保留 ID，避免诊断函数影响业务流程。
+  String _audioDeviceDescriptionForLog(List<PjsipAudioDevice> devices, int id) {
+    PjsipAudioDevice? matched;
+    for (final device in devices) {
+      if (device.id == id) {
+        matched = device;
+        break;
+      }
+    }
+    if (matched == null) return 'id=$id, details=unavailable';
+    return 'id=${matched.id}, name=${matched.name}, driver=${matched.driver}, '
+        'rate=${matched.defaultSampleRate}, in=${matched.inputCount}, '
+        'out=${matched.outputCount}';
   }
 
   /// 启动音频设备热插拔监控。

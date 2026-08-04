@@ -9,6 +9,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
     final isCheckingSeat =
         uiState.seatEnvironmentState == SeatEnvironmentState.checking;
     final isRestoringSeat =
+        uiState.accounts.isNotEmpty &&
         uiState.seatEnvironmentState == SeatEnvironmentState.restoring;
     final color = isCheckingSeat || isRestoringSeat
         ? _brandGreen

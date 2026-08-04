@@ -18,6 +18,16 @@ extension PjsipEngineOperations on PjsipService {
       _bindings.pjsua_logging_config_default(logCfg);
       _bindings.pjsua_media_config_default(mediaCfg);
 
+      // 当前三端都只启用 PCMU/PCMA（8 kHz、单声道）。如果继续使用 PJSIP
+      // 默认的 16 kHz 会议桥，就需要在声卡、会议桥和 G.711 之间持续重采样；
+      // Windows 蓝牙免提设备切到 HFP 后尤其容易出现 playdbuf/capdbuf
+      // Underflow。这里统一与 MicroSIP 的 G.711 配置保持一致，减少重采样和
+      // 软件回声消除负担。以后启用 Opus/G.722 时，需要同步按最高启用
+      // 编解码器的采样率计算 clock_rate，不能继续固定为 8 kHz。
+      mediaCfg.ref.clock_rate = 8000;
+      mediaCfg.ref.channel_count = 1;
+      mediaCfg.ref.ec_tail_len = 20;
+
       uaCfg.ref.cb.on_reg_state = _regStateCallable.nativeFunction;
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
       uaCfg.ref.cb.on_call_state = _callStateCallable.nativeFunction;
@@ -95,6 +105,12 @@ extension PjsipEngineOperations on PjsipService {
         _addLog('❌ pjsua_init 失败: pj_status=$initStatus');
         return;
       }
+      _addLog(
+        '🎚️ 媒体配置: bridge=8000Hz, channel=1, '
+        'frame=${mediaCfg.ref.audio_frame_ptime}ms, ecTail=20ms, '
+        'recordLatency=${mediaCfg.ref.snd_rec_latency}ms, '
+        'playLatency=${mediaCfg.ref.snd_play_latency}ms',
+      );
       _addLog(
         '🧾 PJSIP 原生日志文件: $_nativeLogFilePath '
         '(level=$runtimePjsipLogLevel)',
@@ -1518,7 +1534,13 @@ extension PjsipEngineOperations on PjsipService {
       defaultAccountId: nextDefaultId,
       accId: nextDefault?.accId ?? -1,
       host: nextDefault?.host ?? '',
+      seatEnvironmentState: accounts.isEmpty
+          ? SeatEnvironmentState.ready
+          : _uiState.seatEnvironmentState,
     );
+    if (accounts.isEmpty) {
+      _resetLineRecoveryStateWithoutAccounts(reason: '已删除最后一条线路');
+    }
     unawaited(_persistSeatEnvironment());
     _addLog('🗑 已删除线路: ${account.lineLabel}');
     ToastUtil.showSuccess('线路已删除');

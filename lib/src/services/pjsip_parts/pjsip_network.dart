@@ -43,6 +43,10 @@ extension PjsipNetworkOperations on PjsipService {
       _addLog('⚠️ 前台恢复时检查网络失败，将沿用当前网络状态: $error');
     }
 
+    if (_uiState.accounts.isEmpty) {
+      _resetLineRecoveryStateWithoutAccounts(reason: '应用回到前台');
+      return;
+    }
     if (!_uiState.isNetworkAvailable) return;
     // 网络类型变化时先让现有 IP Change 流程完成，完成回调会再次安排检查。
     if (_pendingIpChange ||
@@ -147,12 +151,18 @@ extension PjsipNetworkOperations on PjsipService {
     if (!isAvailable) {
       // 离线时不反复 REGISTER，也不销毁 PJSUA；只记录待恢复。网络恢复后
       // 再统一执行 IP Change，可避免网络抖动期间创建多个账号或 Transport。
-      _pendingIpChange = true;
+      _pendingIpChange = _uiState.accounts.isNotEmpty;
       _uiState = _uiState.copyWith(
         isNetworkAvailable: false,
         networkState: PjsipNetworkState.offline,
       );
       _addLog('🌐 网络已断开，等待恢复后重新处理 SIP 注册');
+      return;
+    }
+
+    if (_uiState.accounts.isEmpty) {
+      _uiState = _uiState.copyWith(isNetworkAvailable: true);
+      _resetLineRecoveryStateWithoutAccounts(reason: '网络变化');
       return;
     }
 
@@ -252,6 +262,10 @@ extension PjsipNetworkOperations on PjsipService {
     Duration delay = _automaticRegistrationRecoveryDelay,
   }) {
     if (_isDisposed) return;
+    if (_uiState.accounts.isEmpty) {
+      _resetLineRecoveryStateWithoutAccounts(reason: reason);
+      return;
+    }
     _automaticRegistrationRecoveryTimer?.cancel();
     _automaticRegistrationRecoveryTimer = Timer(delay, () {
       _automaticRegistrationRecoveryTimer = null;
@@ -356,6 +370,26 @@ extension PjsipNetworkOperations on PjsipService {
     _automaticRegistrationRecoveryTimer?.cancel();
     _automaticRegistrationRecoveryTimer = null;
     _lastAutomaticRegistrationAttemptAt.clear();
+  }
+
+  /// 没有添加线路时，网络和前后台事件不应该进入 SIP 恢复流程。
+  ///
+  /// 这里统一取消延时任务并清除 pending 标记，避免页面短暂显示
+  /// “线路恢复中”，也避免向没有账号的 PJSIP 引擎发起 IP Change。
+  void _resetLineRecoveryStateWithoutAccounts({required String reason}) {
+    if (_uiState.accounts.isNotEmpty) return;
+    _networkChangeTimer?.cancel();
+    _networkChangeTimer = null;
+    _automaticRegistrationRecoveryTimer?.cancel();
+    _automaticRegistrationRecoveryTimer = null;
+    _lastAutomaticRegistrationAttemptAt.clear();
+    _pendingIpChange = false;
+    _uiState = _uiState.copyWith(
+      networkState: _uiState.isNetworkAvailable
+          ? PjsipNetworkState.idle
+          : PjsipNetworkState.offline,
+    );
+    _addLog('🌐 跳过线路恢复: $reason，当前未添加线路');
   }
 
   bool requestSipNetworkRecovery({required String reason}) {
