@@ -25,7 +25,7 @@ cat > "$WORK/pjlib/include/pj/config_site.h" <<'CONFIG_SITE'
 #pragma once
 
 #define PJSUA_MAX_CALLS                 32
-#define PJSUA_MAX_ACC                   16
+#define PJSUA_MAX_ACC                   64
 
 #define PJMEDIA_SOUND_CLOCK_RATE        44100
 #define PJMEDIA_HAS_WEBRTC_AEC          1

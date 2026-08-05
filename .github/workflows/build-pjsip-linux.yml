@@ -59,7 +59,7 @@ jobs:
         run: |
           cat > "${GITHUB_WORKSPACE}/third_path/pjproject/pjlib/include/pj/config_site.h" <<'EOF'
           #define PJSUA_MAX_CALLS          32
-          #define PJSUA_MAX_ACC            16
+          #define PJSUA_MAX_ACC            64
           #define PJMEDIA_SOUND_CLOCK_RATE 44100
           #define PJMEDIA_HAS_VIDEO        0
           #define PJ_LOG_MAX_LEVEL         6
