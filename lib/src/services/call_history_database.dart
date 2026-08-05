@@ -375,6 +375,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
             callHistoryEntries.answeredAt.isNull() &
             callHistoryEntries.missedReadAt.isNull(),
       );
+    // watchSingle   持续监听，返回 Stream<int>
     return query.map((row) => row.read(countExpression) ?? 0).watchSingle();
   }
 

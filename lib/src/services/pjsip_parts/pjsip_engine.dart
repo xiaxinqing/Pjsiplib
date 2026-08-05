@@ -426,6 +426,8 @@ extension PjsipEngineOperations on PjsipService {
       final stunServers = _stunServersForConfig(effectiveIceConfig);
       if (stunServers.isNotEmpty) {
         _addLog('🌐 STUN 服务器: ${stunServers.join(', ')}');
+      } else if (!effectiveIceConfig.stunEnabled) {
+        _addLog('🌐 STUN 已关闭：该线路不使用 SIP/媒体 STUN');
       }
       if (normalizedOutboundProxy.isNotEmpty) {
         _addLog(
@@ -703,6 +705,10 @@ extension PjsipEngineOperations on PjsipService {
   }
 
   List<String> _stunServersForConfig(IceConfig iceConfig) {
+    // 线路关闭 STUN 后，不再把它填写的地址应用到底层全局服务器列表。
+    // ICE 可继续依赖 host/prflx candidate 工作，行为更接近 MicroSIP。
+    if (!iceConfig.stunEnabled) return const <String>[];
+
     const defaultStunServers = <String>[
       'stun.l.google.com:19302',
       'stun.pjsip.org',
@@ -725,7 +731,7 @@ extension PjsipEngineOperations on PjsipService {
     ffi.Pointer<pjsua_acc_config> accCfg,
     IceConfig iceConfig,
   ) {
-    if (_stunServersForConfig(iceConfig).isEmpty) {
+    if (!iceConfig.stunEnabled || _stunServersForConfig(iceConfig).isEmpty) {
       accCfg.ref.sip_stun_useAsInt =
           pjsua_stun_use.PJSUA_STUN_USE_DISABLED.value;
       accCfg.ref.media_stun_useAsInt =

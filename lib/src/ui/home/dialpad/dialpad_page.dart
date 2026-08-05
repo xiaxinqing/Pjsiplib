@@ -3,6 +3,7 @@ part of '../../../../main.dart';
 /// 拨号页主布局：负责左侧拨号卡和右侧通话面板的组合与快捷键绑定。
 extension _DialpadPage on _MyHomePageState {
   Widget _buildDialpadPage(PjsipUIState uiState, PjsipService service) {
+    _traceWorkspacePageBuild(_WorkspaceSection.dialpad);
     final selectedAccountId =
         _selectedOutgoingAccountId ?? uiState.bestOutgoingAccount?.accId;
     final selectedAccount = selectedAccountId == null

@@ -88,16 +88,24 @@ class MediaSecurityConfig {
 }
 
 class IceConfig {
-  const IceConfig({this.enabled = false, this.stunServer = ''});
+  const IceConfig({
+    this.enabled = false,
+    this.stunEnabled = true,
+    this.stunServer = '',
+  });
 
   final bool enabled;
+  // STUN 与 ICE 独立控制。关闭 STUN 后，ICE 仍可使用 host 和
+  // peer-reflexive candidate 完成媒体协商。
+  final bool stunEnabled;
   final String stunServer;
 
   bool get hasStunServer => stunServer.trim().isNotEmpty;
 
-  IceConfig copyWith({bool? enabled, String? stunServer}) {
+  IceConfig copyWith({bool? enabled, bool? stunEnabled, String? stunServer}) {
     return IceConfig(
       enabled: enabled ?? this.enabled,
+      stunEnabled: stunEnabled ?? this.stunEnabled,
       stunServer: stunServer ?? this.stunServer,
     );
   }

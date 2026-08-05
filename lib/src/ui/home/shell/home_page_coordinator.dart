@@ -15,11 +15,11 @@ extension _HomePageCoordinator on _MyHomePageState {
 
   /// 从用户切换工作区时开始计时；当前只采样包含数据库内容的两个页面。
   void _beginWorkspacePageLoadTrace(_WorkspaceSection section) {
-    if (section != _WorkspaceSection.contacts &&
+    /*    if (section != _WorkspaceSection.contacts &&
         section != _WorkspaceSection.history) {
       _workspacePageLoadTrace = null;
       return;
-    }
+    }*/
     final trace = _WorkspacePageLoadTrace(
       id: ++_workspacePageLoadTraceSequence,
       section: section,

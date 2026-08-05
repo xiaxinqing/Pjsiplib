@@ -141,8 +141,12 @@ class _PersistedSipLine {
       'transport': transport.name,
       // 媒体加密是账号级配置：信令传输和 RTP/SRTP 是否加密是两件事。
       'mediaSecurity': {'mode': mediaSecurity.mode.storageKey},
-      // STUN 可独立保存；ICE 开关只控制是否生成 ICE 候选。
-      'ice': {'enabled': iceConfig.enabled, 'stunServer': iceConfig.stunServer},
+      // STUN 可独立于 ICE 开关；关闭 STUN 时仍保留服务器文本，方便重新开启。
+      'ice': {
+        'enabled': iceConfig.enabled,
+        'stunEnabled': iceConfig.stunEnabled,
+        'stunServer': iceConfig.stunServer,
+      },
       'turn': {
         'enabled': turnConfig.enabled,
         'server': turnConfig.server,
@@ -192,6 +196,8 @@ class _PersistedSipLine {
       ),
       iceConfig: IceConfig(
         enabled: iceJson['enabled'] as bool? ?? false,
+        // 旧版本没有该字段，默认保持原有的“启用 STUN”行为。
+        stunEnabled: iceJson['stunEnabled'] as bool? ?? true,
         stunServer: (iceJson['stunServer'] as String?)?.trim() ?? '',
       ),
       turnConfig: TurnConfig(

@@ -66,6 +66,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   final _PjsipCallSnapshotRuntime _callSnapshots = _PjsipCallSnapshotRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
+  // 同一路通话只向 PJSIP 提交一次挂断请求，避免按钮连点或延迟任务重复挂断。
+  final Set<int> _hangupRequestedCallIds = <int>{};
   final Set<int> _blindTransferAutoReleaseCallIds = <int>{};
   final Set<int> _hangupSoundPlayedCallIds = <int>{};
   final Set<int> _backgroundHoldScheduledCallIds = <int>{};
@@ -346,6 +348,7 @@ class PjsipService extends Notifier<PjsipUIState> {
 
     _mediaConnectedCalls.clear();
     _locallyEndedCallIds.clear();
+    _hangupRequestedCallIds.clear();
     _hangupSoundPlayedCallIds.clear();
     _backgroundHoldScheduledCallIds.clear();
     _locallyReleasedCallIds.clear();
@@ -495,6 +498,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     if (state.isInitialized) {
       _bindings.pjsua_destroy();
       _mediaConnectedCalls.clear();
+      _hangupRequestedCallIds.clear();
       _hangupSoundPlayedCallIds.clear();
       _backgroundHoldScheduledCallIds.clear();
       _locallyReleasedCallIds.clear();

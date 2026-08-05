@@ -40,6 +40,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   var _selectedTransport = SipTransport.udp;
   var _selectedMediaEncryption = MediaEncryptionMode.none;
   var _iceEnabled = false;
+  var _stunEnabled = true;
   var _turnEnabled = false;
   var _ipv6Enabled = false;
   var _selectedTurnTransport = TurnTransport.udp;
@@ -93,6 +94,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     // UDP 分片，表现成“客户端发出 INVITE，但服务端没有任何反应”。
     // 所以新建线路默认不主动打开 ICE；需要复杂 NAT 穿透时由用户显式开启。
     _iceEnabled = account?.iceConfig.enabled ?? false;
+    // 与旧版本保持一致，STUN 默认开启；遇到特定服务端兼容问题时可单独关闭。
+    _stunEnabled = account?.iceConfig.stunEnabled ?? true;
     _turnEnabled = account?.turnConfig.enabled ?? false;
     _ipv6Enabled = account?.ipv6Enabled ?? false;
     _selectedTurnTransport = account?.turnConfig.transport ?? TurnTransport.udp;
@@ -106,6 +109,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
         account?.turnConfig.enabled == true ||
         account?.ipv6Enabled == true ||
         account?.iceConfig.enabled == false ||
+        account?.iceConfig.stunEnabled == false ||
         (account != null &&
             account.iceConfig.stunServer.trim().isNotEmpty &&
             account.iceConfig.stunServer.trim() != _defaultStunServer);
@@ -595,9 +599,12 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     final summary = [
       accountHints.isEmpty ? '账号默认' : accountHints.join('、'),
       _iceEnabled ? 'ICE' : '无 ICE',
-      stunServer.isEmpty || stunServer == _defaultStunServer
-          ? '默认 STUN'
-          : '自定义 STUN',
+      if (!_stunEnabled)
+        '无 STUN'
+      else if (stunServer.isEmpty || stunServer == _defaultStunServer)
+        '默认 STUN'
+      else
+        '自定义 STUN',
       _ipv6Enabled ? 'IPv6' : '仅 IPv4',
       if (_turnEnabled) 'TURN',
     ].join(' · ');
@@ -726,11 +733,24 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                           child: _buildUdpIceWarning(context),
                         ),
+                      const Divider(height: 1),
+                      SwitchListTile.adaptive(
+                        value: _stunEnabled,
+                        onChanged: (enabled) =>
+                            setState(() => _stunEnabled = enabled),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        secondary: const Icon(AppIcons.public),
+                        title: const Text('启用 STUN'),
+                        subtitle: const Text('发现公网映射地址，用于 SIP 和媒体 NAT 穿透'),
+                      ),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 160),
-                        child: _iceEnabled
+                        child: _stunEnabled
                             ? Column(
-                                key: const ValueKey('ice-enabled'),
+                                key: const ValueKey('stun-enabled'),
                                 children: [
                                   const Divider(height: 1),
                                   Padding(
@@ -755,7 +775,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                                 ],
                               )
                             : const SizedBox.shrink(
-                                key: ValueKey('ice-disabled'),
+                                key: ValueKey('stun-disabled'),
                               ),
                       ),
                       const Divider(height: 1),
@@ -1069,6 +1089,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     final mediaSecurity = MediaSecurityConfig(mode: _selectedMediaEncryption);
     final iceConfig = IceConfig(
       enabled: _iceEnabled,
+      stunEnabled: _stunEnabled,
       stunServer: _stunServerController.text.trim(),
     );
     final turnConfig = TurnConfig(

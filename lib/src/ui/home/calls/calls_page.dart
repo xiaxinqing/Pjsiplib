@@ -24,6 +24,7 @@ const double _answerPulseEndScale = 1.13;
 /// 当前通话页入口：负责主舞台和右侧通话面板的页面级组合。
 extension _HomeCalls on _MyHomePageState {
   Widget _buildCallsPage(PjsipUIState uiState, PjsipService service) {
+    _traceWorkspacePageBuild(_WorkspaceSection.calls);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

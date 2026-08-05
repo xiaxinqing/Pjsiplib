@@ -306,6 +306,10 @@ extension PjsipCallOperations on PjsipService {
   Future<void> hangupCall(int callId) async {
     final call = _uiState.calls[callId];
     if (call == null) return;
+    if (_hangupRequestedCallIds.contains(callId)) {
+      _addLog('⏳ 该通话已提交挂断请求: call=$callId');
+      return;
+    }
     if (_scheduleHangupAfterControlSettles(callId)) return;
     // 延迟到达的 DISCONNECTED microtask 可能尚未清除本地记录，此时
     // callId 可能已失效。对死 id 调 hangup 无害但没意义，直接清理本地状态。
@@ -314,6 +318,8 @@ extension PjsipCallOperations on PjsipService {
       _removeCall(callId);
       return;
     }
+    _hangupRequestedCallIds.add(call.callId);
+    _disconnectCallFromSoundBeforeHangup(call.callId);
     _addLog(
       '⏹ 本地用户请求挂断: call=${call.callId}, '
       'remote=${call.remoteUri}, state=${call.state}',
@@ -330,6 +336,7 @@ extension PjsipCallOperations on PjsipService {
       _scheduleLocalHangupCleanup(call);
       _addLog('挂断 API 调用成功，等待 PJSIP DISCONNECTED 回调: call=${call.callId}');
     } else {
+      _hangupRequestedCallIds.remove(call.callId);
       _addLog('❌ 挂断失败: call=${call.callId}, pj_status=$status');
     }
   }
@@ -398,23 +405,14 @@ extension PjsipCallOperations on PjsipService {
       _hangupCleanupTimers.remove(call.callId);
       if (_isDisposed || !_uiState.calls.containsKey(call.callId)) return;
 
-      // 正常路径应该由 DISCONNECTED 回调移除通话；这个定时器只处理
-      // BYE 丢失、native 回调迟迟不到、或者底层已经不活跃但 UI 仍有记录的情况。
-      // 它是本地收尾兜底，不代表一定又成功发送了一次 SIP BYE。
+      // 正常路径由 DISCONNECTED 回调移除通话。若回调迟迟未到，
+      // 这里只清理本地 UI，不再重复调用 pjsua_call_hangup。
       _locallyReleasedCallIds.add(call.callId);
       final stillActive = _bindings.pjsua_call_is_active(call.callId) != 0;
       if (stillActive) {
-        final retryStatus = _bindings.pjsua_call_hangup(
-          call.callId,
-          0,
-          ffi.nullptr,
-          ffi.nullptr,
-        );
-        _addLog(
-          '⚠️ 挂断等待超时，已重发挂断并本地收尾: call=${call.callId}, pj_status=$retryStatus',
-        );
+        _addLog('⚠️ 挂断回调等待超时，底层仍报告活跃，仅清理本地界面: call=${call.callId}');
       } else {
-        _addLog('⚠️ 挂断等待超时，底层已不活跃，本地收尾: call=${call.callId}');
+        _addLog('⚠️ 挂断回调等待超时，底层已不活跃，清理本地界面: call=${call.callId}');
       }
       _removeCall(call.callId, hangupReason: 'local hangup timeout');
       unawaited(
@@ -834,6 +832,17 @@ extension PjsipCallOperations on PjsipService {
     });
   }
 
+  /// 参照 MicroSIP 的挂断顺序，先断开该路通话与本地声卡的双向连接，
+  /// 再由调用方发送一次挂断请求。不改动会议成员之间的媒体连接。
+  void _disconnectCallFromSoundBeforeHangup(int callId) {
+    final slot = _getConferenceSlot(callId);
+    if (slot == null) return;
+    _bindings.pjsua_conf_disconnect(slot, 0);
+    _bindings.pjsua_conf_disconnect(0, slot);
+    _mediaConnectedCalls.remove(callId);
+    _addLog('🎧 挂断前已断开本地音频桥: call=$callId, slot=$slot');
+  }
+
   void _connectCallToSound(int callId) {
     // 恢复通话、拆分会议等路径也可能重新连接声卡；这里统一保证从 no-sound
     // 状态切回用户当前预选的输入/输出设备。
@@ -946,6 +955,7 @@ extension PjsipCallOperations on PjsipService {
     _hangupCleanupTimers.remove(callId)?.cancel();
     _backgroundHoldScheduledCallIds.remove(callId);
     _lastCallControlOperationAt.remove(callId);
+    _hangupRequestedCallIds.remove(callId);
     final endedCall = _uiState.calls[callId];
     if (endedCall != null) {
       final wasEndedLocally = _locallyEndedCallIds.contains(endedCall.callId);
