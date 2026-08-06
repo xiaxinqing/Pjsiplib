@@ -1925,9 +1925,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _cancelScheduledSoundDeviceRelease();
     final current = using(_currentSoundDeviceIds);
     if (!_isNoSoundDevice(current)) {
-      if (!_audioDeviceSpeakerOnlyFallbackActive) {
-        _clearAudioDeviceIssue();
-      }
+      // PJSIP 保留着设备 ID，只能说明当前不是 no-sound 模式，不能证明真实声卡
+      // 仍然可用。来电铃声会经过这里；若直接清除异常，会让响铃期间的侧栏状态
+      // 错误地恢复为正常。异常只由设备枚举、权限检查或真实打开成功来清理。
       unawaited(_syncMicrophonePermissionIssue(reason: reason));
       _audio.soundDeviceReleasedForIdle = false;
       _startAudioLevelTimer();

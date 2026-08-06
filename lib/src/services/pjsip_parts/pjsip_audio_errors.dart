@@ -29,8 +29,7 @@ extension PjsipAudioIssueOperations on PjsipService {
     final status = _bindings.pjsua_set_snd_dev(captureId, playbackId);
     if (status == 0) {
       _clearSoundDeviceOpenFailure();
-      _audioDeviceSpeakerOnlyFallbackActive = false;
-      _clearAudioDeviceIssue();
+      _clearAudioDeviceIssueAfterSuccessfulDeviceApply();
       return const _SoundDeviceApplyResult.success();
     }
 
@@ -88,7 +87,6 @@ extension PjsipAudioIssueOperations on PjsipService {
       status: status,
     );
     final message = _audioDeviceIssueMessage(status, action: action);
-    _audioDeviceSpeakerOnlyFallbackActive = false;
     _uiState = _uiState.copyWith(
       audioDeviceStatus: message,
       audioDeviceIssueMessage: message,
@@ -108,7 +106,6 @@ extension PjsipAudioIssueOperations on PjsipService {
     required int playbackId,
   }) {
     const message = '麦克风不可用，已切到仅扬声器模式';
-    _audioDeviceSpeakerOnlyFallbackActive = true;
     _uiState = _uiState.copyWith(
       audioDeviceStatus: message,
       audioDeviceIssueMessage: '$message，请检查输入设备',
@@ -134,7 +131,6 @@ extension PjsipAudioIssueOperations on PjsipService {
       audioDeviceIssueMessage: null,
       audioDeviceIssueStatus: null,
     );
-    _audioDeviceSpeakerOnlyFallbackActive = false;
     _lastAudioDeviceIssueToastAt = null;
   }
 
@@ -142,6 +138,23 @@ extension PjsipAudioIssueOperations on PjsipService {
       status == _audioIssueNoConcreteCaptureDevice ||
       status == _audioIssueNoConcretePlaybackDevice ||
       status == _audioIssueNoConcreteInputOutputDevice;
+
+  /// 成功应用 PJSIP 声卡后，只清理由本次打开失败产生的运行时异常。
+  ///
+  /// “无真实设备”必须等设备枚举确认恢复，“麦克风权限”必须等系统权限检查确认
+  /// 恢复。仅凭 `pjsua_set_snd_dev` 返回成功就清除，会让来电响铃期间短暂显示
+  /// 音频正常，接通后又重新显示异常。
+  void _clearAudioDeviceIssueAfterSuccessfulDeviceApply() {
+    if (_shouldPreserveAudioDeviceIssueAfterSuccessfulDeviceApply) {
+      return;
+    }
+    _clearAudioDeviceIssue();
+  }
+
+  bool get _shouldPreserveAudioDeviceIssueAfterSuccessfulDeviceApply =>
+      _uiState.audioDeviceIssueStatus ==
+          _audioIssueMicrophonePermissionDenied ||
+      _isAudioDeviceAvailabilityIssue(_uiState.audioDeviceIssueStatus);
 
   /// 根据设备枚举结果同步“没有真实输入/输出设备”的提示。
   ///
@@ -197,15 +210,15 @@ extension PjsipAudioIssueOperations on PjsipService {
     _addLog('⚠️ $message ($reason)');
   }
 
-  /// PJSIP 声卡成功不代表 macOS 隐私权限恢复，所以权限类异常需要保留。
+  /// PJSIP 声卡成功不代表权限或真实设备已经恢复，所以权威检测类异常需要保留。
   String? get _audioDeviceIssueMessageAfterSuccessfulDeviceApply =>
-      _uiState.audioDeviceIssueStatus == _audioIssueMicrophonePermissionDenied
+      _shouldPreserveAudioDeviceIssueAfterSuccessfulDeviceApply
       ? _uiState.audioDeviceIssueMessage
       : null;
 
-  /// PJSIP 声卡成功不代表 macOS 隐私权限恢复，所以权限类异常需要保留。
+  /// PJSIP 声卡成功不代表权限或真实设备已经恢复，所以权威检测类异常需要保留。
   int? get _audioDeviceIssueStatusAfterSuccessfulDeviceApply =>
-      _uiState.audioDeviceIssueStatus == _audioIssueMicrophonePermissionDenied
+      _shouldPreserveAudioDeviceIssueAfterSuccessfulDeviceApply
       ? _uiState.audioDeviceIssueStatus
       : null;
 

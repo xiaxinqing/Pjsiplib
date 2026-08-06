@@ -136,7 +136,6 @@ class PjsipService extends Notifier<PjsipUIState> {
   DateTime? _outgoingMediaRecoveryUntil;
   String? _outgoingMediaRecoveryReason;
   DateTime? _lastAudioDeviceIssueToastAt;
-  bool _audioDeviceSpeakerOnlyFallbackActive = false;
   DateTime? _lastSipIpChangeAt;
   late final String _nativeLogDirectoryPath = Platform.isWindows
       ? '${Platform.environment['APPDATA'] ?? Directory.systemTemp.path}\\$appStorageDirectoryName'
@@ -348,8 +347,6 @@ class PjsipService extends Notifier<PjsipUIState> {
     _ipChangeInProgress = false;
     _ipChangeHadError = false;
     _pendingIpChange = false;
-    _audioDeviceSpeakerOnlyFallbackActive = false;
-
     final destroyWatch = Stopwatch()..start();
     _bindings.pjsua_destroy();
     final destroyMs = destroyWatch.elapsedMilliseconds;

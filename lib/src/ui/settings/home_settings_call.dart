@@ -26,12 +26,8 @@ extension _HomeSettingsCallTab on _MyHomePageState {
               value: uiState.autoHoldOtherCalls,
               onChanged: service.setAutoHoldOtherCalls,
               secondary: const Icon(AppIcons.pause),
-              title: const Text('切换通话时自动保持'),
-              subtitle: Text(
-                uiState.autoHoldOtherCalls
-                    ? '接听、外呼或恢复通话时，自动保持其他通话'
-                    : '多路通话同时连接本机音频，客户之间不会互通',
-              ),
+              title: const Text('通话自动暂停'),
+              subtitle: Text('接听、外呼或恢复通话时，自动暂停其他通话'),
             ),
           ],
         ),
