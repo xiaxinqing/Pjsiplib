@@ -4,7 +4,7 @@ part of '../../../../main.dart';
 extension _HomeSidebarLines on _MyHomePageState {
   /// 构建线路状态面板；标题和管理入口固定，仅中间账号列表滚动。
   Widget _buildLineStatusPanel(PjsipUIState uiState, PjsipService service) {
-    final accounts = _sortedSidebarAccounts(uiState);
+    final accounts = _orderedAccountsForDisplay(uiState);
     if (accounts.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -160,18 +160,5 @@ extension _HomeSidebarLines on _MyHomePageState {
         ),
       ),
     );
-  }
-
-  /// 侧边栏线路排序：默认线路优先，其次在线线路，再按显示名排序。
-  List<SipAccountInfo> _sortedSidebarAccounts(PjsipUIState uiState) {
-    final accounts = uiState.accounts.values.toList();
-    accounts.sort((a, b) {
-      final defaultId = uiState.defaultAccountId;
-      if (a.accId == defaultId) return -1;
-      if (b.accId == defaultId) return 1;
-      if (a.isRegistered != b.isRegistered) return a.isRegistered ? -1 : 1;
-      return a.displayName.compareTo(b.displayName);
-    });
-    return accounts;
   }
 }

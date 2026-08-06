@@ -79,7 +79,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
     PjsipService service,
     Offset position,
   ) async {
-    final accounts = _sortedSidebarAccounts(uiState);
+    final accounts = _orderedAccountsForDisplay(uiState);
     final failedAccounts = accounts
         .where((account) => !account.isRegistered)
         .toList();
