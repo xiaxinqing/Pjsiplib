@@ -1079,6 +1079,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
 
   Future<void> _submit() async {
     if (!widget.isNetworkAvailable) return;
+    if (!_isEditing && widget.service.hasReachedAccountLimit) {
+      ToastUtil.showWarning(PjsipService.accountLimitMessage);
+      return;
+    }
     if (_turnEnabled && _turnServerController.text.trim().isEmpty) {
       setState(() => _advancedExpanded = true);
       return;

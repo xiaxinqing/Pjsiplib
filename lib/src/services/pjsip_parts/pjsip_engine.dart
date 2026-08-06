@@ -295,6 +295,11 @@ extension PjsipEngineOperations on PjsipService {
       }
       return;
     }
+    if (_uiState.accounts.length >= PjsipService.maxAccountCount) {
+      _addLog('⚠️ 已达到线路数量上限: ${PjsipService.maxAccountCount}');
+      ToastUtil.showWarning(PjsipService.accountLimitMessage);
+      return;
+    }
     if (!_uiState.isInitialized) await init();
     if (!_uiState.isInitialized) return;
     final effectiveMediaSecurity =

@@ -2,13 +2,12 @@ part of '../../../../main.dart';
 
 /// 侧边栏线路列表模块：展示账号在线状态、默认线路和线路管理入口。
 extension _HomeSidebarLines on _MyHomePageState {
-  /// 构建线路状态面板，账号较多时限制列表高度并允许内部滚动。
+  /// 构建线路状态面板；标题和管理入口固定，仅中间账号列表滚动。
   Widget _buildLineStatusPanel(PjsipUIState uiState, PjsipService service) {
     final accounts = _sortedSidebarAccounts(uiState);
     if (accounts.isEmpty) {
       return const SizedBox.shrink();
     }
-    final listHeight = math.min(226.0, accounts.length * 58.0);
 
     return Container(
       padding: const EdgeInsets.all(11),
@@ -17,6 +16,7 @@ extension _HomeSidebarLines on _MyHomePageState {
         borderRadius: BorderRadius.circular(_radiusSm),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
@@ -40,18 +40,16 @@ extension _HomeSidebarLines on _MyHomePageState {
             ],
           ),
           const SizedBox(height: 8),
-          SizedBox(
-            height: listHeight,
+          Flexible(
+            fit: FlexFit.loose,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: SingleChildScrollView(
+              child: ListView.builder(
                 padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    for (final account in accounts)
-                      _buildSidebarLineItem(uiState, service, account),
-                  ],
-                ),
+                shrinkWrap: true,
+                itemCount: accounts.length,
+                itemBuilder: (context, index) =>
+                    _buildSidebarLineItem(uiState, service, accounts[index]),
               ),
             ),
           ),

@@ -56,8 +56,16 @@ part 'pjsip_parts/pjsip_network.dart';
 part 'pjsip_parts/pjsip_persistence.dart';
 
 class PjsipService extends Notifier<PjsipUIState> {
+  /// 与 PJSIP 编译时的 PJSUA_MAX_ACC 保持一致，避免第 65 条线路触发底层断言。
+  static const int maxAccountCount = 64;
+  static const String accountLimitMessage =
+      '最多支持 $maxAccountCount 条线路，请删除不再使用的线路后再添加';
   static const int _maxUiLogEntries = 300;
   static const Duration _logFlushInterval = Duration(milliseconds: 80);
+
+  /// 当前是否已经达到可添加的线路数量上限。
+  bool get hasReachedAccountLimit =>
+      _uiState.accounts.length >= maxAccountCount;
 
   late PjsipBindings _bindings;
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();

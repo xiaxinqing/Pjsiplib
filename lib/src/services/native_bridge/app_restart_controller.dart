@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:restart_app/restart_app.dart';
@@ -10,6 +12,12 @@ class AppRestartController {
 
   static const AppRestartController instance = AppRestartController._();
 
+  /// 拉起新的桌面应用实例。
+  ///
+  /// 调用方必须先完成 PJSIP 停止和数据库写入排空。macOS 的重启插件会在
+  /// 新实例启动后请求 AppKit 终止旧实例，但 VPhone 自身还会拦截退出事件
+  /// 执行异步清理。为避免两套退出协商偶发互相等待，确认新实例启动成功后
+  /// 直接结束已完成清理的旧进程。
   Future<bool> restartApplication() async {
     if (!AppWindowController.isDesktop) {
       ToastUtil.showWarning('当前平台暂不支持应用重启');
@@ -22,7 +30,16 @@ class AppRestartController {
         mode: RestartMode.process,
         forceKill: true,
       );
-      if (result.success) return true;
+      if (result.success) {
+        if (Platform.isMacOS) {
+          debugPrint(
+            'New macOS application instance started; terminating the cleaned '
+            'old process.',
+          );
+          exit(0);
+        }
+        return true;
+      }
 
       final message = result.message ?? result.code ?? '未知原因';
       debugPrint('Application restart rejected: $message');

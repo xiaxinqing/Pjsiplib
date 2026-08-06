@@ -8,8 +8,8 @@ extension _HomeSettings on _MyHomePageState {
     required ValueChanged<int> onSelected,
   }) {
     final viewport = MediaQuery.sizeOf(context);
-    final width = math.min(viewport.width - 48, 860.0).clamp(640.0, 860.0);
-    final height = math.min(viewport.height - 48, 640.0).clamp(520.0, 640.0);
+    final width = math.min(viewport.width - 48, 980.0).clamp(640.0, 980.0);
+    final height = math.min(viewport.height - 48, 720.0).clamp(520.0, 720.0);
     final title = _settingsTitle(selectedIndex);
     final subtitle = _settingsSubtitle(selectedIndex);
 

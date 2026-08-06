@@ -25,6 +25,11 @@ extension _HomeDialogs on _MyHomePageState {
     PjsipService service, {
     SipAccountInfo? account,
   }) {
+    if (account == null &&
+        uiState.accounts.length >= PjsipService.maxAccountCount) {
+      ToastUtil.showWarning(PjsipService.accountLimitMessage);
+      return Future<void>.value();
+    }
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
