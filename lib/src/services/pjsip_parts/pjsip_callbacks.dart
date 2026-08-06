@@ -841,13 +841,13 @@ extension _PjsipNativeCallbacks on PjsipService {
             _addLog('👥 会议媒体已就绪: call=$callId, slot=$confSlot');
             return;
           }
-          // 只有 activeCallId 对应的通话可以占用默认声卡。其他通话即使
-          // 因协商时序短暂进入 ACTIVE，也不会和当前通话混音。
-          if (_uiState.activeCallId != callId) {
+          // 自动保持开启时只连接主通话；关闭时，每路普通通话都可
+          // 以独立连接本机声卡，但不建立远端通话之间的互联。
+          if (!_shouldUseLocalAudioForCall(callId)) {
             _bindings.pjsua_conf_disconnect(confSlot, 0);
             _bindings.pjsua_conf_disconnect(0, confSlot);
             _mediaConnectedCalls.remove(callId);
-            _addLog('🎙️ call=$callId 非当前活动通话，保持声卡断开');
+            _addLog('🎙️ call=$callId 当前策略不使用本地音频，保持声卡断开');
             return;
           }
           // 每次协商完成 (接通/hold 恢复/换编码) 都会触发本回调，且 conf_slot

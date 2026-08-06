@@ -105,7 +105,7 @@ extension PjsipCallOperations on PjsipService {
       _addLog('⚠️ $message');
       return;
     }
-    // 发起新通话也遵循“单路激活”规则。
+    // 开启自动保持时，发起新通话也遵循“单路激活”规则。
     if (!await _holdActiveCallExcept(-1)) return;
     using((Arena arena) {
       // 外呼必须和线路注册使用同一种传输协议，避免 dialog 中的 INVITE/BYE
@@ -250,6 +250,9 @@ extension PjsipCallOperations on PjsipService {
   }
 
   void _scheduleBackgroundConfirmedHoldIfNeeded(int callId) {
+    // 这条延迟兜底只属于“单路激活”策略。关闭自动保持后，多路普通通话
+    // 可以同时接入本机音频，不能再把稍晚确认的通话误判为后台通话。
+    if (!_uiState.autoHoldOtherCalls) return;
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected || call.isOnHold) return;
     if (_uiState.activeCallId == callId) return;
@@ -264,6 +267,8 @@ extension PjsipCallOperations on PjsipService {
   }
 
   void _holdBackgroundConfirmedCallIfNeeded(int callId) {
+    // 定时等待期间用户可能关闭自动保持，因此执行前必须再次检查策略。
+    if (!_uiState.autoHoldOtherCalls) return;
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected || call.isOnHold) return;
     if (_uiState.activeCallId == callId) return;
@@ -714,6 +719,10 @@ extension PjsipCallOperations on PjsipService {
   }
 
   Future<bool> _holdActiveCallExcept(int targetCallId) async {
+    // 关闭该策略时，接听、外呼和恢复都不改变其他通话的 SIP 状态。
+    // 后续媒体回调会把每路已接通通话分别接入本机声卡。
+    if (!_uiState.autoHoldOtherCalls) return true;
+
     // 接听/恢复目标通话前的音频占用处理顺序：
     //
     // 1. 先检查是否有【正在进行的会议】。
@@ -850,6 +859,12 @@ extension PjsipCallOperations on PjsipService {
     if (!_ensureSoundDeviceOpen('连接通话声卡')) return;
     final slot = _getConferenceSlot(callId);
     if (slot == null) return;
+    if (!_shouldUseLocalAudioForCall(callId)) {
+      _bindings.pjsua_conf_disconnect(slot, 0);
+      _bindings.pjsua_conf_disconnect(0, slot);
+      _mediaConnectedCalls.remove(callId);
+      return;
+    }
     if (_shouldRouteCallToLocalSpeaker(callId)) {
       _bindings.pjsua_conf_connect(slot, 0);
     }
@@ -858,6 +873,15 @@ extension PjsipCallOperations on PjsipService {
     }
     _mediaConnectedCalls.add(callId);
     _applyAudioVolumeState();
+  }
+
+  /// 更新“切换通话时自动保持”策略并保存到本地。
+  void setAutoHoldOtherCalls(bool enabled) {
+    if (_uiState.autoHoldOtherCalls == enabled) return;
+    _uiState = _uiState.copyWith(autoHoldOtherCalls: enabled);
+    _applyAudioMuteState();
+    _addLog(enabled ? '📞 已开启切换通话时自动保持' : '📞 已关闭自动保持，允许多路通话同时使用本机音频');
+    unawaited(_persistAudioPreferences());
   }
 
   /// 重建三方音频矩阵：本机与每一路双向连接，两路远端之间也双向连接。

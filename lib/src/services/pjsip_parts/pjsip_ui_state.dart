@@ -37,6 +37,12 @@ class PjsipUIState {
   /// 会议中被新来电打断时，记录这个中断通话的 callId。
   final int? conferenceInterruptionCallId;
 
+  /// 切换到另一路通话时，是否自动保持其他普通通话。
+  ///
+  /// 关闭时，所有已接通且未保持的普通通话都会双向连接本机声卡；
+  /// 远端之间不互连，因此客户之间不会直接听见对方。
+  final bool autoHoldOtherCalls;
+
   /// 系统层网络是否可用。
   final bool isNetworkAvailable;
 
@@ -156,6 +162,7 @@ class PjsipUIState {
     this.conferenceCallIds = const {},
     this.isConferencePaused = false,
     this.conferenceInterruptionCallId,
+    this.autoHoldOtherCalls = false,
     this.isNetworkAvailable = true,
     this.networkState = PjsipNetworkState.idle,
     this.seatEnvironmentState = SeatEnvironmentState.checking,
@@ -199,6 +206,7 @@ class PjsipUIState {
     Set<int>? conferenceCallIds,
     bool? isConferencePaused,
     Object? conferenceInterruptionCallId = _unset,
+    bool? autoHoldOtherCalls,
     bool? isNetworkAvailable,
     PjsipNetworkState? networkState,
     SeatEnvironmentState? seatEnvironmentState,
@@ -246,6 +254,7 @@ class PjsipUIState {
           identical(conferenceInterruptionCallId, _unset)
           ? this.conferenceInterruptionCallId
           : conferenceInterruptionCallId as int?,
+      autoHoldOtherCalls: autoHoldOtherCalls ?? this.autoHoldOtherCalls,
       isNetworkAvailable: isNetworkAvailable ?? this.isNetworkAvailable,
       networkState: networkState ?? this.networkState,
       seatEnvironmentState: seatEnvironmentState ?? this.seatEnvironmentState,

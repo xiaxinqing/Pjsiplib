@@ -20,6 +20,19 @@ extension _HomeSettingsCallTab on _MyHomePageState {
               title: 'DTMF 方式',
               trailing: const Text('RFC2833'),
             ),
+            _buildSettingDivider(),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: uiState.autoHoldOtherCalls,
+              onChanged: service.setAutoHoldOtherCalls,
+              secondary: const Icon(AppIcons.pause),
+              title: const Text('切换通话时自动保持'),
+              subtitle: Text(
+                uiState.autoHoldOtherCalls
+                    ? '接听、外呼或恢复通话时，自动保持其他通话'
+                    : '多路通话同时连接本机音频，客户之间不会互通',
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 18),

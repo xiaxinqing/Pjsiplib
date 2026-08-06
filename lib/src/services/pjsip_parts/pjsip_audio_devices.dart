@@ -1861,6 +1861,13 @@ extension PjsipAudioDeviceOperations on PjsipService {
   bool _shouldRouteCallToLocalSpeaker(int callId) =>
       !_uiState.isSpeakerMuted && !_uiState.remoteMutedCallIds.contains(callId);
 
+  /// 普通通话是否应连接本机声卡。
+  ///
+  /// 开启自动保持时只连接主通话；关闭时允许多路通话同时连接。
+  /// 会议通话不经过该判断，仍由会议音频矩阵单独管理。
+  bool _shouldUseLocalAudioForCall(int callId) =>
+      !_uiState.autoHoldOtherCalls || _uiState.activeCallId == callId;
+
   bool _isNoSoundDevice(({int? captureId, int? playbackId}) current) {
     final noDevice = pjsua_snd_dev_id.PJSUA_SND_NO_DEV.value;
     return current.captureId == noDevice || current.playbackId == noDevice;
@@ -2475,11 +2482,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _bindings.pjsua_conf_disconnect(0, slot);
       _bindings.pjsua_conf_disconnect(slot, 0);
 
-      final shouldUseLocalAudio =
-          (_uiState.isConferenceActive &&
-              _uiState.conferenceCallIds.contains(callId)) ||
-          _uiState.activeCallId == callId;
-      if (!shouldUseLocalAudio) continue;
+      if (!_shouldUseLocalAudioForCall(callId)) continue;
 
       if (!_uiState.isMicrophoneMuted) {
         _bindings.pjsua_conf_connect(0, slot);

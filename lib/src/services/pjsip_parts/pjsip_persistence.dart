@@ -5,6 +5,7 @@ const String _audioPreferencesStorageKey = 'veserve_audio_preferences_v1';
 
 class _PersistedAudioPreferences {
   const _PersistedAudioPreferences({
+    required this.autoHoldOtherCalls,
     required this.allowInCallAudioDeviceSwitch,
     required this.incomingRingtoneEnabled,
     required this.outgoingRingbackEnabled,
@@ -14,6 +15,9 @@ class _PersistedAudioPreferences {
     required this.speakerVolume,
   });
 
+  // 通话行为和音频偏好都是本机用户偏好，共用同一份轻量存储，
+  // 避免为单个开关增加额外的存储队列和生命周期。
+  final bool autoHoldOtherCalls;
   final bool allowInCallAudioDeviceSwitch;
   final bool incomingRingtoneEnabled;
   final bool outgoingRingbackEnabled;
@@ -25,6 +29,7 @@ class _PersistedAudioPreferences {
   Map<String, Object?> toJson() {
     return {
       'version': 1,
+      'autoHoldOtherCalls': autoHoldOtherCalls,
       'allowInCallAudioDeviceSwitch': allowInCallAudioDeviceSwitch,
       'incomingRingtoneEnabled': incomingRingtoneEnabled,
       'outgoingRingbackEnabled': outgoingRingbackEnabled,
@@ -44,6 +49,7 @@ class _PersistedAudioPreferences {
     }
 
     return _PersistedAudioPreferences(
+      autoHoldOtherCalls: json['autoHoldOtherCalls'] as bool? ?? false,
       allowInCallAudioDeviceSwitch:
           json['allowInCallAudioDeviceSwitch'] as bool? ?? true,
       incomingRingtoneEnabled: json['incomingRingtoneEnabled'] as bool? ?? true,
@@ -245,6 +251,7 @@ extension PjsipPersistenceOperations on PjsipService {
         Map<String, Object?>.from(decoded),
       );
       _uiState = _uiState.copyWith(
+        autoHoldOtherCalls: preferences.autoHoldOtherCalls,
         allowInCallAudioDeviceSwitch: preferences.allowInCallAudioDeviceSwitch,
         incomingRingtoneEnabled: preferences.incomingRingtoneEnabled,
         outgoingRingbackEnabled: preferences.outgoingRingbackEnabled,
@@ -265,6 +272,7 @@ extension PjsipPersistenceOperations on PjsipService {
     _audio.audioPreferencesDebounceTimer?.cancel();
     _audio.audioPreferencesDebounceTimer = null;
     final preferences = _PersistedAudioPreferences(
+      autoHoldOtherCalls: _uiState.autoHoldOtherCalls,
       allowInCallAudioDeviceSwitch: _uiState.allowInCallAudioDeviceSwitch,
       incomingRingtoneEnabled: _uiState.incomingRingtoneEnabled,
       outgoingRingbackEnabled: _uiState.outgoingRingbackEnabled,
