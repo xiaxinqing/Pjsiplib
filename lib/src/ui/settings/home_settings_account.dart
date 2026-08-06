@@ -5,6 +5,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     final isRestarting = uiState.isPhoneServiceRestarting;
     final hasActiveCalls = uiState.calls.isNotEmpty;
     final restartingApplication = _applicationRestarting;
+    final accounts = uiState.accountList;
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       children: [
@@ -28,11 +29,35 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
               ],
             ),
             const SizedBox(height: 10),
-            if (uiState.accounts.isEmpty)
+            if (accounts.isEmpty)
               Text('尚未接入线路', style: Theme.of(context).textTheme.bodyMedium)
             else
-              for (final account in uiState.accountList)
-                _buildAccountLineTile(uiState, service, account),
+              ReorderableListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                buildDefaultDragHandles: false,
+                itemCount: accounts.length,
+                onReorderItem: (oldIndex, newIndex) =>
+                    _reorderAccountLines(uiState, service, oldIndex, newIndex),
+                itemBuilder: (context, index) {
+                  final account = accounts[index];
+                  final isDefault = uiState.defaultAccountId == account.accId;
+                  final canReorder = !isDefault && !isRestarting;
+                  return KeyedSubtree(
+                    key: ValueKey('settings-account-${account.accId}'),
+                    child: _buildAccountLineTile(
+                      uiState,
+                      service,
+                      account,
+                      reorderHandle: _buildAccountReorderHandle(
+                        index: index,
+                        isDefault: isDefault,
+                        enabled: canReorder,
+                      ),
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 10),
             OutlinedButton.icon(
               onPressed:
@@ -62,11 +87,68 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     );
   }
 
+  /// 将拖动后的线路顺序一次性交给服务层存储。
+  ///
+  /// 默认外呼线路占用第一位，其他线路最多只能拖到它的下方。
+  void _reorderAccountLines(
+    PjsipUIState uiState,
+    PjsipService service,
+    int oldIndex,
+    int newIndex,
+  ) {
+    final accounts = uiState.accountList;
+    if (oldIndex < 0 || oldIndex >= accounts.length) return;
+    if (uiState.defaultAccountId == accounts[oldIndex].accId) return;
+
+    final firstMovableIndex = uiState.defaultAccountId == null ? 0 : 1;
+    final targetIndex = math.max(
+      firstMovableIndex,
+      math.min(newIndex, accounts.length - 1),
+    );
+    if (targetIndex == oldIndex) return;
+
+    final reordered = List<SipAccountInfo>.of(accounts);
+    final movedAccount = reordered.removeAt(oldIndex);
+    reordered.insert(targetIndex, movedAccount);
+    service.reorderAccounts([for (final account in reordered) account.accId]);
+  }
+
+  /// 构建线路排序手柄。默认外呼线路仅显示固定状态。
+  Widget _buildAccountReorderHandle({
+    required int index,
+    required bool isDefault,
+    required bool enabled,
+  }) {
+    final tooltip = isDefault
+        ? '默认外呼线路固定置顶'
+        : enabled
+        ? '拖动调整线路顺序'
+        : '当前无法调整顺序';
+    final handle = Tooltip(
+      message: tooltip,
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.grab : SystemMouseCursors.basic,
+        child: SizedBox(
+          width: 32,
+          height: 32,
+          child: Icon(
+            AppIcons.drag,
+            size: _iconMd,
+            color: enabled ? _textSecondary : _softBorder,
+          ),
+        ),
+      ),
+    );
+    if (!enabled) return handle;
+    return ReorderableDragStartListener(index: index, child: handle);
+  }
+
   Widget _buildAccountLineTile(
     PjsipUIState uiState,
     PjsipService service,
-    SipAccountInfo account,
-  ) {
+    SipAccountInfo account, {
+    required Widget reorderHandle,
+  }) {
     final isDefault = uiState.defaultAccountId == account.accId;
     final color = account.isRegistered ? _brandGreen : Colors.orange.shade700;
     final hasActiveCalls = uiState.calls.values.any(
@@ -118,6 +200,8 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                 isRestarting: isRestarting,
                 onSetDefault: () => service.setDefaultAccount(account.accId),
               ),
+              const SizedBox(width: 4),
+              reorderHandle,
             ],
           ),
           const SizedBox(height: 8),

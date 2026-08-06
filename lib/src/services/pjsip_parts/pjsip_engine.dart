@@ -1074,6 +1074,47 @@ extension PjsipEngineOperations on PjsipService {
     ToastUtil.showSuccess('默认外呼已切换');
   }
 
+  /// 按用户在设置页调整后的顺序存储线路。
+  ///
+  /// 默认外呼线路始终固定在首位；注册状态变化只更新线路内容，
+  /// 不会重新调整用户已经设置的顺序。
+  void reorderAccounts(List<int> orderedAccountIds) {
+    if (_uiState.isPhoneServiceRestarting) return;
+
+    final accounts = _uiState.accounts;
+    if (orderedAccountIds.length != accounts.length ||
+        orderedAccountIds.toSet().length != accounts.length ||
+        orderedAccountIds.any(
+          (accountId) => !accounts.containsKey(accountId),
+        )) {
+      _addLog('⚠️ 忽略无效的线路排序请求');
+      return;
+    }
+
+    final normalizedIds = List<int>.of(orderedAccountIds);
+    final defaultAccountId = _uiState.defaultAccountId;
+    if (defaultAccountId != null && normalizedIds.remove(defaultAccountId)) {
+      normalizedIds.insert(0, defaultAccountId);
+    }
+
+    final currentIds = accounts.keys.toList(growable: false);
+    var orderChanged = false;
+    for (var index = 0; index < currentIds.length; index++) {
+      if (currentIds[index] == normalizedIds[index]) continue;
+      orderChanged = true;
+      break;
+    }
+    if (!orderChanged) return;
+
+    _uiState = _uiState.copyWith(
+      accounts: <int, SipAccountInfo>{
+        for (final accountId in normalizedIds) accountId: accounts[accountId]!,
+      },
+    );
+    unawaited(_persistSeatEnvironment());
+    _addLog('✅ 线路顺序已更新');
+  }
+
   void setAccountRegistration(int accId, bool enabled) {
     final account = _uiState.accounts[accId];
     if (account == null || !_uiState.isInitialized) return;

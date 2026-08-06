@@ -38,6 +38,7 @@ class AppIcons {
   static const clear = LucideIcons.x300;
   static const confirm = LucideIcons.badgeCheck300;
   static const more = LucideIcons.ellipsis300;
+  static const drag = LucideIcons.gripVertical300;
   static const next = LucideIcons.chevronRight300;
   static const chevronDown = LucideIcons.chevronDown300;
   static const chevronUp = LucideIcons.chevronUp300;
