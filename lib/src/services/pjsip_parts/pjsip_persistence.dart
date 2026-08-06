@@ -396,8 +396,8 @@ extension PjsipPersistenceOperations on PjsipService {
 
   Future<void> _persistSeatEnvironmentNow() async {
     try {
-      // Map 保留线路的插入顺序，持久化时不能按名称或注册状态重新排序，
-      // 否则应用重启后用户熟悉的线路位置会发生变化。
+      // Map 保留线路的插入顺序。默认外呼线路在用户操作时已被移到首位，
+      // 这里直接持久化该顺序；注册状态变化不会导致线路位置跳动。
       final accounts = _uiState.accounts.values.toList(growable: false);
       final environment = _PersistedSeatEnvironment(
         defaultLineKey: _preferredDefaultLineKey ?? _currentDefaultLineKey(),

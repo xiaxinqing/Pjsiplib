@@ -10,6 +10,9 @@ extension _DialpadStandbyPanel on _MyHomePageState {
     final account = _selectedOutgoingAccountId == null
         ? uiState.bestOutgoingAccount
         : uiState.accounts[_selectedOutgoingAccountId];
+    final isUsingFallback =
+        uiState.isUsingFallbackOutgoingAccount &&
+        account?.accId == uiState.bestOutgoingAccount?.accId;
     final status = _dialpadAvailabilityStatus(uiState, account, canCall);
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -59,7 +62,7 @@ extension _DialpadStandbyPanel on _MyHomePageState {
                         children: [
                           _buildDialpadStandbyLine(
                             AppIcons.outgoing,
-                            '默认外呼',
+                            isUsingFallback ? '临时外呼' : '默认外呼',
                             account == null
                                 ? '暂无可用线路'
                                 : '${account.displayName} · ${account.transportLabel}',

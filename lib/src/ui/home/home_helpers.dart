@@ -1,23 +1,5 @@
 part of '../../../main.dart';
 
-/// 统一线路展示顺序：默认外呼线路置顶，其余线路保持添加顺序。
-///
-/// 注册、暂停或异常状态只改变视觉状态，不参与排序，避免状态回调导致列表跳动。
-List<SipAccountInfo> _orderedAccountsForDisplay(PjsipUIState uiState) {
-  final accounts = uiState.accounts.values.toList(growable: false);
-  final defaultAccountId = uiState.defaultAccountId;
-  if (defaultAccountId == null) return accounts;
-
-  final defaultAccount = uiState.accounts[defaultAccountId];
-  if (defaultAccount == null) return accounts;
-
-  return <SipAccountInfo>[
-    defaultAccount,
-    for (final account in accounts)
-      if (account.accId != defaultAccountId) account,
-  ];
-}
-
 extension _HomeHelpers on _MyHomePageState {
   CallInfo? _primaryCall(PjsipUIState uiState) {
     // 未接听来电是高优先级事件，不能被用户之前点选的“查看中”通话挡住。

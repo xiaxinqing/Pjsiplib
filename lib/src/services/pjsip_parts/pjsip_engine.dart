@@ -410,15 +410,11 @@ extension PjsipEngineOperations on PjsipService {
       );
       final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
         ..[account.accId] = account;
-      final defaultAccountId = _uiState.bestOutgoingAccount?.accId;
-      final defaultAccount = defaultAccountId == null
-          ? null
-          : accounts[defaultAccountId];
+      final effectiveAccount = _uiState.bestOutgoingAccount;
       _uiState = _uiState.copyWith(
         accounts: accounts,
-        defaultAccountId: defaultAccountId,
-        accId: defaultAccount?.accId ?? -1,
-        host: defaultAccount?.host ?? '',
+        accId: effectiveAccount?.accId ?? -1,
+        host: effectiveAccount?.host ?? '',
       );
       _addLog(
         registrationEnabled
@@ -1067,6 +1063,7 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     _uiState = _uiState.copyWith(
+      accounts: _accountsWithFirst(_uiState.accounts, accId),
       defaultAccountId: accId,
       accId: account.accId,
       host: account.host,
@@ -1520,7 +1517,7 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
 
-    final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
+    var accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
       ..remove(accId);
     final removedPreferredLine =
         _preferredDefaultLineKey == _lineKey(account.username, account.host);
@@ -1533,6 +1530,7 @@ extension PjsipEngineOperations on PjsipService {
     final nextDefault = nextDefaultId == null ? null : accounts[nextDefaultId];
     if (nextDefaultId != null) {
       _bindings.pjsua_acc_set_default(nextDefaultId);
+      accounts = _accountsWithFirst(accounts, nextDefaultId);
       if (removedPreferredLine && nextDefault != null) {
         _preferredDefaultLineKey = _lineKey(
           nextDefault.username,
@@ -1564,11 +1562,90 @@ extension PjsipEngineOperations on PjsipService {
     return null;
   }
 
+  /// 将指定线路移动到首位，其余线路保持原有顺序。
+  ///
+  /// Dart 的 Map 保留插入顺序；坐席环境持久化也按该顺序写入，
+  /// 因此只需在“默认外呼线路发生变化”时调整一次，UI 无需重复排序。
+  Map<int, SipAccountInfo> _accountsWithFirst(
+    Map<int, SipAccountInfo> accounts,
+    int accountId,
+  ) {
+    final selected = accounts[accountId];
+    if (selected == null) return Map<int, SipAccountInfo>.of(accounts);
+    return <int, SipAccountInfo>{
+      accountId: selected,
+      for (final entry in accounts.entries)
+        if (entry.key != accountId) entry.key: entry.value,
+    };
+  }
+
+  /// 查找用户持久化的默认线路。
+  ///
+  /// 应用恢复多条线路时，原默认线路可能尚未完成注册，此时
+  /// [PjsipUIState.defaultAccountId] 还没有绑定到新的 PJSIP accId，必须继续
+  /// 使用持久化线路键识别它，避免先注册成功的其他线路覆盖用户选择。
+  SipAccountInfo? _preferredDefaultAccount() {
+    final currentDefault = _uiState.defaultAccount;
+    if (currentDefault != null) return currentDefault;
+
+    final preferredKey = _preferredDefaultLineKey;
+    if (preferredKey == null) return null;
+    for (final account in _uiState.accounts.values) {
+      if (_lineKey(account.username, account.host) == preferredKey) {
+        return account;
+      }
+    }
+    return null;
+  }
+
   void _promoteDefaultAccountIfNeeded(int accId) {
     final account = _uiState.accounts[accId];
     if (account == null || !account.isRegistered) return;
-    final currentDefault = _uiState.defaultAccount;
-    if (currentDefault?.isRegistered == true) return;
+
+    final preferredDefault = _preferredDefaultAccount();
+    if (preferredDefault?.isRegistered == true) {
+      if (preferredDefault!.accId != accId) return;
+      if (_uiState.accId == accId && _uiState.defaultAccountId == accId) {
+        return;
+      }
+
+      // 默认线路恢复后，把 PJSIP 的运行时默认线路切回用户原先的选择。
+      final status = _bindings.pjsua_acc_set_default(accId);
+      if (status != 0) {
+        _addLog('❌ 恢复默认外呼线路失败: ${account.lineLabel}, pj_status=$status');
+        return;
+      }
+      _uiState = _uiState.copyWith(accId: account.accId, host: account.host);
+      _addLog('✅ 默认外呼线路已恢复: ${account.lineLabel}');
+      return;
+    }
+
+    if (preferredDefault != null) {
+      final fallbackAccount = _uiState.bestOutgoingAccount;
+      if (fallbackAccount == null || _uiState.accId == fallbackAccount.accId) {
+        return;
+      }
+
+      // 这里只调整 PJSIP 当前实际使用的线路，不改 defaultAccountId，也不持久化。
+      // 用户设置的默认线路恢复后，仍会自动回到原线路。
+      final status = _bindings.pjsua_acc_set_default(fallbackAccount.accId);
+      if (status != 0) {
+        _addLog(
+          '❌ 临时切换外呼线路失败: ${fallbackAccount.lineLabel}, pj_status=$status',
+        );
+        return;
+      }
+      _uiState = _uiState.copyWith(
+        accId: fallbackAccount.accId,
+        host: fallbackAccount.host,
+      );
+      _addLog(
+        'ℹ️ 默认线路 ${preferredDefault.lineLabel} 不可用，临时使用 ${fallbackAccount.lineLabel}',
+      );
+      return;
+    }
+
+    // 首条成功注册的线路可以成为初始默认线路；此时用户尚未保存过默认选择。
     final status = _bindings.pjsua_acc_set_default(accId);
     if (status != 0) {
       _addLog('❌ 自动切换默认外呼线路失败: ${account.lineLabel}, pj_status=$status');
@@ -1576,28 +1653,39 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     _uiState = _uiState.copyWith(
+      accounts: _accountsWithFirst(_uiState.accounts, accId),
       defaultAccountId: accId,
       accId: account.accId,
       host: account.host,
     );
+    _preferredDefaultLineKey = _lineKey(account.username, account.host);
     unawaited(_persistSeatEnvironment());
     _addLog('✅ 已自动选择可用外呼线路: ${account.lineLabel}');
   }
 
   void _clearDefaultAccountIfUnavailable(int accId) {
-    if (_uiState.defaultAccountId != accId) return;
-    final nextDefaultId = _firstRegisteredAccountId(_uiState.accounts);
-    final nextDefault = nextDefaultId == null
-        ? null
-        : _uiState.accounts[nextDefaultId];
-    if (nextDefaultId != null) {
-      _bindings.pjsua_acc_set_default(nextDefaultId);
+    final preferredDefaultFailed = _uiState.defaultAccountId == accId;
+    final runtimeFallbackFailed = _uiState.accId == accId;
+    if (!preferredDefaultFailed && !runtimeFallbackFailed) return;
+
+    final fallbackAccount = _uiState.bestOutgoingAccount;
+    if (fallbackAccount != null) {
+      final status = _bindings.pjsua_acc_set_default(fallbackAccount.accId);
+      if (status != 0) {
+        _addLog(
+          '❌ 临时切换外呼线路失败: ${fallbackAccount.lineLabel}, pj_status=$status',
+        );
+      }
     }
     _uiState = _uiState.copyWith(
-      defaultAccountId: nextDefaultId,
-      accId: nextDefault?.accId ?? -1,
-      host: nextDefault?.host ?? '',
+      accId: fallbackAccount?.accId ?? -1,
+      host: fallbackAccount?.host ?? '',
     );
-    unawaited(_persistSeatEnvironment());
+    if (preferredDefaultFailed && fallbackAccount != null) {
+      final preferredDefault = _uiState.defaultAccount;
+      _addLog(
+        'ℹ️ 默认线路 ${preferredDefault?.lineLabel ?? accId} 不可用，临时使用 ${fallbackAccount.lineLabel}',
+      );
+    }
   }
 }

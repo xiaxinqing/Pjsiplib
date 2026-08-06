@@ -31,7 +31,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
             if (uiState.accounts.isEmpty)
               Text('尚未接入线路', style: Theme.of(context).textTheme.bodyMedium)
             else
-              for (final account in _orderedAccountsForDisplay(uiState))
+              for (final account in uiState.accountList)
                 _buildAccountLineTile(uiState, service, account),
             const SizedBox(height: 10),
             OutlinedButton.icon(

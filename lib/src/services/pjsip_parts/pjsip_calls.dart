@@ -55,7 +55,8 @@ extension PjsipCallOperations on PjsipService {
   }
 
   Future<void> makeCall(String number) async {
-    return makeCallFromAccount(number, _uiState.defaultAccountId);
+    // 默认线路掉线时仅临时使用其他在线线路，不修改用户保存的默认线路。
+    return makeCallFromAccount(number, _uiState.bestOutgoingAccount?.accId);
   }
 
   Future<void> makeCallFromAccount(String number, int? accountId) async {

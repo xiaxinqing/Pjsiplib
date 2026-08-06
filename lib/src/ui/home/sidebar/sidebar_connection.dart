@@ -6,6 +6,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
   Widget _buildConnectionPill(PjsipUIState uiState, PjsipService service) {
     final isRegistered = uiState.hasRegisteredAccount;
     final outgoingAccount = uiState.bestOutgoingAccount;
+    final isUsingFallback = uiState.isUsingFallbackOutgoingAccount;
     final isCheckingSeat =
         uiState.seatEnvironmentState == SeatEnvironmentState.checking;
     final isRestoringSeat =
@@ -25,7 +26,9 @@ extension _HomeSidebarConnection on _MyHomePageState {
         : !uiState.isNetworkAvailable
         ? '网络不可用'
         : isRegistered
-        ? '已连接 · 默认 ${outgoingAccount?.displayName ?? '--'}'
+        ? isUsingFallback
+              ? '已连接 · 临时 ${outgoingAccount?.displayName ?? '--'}'
+              : '已连接 · 默认 ${outgoingAccount?.displayName ?? '--'}'
         : uiState.isInitialized
         ? '等待账号连接'
         : '未连接';
@@ -79,7 +82,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
     PjsipService service,
     Offset position,
   ) async {
-    final accounts = _orderedAccountsForDisplay(uiState);
+    final accounts = uiState.accountList;
     final failedAccounts = accounts
         .where((account) => !account.isRegistered)
         .toList();
@@ -121,10 +124,16 @@ extension _HomeSidebarConnection on _MyHomePageState {
               _buildStatusSummaryRow(
                 icon: AppIcons.outgoing,
                 label: '默认外呼',
-                value: uiState.bestOutgoingAccount == null
+                value: uiState.defaultAccount == null
                     ? '暂无'
-                    : '${uiState.bestOutgoingAccount!.lineLabel} · ${uiState.bestOutgoingAccount!.transportLabel}',
+                    : '${uiState.defaultAccount!.lineLabel} · ${uiState.defaultAccount!.isRegistered ? uiState.defaultAccount!.transportLabel : '不可用'}',
               ),
+              if (uiState.isUsingFallbackOutgoingAccount)
+                _buildStatusSummaryRow(
+                  icon: AppIcons.call,
+                  label: '当前外呼',
+                  value: '${uiState.bestOutgoingAccount!.lineLabel} · 临时使用',
+                ),
               _buildStatusSummaryRow(
                 icon: AppIcons.lines,
                 label: '线路',

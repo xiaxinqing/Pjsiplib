@@ -307,6 +307,13 @@ class PjsipUIState {
   SipAccountInfo? get defaultAccount =>
       defaultAccountId == null ? null : accounts[defaultAccountId];
 
+  /// 按持久化顺序返回线路列表。
+  ///
+  /// 服务层在用户设置默认外呼线路时会直接调整 [accounts] 的插入顺序，
+  /// 因此 UI 只需读取该列表，不再自行排序。
+  List<SipAccountInfo> get accountList =>
+      accounts.values.toList(growable: false);
+
   /// 是否存在需要用户注意的音频设备问题。
   bool get hasAudioDeviceIssue =>
       audioDeviceIssueMessage?.trim().isNotEmpty == true;
@@ -321,6 +328,23 @@ class PjsipUIState {
       return account;
     }
     return null;
+  }
+
+  /// 用户保存的默认外呼线路当前不可用。
+  ///
+  /// 该状态不会自动改写 [defaultAccountId]；服务层可以临时使用
+  /// [bestOutgoingAccount] 发起呼叫，等默认线路恢复后再自动回到原线路。
+  bool get isDefaultAccountUnavailable {
+    final account = defaultAccount;
+    return account != null && !account.isRegistered;
+  }
+
+  /// 当前实际外呼线路是否是默认线路不可用后的临时回退线路。
+  bool get isUsingFallbackOutgoingAccount {
+    final effectiveAccount = bestOutgoingAccount;
+    return isDefaultAccountUnavailable &&
+        effectiveAccount != null &&
+        effectiveAccount.accId != defaultAccountId;
   }
 
   bool get hasRegisteredAccount => registeredAccounts.isNotEmpty;

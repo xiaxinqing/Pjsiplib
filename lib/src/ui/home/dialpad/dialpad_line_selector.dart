@@ -6,7 +6,7 @@ extension _DialpadLineSelector on _MyHomePageState {
     PjsipUIState uiState,
     PjsipService service,
   ) {
-    final accounts = uiState.accounts.values.toList();
+    final accounts = uiState.accountList;
     if (accounts.isEmpty) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
@@ -52,6 +52,9 @@ extension _DialpadLineSelector on _MyHomePageState {
         ? null
         : uiState.accounts[selectedId];
     final hasUsableLine = uiState.bestOutgoingAccount != null;
+    final isShowingFallback =
+        uiState.isUsingFallbackOutgoingAccount &&
+        selectedAccount?.accId == uiState.bestOutgoingAccount?.accId;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -152,6 +155,16 @@ extension _DialpadLineSelector on _MyHomePageState {
             const SizedBox(height: 4),
             Text(
               '暂无可用外呼线路，请检查注册状态',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.orange.shade800),
+            ),
+          ] else if (isShowingFallback) ...[
+            const SizedBox(height: 4),
+            Text(
+              '默认线路 ${uiState.defaultAccount!.lineLabel} 不可用，当前临时使用此线路',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(

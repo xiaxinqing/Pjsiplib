@@ -4,7 +4,7 @@ part of '../../../../main.dart';
 extension _HomeSidebarLines on _MyHomePageState {
   /// 构建线路状态面板；标题和管理入口固定，仅中间账号列表滚动。
   Widget _buildLineStatusPanel(PjsipUIState uiState, PjsipService service) {
-    final accounts = _orderedAccountsForDisplay(uiState);
+    final accounts = uiState.accountList;
     if (accounts.isEmpty) {
       return const SizedBox.shrink();
     }

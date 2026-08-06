@@ -230,6 +230,8 @@ extension _HomeWorkspace on _MyHomePageState {
       final outgoingAccount = uiState.bestOutgoingAccount;
       final suffix = outgoingAccount == null
           ? '，暂无可外呼线路'
+          : uiState.isUsingFallbackOutgoingAccount
+          ? '，临时外呼 ${outgoingAccount.displayName}'
           : '，默认外呼 ${outgoingAccount.displayName}';
       return '已接入 ${uiState.accounts.length} 条线路$suffix';
     }
