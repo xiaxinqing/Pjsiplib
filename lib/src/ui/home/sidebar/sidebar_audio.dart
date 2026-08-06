@@ -182,7 +182,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
       case 'refresh':
         unawaited(service.refreshAudioDevices());
       case 'open_settings':
-        _openSettingsDrawer(tabIndex: 1);
+        _openSettingsDrawer(tabIndex: _settingsAudioIndex);
     }
   }
 

@@ -25,11 +25,12 @@ extension _HomeWorkspace on _MyHomePageState {
   }
 
   Widget _buildTopBar(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     final title = switch (_section) {
-      _WorkspaceSection.dialpad => '拨号',
-      _WorkspaceSection.calls => '当前通话',
-      _WorkspaceSection.contacts => '联系人',
-      _WorkspaceSection.history => '通话记录',
+      _WorkspaceSection.dialpad => l10n.navDialpad,
+      _WorkspaceSection.calls => l10n.navCurrentCalls,
+      _WorkspaceSection.contacts => l10n.navContacts,
+      _WorkspaceSection.history => l10n.navCallHistory,
     };
     final subtitle = _statusSubtitle(uiState);
 
@@ -65,7 +66,7 @@ extension _HomeWorkspace on _MyHomePageState {
           _buildHeaderAction(uiState, service),
           const SizedBox(width: 4),
           IconButton(
-            tooltip: '设置',
+            tooltip: l10n.settings,
             onPressed: _openSettingsDrawer,
             icon: const Icon(AppIcons.settings, color: _textPrimary),
           ),

@@ -171,7 +171,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
         }
       case 'add_line':
       case 'open_settings':
-        _openSettingsDrawer();
+        _openSettingsDrawer(tabIndex: _settingsAccountIndex);
     }
   }
 }

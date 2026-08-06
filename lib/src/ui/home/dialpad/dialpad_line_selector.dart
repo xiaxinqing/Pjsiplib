@@ -145,7 +145,8 @@ extension _DialpadLineSelector on _MyHomePageState {
                 const SizedBox(width: 4),
                 IconButton(
                   tooltip: '打开线路设置',
-                  onPressed: () => _openSettingsDrawer(tabIndex: 0),
+                  onPressed: () =>
+                      _openSettingsDrawer(tabIndex: _settingsAccountIndex),
                   icon: const Icon(AppIcons.settings),
                 ),
               ],

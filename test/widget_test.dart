@@ -370,12 +370,18 @@ void main() {
   });
 
   testWidgets('VoIP 主界面可以正常构建', (WidgetTester tester) async {
+    tester.binding.platformDispatcher.localesTestValue = const [
+      Locale('zh', 'CN'),
+    ];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: [pjsipServiceProvider.overrideWith(FakePjsipService.new)],
         child: const MyApp(),
       ),
     );
+    await tester.pump();
 
     expect(find.text('VPhone'), findsOneWidget);
     expect(find.text('拨号'), findsWidgets);
@@ -394,6 +400,7 @@ void main() {
         child: const MyApp(),
       ),
     );
+    await tester.pump();
 
     expect(find.text('VPhone'), findsOneWidget);
     expect(tester.takeException(), isNull);

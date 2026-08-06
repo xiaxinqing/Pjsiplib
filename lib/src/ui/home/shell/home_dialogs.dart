@@ -45,8 +45,8 @@ extension _HomeDialogs on _MyHomePageState {
   ///
   /// 设置页的选中分组只保存在弹窗内部，避免音频测试等服务状态更新时触发首页重建，
   /// 导致用户看到设置页“自己跳页”。
-  void _openSettingsDrawer({int tabIndex = 0}) {
-    if (tabIndex == 1) {
+  void _openSettingsDrawer({int tabIndex = _settingsAccountIndex}) {
+    if (tabIndex == _settingsAudioIndex) {
       unawaited(
         ref
             .read(pjsipServiceProvider.notifier)
@@ -70,7 +70,7 @@ extension _HomeDialogs on _MyHomePageState {
                   selectedIndex: selectedIndex,
                   onSelected: (index) {
                     setDialogState(() => selectedIndex = index);
-                    if (index == 1) {
+                    if (index == _settingsAudioIndex) {
                       unawaited(
                         service.checkMicrophonePermission(reason: '切换到音频设置'),
                       );

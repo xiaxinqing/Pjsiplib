@@ -4,29 +4,30 @@ part of '../../../../main.dart';
 extension _HomeSidebarNavigation on _MyHomePageState {
   /// 构建主导航入口列表。
   Widget _buildSidebarNavigation(PjsipUIState uiState) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildNavItem(
           icon: AppIcons.dialpad,
-          label: '拨号',
+          label: l10n.navDialpad,
           section: _WorkspaceSection.dialpad,
         ),
         _buildNavItem(
           icon: AppIcons.call,
-          label: '当前通话',
+          label: l10n.navCurrentCalls,
           section: _WorkspaceSection.calls,
           badge: uiState.calls.isEmpty ? null : '${uiState.calls.length}',
         ),
         _buildNavItem(
           icon: AppIcons.contacts,
-          label: '联系人',
+          label: l10n.navContacts,
           section: _WorkspaceSection.contacts,
         ),
         if (_isRunningWidgetTest)
           _buildNavItem(
             icon: AppIcons.history,
-            label: '通话记录',
+            label: l10n.navCallHistory,
             section: _WorkspaceSection.history,
           )
         else
@@ -36,7 +37,7 @@ extension _HomeSidebarNavigation on _MyHomePageState {
               final missedCount = snapshot.data ?? 0;
               return _buildNavItem(
                 icon: AppIcons.history,
-                label: '通话记录',
+                label: l10n.navCallHistory,
                 section: _WorkspaceSection.history,
                 badge: missedCount <= 0 ? null : '$missedCount',
                 badgeColor: _dangerRed,

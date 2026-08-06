@@ -145,7 +145,7 @@ extension _HomeSidebarLines on _MyHomePageState {
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
         hoverColor: _hoverPanel,
-        onTap: () => _openSettingsDrawer(tabIndex: 0),
+        onTap: () => _openSettingsDrawer(tabIndex: _settingsAccountIndex),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
           child: Row(

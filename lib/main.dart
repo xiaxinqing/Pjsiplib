@@ -11,7 +11,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'l10n/app_localizations.dart';
 import 'src/app_identity.dart';
+import 'src/localization/build_context_l10n.dart';
+import 'src/localization/locale_controller.dart';
 import 'src/services/app_shutdown_coordinator.dart';
 import 'src/services/call_history_database.dart';
 import 'src/services/contact_service.dart';
@@ -74,6 +77,7 @@ part 'src/ui/home/history/history_reason_formatter.dart';
 part 'src/ui/home/history/history_models.dart';
 part 'src/ui/home/home_helpers.dart';
 part 'src/ui/settings/home_settings.dart';
+part 'src/ui/settings/home_settings_general.dart';
 part 'src/ui/settings/home_settings_account.dart';
 part 'src/ui/settings/add_account_dialog.dart';
 part 'src/ui/settings/home_settings_audio.dart';
@@ -89,17 +93,22 @@ Future<void> main() async {
   unawaited(AppTrayController.instance.initialize());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final localePreference = ref.watch(localeControllerProvider);
     return MaterialApp(
-      title: 'VPhone',
+      onGenerateTitle: (context) => context.l10n.appTitle,
       navigatorKey: ToastUtil.navigatorKey,
       debugShowCheckedModeBanner: false,
       color: AppColors.appBackground,
       theme: _buildAppTheme(),
+      locale: localePreference.locale,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localeListResolutionCallback: resolveAppLocale,
       home: const MyHomePage(),
     );
   }

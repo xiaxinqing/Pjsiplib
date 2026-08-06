@@ -1,5 +1,13 @@
 part of '../../../main.dart';
 
+// 设置页索引集中定义，避免调整导航顺序后各入口仍使用旧的数字索引。
+const int _settingsAccountIndex = 0;
+const int _settingsGeneralIndex = 1;
+const int _settingsAudioIndex = 2;
+const int _settingsCallsIndex = 3;
+const int _settingsDiagnosticsIndex = 4;
+const int _settingsAboutIndex = 5;
+
 extension _HomeSettings on _MyHomePageState {
   Widget _buildSettingsDialog(
     PjsipUIState uiState,
@@ -7,6 +15,7 @@ extension _HomeSettings on _MyHomePageState {
     required int selectedIndex,
     required ValueChanged<int> onSelected,
   }) {
+    final l10n = context.l10n;
     final viewport = MediaQuery.sizeOf(context);
     final width = math.min(viewport.width - 48, 980.0).clamp(640.0, 980.0);
     final height = math.min(viewport.height - 48, 720.0).clamp(520.0, 720.0);
@@ -50,7 +59,7 @@ extension _HomeSettings on _MyHomePageState {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    '设置',
+                                    l10n.settings,
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleLarge,
@@ -61,43 +70,52 @@ extension _HomeSettings on _MyHomePageState {
                           ),
                           const SizedBox(height: 14),
                           _buildSettingsNavItem(
-                            index: 0,
+                            index: _settingsAccountIndex,
                             selectedIndex: selectedIndex,
                             icon: AppIcons.account,
-                            label: '账号',
+                            label: l10n.settingsAccount,
                             onSelected: onSelected,
                           ),
                           _buildSettingsNavItem(
-                            index: 1,
+                            index: _settingsGeneralIndex,
+                            selectedIndex: selectedIndex,
+                            icon: AppIcons.public,
+                            label: l10n.settingsGeneral,
+                            onSelected: onSelected,
+                          ),
+                          _buildSettingsNavItem(
+                            index: _settingsAudioIndex,
                             selectedIndex: selectedIndex,
                             icon: AppIcons.audio,
-                            label: '音频',
+                            label: l10n.settingsAudio,
                             onSelected: onSelected,
                           ),
                           _buildSettingsNavItem(
-                            index: 2,
+                            index: _settingsCallsIndex,
                             selectedIndex: selectedIndex,
                             icon: AppIcons.call,
-                            label: '通话',
+                            label: l10n.settingsCalls,
                             onSelected: onSelected,
                           ),
                           _buildSettingsNavItem(
-                            index: 3,
+                            index: _settingsDiagnosticsIndex,
                             selectedIndex: selectedIndex,
                             icon: AppIcons.diagnostics,
-                            label: '诊断',
+                            label: l10n.settingsDiagnostics,
                             onSelected: onSelected,
                           ),
                           _buildSettingsNavItem(
-                            index: 4,
+                            index: _settingsAboutIndex,
                             selectedIndex: selectedIndex,
                             icon: AppIcons.info,
-                            label: '关于',
+                            label: l10n.settingsAbout,
                             onSelected: onSelected,
                           ),
                           const Spacer(),
                           Text(
-                            uiState.isInitialized ? '电话服务已启动' : '电话服务未启动',
+                            uiState.isInitialized
+                                ? l10n.phoneServiceStarted
+                                : l10n.phoneServiceStopped,
                             overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
@@ -141,7 +159,7 @@ extension _HomeSettings on _MyHomePageState {
                                 ),
                               ),
                               IconButton(
-                                tooltip: '关闭',
+                                tooltip: l10n.settingsClose,
                                 onPressed: () => Navigator.of(context).pop(),
                                 icon: const Icon(AppIcons.close),
                               ),
@@ -212,24 +230,28 @@ extension _HomeSettings on _MyHomePageState {
   }
 
   String _settingsTitle(int index) {
+    final l10n = context.l10n;
     return switch (index) {
-      0 => '账号',
-      1 => '音频',
-      2 => '通话',
-      3 => '诊断',
-      4 => '关于',
-      _ => '账号',
+      _settingsAccountIndex => l10n.settingsAccount,
+      _settingsAudioIndex => l10n.settingsAudio,
+      _settingsCallsIndex => l10n.settingsCalls,
+      _settingsGeneralIndex => l10n.settingsGeneral,
+      _settingsDiagnosticsIndex => l10n.settingsDiagnostics,
+      _settingsAboutIndex => l10n.settingsAbout,
+      _ => l10n.settingsAccount,
     };
   }
 
   String _settingsSubtitle(int index) {
+    final l10n = context.l10n;
     return switch (index) {
-      0 => '管理 SIP 线路、默认外呼和注册状态',
-      1 => '选择输入输出设备，并测试通话音频',
-      2 => '配置通话行为、快捷操作和会议状态',
-      3 => '查看设备、注册和通话事件日志',
-      4 => '版本信息、应用标识和支持信息',
-      _ => '管理 SIP 线路、默认外呼和注册状态',
+      _settingsAccountIndex => l10n.settingsAccountDescription,
+      _settingsAudioIndex => l10n.settingsAudioDescription,
+      _settingsCallsIndex => l10n.settingsCallsDescription,
+      _settingsGeneralIndex => l10n.settingsGeneralDescription,
+      _settingsDiagnosticsIndex => l10n.settingsDiagnosticsDescription,
+      _settingsAboutIndex => l10n.settingsAboutDescription,
+      _ => l10n.settingsAccountDescription,
     };
   }
 
@@ -241,11 +263,12 @@ extension _HomeSettings on _MyHomePageState {
     return KeyedSubtree(
       key: ValueKey(selectedIndex),
       child: switch (selectedIndex) {
-        0 => _buildAccountSettingsTab(uiState, service),
-        1 => _buildAudioSettingsTab(uiState, service),
-        2 => _buildCallSettingsTab(uiState, service),
-        3 => _buildDiagnosticsTab(uiState, service),
-        4 => _buildAboutSettingsTab(uiState),
+        _settingsAccountIndex => _buildAccountSettingsTab(uiState, service),
+        _settingsAudioIndex => _buildAudioSettingsTab(uiState, service),
+        _settingsCallsIndex => _buildCallSettingsTab(uiState, service),
+        _settingsGeneralIndex => _buildGeneralSettingsTab(),
+        _settingsDiagnosticsIndex => _buildDiagnosticsTab(uiState, service),
+        _settingsAboutIndex => _buildAboutSettingsTab(uiState),
         _ => _buildAccountSettingsTab(uiState, service),
       },
     );

@@ -522,7 +522,7 @@ extension _HomeCallStage on _MyHomePageState {
           icon: AppIcons.tune,
           label: '音频',
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
-          onPressed: () => _openSettingsDrawer(tabIndex: 1),
+          onPressed: () => _openSettingsDrawer(tabIndex: _settingsAudioIndex),
         ),
         _roundCallButton(
           icon: AppIcons.callEnd,

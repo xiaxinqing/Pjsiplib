@@ -275,7 +275,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       },
       onOpenAbout: () {
         if (!mounted) return;
-        _openSettingsDrawer(tabIndex: 4);
+        _openSettingsDrawer(tabIndex: _settingsAboutIndex);
       },
       onRestartApplication: _confirmAndRestartApplication,
       onExitApplication: _prepareForApplicationExit,
@@ -296,7 +296,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       },
       onOpenAbout: () {
         if (!mounted) return;
-        _openSettingsDrawer(tabIndex: 4);
+        _openSettingsDrawer(tabIndex: _settingsAboutIndex);
       },
       onDisconnectAll: () async {
         if (!mounted) return;
