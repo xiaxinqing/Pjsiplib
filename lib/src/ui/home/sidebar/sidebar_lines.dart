@@ -67,7 +67,11 @@ extension _HomeSidebarLines on _MyHomePageState {
     SipAccountInfo account,
   ) {
     final isDefault = uiState.defaultAccountId == account.accId;
-    final color = account.isRegistered ? _brandGreen : Colors.orange.shade700;
+    final color = !account.registrationEnabled
+        ? _textSecondary
+        : account.isRegistered
+        ? _brandGreen
+        : Colors.orange.shade700;
     final identityPrefix = account.lineName.trim().isEmpty
         ? ''
         : '${account.username} · ';

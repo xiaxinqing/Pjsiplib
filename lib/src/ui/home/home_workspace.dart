@@ -155,7 +155,7 @@ extension _HomeWorkspace on _MyHomePageState {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '所有线路会暂停注册，之后可在左侧线路菜单中重新注册。',
+                          '所有线路会停用注册，之后可在左侧线路菜单中重新启用。',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: _textSecondary),
                         ),

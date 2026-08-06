@@ -83,8 +83,11 @@ extension _HomeSidebarConnection on _MyHomePageState {
     Offset position,
   ) async {
     final accounts = uiState.accountList;
+    // 用户主动停用的线路不是异常线路，批量恢复时不能擅自重新启用。
     final failedAccounts = accounts
-        .where((account) => !account.isRegistered)
+        .where(
+          (account) => account.registrationEnabled && !account.isRegistered,
+        )
         .toList();
     final action = await showMenu<String>(
       context: context,

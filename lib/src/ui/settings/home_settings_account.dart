@@ -6,84 +6,165 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     final hasActiveCalls = uiState.calls.isNotEmpty;
     final restartingApplication = _applicationRestarting;
     final accounts = uiState.accountList;
-    return ListView(
+    final onlineCount = accounts
+        .where((account) => account.isRegistered)
+        .length;
+    final hasDisconnectableLine = accounts.any(
+      (account) => account.registrationEnabled || account.isRegistered,
+    );
+    final canDisconnectAll =
+        uiState.isInitialized &&
+        hasDisconnectableLine &&
+        !hasActiveCalls &&
+        !isRestarting &&
+        !restartingApplication;
+
+    return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
-      children: [
-        _buildSettingsSection(
-          title: '线路状态',
-          icon: AppIcons.route,
-          children: [
-            _buildConnectionPill(uiState, service),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: uiState.isNetworkAvailable && !isRestarting
-                        ? () => _showAddAccountDialog(uiState, service)
-                        : null,
-                    icon: const Icon(AppIcons.add),
-                    label: const Text('添加线路'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            if (accounts.isEmpty)
-              Text('尚未接入线路', style: Theme.of(context).textTheme.bodyMedium)
-            else
-              ReorderableListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                buildDefaultDragHandles: false,
-                itemCount: accounts.length,
-                onReorderItem: (oldIndex, newIndex) =>
-                    _reorderAccountLines(uiState, service, oldIndex, newIndex),
-                itemBuilder: (context, index) {
-                  final account = accounts[index];
-                  final isDefault = uiState.defaultAccountId == account.accId;
-                  final canReorder = !isDefault && !isRestarting;
-                  return KeyedSubtree(
-                    key: ValueKey('settings-account-${account.accId}'),
-                    child: _buildAccountLineTile(
+      child: Column(
+        children: [
+          _buildAccountToolbar(
+            accountCount: accounts.length,
+            onlineCount: onlineCount,
+            canAddAccount:
+                uiState.isNetworkAvailable &&
+                !isRestarting &&
+                !restartingApplication,
+            canDisconnectAll: canDisconnectAll,
+            restartingApplication: restartingApplication,
+            onAddAccount: () => _showAddAccountDialog(uiState, service),
+            onDisconnectAll: () async {
+              final confirmed = await _confirmDisconnectAllAccounts(uiState);
+              if (confirmed != true || !mounted) return;
+              service.disconnectAllAccounts();
+            },
+          ),
+          const SizedBox(height: 14),
+          Expanded(
+            child: accounts.isEmpty
+                ? _buildEmptyAccountList()
+                : ReorderableListView.builder(
+                    padding: EdgeInsets.zero,
+                    buildDefaultDragHandles: false,
+                    itemCount: accounts.length,
+                    onReorderItem: (oldIndex, newIndex) => _reorderAccountLines(
                       uiState,
                       service,
-                      account,
-                      reorderHandle: _buildAccountReorderHandle(
-                        index: index,
-                        isDefault: isDefault,
-                        enabled: canReorder,
-                      ),
+                      oldIndex,
+                      newIndex,
                     ),
-                  );
-                },
-              ),
-            const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed:
-                  uiState.isInitialized && !hasActiveCalls && !isRestarting
-                  ? service.disconnectAllAccounts
-                  : null,
-              icon: const Icon(AppIcons.power),
-              label: const Text('断开全部线路'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: restartingApplication
-                  ? null
-                  : _confirmAndRestartApplication,
-              icon: restartingApplication
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(AppIcons.refresh),
-              label: Text(restartingApplication ? '正在重启应用' : '重启应用'),
-            ),
-          ],
+                    itemBuilder: (context, index) {
+                      final account = accounts[index];
+                      final isDefault =
+                          uiState.defaultAccountId == account.accId;
+                      final canReorder =
+                          !isDefault && !isRestarting && !restartingApplication;
+                      return KeyedSubtree(
+                        key: ValueKey('settings-account-${account.accId}'),
+                        child: _buildAccountLineTile(
+                          uiState,
+                          service,
+                          account,
+                          reorderHandle: _buildAccountReorderHandle(
+                            index: index,
+                            isDefault: isDefault,
+                            enabled: canReorder,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 构建账号页顶部操作栏，集中放置线路统计和页面级操作。
+  Widget _buildAccountToolbar({
+    required int accountCount,
+    required int onlineCount,
+    required bool canAddAccount,
+    required bool canDisconnectAll,
+    required bool restartingApplication,
+    required VoidCallback onAddAccount,
+    required VoidCallback onDisconnectAll,
+  }) {
+    final summary = Text(
+      '$accountCount 条线路 · $onlineCount 条在线',
+      style: TextStyle(color: _textSecondary, fontWeight: FontWeight.w500),
+    );
+    final actions = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
+      children: [
+        OutlinedButton.icon(
+          onPressed: canDisconnectAll ? onDisconnectAll : null,
+          icon: const Icon(AppIcons.power),
+          label: const Text('断开全部'),
+        ),
+        OutlinedButton.icon(
+          onPressed: restartingApplication
+              ? null
+              : _confirmAndRestartApplication,
+          icon: restartingApplication
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(AppIcons.refresh),
+          label: Text(restartingApplication ? '正在重启' : '重启应用'),
+        ),
+        FilledButton.icon(
+          onPressed: canAddAccount ? onAddAccount : null,
+          icon: const Icon(AppIcons.add),
+          label: const Text('添加线路'),
+          style: FilledButton.styleFrom(backgroundColor: _textPrimary),
         ),
       ],
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 600) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              summary,
+              const SizedBox(height: 10),
+              Align(alignment: Alignment.centerRight, child: actions),
+            ],
+          );
+        }
+        return Row(children: [summary, const Spacer(), actions]);
+      },
+    );
+  }
+
+  /// 账号列表为空时给出简洁引导，不再重复展示连接状态。
+  Widget _buildEmptyAccountList() {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            AppIcons.lines,
+            size: 34,
+            color: _textSecondary.withValues(alpha: 0.7),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '尚未接入线路',
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text('点击右上角添加线路', style: TextStyle(color: _textSecondary)),
+        ],
+      ),
     );
   }
 
@@ -150,7 +231,11 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     required Widget reorderHandle,
   }) {
     final isDefault = uiState.defaultAccountId == account.accId;
-    final color = account.isRegistered ? _brandGreen : Colors.orange.shade700;
+    final color = !account.registrationEnabled
+        ? _textSecondary
+        : account.isRegistered
+        ? _brandGreen
+        : Colors.orange.shade700;
     final hasActiveCalls = uiState.calls.values.any(
       (call) => call.accountId == account.accId,
     );
@@ -210,45 +295,61 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
             runSpacing: 6,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              TextButton.icon(
-                onPressed:
-                    isRestarting ||
-                        account.registrationActionInProgress ||
-                        (account.registrationEnabled &&
-                            account.registrationStatus == null)
-                    ? null
-                    : () => service.setAccountRegistration(account.accId, true),
-                icon: const Icon(AppIcons.refresh),
-                label: const Text('刷新'),
-              ),
-              TextButton.icon(
-                onPressed:
-                    isRestarting ||
-                        account.registrationActionInProgress ||
-                        hasActiveCalls ||
-                        !uiState.isNetworkAvailable
-                    ? null
-                    : () async {
-                        final confirmed = await _confirmForceReconnectLine(
-                          account,
-                        );
-                        if (confirmed != true || !mounted) return;
-                        service.forceReconnectAccount(account.accId);
-                      },
-                icon: const Icon(AppIcons.power),
-                label: const Text('重启'),
-              ),
-              TextButton.icon(
-                onPressed:
-                    isRestarting ||
-                        account.registrationActionInProgress ||
-                        !account.registrationEnabled
-                    ? null
-                    : () =>
-                          service.setAccountRegistration(account.accId, false),
-                icon: const Icon(AppIcons.pause),
-                label: const Text('停止'),
-              ),
+              if (account.registrationEnabled) ...[
+                TextButton.icon(
+                  onPressed:
+                      isRestarting ||
+                          account.registrationActionInProgress ||
+                          account.registrationStatus == null
+                      ? null
+                      : () =>
+                            service.setAccountRegistration(account.accId, true),
+                  icon: const Icon(AppIcons.refresh),
+                  label: const Text('刷新'),
+                ),
+                TextButton.icon(
+                  onPressed:
+                      isRestarting ||
+                          account.registrationActionInProgress ||
+                          hasActiveCalls ||
+                          !uiState.isNetworkAvailable
+                      ? null
+                      : () async {
+                          final confirmed = await _confirmForceReconnectLine(
+                            account,
+                          );
+                          if (confirmed != true || !mounted) return;
+                          service.forceReconnectAccount(account.accId);
+                        },
+                  icon: const Icon(AppIcons.power),
+                  label: const Text('重启'),
+                ),
+                TextButton.icon(
+                  onPressed:
+                      isRestarting ||
+                          account.registrationActionInProgress ||
+                          hasActiveCalls
+                      ? null
+                      : () => service.setAccountRegistration(
+                          account.accId,
+                          false,
+                        ),
+                  icon: const Icon(AppIcons.pause),
+                  label: const Text('停用'),
+                ),
+              ] else
+                TextButton.icon(
+                  onPressed:
+                      isRestarting ||
+                          account.registrationActionInProgress ||
+                          !uiState.isNetworkAvailable
+                      ? null
+                      : () =>
+                            service.setAccountRegistration(account.accId, true),
+                  icon: const Icon(AppIcons.play),
+                  label: const Text('启用'),
+                  style: TextButton.styleFrom(foregroundColor: _brandGreen),
+                ),
               TextButton.icon(
                 onPressed:
                     isRestarting ||

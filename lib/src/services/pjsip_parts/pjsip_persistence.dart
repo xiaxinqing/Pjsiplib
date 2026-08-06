@@ -448,7 +448,7 @@ extension PjsipPersistenceOperations on PjsipService {
         turnConfig: line.turnConfig,
         ipv6Enabled: line.ipv6Enabled,
         registrationStatus: line.registrationEnabled ? null : 0,
-        registrationStatusText: line.registrationEnabled ? '恢复中' : '已暂停',
+        registrationStatusText: line.registrationEnabled ? '恢复中' : '已停用',
         registrationExpires: line.registrationEnabled ? null : 0,
         registrationEnabled: line.registrationEnabled,
         registrationActionInProgress: line.registrationEnabled,

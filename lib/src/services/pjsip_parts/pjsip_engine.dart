@@ -403,7 +403,7 @@ extension PjsipEngineOperations on PjsipService {
         turnConfig: turnConfig,
         ipv6Enabled: ipv6Enabled,
         registrationStatus: registrationEnabled ? null : 0,
-        registrationStatusText: registrationEnabled ? '注册中' : '已暂停',
+        registrationStatusText: registrationEnabled ? '注册中' : '已停用',
         registrationExpires: registrationEnabled ? null : 0,
         registrationEnabled: registrationEnabled,
         registrationActionInProgress: registrationEnabled,
@@ -419,7 +419,7 @@ extension PjsipEngineOperations on PjsipService {
       _addLog(
         registrationEnabled
             ? '🚀 注册请求已发送: ${account.lineLabel} (${transport.label})'
-            : '⏸ 已恢复暂停线路: ${account.lineLabel} (${transport.label})',
+            : '⏸ 已恢复停用线路: ${account.lineLabel} (${transport.label})',
       );
       if (effectiveMediaSecurity.usesSrtp) {
         _addLog('🔐 媒体加密: ${effectiveMediaSecurity.mode.label}');
@@ -593,7 +593,7 @@ extension PjsipEngineOperations on PjsipService {
       turnConfig: turnConfig,
       ipv6Enabled: ipv6Enabled,
       registrationStatus: shouldRegister ? null : 0,
-      registrationStatusText: shouldRegister ? '注册中' : '已暂停',
+      registrationStatusText: shouldRegister ? '注册中' : '已停用',
       registrationExpires: shouldRegister ? null : 0,
       registrationEnabled: shouldRegister,
       registrationActionInProgress: shouldRegister,
@@ -637,7 +637,7 @@ extension PjsipEngineOperations on PjsipService {
     _addLog(
       shouldRegister
           ? '✏️ 线路已更新，正在重新注册: ${updated.lineLabel} (${transport.label})'
-          : '✏️ 已保存暂停线路: ${updated.lineLabel} (${transport.label})',
+          : '✏️ 已保存停用线路: ${updated.lineLabel} (${transport.label})',
     );
     ToastUtil.showSuccess(shouldRegister ? '线路已更新，正在重新注册' : '线路已保存');
   }
@@ -1131,20 +1131,29 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     if (!enabled && !account.registrationEnabled) {
-      _addLog('⚠️ 线路已暂停: ${account.lineLabel}');
-      ToastUtil.showWarning('线路已暂停');
+      _addLog('⚠️ 线路已停用: ${account.lineLabel}');
+      ToastUtil.showWarning('线路已停用');
       return;
     }
     if (!enabled &&
         _uiState.calls.values.any((call) => call.accountId == accId)) {
-      _addLog('⚠️ 线路仍有通话，不能暂停: ${account.lineLabel}');
-      ToastUtil.showWarning('线路仍有通话，不能暂停');
+      _addLog('⚠️ 线路仍有通话，不能停用: ${account.lineLabel}');
+      ToastUtil.showWarning('线路仍有通话，不能停用');
       return;
     }
+    final actionLabel = enabled
+        ? account.registrationEnabled
+              ? '刷新'
+              : '启用'
+        : '停用';
     final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
       ..[accId] = account.copyWith(
         registrationStatus: enabled ? null : 0,
-        registrationStatusText: enabled ? '注册中' : '暂停中',
+        registrationStatusText: enabled
+            ? account.registrationEnabled
+                  ? '注册中'
+                  : '启用中'
+            : '停用中',
         registrationExpires: enabled ? null : 0,
         registrationEnabled: enabled,
         registrationActionInProgress: true,
@@ -1158,16 +1167,14 @@ extension PjsipEngineOperations on PjsipService {
         ..[accId] = account.copyWith(registrationActionInProgress: false);
       _uiState = _uiState.copyWith(accounts: rollbackAccounts);
       unawaited(_persistSeatEnvironment());
-      _addLog(
-        '❌ ${enabled ? '刷新注册' : '暂停注册'}线路失败: ${account.lineLabel}, pj_status=$status',
-      );
-      ToastUtil.showError(enabled ? '刷新失败' : '停止线路失败');
+      _addLog('❌ $actionLabel线路失败: ${account.lineLabel}, pj_status=$status');
+      ToastUtil.showError('$actionLabel线路失败');
       return;
     }
     if (!enabled) {
       _clearDefaultAccountIfUnavailable(accId);
     }
-    _addLog('${enabled ? '🌐 刷新线路注册' : '⏸ 暂停线路注册'}: ${account.lineLabel}');
+    _addLog('$actionLabel线路请求已发送: ${account.lineLabel}');
   }
 
   void forceReconnectAccount(int accId) {
@@ -1365,7 +1372,7 @@ extension PjsipEngineOperations on PjsipService {
       }
       accounts[account.accId] = account.copyWith(
         registrationStatus: 0,
-        registrationStatusText: shouldUnregisterNative ? '暂停中' : '已暂停',
+        registrationStatusText: shouldUnregisterNative ? '停用中' : '已停用',
         registrationExpires: 0,
         registrationEnabled: false,
         registrationActionInProgress: shouldUnregisterNative,
@@ -1393,7 +1400,7 @@ extension PjsipEngineOperations on PjsipService {
       final status = _bindings.pjsua_acc_set_registration(account.accId, 0);
       if (status == 0) {
         sent++;
-        _addLog('⏸ 暂停线路注册: ${account.lineLabel}');
+        _addLog('⏸ 停用线路注册: ${account.lineLabel}');
         continue;
       }
 

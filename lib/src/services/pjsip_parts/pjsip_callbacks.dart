@@ -402,13 +402,13 @@ extension _PjsipNativeCallbacks on PjsipService {
             final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
               ..[accId] = account.copyWith(
                 registrationStatus: isPaused ? 0 : sipStatus,
-                registrationStatusText: isPaused ? '已暂停' : statusText,
+                registrationStatusText: isPaused ? '已停用' : statusText,
                 registrationExpires: isPaused ? 0 : expires,
                 registrationActionInProgress: false,
               );
             _uiState = _uiState.copyWith(accounts: accounts);
             if (isPaused && wasActionInProgress) {
-              ToastUtil.showSuccess('${account.displayName}线路已暂停');
+              ToastUtil.showSuccess('${account.displayName}线路已停用');
             } else if (sipStatus == 200 &&
                 expires != 0 &&
                 account.registrationEnabled &&
@@ -421,7 +421,7 @@ extension _PjsipNativeCallbacks on PjsipService {
             } else if (sipStatus >= 300 &&
                 !account.registrationEnabled &&
                 wasActionInProgress) {
-              ToastUtil.showError('暂停线路失败：$statusText', longTime: true);
+              ToastUtil.showError('停用线路失败：$statusText', longTime: true);
             }
           }
           if (sipStatus == 200) {

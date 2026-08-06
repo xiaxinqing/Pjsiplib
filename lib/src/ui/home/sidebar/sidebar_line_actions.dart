@@ -2,7 +2,9 @@ part of '../../../../main.dart';
 
 /// 侧边栏线路操作模块：负责单条线路菜单、编辑入口以及危险操作确认弹窗。
 extension _HomeSidebarLineActions on _MyHomePageState {
-  /// 打开单条线路操作菜单，支持设默认、刷新、重启、停止、编辑和删除。
+  /// 打开单条线路操作菜单。
+  ///
+  /// 启用状态提供刷新、重启和停用；停用状态只提供启用，避免展示无效操作。
   Future<void> _showLineActionMenu(
     PjsipUIState uiState,
     PjsipService service,
@@ -10,6 +12,10 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     Offset position,
   ) async {
     final isDefault = uiState.defaultAccountId == account.accId;
+    final hasActiveCalls = uiState.calls.values.any(
+      (call) => call.accountId == account.accId,
+    );
+    final isRestarting = uiState.isPhoneServiceRestarting;
     final canSetDefault = account.isRegistered && !isDefault;
     final defaultColor = isDefault
         ? _brandGreen
@@ -65,37 +71,66 @@ extension _HomeSidebarLineActions on _MyHomePageState {
             color: defaultColor,
           ),
         ),
-        PopupMenuItem<String>(
-          value:
-              account.registrationActionInProgress ||
-                  (account.registrationEnabled &&
-                      account.registrationStatus == null)
-              ? null
-              : 'retry',
-          enabled:
-              !account.registrationActionInProgress &&
-              !(account.registrationEnabled &&
-                  account.registrationStatus == null),
-          child: _buildPopupActionRow(AppIcons.refresh, '刷新'),
-        ),
-        PopupMenuItem<String>(
-          value: account.registrationActionInProgress
-              ? null
-              : 'force_reconnect',
-          enabled: !account.registrationActionInProgress,
-          child: _buildPopupActionRow(AppIcons.power, '重启'),
-        ),
-        PopupMenuItem<String>(
-          value:
-              account.registrationActionInProgress ||
-                  !account.registrationEnabled
-              ? null
-              : 'pause',
-          enabled:
-              !account.registrationActionInProgress &&
-              account.registrationEnabled,
-          child: _buildPopupActionRow(AppIcons.pause, '停止'),
-        ),
+        if (account.registrationEnabled) ...[
+          PopupMenuItem<String>(
+            value:
+                isRestarting ||
+                    account.registrationActionInProgress ||
+                    account.registrationStatus == null
+                ? null
+                : 'retry',
+            enabled:
+                !isRestarting &&
+                !account.registrationActionInProgress &&
+                account.registrationStatus != null,
+            child: _buildPopupActionRow(AppIcons.refresh, '刷新'),
+          ),
+          PopupMenuItem<String>(
+            value:
+                isRestarting ||
+                    account.registrationActionInProgress ||
+                    hasActiveCalls ||
+                    !uiState.isNetworkAvailable
+                ? null
+                : 'force_reconnect',
+            enabled:
+                !isRestarting &&
+                !account.registrationActionInProgress &&
+                !hasActiveCalls &&
+                uiState.isNetworkAvailable,
+            child: _buildPopupActionRow(AppIcons.power, '重启'),
+          ),
+          PopupMenuItem<String>(
+            value:
+                isRestarting ||
+                    account.registrationActionInProgress ||
+                    hasActiveCalls
+                ? null
+                : 'disable',
+            enabled:
+                !isRestarting &&
+                !account.registrationActionInProgress &&
+                !hasActiveCalls,
+            child: _buildPopupActionRow(AppIcons.pause, '停用'),
+          ),
+        ] else
+          PopupMenuItem<String>(
+            value:
+                isRestarting ||
+                    account.registrationActionInProgress ||
+                    !uiState.isNetworkAvailable
+                ? null
+                : 'enable',
+            enabled:
+                !isRestarting &&
+                !account.registrationActionInProgress &&
+                uiState.isNetworkAvailable,
+            child: _buildPopupActionRow(
+              AppIcons.play,
+              '启用',
+              color: _brandGreen,
+            ),
+          ),
         PopupMenuItem<String>(
           value: account.registrationActionInProgress ? null : 'edit',
           enabled: !account.registrationActionInProgress,
@@ -119,8 +154,10 @@ extension _HomeSidebarLineActions on _MyHomePageState {
         final confirmed = await _confirmForceReconnectLine(account);
         if (confirmed != true || !mounted) return;
         service.forceReconnectAccount(account.accId);
-      case 'pause':
+      case 'disable':
         service.setAccountRegistration(account.accId, false);
+      case 'enable':
+        service.setAccountRegistration(account.accId, true);
       case 'edit':
         _showEditAccountDialog(uiState, service, account);
       case 'delete':

@@ -293,7 +293,7 @@ extension PjsipNetworkOperations on PjsipService {
     var alreadyOnline = 0;
     for (final account in _uiState.accounts.values) {
       if (!account.registrationEnabled) {
-        _addLog('⏸ 跳过已暂停线路的自动重注册: ${account.lineLabel}');
+        _addLog('⏸ 跳过已停用线路的自动重注册: ${account.lineLabel}');
         continue;
       }
       if (_bindings.pjsua_acc_is_valid(account.accId) == 0) {
