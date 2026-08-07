@@ -65,6 +65,7 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
   late final TextEditingController _remarkController;
   late final List<_ContactPhoneField> _phoneFields;
   late bool _isFavorite;
+  bool _didApplyLocalizedDefaults = false;
 
   @override
   void initState() {
@@ -84,7 +85,7 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
           )
       else
         _ContactPhoneField(
-          label: '默认',
+          label: '',
           number: widget.initialNumber,
           isPrimary: true,
         ),
@@ -95,6 +96,17 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
     );
     _remarkController = TextEditingController(text: contact?.remark ?? '');
     _isFavorite = contact?.isFavorite ?? false;
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didApplyLocalizedDefaults || widget.contact != null) return;
+    _didApplyLocalizedDefaults = true;
+    if (_phoneFields.first.labelController.text.isEmpty) {
+      _phoneFields.first.labelController.text =
+          context.l10n.contactDefaultNumber;
+    }
   }
 
   @override
@@ -111,9 +123,10 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final isEditing = widget.contact != null;
     return AlertDialog(
-      title: Text(isEditing ? '编辑联系人' : '新建联系人'),
+      title: Text(isEditing ? l10n.contactEditTitle : l10n.contactNewTitle),
       content: SizedBox(
         width: 460,
         child: Form(
@@ -124,12 +137,13 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
               children: [
                 TextFormField(
                   controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: '姓名',
-                    prefixIcon: Icon(AppIcons.person),
+                  decoration: InputDecoration(
+                    labelText: l10n.contactName,
+                    prefixIcon: const Icon(AppIcons.person),
                   ),
-                  validator: (value) =>
-                      (value?.trim().isEmpty ?? true) ? '请输入姓名' : null,
+                  validator: (value) => (value?.trim().isEmpty ?? true)
+                      ? l10n.contactNameRequired
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 _buildPhoneFields(context),
@@ -139,9 +153,9 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
                     Expanded(
                       child: TextFormField(
                         controller: _companyController,
-                        decoration: const InputDecoration(
-                          labelText: '公司',
-                          prefixIcon: Icon(AppIcons.organization),
+                        decoration: InputDecoration(
+                          labelText: l10n.contactCompany,
+                          prefixIcon: const Icon(AppIcons.organization),
                         ),
                       ),
                     ),
@@ -149,9 +163,9 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
                     Expanded(
                       child: TextFormField(
                         controller: _departmentController,
-                        decoration: const InputDecoration(
-                          labelText: '部门',
-                          prefixIcon: Icon(AppIcons.department),
+                        decoration: InputDecoration(
+                          labelText: l10n.contactDepartment,
+                          prefixIcon: const Icon(AppIcons.department),
                         ),
                       ),
                     ),
@@ -160,9 +174,9 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _remarkController,
-                  decoration: const InputDecoration(
-                    labelText: '备注',
-                    prefixIcon: Icon(AppIcons.note),
+                  decoration: InputDecoration(
+                    labelText: l10n.contactNotes,
+                    prefixIcon: const Icon(AppIcons.note),
                   ),
                   minLines: 2,
                   maxLines: 4,
@@ -171,7 +185,7 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
                 SwitchListTile(
                   value: _isFavorite,
                   onChanged: (value) => setState(() => _isFavorite = value),
-                  title: const Text('设为重点联系人'),
+                  title: Text(l10n.contactPriority),
                   secondary: const Icon(AppIcons.favorite),
                   contentPadding: EdgeInsets.zero,
                 ),
@@ -183,12 +197,12 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(l10n.commonCancel),
         ),
         FilledButton.icon(
           onPressed: _submit,
           icon: const Icon(AppIcons.confirm),
-          label: const Text('保存'),
+          label: Text(l10n.contactSave),
         ),
       ],
     );
@@ -211,7 +225,7 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '号码',
+                    context.l10n.contactPhones,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -220,7 +234,7 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
                 TextButton.icon(
                   onPressed: _addPhoneField,
                   icon: const Icon(AppIcons.add),
-                  label: const Text('添加号码'),
+                  label: Text(context.l10n.contactAddPhone),
                 ),
               ],
             ),
@@ -257,7 +271,9 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
           flex: 2,
           child: TextFormField(
             controller: field.labelController,
-            decoration: const InputDecoration(labelText: '标签'),
+            decoration: InputDecoration(
+              labelText: context.l10n.contactPhoneLabel,
+            ),
           ),
         ),
         const SizedBox(width: 10),
@@ -265,20 +281,20 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
           flex: 4,
           child: TextFormField(
             controller: field.numberController,
-            decoration: const InputDecoration(labelText: '号码'),
+            decoration: InputDecoration(labelText: context.l10n.contactPhone),
             keyboardType: TextInputType.phone,
             validator: (value) {
               final trimmed = value?.trim() ?? '';
-              if (trimmed.isEmpty) return '请输入号码';
+              if (trimmed.isEmpty) return context.l10n.contactPhoneRequired;
               if (!RegExp(r'^[0-9+*#(). -]+$').hasMatch(trimmed)) {
-                return '号码只能包含数字和常用电话符号';
+                return context.l10n.contactPhoneInvalid;
               }
               final normalized = _normalizePhoneField(trimmed);
               final sameCount = _phoneFields.where((field) {
                 return _normalizePhoneField(field.numberController.text) ==
                     normalized;
               }).length;
-              if (sameCount > 1) return '号码重复';
+              if (sameCount > 1) return context.l10n.contactPhoneDuplicate;
               return null;
             },
           ),
@@ -286,7 +302,7 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
         if (!field.isPrimary) ...[
           const SizedBox(width: 6),
           IconButton(
-            tooltip: '删除号码',
+            tooltip: context.l10n.contactDeletePhone,
             onPressed: () => _removePhoneField(index),
             icon: const Icon(AppIcons.delete),
           ),
@@ -303,7 +319,11 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
   void _addPhoneField() {
     setState(() {
       _phoneFields.add(
-        _ContactPhoneField(label: '备用', number: '', isPrimary: false),
+        _ContactPhoneField(
+          label: context.l10n.contactAlternateLabel,
+          number: '',
+          isPrimary: false,
+        ),
       );
     });
   }
@@ -334,12 +354,15 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
 
   void _submit() {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+    final l10n = context.l10n;
     final primaryIndex = _primaryPhoneIndex;
     final phones = [
       for (var index = 0; index < _phoneFields.length; index++)
         ContactPhoneEntry(
           label: _phoneFields[index].labelController.text.trim().isEmpty
-              ? (index == primaryIndex ? '默认' : '备用')
+              ? (index == primaryIndex
+                    ? l10n.contactDefaultNumber
+                    : l10n.contactAlternateLabel)
               : _phoneFields[index].labelController.text.trim(),
           number: _phoneFields[index].numberController.text.trim(),
           isPrimary: index == primaryIndex,

@@ -20,9 +20,9 @@ class _ContactPreviewDialog extends StatelessWidget {
       titlePadding: const EdgeInsets.fromLTRB(24, 18, 12, 0),
       title: Row(
         children: [
-          const Expanded(child: Text('客户资料')),
+          Expanded(child: Text(context.l10n.contactDetailsTitle)),
           IconButton(
-            tooltip: '关闭',
+            tooltip: context.l10n.contactClose,
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(AppIcons.close),
           ),
@@ -40,22 +40,22 @@ class _ContactPreviewDialog extends StatelessWidget {
           TextButton.icon(
             onPressed: onOpenContactPage,
             icon: const Icon(AppIcons.contacts),
-            label: const Text('打开联系人页'),
+            label: Text(context.l10n.contactOpenPage),
           ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('关闭'),
+          child: Text(context.l10n.contactClose),
         ),
         FilledButton.tonalIcon(
           onPressed: onEdit,
           icon: const Icon(AppIcons.edit),
-          label: const Text('编辑'),
+          label: Text(context.l10n.contactEdit),
         ),
         if (onCall != null)
           FilledButton.icon(
             onPressed: onCall,
             icon: const Icon(AppIcons.call),
-            label: const Text('呼叫'),
+            label: Text(context.l10n.contactCall),
           ),
       ],
     );

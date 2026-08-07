@@ -11,7 +11,7 @@ extension _ContactDetailSection on _MyHomePageState {
       ),
       child: Center(
         child: Text(
-          '选择联系人查看详情',
+          context.l10n.contactSelectForDetails,
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: _textSecondary),
@@ -48,17 +48,17 @@ extension _ContactDetailSection on _MyHomePageState {
                   child: FilledButton.icon(
                     onPressed: () => _callContact(uiState, service, contact),
                     icon: const Icon(AppIcons.call),
-                    label: const Text('呼叫'),
+                    label: Text(context.l10n.contactCall),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: '编辑',
+                  tooltip: context.l10n.contactEdit,
                   onPressed: () => _showEditContactDialog(contact),
                   icon: const Icon(AppIcons.edit),
                 ),
                 IconButton(
-                  tooltip: '删除',
+                  tooltip: context.l10n.contactDelete,
                   onPressed: () => _confirmDeleteContact(contact),
                   icon: const Icon(AppIcons.delete),
                 ),
@@ -130,14 +130,14 @@ extension _ContactDetailSection on _MyHomePageState {
             ),
             if (contact.isFavorite) ...[
               const SizedBox(width: 8),
-              _buildContactDetailChip('重点'),
+              _buildContactDetailChip(context.l10n.contactPriorityBadge),
             ],
           ],
         ),
         const SizedBox(height: 18),
         _buildContactDetailFocusCard(
           icon: AppIcons.call,
-          label: '默认号码',
+          label: context.l10n.contactDefaultPhone,
           value: contact.number,
         ),
         if (contact.phoneEntries.length > 1) ...[
@@ -155,19 +155,21 @@ extension _ContactDetailSection on _MyHomePageState {
             child: Column(
               children: [
                 _buildContactDetailLine(
-                  '公司',
-                  company.isEmpty ? '未填写' : company,
+                  context.l10n.contactCompany,
+                  company.isEmpty ? context.l10n.contactNotProvided : company,
                 ),
                 _buildContactDetailLine(
-                  '部门',
-                  department.isEmpty ? '未填写' : department,
+                  context.l10n.contactDepartment,
+                  department.isEmpty
+                      ? context.l10n.contactNotProvided
+                      : department,
                 ),
                 _buildContactDetailLine(
-                  '创建',
+                  context.l10n.contactCreatedAt,
                   _formatContactTime(contact.createdAt),
                 ),
                 _buildContactDetailLine(
-                  '更新',
+                  context.l10n.contactUpdatedAt,
                   _formatContactTime(contact.updatedAt ?? contact.createdAt),
                   isLast: true,
                 ),
@@ -188,7 +190,7 @@ extension _ContactDetailSection on _MyHomePageState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '备注',
+                    context.l10n.contactNotes,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -271,7 +273,9 @@ extension _ContactDetailSection on _MyHomePageState {
           SizedBox(
             width: 72,
             child: Text(
-              phone.isPrimary ? '${phone.label} · 默认' : phone.label,
+              phone.isPrimary
+                  ? '${phone.label} · ${context.l10n.contactDefaultNumber}'
+                  : phone.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -359,7 +363,7 @@ extension _ContactDetailSection on _MyHomePageState {
                 Icon(AppIcons.history, size: _iconSm, color: _textSecondary),
                 const SizedBox(width: 8),
                 Text(
-                  '最近通话',
+                  context.l10n.contactRecentCalls,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -387,7 +391,7 @@ extension _ContactDetailSection on _MyHomePageState {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     child: Text(
-                      '暂无通话记录',
+                      context.l10n.contactNoCallHistory,
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -435,7 +439,8 @@ extension _ContactDetailSection on _MyHomePageState {
   Widget _buildContactRecentHistoryRow(CallHistoryEntry entry) {
     final item = _persistedHistoryItem(entry);
     final color = _historyItemColor(item);
-    final timeLabel = DateFormat('M月d日 HH:mm').format(item.startedAt);
+    final locale = Localizations.localeOf(context).toString();
+    final timeLabel = DateFormat.MMMd(locale).add_Hm().format(item.startedAt);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(

@@ -526,4 +526,244 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get callStatusCanceled => 'Canceled';
+
+  @override
+  String get contactNewTitle => 'Add contact';
+
+  @override
+  String get contactEditTitle => 'Edit contact';
+
+  @override
+  String get contactDetailsTitle => 'Contact details';
+
+  @override
+  String get contactName => 'Name';
+
+  @override
+  String get contactNameRequired => 'Enter a name';
+
+  @override
+  String get contactCompany => 'Company';
+
+  @override
+  String get contactDepartment => 'Department';
+
+  @override
+  String get contactNotes => 'Notes';
+
+  @override
+  String get contactPriority => 'Priority contact';
+
+  @override
+  String get contactPrioritySet => 'Mark as priority';
+
+  @override
+  String get contactPriorityUnset => 'Remove priority';
+
+  @override
+  String get contactPriorityBadge => 'Priority';
+
+  @override
+  String get contactSave => 'Save';
+
+  @override
+  String get contactDelete => 'Delete';
+
+  @override
+  String get contactEdit => 'Edit';
+
+  @override
+  String get contactCall => 'Call';
+
+  @override
+  String get contactClose => 'Close';
+
+  @override
+  String get contactPhone => 'Number';
+
+  @override
+  String get contactPhones => 'Phone numbers';
+
+  @override
+  String get contactAddPhone => 'Add number';
+
+  @override
+  String get contactPhoneLabel => 'Label';
+
+  @override
+  String get contactPhoneRequired => 'Enter a number';
+
+  @override
+  String get contactPhoneInvalid =>
+      'Use digits and standard phone symbols only';
+
+  @override
+  String get contactPhoneDuplicate => 'Number already used';
+
+  @override
+  String get contactDeletePhone => 'Delete number';
+
+  @override
+  String get contactAlternateLabel => 'Alternate';
+
+  @override
+  String contactsSelectedCount(int selected, int total) {
+    return '$selected of $total selected';
+  }
+
+  @override
+  String get contactsClearSelection => 'Clear selection';
+
+  @override
+  String get contactsSearchHint => 'Search name, number, company, or notes';
+
+  @override
+  String get contactsClearSearch => 'Clear search';
+
+  @override
+  String get contactsAdd => 'Add contact';
+
+  @override
+  String contactsVisibleCount(int visible, int total) {
+    return '$visible of $total';
+  }
+
+  @override
+  String contactsTotalCount(int total) {
+    return '$total contacts';
+  }
+
+  @override
+  String get contactsNoMatches => 'No matches';
+
+  @override
+  String get contactsEmpty => 'No contacts';
+
+  @override
+  String get contactsNoMatchesHint => 'Try another search';
+
+  @override
+  String get contactsEmptyHint => 'Add a contact for faster calling';
+
+  @override
+  String get contactsResetSearch => 'Reset search';
+
+  @override
+  String get contactsColumnContact => 'Contact';
+
+  @override
+  String get contactsColumnOrganization => 'Company';
+
+  @override
+  String get contactsColumnUpdated => 'Updated';
+
+  @override
+  String get contactsColumnActions => 'Actions';
+
+  @override
+  String get contactsMoreActions => 'More actions';
+
+  @override
+  String get contactNoAvailableDialLine =>
+      'No dial line available. Register a line first.';
+
+  @override
+  String get contactNoCallableNumber => 'This contact has no callable number';
+
+  @override
+  String get contactAddLineFirst => 'Add a phone line first';
+
+  @override
+  String get contactNetworkUnavailable =>
+      'Network unavailable. Calls are temporarily disabled.';
+
+  @override
+  String get contactConferenceCallBlocked =>
+      'You cannot call a contact during a conference';
+
+  @override
+  String get contactCallLimitReached => 'The 4-call limit has been reached';
+
+  @override
+  String get contactNotProvided => 'Not provided';
+
+  @override
+  String get contactConfirmCallTitle => 'Confirm call';
+
+  @override
+  String get contactDialLine => 'Dial line';
+
+  @override
+  String get contactCreatedToast => 'Contact added';
+
+  @override
+  String get contactUpdatedToast => 'Contact updated';
+
+  @override
+  String get contactDuplicateTitle => 'Number already used';
+
+  @override
+  String contactDuplicateNumberMessage(String number) {
+    return '$number belongs to an existing contact.';
+  }
+
+  @override
+  String get contactDuplicateExplanation =>
+      'Contact numbers must be unique to keep call history accurate. Open the existing contact to make changes.';
+
+  @override
+  String get contactViewExisting => 'View contact';
+
+  @override
+  String get contactExistingLocated => 'Existing contact selected';
+
+  @override
+  String get contactDeleteTitle => 'Delete contact';
+
+  @override
+  String contactDeleteQuestion(String name) {
+    return 'Delete $name? This cannot be undone.';
+  }
+
+  @override
+  String get contactDeletedToast => 'Contact deleted';
+
+  @override
+  String get contactBulkDeleteTitle => 'Delete contacts';
+
+  @override
+  String contactBulkDeleteQuestion(int count) {
+    return 'Delete $count selected contacts? This cannot be undone.';
+  }
+
+  @override
+  String contactBulkDeleteConfirm(int count) {
+    return 'Delete $count';
+  }
+
+  @override
+  String contactBulkDeletedToast(int count) {
+    return 'Deleted $count contacts';
+  }
+
+  @override
+  String get contactSelectForDetails => 'Select a contact to view details';
+
+  @override
+  String get contactDefaultPhone => 'Default number';
+
+  @override
+  String get contactCreatedAt => 'Created';
+
+  @override
+  String get contactUpdatedAt => 'Updated';
+
+  @override
+  String get contactRecentCalls => 'Recent calls';
+
+  @override
+  String get contactNoCallHistory => 'No call history';
+
+  @override
+  String get contactOpenPage => 'Open contacts';
 }

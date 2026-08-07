@@ -15,7 +15,7 @@ extension _ContactActions on _MyHomePageState {
 
     final account = _preferredContactCallAccount(uiState);
     if (account == null) {
-      ToastUtil.showWarning('没有可用外呼线路，请先注册线路');
+      ToastUtil.showWarning(context.l10n.contactNoAvailableDialLine);
       return;
     }
 
@@ -32,13 +32,21 @@ extension _ContactActions on _MyHomePageState {
     PjsipUIState uiState,
     ContactEntry contact,
   ) {
-    if (contact.number.trim().isEmpty) return '联系人没有可呼叫号码';
-    if (uiState.accounts.isEmpty) return '请先添加电话线路';
-    if (!uiState.isNetworkAvailable) return '当前网络不可用，暂不能外呼';
-    if (uiState.hasConference) return '当前会议通话中，暂不能外呼联系人';
-    if (uiState.calls.length >= 4) return '当前通话已达 4 路上限';
+    if (contact.number.trim().isEmpty) {
+      return context.l10n.contactNoCallableNumber;
+    }
+    if (uiState.accounts.isEmpty) return context.l10n.contactAddLineFirst;
+    if (!uiState.isNetworkAvailable) {
+      return context.l10n.contactNetworkUnavailable;
+    }
+    if (uiState.hasConference) {
+      return context.l10n.contactConferenceCallBlocked;
+    }
+    if (uiState.calls.length >= 4) {
+      return context.l10n.contactCallLimitReached;
+    }
     if (_preferredContactCallAccount(uiState) == null) {
-      return '没有可用外呼线路，请先注册线路';
+      return context.l10n.contactNoAvailableDialLine;
     }
     return null;
   }
@@ -58,7 +66,7 @@ extension _ContactActions on _MyHomePageState {
   ) {
     final organization = contact.hasOrganization
         ? contact.organizationLabel
-        : '未填写';
+        : context.l10n.contactNotProvided;
     final remark = contact.remark.trim();
     final phones = contact.phoneEntries;
     var selectedNumber = contact.number;
@@ -68,7 +76,7 @@ extension _ContactActions on _MyHomePageState {
       barrierColor: Colors.black.withValues(alpha: 0.28),
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('确认呼叫'),
+          title: Text(context.l10n.contactConfirmCallTitle),
           content: SizedBox(
             width: 440,
             child: Column(
@@ -139,7 +147,7 @@ extension _ContactActions on _MyHomePageState {
                             ),
                             subtitle: Text(
                               phone.isPrimary
-                                  ? '${phone.label} · 默认'
+                                  ? '${phone.label} · ${context.l10n.contactDefaultNumber}'
                                   : phone.label,
                             ),
                             secondary: const Icon(AppIcons.call),
@@ -152,12 +160,16 @@ extension _ContactActions on _MyHomePageState {
                 const SizedBox(height: 10),
                 _buildCallConfirmFocusCard(
                   icon: AppIcons.outgoing,
-                  label: '外呼线路',
+                  label: context.l10n.contactDialLine,
                   value: '${account.displayName} · ${account.transportLabel}',
                 ),
                 if (contact.hasRemark) ...[
                   const SizedBox(height: 12),
-                  _buildCallConfirmRow(AppIcons.note, '备注', remark),
+                  _buildCallConfirmRow(
+                    AppIcons.note,
+                    context.l10n.contactNotes,
+                    remark,
+                  ),
                 ],
               ],
             ),
@@ -165,12 +177,12 @@ extension _ContactActions on _MyHomePageState {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('取消'),
+              child: Text(context.l10n.commonCancel),
             ),
             FilledButton.icon(
               onPressed: () => Navigator.of(context).pop(selectedNumber),
               icon: const Icon(AppIcons.call),
-              label: const Text('确认呼叫'),
+              label: Text(context.l10n.contactCall),
             ),
           ],
         ),
@@ -288,7 +300,7 @@ extension _ContactActions on _MyHomePageState {
         remark: result.remark,
         isFavorite: result.isFavorite,
       );
-      ToastUtil.showSuccess('联系人已创建');
+      ToastUtil.showSuccess(context.l10n.contactCreatedToast);
       return;
     }
 
@@ -303,7 +315,7 @@ extension _ContactActions on _MyHomePageState {
         isFavorite: result.isFavorite,
       ),
     );
-    ToastUtil.showSuccess('联系人已更新');
+    ToastUtil.showSuccess(context.l10n.contactUpdatedToast);
   }
 
   Future<bool?> _showContactDuplicateDialog({
@@ -315,7 +327,7 @@ extension _ContactActions on _MyHomePageState {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
       builder: (context) => AlertDialog(
-        title: const Text('号码重复'),
+        title: Text(context.l10n.contactDuplicateTitle),
         content: SizedBox(
           width: 460,
           child: Column(
@@ -323,7 +335,7 @@ extension _ContactActions on _MyHomePageState {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                '号码 $conflictNumber 已属于现有联系人。',
+                context.l10n.contactDuplicateNumberMessage(conflictNumber),
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -371,7 +383,7 @@ extension _ContactActions on _MyHomePageState {
               ),
               const SizedBox(height: 12),
               Text(
-                '为避免通话归属混乱，联系人号码需要保持唯一。请查看已有联系人后再编辑。',
+                context.l10n.contactDuplicateExplanation,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -382,12 +394,12 @@ extension _ContactActions on _MyHomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.person),
-            label: const Text('查看已有联系人'),
+            label: Text(context.l10n.contactViewExisting),
           ),
         ],
       ),
@@ -399,32 +411,34 @@ extension _ContactActions on _MyHomePageState {
     _clearSelectedContacts();
     _selectContactDetail(conflict.contact.id);
     _selectSection(_WorkspaceSection.contacts);
-    ToastUtil.showSuccess('已定位到已有联系人');
+    ToastUtil.showSuccess(context.l10n.contactExistingLocated);
   }
 
   Future<void> _confirmDeleteContact(ContactEntry contact) async {
     final confirmed = await _showDeleteContactsConfirm(
-      title: '删除联系人',
-      message: '确定删除 ${contact.name}？此操作不可撤销。',
-      confirmLabel: '删除',
+      title: context.l10n.contactDeleteTitle,
+      message: context.l10n.contactDeleteQuestion(contact.name),
+      confirmLabel: context.l10n.contactDelete,
     );
     if (confirmed != true) return;
+    if (!mounted) return;
     ref.read(contactBookProvider.notifier).deleteContact(contact.id);
     _selectedContactIds.remove(contact.id);
-    ToastUtil.showSuccess('联系人已删除');
+    ToastUtil.showSuccess(context.l10n.contactDeletedToast);
   }
 
   Future<void> _confirmDeleteContacts(Set<String> ids) async {
     if (ids.isEmpty) return;
     final confirmed = await _showDeleteContactsConfirm(
-      title: '批量删除',
-      message: '确定删除已选的 ${ids.length} 位联系人？此操作不可撤销。',
-      confirmLabel: '删除 ${ids.length} 位',
+      title: context.l10n.contactBulkDeleteTitle,
+      message: context.l10n.contactBulkDeleteQuestion(ids.length),
+      confirmLabel: context.l10n.contactBulkDeleteConfirm(ids.length),
     );
     if (confirmed != true) return;
+    if (!mounted) return;
     ref.read(contactBookProvider.notifier).deleteContacts(ids);
     _clearSelectedContacts();
-    ToastUtil.showSuccess('已删除 ${ids.length} 位联系人');
+    ToastUtil.showSuccess(context.l10n.contactBulkDeletedToast(ids.length));
   }
 
   Future<bool?> _showDeleteContactsConfirm({
@@ -441,7 +455,7 @@ extension _ContactActions on _MyHomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(context.l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),

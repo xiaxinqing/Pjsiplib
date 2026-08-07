@@ -28,7 +28,10 @@ extension _ContactListSection on _MyHomePageState {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              '已选择 $selectedCount / $totalVisibleCount',
+              context.l10n.contactsSelectedCount(
+                selectedCount,
+                totalVisibleCount,
+              ),
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -36,13 +39,13 @@ extension _ContactListSection on _MyHomePageState {
           TextButton.icon(
             onPressed: _clearSelectedContacts,
             icon: const Icon(AppIcons.close),
-            label: const Text('取消选择'),
+            label: Text(context.l10n.contactsClearSelection),
           ),
           const SizedBox(width: 4),
           TextButton.icon(
             onPressed: () => _confirmDeleteContacts(validSelectedIds),
             icon: const Icon(AppIcons.delete),
-            label: const Text('删除'),
+            label: Text(context.l10n.contactDelete),
             style: TextButton.styleFrom(foregroundColor: _dangerRed),
           ),
         ],
@@ -59,12 +62,12 @@ extension _ContactListSection on _MyHomePageState {
       controller: _contactSearchController,
       onChanged: (_) => _refreshContactSearch(),
       decoration: InputDecoration(
-        hintText: '搜索姓名、号码、组织或备注',
+        hintText: context.l10n.contactsSearchHint,
         prefixIcon: const Icon(AppIcons.search),
         suffixIcon: _contactSearchController.text.trim().isEmpty
             ? null
             : IconButton(
-                tooltip: '清空搜索',
+                tooltip: context.l10n.contactsClearSearch,
                 onPressed: _clearContactSearch,
                 icon: const Icon(AppIcons.close),
               ),
@@ -112,7 +115,7 @@ extension _ContactListSection on _MyHomePageState {
         FilledButton.icon(
           onPressed: _showAddContactDialog,
           icon: const Icon(AppIcons.contactAdd),
-          label: const Text('新建联系人'),
+          label: Text(context.l10n.contactsAdd),
           style: FilledButton.styleFrom(backgroundColor: _textPrimary),
         ),
       ],
@@ -126,9 +129,9 @@ extension _ContactListSection on _MyHomePageState {
     final total = state.contacts.length;
     final visible = filteredContacts.length;
     if (_contactSearchController.text.trim().isNotEmpty || visible != total) {
-      return '当前 $visible / 共 $total 位';
+      return context.l10n.contactsVisibleCount(visible, total);
     }
-    return '共 $total 位联系人';
+    return context.l10n.contactsTotalCount(total);
   }
 
   Widget _buildContactsEmpty(ContactBookState state) {
@@ -144,19 +147,27 @@ extension _ContactListSection on _MyHomePageState {
           ),
           const SizedBox(height: 12),
           Text(
-            hasKeyword ? '没有匹配的联系人' : '暂无联系人',
+            hasKeyword
+                ? context.l10n.contactsNoMatches
+                : context.l10n.contactsEmpty,
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 8),
           Text(
-            hasKeyword ? '换个关键词再查找' : '创建第一位联系人后即可快速外呼',
+            hasKeyword
+                ? context.l10n.contactsNoMatchesHint
+                : context.l10n.contactsEmptyHint,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
           FilledButton.icon(
             onPressed: hasKeyword ? _clearContactSearch : _showAddContactDialog,
             icon: Icon(hasKeyword ? AppIcons.refresh : AppIcons.contactAdd),
-            label: Text(hasKeyword ? '重置搜索' : '新建联系人'),
+            label: Text(
+              hasKeyword
+                  ? context.l10n.contactsResetSearch
+                  : context.l10n.contactsAdd,
+            ),
           ),
           if (state.errorMessage != null) ...[
             const SizedBox(height: 12),
@@ -222,34 +233,34 @@ extension _ContactListSection on _MyHomePageState {
                         const SizedBox(width: 34),
                         const SizedBox(width: 11),
                         Text(
-                          '联系人',
+                          context.l10n.contactsColumnContact,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
                   ),
-                  const Expanded(
+                  Expanded(
                     flex: 3,
                     child: Text(
-                      '组织',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      context.l10n.contactsColumnOrganization,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                   if (showUpdatedAtColumn)
                     Expanded(
                       flex: 2,
                       child: Text(
-                        '更新时间',
+                        context.l10n.contactsColumnUpdated,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontWeight: FontWeight.w600),
                       ),
                     ),
-                  const SizedBox(
+                  SizedBox(
                     width: 138,
                     child: Text(
-                      '操作',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      context.l10n.contactsColumnActions,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -377,7 +388,9 @@ extension _ContactListSection on _MyHomePageState {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     IconButton(
-                      tooltip: contact.isFavorite ? '取消重点' : '设为重点',
+                      tooltip: contact.isFavorite
+                          ? context.l10n.contactPriorityUnset
+                          : context.l10n.contactPrioritySet,
                       onPressed: () => ref
                           .read(contactBookProvider.notifier)
                           .toggleFavorite(contact.id),
@@ -400,21 +413,21 @@ extension _ContactListSection on _MyHomePageState {
                     ),
                     const SizedBox(width: 4),
                     _CallActionButton(
-                      tooltip: '呼叫',
+                      tooltip: context.l10n.contactCall,
                       onPressed: () => _callContact(uiState, service, contact),
                     ),
 
                     PopupMenuButton<_ContactRowAction>(
-                      tooltip: '更多操作',
+                      tooltip: context.l10n.contactsMoreActions,
                       onSelected: (action) =>
                           _handleContactAction(action, contact),
-                      itemBuilder: (context) => const [
+                      itemBuilder: (context) => [
                         PopupMenuItem(
                           value: _ContactRowAction.edit,
                           child: ListTile(
                             dense: true,
                             leading: Icon(AppIcons.edit),
-                            title: Text('编辑'),
+                            title: Text(context.l10n.contactEdit),
                           ),
                         ),
                         PopupMenuItem(
@@ -422,7 +435,7 @@ extension _ContactListSection on _MyHomePageState {
                           child: ListTile(
                             dense: true,
                             leading: Icon(AppIcons.delete),
-                            title: Text('删除'),
+                            title: Text(context.l10n.contactDelete),
                           ),
                         ),
                       ],

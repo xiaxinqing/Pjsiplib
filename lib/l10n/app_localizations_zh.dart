@@ -506,6 +506,242 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get callStatusCanceled => '已取消';
+
+  @override
+  String get contactNewTitle => '新建联系人';
+
+  @override
+  String get contactEditTitle => '编辑联系人';
+
+  @override
+  String get contactDetailsTitle => '客户资料';
+
+  @override
+  String get contactName => '姓名';
+
+  @override
+  String get contactNameRequired => '请输入姓名';
+
+  @override
+  String get contactCompany => '公司';
+
+  @override
+  String get contactDepartment => '部门';
+
+  @override
+  String get contactNotes => '备注';
+
+  @override
+  String get contactPriority => '设为重点联系人';
+
+  @override
+  String get contactPrioritySet => '设为重点';
+
+  @override
+  String get contactPriorityUnset => '取消重点';
+
+  @override
+  String get contactPriorityBadge => '重点';
+
+  @override
+  String get contactSave => '保存';
+
+  @override
+  String get contactDelete => '删除';
+
+  @override
+  String get contactEdit => '编辑';
+
+  @override
+  String get contactCall => '呼叫';
+
+  @override
+  String get contactClose => '关闭';
+
+  @override
+  String get contactPhone => '号码';
+
+  @override
+  String get contactPhones => '电话号码';
+
+  @override
+  String get contactAddPhone => '添加号码';
+
+  @override
+  String get contactPhoneLabel => '标签';
+
+  @override
+  String get contactPhoneRequired => '请输入号码';
+
+  @override
+  String get contactPhoneInvalid => '号码只能包含数字和常用电话符号';
+
+  @override
+  String get contactPhoneDuplicate => '号码重复';
+
+  @override
+  String get contactDeletePhone => '删除号码';
+
+  @override
+  String get contactAlternateLabel => '备用';
+
+  @override
+  String contactsSelectedCount(int selected, int total) {
+    return '已选择 $selected / $total';
+  }
+
+  @override
+  String get contactsClearSelection => '取消选择';
+
+  @override
+  String get contactsSearchHint => '搜索姓名、号码、公司或备注';
+
+  @override
+  String get contactsClearSearch => '清空搜索';
+
+  @override
+  String get contactsAdd => '新建联系人';
+
+  @override
+  String contactsVisibleCount(int visible, int total) {
+    return '当前 $visible / 共 $total 位';
+  }
+
+  @override
+  String contactsTotalCount(int total) {
+    return '共 $total 位联系人';
+  }
+
+  @override
+  String get contactsNoMatches => '没有匹配的联系人';
+
+  @override
+  String get contactsEmpty => '暂无联系人';
+
+  @override
+  String get contactsNoMatchesHint => '换个关键词再试试';
+
+  @override
+  String get contactsEmptyHint => '创建联系人后即可快速外呼';
+
+  @override
+  String get contactsResetSearch => '重置搜索';
+
+  @override
+  String get contactsColumnContact => '联系人';
+
+  @override
+  String get contactsColumnOrganization => '公司';
+
+  @override
+  String get contactsColumnUpdated => '更新时间';
+
+  @override
+  String get contactsColumnActions => '操作';
+
+  @override
+  String get contactsMoreActions => '更多操作';
+
+  @override
+  String get contactNoAvailableDialLine => '没有可用拨号线路，请先注册线路';
+
+  @override
+  String get contactNoCallableNumber => '联系人没有可呼叫号码';
+
+  @override
+  String get contactAddLineFirst => '请先添加电话线路';
+
+  @override
+  String get contactNetworkUnavailable => '当前网络不可用，暂时无法呼叫';
+
+  @override
+  String get contactConferenceCallBlocked => '会议通话中，暂时无法呼叫联系人';
+
+  @override
+  String get contactCallLimitReached => '当前通话已达 4 路上限';
+
+  @override
+  String get contactNotProvided => '未填写';
+
+  @override
+  String get contactConfirmCallTitle => '确认呼叫';
+
+  @override
+  String get contactDialLine => '拨号线路';
+
+  @override
+  String get contactCreatedToast => '联系人已创建';
+
+  @override
+  String get contactUpdatedToast => '联系人已更新';
+
+  @override
+  String get contactDuplicateTitle => '号码重复';
+
+  @override
+  String contactDuplicateNumberMessage(String number) {
+    return '号码 $number 已属于现有联系人。';
+  }
+
+  @override
+  String get contactDuplicateExplanation =>
+      '为避免通话归属混乱，联系人号码需要保持唯一。请查看已有联系人后再编辑。';
+
+  @override
+  String get contactViewExisting => '查看已有联系人';
+
+  @override
+  String get contactExistingLocated => '已定位到已有联系人';
+
+  @override
+  String get contactDeleteTitle => '删除联系人';
+
+  @override
+  String contactDeleteQuestion(String name) {
+    return '确定删除 $name？此操作不可撤销。';
+  }
+
+  @override
+  String get contactDeletedToast => '联系人已删除';
+
+  @override
+  String get contactBulkDeleteTitle => '批量删除';
+
+  @override
+  String contactBulkDeleteQuestion(int count) {
+    return '确定删除已选的 $count 位联系人？此操作不可撤销。';
+  }
+
+  @override
+  String contactBulkDeleteConfirm(int count) {
+    return '删除 $count 位';
+  }
+
+  @override
+  String contactBulkDeletedToast(int count) {
+    return '已删除 $count 位联系人';
+  }
+
+  @override
+  String get contactSelectForDetails => '选择联系人查看详情';
+
+  @override
+  String get contactDefaultPhone => '默认号码';
+
+  @override
+  String get contactCreatedAt => '创建时间';
+
+  @override
+  String get contactUpdatedAt => '更新时间';
+
+  @override
+  String get contactRecentCalls => '最近通话';
+
+  @override
+  String get contactNoCallHistory => '暂无通话记录';
+
+  @override
+  String get contactOpenPage => '打开联系人页';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1010,4 +1246,240 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get callStatusCanceled => '已取消';
+
+  @override
+  String get contactNewTitle => '新增聯絡人';
+
+  @override
+  String get contactEditTitle => '編輯聯絡人';
+
+  @override
+  String get contactDetailsTitle => '客戶資料';
+
+  @override
+  String get contactName => '姓名';
+
+  @override
+  String get contactNameRequired => '請輸入姓名';
+
+  @override
+  String get contactCompany => '公司';
+
+  @override
+  String get contactDepartment => '部門';
+
+  @override
+  String get contactNotes => '備註';
+
+  @override
+  String get contactPriority => '設為重點聯絡人';
+
+  @override
+  String get contactPrioritySet => '設為重點';
+
+  @override
+  String get contactPriorityUnset => '取消重點';
+
+  @override
+  String get contactPriorityBadge => '重點';
+
+  @override
+  String get contactSave => '儲存';
+
+  @override
+  String get contactDelete => '刪除';
+
+  @override
+  String get contactEdit => '編輯';
+
+  @override
+  String get contactCall => '致電';
+
+  @override
+  String get contactClose => '關閉';
+
+  @override
+  String get contactPhone => '號碼';
+
+  @override
+  String get contactPhones => '電話號碼';
+
+  @override
+  String get contactAddPhone => '新增號碼';
+
+  @override
+  String get contactPhoneLabel => '標籤';
+
+  @override
+  String get contactPhoneRequired => '請輸入號碼';
+
+  @override
+  String get contactPhoneInvalid => '號碼只可包含數字及常用電話符號';
+
+  @override
+  String get contactPhoneDuplicate => '號碼重複';
+
+  @override
+  String get contactDeletePhone => '刪除號碼';
+
+  @override
+  String get contactAlternateLabel => '備用';
+
+  @override
+  String contactsSelectedCount(int selected, int total) {
+    return '已選取 $selected / $total';
+  }
+
+  @override
+  String get contactsClearSelection => '取消選取';
+
+  @override
+  String get contactsSearchHint => '搜尋姓名、號碼、公司或備註';
+
+  @override
+  String get contactsClearSearch => '清除搜尋';
+
+  @override
+  String get contactsAdd => '新增聯絡人';
+
+  @override
+  String contactsVisibleCount(int visible, int total) {
+    return '目前 $visible / 共 $total 位';
+  }
+
+  @override
+  String contactsTotalCount(int total) {
+    return '共 $total 位聯絡人';
+  }
+
+  @override
+  String get contactsNoMatches => '找不到相符的聯絡人';
+
+  @override
+  String get contactsEmpty => '暫無聯絡人';
+
+  @override
+  String get contactsNoMatchesHint => '請嘗試其他關鍵字';
+
+  @override
+  String get contactsEmptyHint => '新增聯絡人後即可快速致電';
+
+  @override
+  String get contactsResetSearch => '重設搜尋';
+
+  @override
+  String get contactsColumnContact => '聯絡人';
+
+  @override
+  String get contactsColumnOrganization => '公司';
+
+  @override
+  String get contactsColumnUpdated => '更新時間';
+
+  @override
+  String get contactsColumnActions => '操作';
+
+  @override
+  String get contactsMoreActions => '更多操作';
+
+  @override
+  String get contactNoAvailableDialLine => '沒有可用撥號線路，請先註冊線路';
+
+  @override
+  String get contactNoCallableNumber => '聯絡人沒有可致電號碼';
+
+  @override
+  String get contactAddLineFirst => '請先新增電話線路';
+
+  @override
+  String get contactNetworkUnavailable => '目前網絡不可用，暫時無法致電';
+
+  @override
+  String get contactConferenceCallBlocked => '會議通話中，暫時無法致電聯絡人';
+
+  @override
+  String get contactCallLimitReached => '目前通話已達 4 路上限';
+
+  @override
+  String get contactNotProvided => '未填寫';
+
+  @override
+  String get contactConfirmCallTitle => '確認致電';
+
+  @override
+  String get contactDialLine => '撥號線路';
+
+  @override
+  String get contactCreatedToast => '聯絡人已建立';
+
+  @override
+  String get contactUpdatedToast => '聯絡人已更新';
+
+  @override
+  String get contactDuplicateTitle => '號碼重複';
+
+  @override
+  String contactDuplicateNumberMessage(String number) {
+    return '號碼 $number 已屬於現有聯絡人。';
+  }
+
+  @override
+  String get contactDuplicateExplanation =>
+      '為免通話歸屬混亂，聯絡人號碼必須保持唯一。請先查看現有聯絡人再作編輯。';
+
+  @override
+  String get contactViewExisting => '查看現有聯絡人';
+
+  @override
+  String get contactExistingLocated => '已找到現有聯絡人';
+
+  @override
+  String get contactDeleteTitle => '刪除聯絡人';
+
+  @override
+  String contactDeleteQuestion(String name) {
+    return '確定要刪除 $name？此操作無法復原。';
+  }
+
+  @override
+  String get contactDeletedToast => '聯絡人已刪除';
+
+  @override
+  String get contactBulkDeleteTitle => '批量刪除';
+
+  @override
+  String contactBulkDeleteQuestion(int count) {
+    return '確定要刪除已選取的 $count 位聯絡人？此操作無法復原。';
+  }
+
+  @override
+  String contactBulkDeleteConfirm(int count) {
+    return '刪除 $count 位';
+  }
+
+  @override
+  String contactBulkDeletedToast(int count) {
+    return '已刪除 $count 位聯絡人';
+  }
+
+  @override
+  String get contactSelectForDetails => '選擇聯絡人以查看詳情';
+
+  @override
+  String get contactDefaultPhone => '預設號碼';
+
+  @override
+  String get contactCreatedAt => '建立時間';
+
+  @override
+  String get contactUpdatedAt => '更新時間';
+
+  @override
+  String get contactRecentCalls => '最近通話';
+
+  @override
+  String get contactNoCallHistory => '暫無通話記錄';
+
+  @override
+  String get contactOpenPage => '開啟聯絡人頁面';
 }

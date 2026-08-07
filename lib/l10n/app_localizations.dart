@@ -1040,6 +1040,444 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'已取消'**
   String get callStatusCanceled;
+
+  /// No description provided for @contactNewTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建联系人'**
+  String get contactNewTitle;
+
+  /// No description provided for @contactEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑联系人'**
+  String get contactEditTitle;
+
+  /// No description provided for @contactDetailsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'客户资料'**
+  String get contactDetailsTitle;
+
+  /// No description provided for @contactName.
+  ///
+  /// In zh, this message translates to:
+  /// **'姓名'**
+  String get contactName;
+
+  /// No description provided for @contactNameRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入姓名'**
+  String get contactNameRequired;
+
+  /// No description provided for @contactCompany.
+  ///
+  /// In zh, this message translates to:
+  /// **'公司'**
+  String get contactCompany;
+
+  /// No description provided for @contactDepartment.
+  ///
+  /// In zh, this message translates to:
+  /// **'部门'**
+  String get contactDepartment;
+
+  /// No description provided for @contactNotes.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注'**
+  String get contactNotes;
+
+  /// No description provided for @contactPriority.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为重点联系人'**
+  String get contactPriority;
+
+  /// No description provided for @contactPrioritySet.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为重点'**
+  String get contactPrioritySet;
+
+  /// No description provided for @contactPriorityUnset.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消重点'**
+  String get contactPriorityUnset;
+
+  /// No description provided for @contactPriorityBadge.
+  ///
+  /// In zh, this message translates to:
+  /// **'重点'**
+  String get contactPriorityBadge;
+
+  /// No description provided for @contactSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get contactSave;
+
+  /// No description provided for @contactDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get contactDelete;
+
+  /// No description provided for @contactEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get contactEdit;
+
+  /// No description provided for @contactCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫'**
+  String get contactCall;
+
+  /// No description provided for @contactClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get contactClose;
+
+  /// No description provided for @contactPhone.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码'**
+  String get contactPhone;
+
+  /// No description provided for @contactPhones.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话号码'**
+  String get contactPhones;
+
+  /// No description provided for @contactAddPhone.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加号码'**
+  String get contactAddPhone;
+
+  /// No description provided for @contactPhoneLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'标签'**
+  String get contactPhoneLabel;
+
+  /// No description provided for @contactPhoneRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入号码'**
+  String get contactPhoneRequired;
+
+  /// No description provided for @contactPhoneInvalid.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码只能包含数字和常用电话符号'**
+  String get contactPhoneInvalid;
+
+  /// No description provided for @contactPhoneDuplicate.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码重复'**
+  String get contactPhoneDuplicate;
+
+  /// No description provided for @contactDeletePhone.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除号码'**
+  String get contactDeletePhone;
+
+  /// No description provided for @contactAlternateLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'备用'**
+  String get contactAlternateLabel;
+
+  /// No description provided for @contactsSelectedCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已选择 {selected} / {total}'**
+  String contactsSelectedCount(int selected, int total);
+
+  /// No description provided for @contactsClearSelection.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消选择'**
+  String get contactsClearSelection;
+
+  /// No description provided for @contactsSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索姓名、号码、公司或备注'**
+  String get contactsSearchHint;
+
+  /// No description provided for @contactsClearSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空搜索'**
+  String get contactsClearSearch;
+
+  /// No description provided for @contactsAdd.
+  ///
+  /// In zh, this message translates to:
+  /// **'新建联系人'**
+  String get contactsAdd;
+
+  /// No description provided for @contactsVisibleCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前 {visible} / 共 {total} 位'**
+  String contactsVisibleCount(int visible, int total);
+
+  /// No description provided for @contactsTotalCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'共 {total} 位联系人'**
+  String contactsTotalCount(int total);
+
+  /// No description provided for @contactsNoMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的联系人'**
+  String get contactsNoMatches;
+
+  /// No description provided for @contactsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无联系人'**
+  String get contactsEmpty;
+
+  /// No description provided for @contactsNoMatchesHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'换个关键词再试试'**
+  String get contactsNoMatchesHint;
+
+  /// No description provided for @contactsEmptyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建联系人后即可快速外呼'**
+  String get contactsEmptyHint;
+
+  /// No description provided for @contactsResetSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'重置搜索'**
+  String get contactsResetSearch;
+
+  /// No description provided for @contactsColumnContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人'**
+  String get contactsColumnContact;
+
+  /// No description provided for @contactsColumnOrganization.
+  ///
+  /// In zh, this message translates to:
+  /// **'公司'**
+  String get contactsColumnOrganization;
+
+  /// No description provided for @contactsColumnUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新时间'**
+  String get contactsColumnUpdated;
+
+  /// No description provided for @contactsColumnActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作'**
+  String get contactsColumnActions;
+
+  /// No description provided for @contactsMoreActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'更多操作'**
+  String get contactsMoreActions;
+
+  /// No description provided for @contactNoAvailableDialLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可用拨号线路，请先注册线路'**
+  String get contactNoAvailableDialLine;
+
+  /// No description provided for @contactNoCallableNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人没有可呼叫号码'**
+  String get contactNoCallableNumber;
+
+  /// No description provided for @contactAddLineFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先添加电话线路'**
+  String get contactAddLineFirst;
+
+  /// No description provided for @contactNetworkUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络不可用，暂时无法呼叫'**
+  String get contactNetworkUnavailable;
+
+  /// No description provided for @contactConferenceCallBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议通话中，暂时无法呼叫联系人'**
+  String get contactConferenceCallBlocked;
+
+  /// No description provided for @contactCallLimitReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前通话已达 4 路上限'**
+  String get contactCallLimitReached;
+
+  /// No description provided for @contactNotProvided.
+  ///
+  /// In zh, this message translates to:
+  /// **'未填写'**
+  String get contactNotProvided;
+
+  /// No description provided for @contactConfirmCallTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认呼叫'**
+  String get contactConfirmCallTitle;
+
+  /// No description provided for @contactDialLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号线路'**
+  String get contactDialLine;
+
+  /// No description provided for @contactCreatedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人已创建'**
+  String get contactCreatedToast;
+
+  /// No description provided for @contactUpdatedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人已更新'**
+  String get contactUpdatedToast;
+
+  /// No description provided for @contactDuplicateTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码重复'**
+  String get contactDuplicateTitle;
+
+  /// No description provided for @contactDuplicateNumberMessage.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码 {number} 已属于现有联系人。'**
+  String contactDuplicateNumberMessage(String number);
+
+  /// No description provided for @contactDuplicateExplanation.
+  ///
+  /// In zh, this message translates to:
+  /// **'为避免通话归属混乱，联系人号码需要保持唯一。请查看已有联系人后再编辑。'**
+  String get contactDuplicateExplanation;
+
+  /// No description provided for @contactViewExisting.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看已有联系人'**
+  String get contactViewExisting;
+
+  /// No description provided for @contactExistingLocated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已定位到已有联系人'**
+  String get contactExistingLocated;
+
+  /// No description provided for @contactDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除联系人'**
+  String get contactDeleteTitle;
+
+  /// No description provided for @contactDeleteQuestion.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除 {name}？此操作不可撤销。'**
+  String contactDeleteQuestion(String name);
+
+  /// No description provided for @contactDeletedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人已删除'**
+  String get contactDeletedToast;
+
+  /// No description provided for @contactBulkDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'批量删除'**
+  String get contactBulkDeleteTitle;
+
+  /// No description provided for @contactBulkDeleteQuestion.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除已选的 {count} 位联系人？此操作不可撤销。'**
+  String contactBulkDeleteQuestion(int count);
+
+  /// No description provided for @contactBulkDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除 {count} 位'**
+  String contactBulkDeleteConfirm(int count);
+
+  /// No description provided for @contactBulkDeletedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'已删除 {count} 位联系人'**
+  String contactBulkDeletedToast(int count);
+
+  /// No description provided for @contactSelectForDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择联系人查看详情'**
+  String get contactSelectForDetails;
+
+  /// No description provided for @contactDefaultPhone.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认号码'**
+  String get contactDefaultPhone;
+
+  /// No description provided for @contactCreatedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'创建时间'**
+  String get contactCreatedAt;
+
+  /// No description provided for @contactUpdatedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'更新时间'**
+  String get contactUpdatedAt;
+
+  /// No description provided for @contactRecentCalls.
+  ///
+  /// In zh, this message translates to:
+  /// **'最近通话'**
+  String get contactRecentCalls;
+
+  /// No description provided for @contactNoCallHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无通话记录'**
+  String get contactNoCallHistory;
+
+  /// No description provided for @contactOpenPage.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开联系人页'**
+  String get contactOpenPage;
 }
 
 class _AppLocalizationsDelegate
