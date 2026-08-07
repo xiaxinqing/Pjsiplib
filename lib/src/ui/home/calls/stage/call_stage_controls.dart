@@ -68,12 +68,12 @@ extension _CallStageControls on _MyHomePageState {
               ? () => call.isOnHold
                     ? _runMediaBridgeActionAndFocus(
                         call.callId,
-                        '正在恢复',
+                        _CallOperationType.resume,
                         () => service.unholdCall(call.callId),
                       )
                     : _runMediaBridgeActionAndFocus(
                         call.callId,
-                        '正在保持',
+                        _CallOperationType.hold,
                         () => service.holdCall(call.callId),
                       )
               : null,
@@ -147,7 +147,7 @@ extension _CallStageControls on _MyHomePageState {
     );
     if (destination == null || destination.trim().isEmpty || !mounted) return;
     _focusCallDetail(call.callId);
-    _setPendingCallOperation(call.callId, '正在转接');
+    _setPendingCallOperation(call.callId, _CallOperationType.transfer);
     unawaited(
       (() async {
         final transferred = await service.blindTransferCall(

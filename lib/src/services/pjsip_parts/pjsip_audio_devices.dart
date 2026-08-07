@@ -2058,6 +2058,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
         assetPath: _ringtoneAssetPath,
         tempFileName: 'vphone_ringtone.wav',
         reason: '来电铃声',
+        traceIncomingRingtone: true,
         shouldStillPlay: () => _hasIncomingCall,
         getPlayerId: () => _audio.ringtonePlayerId,
         setPlayer: (id, port) {
@@ -2100,7 +2101,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   void _playCallEndedSound(CallInfo endedCall, {String? hangupReason}) {
     if (!_uiState.callEndedSoundEnabled) return;
     if (!endedCall.isConnected) return;
-    if (hangupReason == 'blind transfer local release') return;
+    if (hangupReason == _blindTransferLocalReleaseReason) return;
     if (_hangupSoundPlayedCallIds.contains(endedCall.callId)) return;
     if (!_uiState.isInitialized) return;
 
@@ -2313,6 +2314,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     required String assetPath,
     required String tempFileName,
     required String reason,
+    bool traceIncomingRingtone = false,
     required bool Function() shouldStillPlay,
     required int? Function() getPlayerId,
     required void Function(int id, int port) setPlayer,
@@ -2320,7 +2322,6 @@ extension PjsipAudioDeviceOperations on PjsipService {
     required void Function(bool value) setMissingLogged,
     required VoidCallback clearStarting,
   }) async {
-    final traceIncomingRingtone = reason == '来电铃声';
     final traceWatch = traceIncomingRingtone ? (Stopwatch()..start()) : null;
     if (traceIncomingRingtone) {
       debugPrint(

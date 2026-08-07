@@ -56,10 +56,10 @@ extension _ContactActions on _MyHomePageState {
     ContactEntry contact,
     SipAccountInfo account,
   ) {
-    final organization = contact.organizationLabel.isEmpty
-        ? '未填写'
-        : contact.organizationLabel;
-    final remark = contact.remark.trim().isEmpty ? '无' : contact.remark.trim();
+    final organization = contact.hasOrganization
+        ? contact.organizationLabel
+        : '未填写';
+    final remark = contact.remark.trim();
     final phones = contact.phoneEntries;
     var selectedNumber = contact.number;
 
@@ -155,7 +155,7 @@ extension _ContactActions on _MyHomePageState {
                   label: '外呼线路',
                   value: '${account.displayName} · ${account.transportLabel}',
                 ),
-                if (remark != '无') ...[
+                if (contact.hasRemark) ...[
                   const SizedBox(height: 12),
                   _buildCallConfirmRow(AppIcons.note, '备注', remark),
                 ],

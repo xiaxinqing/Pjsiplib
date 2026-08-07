@@ -545,7 +545,7 @@ extension PjsipCallOperations on PjsipService {
           await hangupCall(callId);
           if (!_uiState.calls.containsKey(callId)) return;
           _addLog('➡️ 盲转后本地移除通话: call=$callId');
-          _removeCall(callId, hangupReason: 'blind transfer local release');
+          _removeCall(callId, hangupReason: _blindTransferLocalReleaseReason);
         }),
       );
       return true;
@@ -1284,7 +1284,7 @@ extension PjsipCallOperations on PjsipService {
             sipStatusCode: sipStatusCode,
             hangupReason: hangupReason?.trim().isEmpty == true
                 ? null
-                : hangupReason == 'blind transfer local release'
+                : hangupReason == _blindTransferLocalReleaseReason
                 ? '盲转'
                 : hangupReason,
             note: note,

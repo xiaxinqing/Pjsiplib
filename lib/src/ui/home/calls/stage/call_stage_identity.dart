@@ -174,20 +174,24 @@ extension _CallStageIdentity on _MyHomePageState {
   _LiveCallVisualState _liveCallVisualState(
     CallInfo call,
     PjsipUIState uiState,
-    String? pendingLabel,
+    _CallOperationType? pendingOperation,
   ) {
-    if (pendingLabel != null) {
-      final color = pendingLabel.contains('挂断') || pendingLabel.contains('拒接')
+    if (pendingOperation != null) {
+      final pendingLabel = pendingOperation.label;
+      final isDanger =
+          pendingOperation == _CallOperationType.hangup ||
+          pendingOperation == _CallOperationType.reject;
+      final color = isDanger
           ? _dangerRed
-          : pendingLabel.contains('接听')
+          : pendingOperation == _CallOperationType.answer
           ? _callGreen
           : Colors.orange.shade700;
       return _LiveCallVisualState(
         label: pendingLabel,
         detail: pendingLabel,
-        icon: pendingLabel.contains('转接')
+        icon: pendingOperation == _CallOperationType.transfer
             ? AppIcons.route
-            : pendingLabel.contains('接听')
+            : pendingOperation == _CallOperationType.answer
             ? AppIcons.call
             : AppIcons.activity,
         color: color,

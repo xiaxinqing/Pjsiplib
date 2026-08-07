@@ -514,7 +514,7 @@ extension _HomeCallStage on _MyHomePageState {
               ? null
               : () => _runConferenceActionAndFocus(
                   primary.callId,
-                  '正在拆分',
+                  _CallOperationType.split,
                   () => service.splitConference(primary.callId),
                 ),
         ),

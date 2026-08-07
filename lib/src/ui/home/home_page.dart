@@ -11,6 +11,43 @@ enum _WorkspaceSection { dialpad, calls, contacts, history }
 /// 作为会议共享备注同步给当前会议成员，供会议拆分、合并及通话记录保存使用。
 enum _CallNoteMode { customer, conference }
 
+/// 当前通话正在执行的操作类型。
+///
+/// 业务状态使用枚举保存，中文只用于界面展示，避免通过文案反推操作逻辑。
+enum _CallOperationType {
+  answer,
+  reject,
+  hangup,
+  hold,
+  resume,
+  split,
+  merge,
+  transfer,
+}
+
+extension _CallOperationTypeLabel on _CallOperationType {
+  String get label {
+    switch (this) {
+      case _CallOperationType.answer:
+        return '正在接听';
+      case _CallOperationType.reject:
+        return '正在拒接';
+      case _CallOperationType.hangup:
+        return '正在挂断';
+      case _CallOperationType.hold:
+        return '正在保持';
+      case _CallOperationType.resume:
+        return '正在恢复';
+      case _CallOperationType.split:
+        return '正在拆分';
+      case _CallOperationType.merge:
+        return '正在合并';
+      case _CallOperationType.transfer:
+        return '正在转接';
+    }
+  }
+}
+
 /// 系人/通话记录从工作区切换到完整内容绘制完成的性能分析。
 class _WorkspacePageLoadTrace {
   _WorkspacePageLoadTrace({required this.id, required this.section})
@@ -146,7 +183,8 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   _CallNoteMode _callNoteMode = _CallNoteMode.customer;
 
   // 每路通话正在执行的异步操作及超时清理定时器，用于禁用重复点击并展示状态。
-  final Map<int, String> _pendingCallOperations = <int, String>{};
+  final Map<int, _CallOperationType> _pendingCallOperations =
+      <int, _CallOperationType>{};
   final Map<int, Timer> _pendingCallOperationTimers = <int, Timer>{};
 
   // 合并、拆分和保持操作共用的短暂冷却状态，避免快速操作底层媒体桥。

@@ -10,11 +10,11 @@ extension _CallSideList on _MyHomePageState {
     final isActive = uiState.activeCallId == call.callId;
     final isFocused = _primaryCall(uiState)?.callId == call.callId;
     final isConferenceMember = uiState.isInConference(call.callId);
-    final pendingLabel = _callOperationLabel(call.callId);
-    final hasPendingOperation = pendingLabel != null;
+    final pendingOperation = _callOperation(call.callId);
+    final hasPendingOperation = pendingOperation != null;
     final isCoolingDown = _isMediaBridgeActionCoolingDown;
     final account = uiState.accountForCall(call);
-    final visualState = _liveCallVisualState(call, uiState, pendingLabel);
+    final visualState = _liveCallVisualState(call, uiState, pendingOperation);
     final quality = _callQualityView(call, account);
     final statusColor = visualState.color;
     final contactMatch = _callContactMatch(call);
@@ -250,12 +250,12 @@ extension _CallSideList on _MyHomePageState {
                             : () => call.isOnHold
                                   ? _runMediaBridgeActionAndFocus(
                                       call.callId,
-                                      '正在恢复',
+                                      _CallOperationType.resume,
                                       () => service.unholdCall(call.callId),
                                     )
                                   : _runMediaBridgeActionAndFocus(
                                       call.callId,
-                                      '正在保持',
+                                      _CallOperationType.hold,
                                       () => service.holdCall(call.callId),
                                     ),
                       ),
@@ -291,7 +291,7 @@ extension _CallSideList on _MyHomePageState {
                             ? null
                             : () => _runConferenceActionAndFocus(
                                 call.callId,
-                                '正在合并',
+                                _CallOperationType.merge,
                                 () => service.mergeWithActiveCall(call.callId),
                               ),
                       ),
@@ -303,7 +303,7 @@ extension _CallSideList on _MyHomePageState {
                             ? null
                             : () => _runConferenceActionAndFocus(
                                 call.callId,
-                                '正在拆分',
+                                _CallOperationType.split,
                                 () => service.splitConference(call.callId),
                               ),
                       ),

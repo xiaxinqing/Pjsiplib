@@ -31,9 +31,9 @@ extension _CallStageDtmf on _MyHomePageState {
   }
 
   Widget _buildDtmfPanel(CallInfo call, PjsipService service) {
-    final preview = _dtmfPadCallId == call.callId && _dtmfSentPreview.isNotEmpty
-        ? _dtmfSentPreview
-        : '等待输入';
+    final hasPreview =
+        _dtmfPadCallId == call.callId && _dtmfSentPreview.isNotEmpty;
+    final preview = hasPreview ? _dtmfSentPreview : '等待输入';
     final statusText = _dtmfPadCallId == call.callId ? _dtmfStatusText : null;
     final statusColor = _dtmfSendFailed ? _dangerRed : _textSecondary;
     return ConstrainedBox(
@@ -91,7 +91,7 @@ extension _CallStageDtmf on _MyHomePageState {
                   preview,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: preview == '等待输入' ? _textSecondary : _textPrimary,
+                    color: hasPreview ? _textPrimary : _textSecondary,
                     fontWeight: FontWeight.w800,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),

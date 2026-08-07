@@ -152,7 +152,7 @@ extension _CallSideCustomerCards on _MyHomePageState {
                   label: '重点客户',
                   color: _brandGreen,
                 ),
-              if (organization != '未设置组织')
+              if (contact.hasOrganization)
                 _buildCustomerAttribute(
                   icon: AppIcons.organization,
                   label: organization,

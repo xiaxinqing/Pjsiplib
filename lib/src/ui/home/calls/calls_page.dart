@@ -355,8 +355,7 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
             final phone = target.phone;
             final subtitle = [
               phone.label,
-              if (contact.organizationLabel != '未设置组织')
-                contact.organizationLabel,
+              if (contact.hasOrganization) contact.organizationLabel,
             ].join(' · ');
             return Material(
               color: Colors.transparent,

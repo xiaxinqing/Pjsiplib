@@ -74,6 +74,13 @@ class ContactEntry {
     return parts.isEmpty ? '未设置组织' : parts.join(' · ');
   }
 
+  /// 是否填写了公司或部门信息。
+  bool get hasOrganization =>
+      company.trim().isNotEmpty || department.trim().isNotEmpty;
+
+  /// 是否填写了联系人备注。
+  bool get hasRemark => remark.trim().isNotEmpty;
+
   String get initials {
     final trimmed = name.trim();
     if (trimmed.isEmpty) return '#';

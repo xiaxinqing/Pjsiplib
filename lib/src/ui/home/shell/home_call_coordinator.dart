@@ -73,21 +73,21 @@ extension _HomeCallCoordinator on _MyHomePageState {
   void _answerCall(PjsipService service, int callId) {
     unawaited(_windowController.clearIncomingCallAttention());
     _focusCallDetail(callId);
-    _setPendingCallOperation(callId, '正在接听');
+    _setPendingCallOperation(callId, _CallOperationType.answer);
     service.answerCall(callId);
   }
 
   /// 拒接指定通话，并记录短暂的操作中状态。
   void _rejectCall(PjsipService service, int callId) {
     unawaited(_windowController.clearIncomingCallAttention());
-    _setPendingCallOperation(callId, '正在拒接');
+    _setPendingCallOperation(callId, _CallOperationType.reject);
     service.rejectCall(callId);
   }
 
   /// 挂断指定通话，并记录短暂的操作中状态。
   void _hangupCall(PjsipService service, int callId) {
     unawaited(_windowController.clearIncomingCallAttention());
-    _setPendingCallOperation(callId, '正在挂断');
+    _setPendingCallOperation(callId, _CallOperationType.hangup);
     service.hangupCall(callId);
   }
 
@@ -154,22 +154,22 @@ extension _HomeCallCoordinator on _MyHomePageState {
   /// 先聚焦指定通话，再执行通话操作，保证用户看到自己操作的是哪一路。
   void _runCallActionAndFocus(
     int callId,
-    String pendingLabel,
+    _CallOperationType operation,
     VoidCallback action,
   ) {
     _focusCallDetail(callId);
-    _setPendingCallOperation(callId, pendingLabel);
+    _setPendingCallOperation(callId, operation);
     action();
   }
 
   /// 执行会议相关操作，并开启短暂冷却避免快速合并/拆分打断媒体桥。
   void _runConferenceActionAndFocus(
     int callId,
-    String pendingLabel,
+    _CallOperationType operation,
     VoidCallback action,
   ) {
     _startMediaBridgeActionCooldown();
-    _runCallActionAndFocus(callId, pendingLabel, action);
+    _runCallActionAndFocus(callId, operation, action);
   }
 
   /// 执行不绑定单一路通话的会议操作，并开启媒体桥冷却。
@@ -187,11 +187,11 @@ extension _HomeCallCoordinator on _MyHomePageState {
   /// 执行需要重建媒体桥的单通话操作，并同步主舞台焦点。
   void _runMediaBridgeActionAndFocus(
     int callId,
-    String pendingLabel,
+    _CallOperationType operation,
     VoidCallback action,
   ) {
     _startMediaBridgeActionCooldown();
-    _runCallActionAndFocus(callId, pendingLabel, action);
+    _runCallActionAndFocus(callId, operation, action);
   }
 
   /// 启动媒体桥冷却定时器，降低快速保持/恢复/合并导致媒体断开的概率。
@@ -223,7 +223,10 @@ extension _HomeCallCoordinator on _MyHomePageState {
   }
 
   /// 返回指定通话当前展示的操作中标签。
-  String? _callOperationLabel(int callId) => _pendingCallOperations[callId];
+  _CallOperationType? _callOperation(int callId) =>
+      _pendingCallOperations[callId];
+
+  String? _callOperationLabel(int callId) => _callOperation(callId)?.label;
 
   /// 判断指定通话是否仍处在接听、挂断、保持等等待反馈状态。
   bool _hasPendingCallOperation(int callId) {
@@ -231,10 +234,10 @@ extension _HomeCallCoordinator on _MyHomePageState {
   }
 
   /// 设置通话操作中的临时标签，并用超时兜底清理。
-  void _setPendingCallOperation(int callId, String label) {
+  void _setPendingCallOperation(int callId, _CallOperationType operation) {
     _pendingCallOperationTimers.remove(callId)?.cancel();
     _update(() {
-      _pendingCallOperations[callId] = label;
+      _pendingCallOperations[callId] = operation;
     });
     _pendingCallOperationTimers[callId] = Timer(const Duration(seconds: 4), () {
       _clearPendingCallOperation(callId);
@@ -261,19 +264,24 @@ extension _HomeCallCoordinator on _MyHomePageState {
         finished.add(entry.key);
         continue;
       }
-      final label = entry.value;
-      if (label == '正在接听' && !call.isIncoming) {
+      final operation = entry.value;
+      if (operation == _CallOperationType.answer && !call.isIncoming) {
         finished.add(entry.key);
-      } else if (label == '正在保持' && call.isOnHold) {
+      } else if (operation == _CallOperationType.hold && call.isOnHold) {
         finished.add(entry.key);
-      } else if (label == '正在恢复' && call.isConnected && !call.isOnHold) {
+      } else if (operation == _CallOperationType.resume &&
+          call.isConnected &&
+          !call.isOnHold) {
         finished.add(entry.key);
-      } else if (label == '正在拆分' && !next.isInConference(entry.key)) {
+      } else if (operation == _CallOperationType.split &&
+          !next.isInConference(entry.key)) {
         finished.add(entry.key);
-      } else if (label == '正在合并' && next.isInConference(entry.key)) {
+      } else if (operation == _CallOperationType.merge &&
+          next.isInConference(entry.key)) {
         finished.add(entry.key);
       } else if (previous?.calls[entry.key] != call &&
-          (label == '正在拒接' || label == '正在挂断')) {
+          (operation == _CallOperationType.reject ||
+              operation == _CallOperationType.hangup)) {
         finished.add(entry.key);
       }
     }

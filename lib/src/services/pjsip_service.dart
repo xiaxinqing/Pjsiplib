@@ -55,6 +55,9 @@ part 'pjsip_parts/pjsip_network.dart';
 
 part 'pjsip_parts/pjsip_persistence.dart';
 
+// 盲转后仅在本地释放通话。使用稳定内部标记，避免业务判断依赖展示文案。
+const String _blindTransferLocalReleaseReason = 'blind transfer local release';
+
 class PjsipService extends Notifier<PjsipUIState> {
   /// 与 PJSIP 编译时的 PJSUA_MAX_ACC 保持一致，避免第 65 条线路触发底层断言。
   static const int maxAccountCount = 64;

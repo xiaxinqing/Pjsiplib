@@ -14,7 +14,7 @@ extension _CallSideNoteCards on _MyHomePageState {
       title: title,
       subtitle: contextLabel,
       trailing: _buildCallNoteStatusBadge(
-        _callNoteController.text.trim().isEmpty ? '未填写' : '已暂存',
+        _callNoteController.text.trim().isNotEmpty,
       ),
       child: TextField(
         controller: _callNoteController,
@@ -47,7 +47,7 @@ extension _CallSideNoteCards on _MyHomePageState {
           ? '同步到 ${calls.length} 位会议成员'
           : '只保存到会议主记录：$primaryLabel',
       trailing: _buildCallNoteStatusBadge(
-        _callNoteController.text.trim().isEmpty ? '未填写' : '已暂存',
+        _callNoteController.text.trim().isNotEmpty,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -117,8 +117,8 @@ extension _CallSideNoteCards on _MyHomePageState {
     );
   }
 
-  Widget _buildCallNoteStatusBadge(String label) {
-    final filled = label != '未填写';
+  Widget _buildCallNoteStatusBadge(bool filled) {
+    final label = filled ? '已暂存' : '未填写';
     final color = filled ? _brandGreen : _textSecondary;
     return Tooltip(
       message: filled ? '备注已暂存到当前通话，挂断后写入通话记录' : '填写后会记录，挂断后写入通话记录',
