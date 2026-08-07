@@ -3,31 +3,32 @@ part of '../../../../main.dart';
 /// 通话记录动作层：负责回拨、删除、清空以及添加/查看联系人。
 extension _HistoryActions on _MyHomePageState {
   Future<void> _callHistoryItem(_HistoryItem item, PjsipService service) async {
+    final l10n = context.l10n;
     unawaited(_markHistoryItemRead(item));
     if (item.isLive) {
-      ToastUtil.showWarning('进行中的通话不能重复回拨');
+      ToastUtil.showWarning(l10n.historyCannotRedialActive);
       return;
     }
     final number = item.phoneNumber.trim();
     if (number.isEmpty) {
-      ToastUtil.showWarning('这条记录没有可回拨号码');
+      ToastUtil.showWarning(l10n.historyNoCallbackNumber);
       return;
     }
     final uiState = ref.read(pjsipServiceProvider);
     if (!uiState.isNetworkAvailable) {
-      ToastUtil.showWarning('当前网络不可用，无法呼叫');
+      ToastUtil.showWarning(l10n.historyNetworkUnavailable);
       return;
     }
     if (uiState.accounts.isEmpty) {
-      ToastUtil.showWarning('请先添加线路');
+      ToastUtil.showWarning(l10n.historyAddLineFirst);
       return;
     }
     if (uiState.calls.length >= 4) {
-      ToastUtil.showWarning('当前通话已达 4 路上限');
+      ToastUtil.showWarning(l10n.historyCallLimitReached);
       return;
     }
     if (uiState.hasConference) {
-      ToastUtil.showWarning('请先拆分三方通话，再发起新的呼叫');
+      ToastUtil.showWarning(l10n.historySplitConferenceFirst);
       return;
     }
     final historyAccount = item.accountId == null
@@ -37,7 +38,7 @@ extension _HistoryActions on _MyHomePageState {
         ? historyAccount
         : uiState.bestOutgoingAccount;
     if (account == null) {
-      ToastUtil.showWarning('暂无已注册线路，无法呼叫');
+      ToastUtil.showWarning(l10n.historyNoRegisteredLine);
       return;
     }
     final confirmed = await _showCallHistoryConfirm(
@@ -67,24 +68,25 @@ extension _HistoryActions on _MyHomePageState {
 
   Future<void> _confirmMarkAllMissedCallsRead(int count) async {
     if (count <= 0) return;
+    final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.22),
       builder: (context) => AlertDialog(
-        title: const Text('全部标记为已读'),
+        title: Text(l10n.historyMarkAllReadTitle),
         content: SizedBox(
           width: 380,
-          child: Text('将 $count 条未读未接来电标记为已读，列表中的未读红点会被清除。'),
+          child: Text(l10n.historyMarkAllReadBody(count)),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.check),
-            label: const Text('全部已读'),
+            label: Text(l10n.historyMarkAllReadConfirm),
           ),
         ],
       ),
@@ -116,6 +118,7 @@ extension _HistoryActions on _MyHomePageState {
     required String number,
     required SipAccountInfo account,
   }) async {
+    final l10n = context.l10n;
     final title = item.displayName?.trim().isNotEmpty == true
         ? item.displayName!.trim()
         : number;
@@ -123,7 +126,7 @@ extension _HistoryActions on _MyHomePageState {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.24),
       builder: (context) => AlertDialog(
-        title: const Text('确认回拨'),
+        title: Text(l10n.historyConfirmCallbackTitle),
         content: SizedBox(
           width: 420,
           child: Column(
@@ -174,7 +177,7 @@ extension _HistoryActions on _MyHomePageState {
               const SizedBox(height: 12),
               _buildHistoryConfirmRow(
                 icon: AppIcons.outgoing,
-                label: '外呼线路',
+                label: l10n.historyDialLine,
                 value: '${account.displayName} · ${account.transportLabel}',
               ),
             ],
@@ -183,12 +186,12 @@ extension _HistoryActions on _MyHomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.call),
-            label: const Text('确认回拨'),
+            label: Text(l10n.historyConfirmCallback),
           ),
         ],
       ),
@@ -197,6 +200,7 @@ extension _HistoryActions on _MyHomePageState {
   }
 
   Future<bool> _showDeleteHistoryConfirm(_HistoryItem item) async {
+    final l10n = context.l10n;
     final title = item.displayName?.trim().isNotEmpty == true
         ? item.displayName!.trim()
         : item.phoneNumber;
@@ -204,7 +208,7 @@ extension _HistoryActions on _MyHomePageState {
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.22),
       builder: (context) => AlertDialog(
-        title: const Text('删除通话记录'),
+        title: Text(l10n.historyDeleteTitle),
         content: SizedBox(
           width: 420,
           child: Column(
@@ -234,7 +238,8 @@ extension _HistoryActions on _MyHomePageState {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '${item.direction.label} · ${item.statusLabel}',
+                              '${CallHistoryLocalizer.direction(context.l10n, item.direction)} · '
+                              '${_historyListStatusLabel(item)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall
@@ -250,18 +255,18 @@ extension _HistoryActions on _MyHomePageState {
               const SizedBox(height: 12),
               _buildHistoryConfirmRow(
                 icon: AppIcons.call,
-                label: '号码',
+                label: l10n.historyFieldNumber,
                 value: item.phoneNumber,
               ),
               const SizedBox(height: 10),
               _buildHistoryConfirmRow(
                 icon: AppIcons.outgoing,
-                label: '线路',
-                value: item.accountLabel ?? '未知线路',
+                label: l10n.historyFieldLine,
+                value: item.accountLabel ?? l10n.historyUnknownLine,
               ),
               const SizedBox(height: 12),
               Text(
-                '删除后这条本地通话记录将无法恢复。',
+                l10n.historyDeleteBody,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -272,12 +277,12 @@ extension _HistoryActions on _MyHomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.delete),
-            label: const Text('删除'),
+            label: Text(l10n.historyDeleteConfirm),
             style: FilledButton.styleFrom(backgroundColor: _dangerRed),
           ),
         ],
@@ -324,16 +329,17 @@ extension _HistoryActions on _MyHomePageState {
   }
 
   Future<void> _confirmClearHistory() {
+    final l10n = context.l10n;
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.22),
       builder: (context) => AlertDialog(
-        title: const Text('清空通话记录'),
-        content: const Text('清空后本地通话记录将无法恢复；正在进行的通话不会被清空。'),
+        title: Text(l10n.historyClearTitle),
+        content: Text(l10n.historyClearBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton(
             onPressed: () async {
@@ -344,11 +350,11 @@ extension _HistoryActions on _MyHomePageState {
               } catch (error, stackTrace) {
                 debugPrint('Clear call history failed: $error');
                 debugPrint('$stackTrace');
-                ToastUtil.showError('清空通话记录失败，请稍后重试');
+                ToastUtil.showError(l10n.historyClearError);
               }
             },
             style: FilledButton.styleFrom(backgroundColor: _dangerRed),
-            child: const Text('清空'),
+            child: Text(l10n.historyClearConfirm),
           ),
         ],
       ),
@@ -367,10 +373,10 @@ extension _HistoryActions on _MyHomePageState {
         ),
         label: Text(
           item.hasCurrentContact
-              ? '查看联系人'
+              ? context.l10n.historyViewContact
               : item.hasDeletedContactSnapshot
-              ? '重新添加到联系人'
-              : '添加到联系人',
+              ? context.l10n.historyReAddContact
+              : context.l10n.historyAddContact,
         ),
       ),
     );

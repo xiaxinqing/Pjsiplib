@@ -339,6 +339,18 @@ abstract class AppLocalizations {
   /// **'取消'**
   String get commonCancel;
 
+  /// 通用保存操作
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get commonSave;
+
+  /// 通用关闭操作
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get commonClose;
+
   /// 通用添加操作
   ///
   /// In zh, this message translates to:
@@ -1479,6 +1491,12 @@ abstract class AppLocalizations {
   /// **'打开联系人页'**
   String get contactOpenPage;
 
+  /// No description provided for @historySearchPlaceholder.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索通话'**
+  String get historySearchPlaceholder;
+
   /// No description provided for @historySearchHint.
   ///
   /// In zh, this message translates to:
@@ -1734,25 +1752,25 @@ abstract class AppLocalizations {
   /// No description provided for @historyMarkAllReadTitle.
   ///
   /// In zh, this message translates to:
-  /// **'全部标记为已读'**
+  /// **'将未接来电标记为已读？'**
   String get historyMarkAllReadTitle;
 
   /// No description provided for @historyMarkAllReadBody.
   ///
   /// In zh, this message translates to:
-  /// **'将 {count} 条未读未接来电标记为已读，列表中的未读红点会被清除。'**
+  /// **'将 {count} 条未读未接来电标记为已读。'**
   String historyMarkAllReadBody(int count);
 
   /// No description provided for @historyMarkAllReadConfirm.
   ///
   /// In zh, this message translates to:
-  /// **'全部已读'**
+  /// **'全部标记为已读'**
   String get historyMarkAllReadConfirm;
 
   /// No description provided for @historyConfirmCallbackTitle.
   ///
   /// In zh, this message translates to:
-  /// **'确认回拨'**
+  /// **'回拨此号码？'**
   String get historyConfirmCallbackTitle;
 
   /// No description provided for @historyDialLine.
@@ -1764,13 +1782,13 @@ abstract class AppLocalizations {
   /// No description provided for @historyConfirmCallback.
   ///
   /// In zh, this message translates to:
-  /// **'确认回拨'**
+  /// **'回拨'**
   String get historyConfirmCallback;
 
   /// No description provided for @historyDeleteTitle.
   ///
   /// In zh, this message translates to:
-  /// **'删除通话记录'**
+  /// **'删除这条通话记录？'**
   String get historyDeleteTitle;
 
   /// No description provided for @historyFieldNumber.
@@ -1788,7 +1806,7 @@ abstract class AppLocalizations {
   /// No description provided for @historyDeleteBody.
   ///
   /// In zh, this message translates to:
-  /// **'删除后这条本地通话记录将无法恢复。'**
+  /// **'删除后无法恢复。'**
   String get historyDeleteBody;
 
   /// No description provided for @historyDeleteConfirm.
@@ -1800,13 +1818,13 @@ abstract class AppLocalizations {
   /// No description provided for @historyClearTitle.
   ///
   /// In zh, this message translates to:
-  /// **'清空通话记录'**
+  /// **'清空通话记录？'**
   String get historyClearTitle;
 
   /// No description provided for @historyClearBody.
   ///
   /// In zh, this message translates to:
-  /// **'清空后本地通话记录将无法恢复；正在进行的通话不会被清空。'**
+  /// **'此操作无法撤销。进行中的通话不会被清除。'**
   String get historyClearBody;
 
   /// No description provided for @historyClearConfirm.
@@ -1818,55 +1836,55 @@ abstract class AppLocalizations {
   /// No description provided for @historyClearError.
   ///
   /// In zh, this message translates to:
-  /// **'清空通话记录失败，请稍后重试'**
+  /// **'暂时无法清空通话记录，请稍后重试。'**
   String get historyClearError;
 
   /// No description provided for @historyCannotRedialActive.
   ///
   /// In zh, this message translates to:
-  /// **'进行中的通话不能重复回拨'**
+  /// **'通话正在进行，无需重复回拨。'**
   String get historyCannotRedialActive;
 
   /// No description provided for @historyNoCallbackNumber.
   ///
   /// In zh, this message translates to:
-  /// **'这条记录没有可回拨号码'**
+  /// **'此记录没有可回拨的号码。'**
   String get historyNoCallbackNumber;
 
   /// No description provided for @historyNetworkUnavailable.
   ///
   /// In zh, this message translates to:
-  /// **'当前网络不可用，无法呼叫'**
+  /// **'网络不可用，请恢复连接后重试。'**
   String get historyNetworkUnavailable;
 
   /// No description provided for @historyAddLineFirst.
   ///
   /// In zh, this message translates to:
-  /// **'请先添加线路'**
+  /// **'请先添加电话线路。'**
   String get historyAddLineFirst;
 
   /// No description provided for @historyCallLimitReached.
   ///
   /// In zh, this message translates to:
-  /// **'当前通话已达 4 路上限'**
+  /// **'已达到 4 路通话上限。'**
   String get historyCallLimitReached;
 
   /// No description provided for @historySplitConferenceFirst.
   ///
   /// In zh, this message translates to:
-  /// **'请先拆分三方通话，再发起新的呼叫'**
+  /// **'请先结束或拆分会议通话。'**
   String get historySplitConferenceFirst;
 
   /// No description provided for @historyNoRegisteredLine.
   ///
   /// In zh, this message translates to:
-  /// **'暂无已注册线路，无法呼叫'**
+  /// **'没有可用的已注册线路。'**
   String get historyNoRegisteredLine;
 
   /// No description provided for @historySwitchDetailHint.
   ///
   /// In zh, this message translates to:
-  /// **'点击左侧记录切换详情'**
+  /// **'选择左侧其他记录切换详情'**
   String get historySwitchDetailHint;
 
   /// No description provided for @historyContactDeleted.
@@ -2031,6 +2049,24 @@ abstract class AppLocalizations {
   /// **'保存通话备注失败，请稍后重试'**
   String get historyNoteSaveError;
 
+  /// No description provided for @historyNoteBlindTransferTo.
+  ///
+  /// In zh, this message translates to:
+  /// **'盲转至：{target}'**
+  String historyNoteBlindTransferTo(String target);
+
+  /// No description provided for @historyNoteConference.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议备注：{note}'**
+  String historyNoteConference(String note);
+
+  /// No description provided for @historyNoteCustomer.
+  ///
+  /// In zh, this message translates to:
+  /// **'客户备注：{note}'**
+  String historyNoteCustomer(String note);
+
   /// No description provided for @historyDetailTitle.
   ///
   /// In zh, this message translates to:
@@ -2055,17 +2091,215 @@ abstract class AppLocalizations {
   /// **'添加联系人'**
   String get historyAddContact;
 
-  /// No description provided for @commonSave.
+  /// No description provided for @historyRecentCalls.
   ///
   /// In zh, this message translates to:
-  /// **'保存'**
-  String get commonSave;
+  /// **'最近通话'**
+  String get historyRecentCalls;
 
-  /// No description provided for @commonClose.
+  /// No description provided for @historyNoRecentCalls.
   ///
   /// In zh, this message translates to:
-  /// **'关闭'**
-  String get commonClose;
+  /// **'暂无最近通话'**
+  String get historyNoRecentCalls;
+
+  /// No description provided for @historyCallbackNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'回拨 {number}'**
+  String historyCallbackNumber(String number);
+
+  /// No description provided for @historyYesterdayAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'昨天 {time}'**
+  String historyYesterdayAt(String time);
+
+  /// No description provided for @historyLoadMoreError.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时无法加载更多通话记录，请稍后重试。'**
+  String get historyLoadMoreError;
+
+  /// No description provided for @historyStatusPeerRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方拒接'**
+  String get historyStatusPeerRejected;
+
+  /// No description provided for @historyReasonCallEnded.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话已结束'**
+  String get historyReasonCallEnded;
+
+  /// No description provided for @historyReasonIncomingEnded.
+  ///
+  /// In zh, this message translates to:
+  /// **'来电已结束'**
+  String get historyReasonIncomingEnded;
+
+  /// No description provided for @historyReasonAuthenticationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号认证失败'**
+  String get historyReasonAuthenticationFailed;
+
+  /// No description provided for @historyReasonRemoteRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方已拒接'**
+  String get historyReasonRemoteRejected;
+
+  /// No description provided for @historyReasonCallRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫被拒绝'**
+  String get historyReasonCallRejected;
+
+  /// No description provided for @historyReasonInvalidNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码不存在或无法接通'**
+  String get historyReasonInvalidNumber;
+
+  /// No description provided for @historyReasonNoAnswer.
+  ///
+  /// In zh, this message translates to:
+  /// **'无人接听'**
+  String get historyReasonNoAnswer;
+
+  /// No description provided for @historyReasonTimeout.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫超时'**
+  String get historyReasonTimeout;
+
+  /// No description provided for @historyReasonRemoteUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方无法接通'**
+  String get historyReasonRemoteUnavailable;
+
+  /// No description provided for @historyReasonRingingUnanswered.
+  ///
+  /// In zh, this message translates to:
+  /// **'响铃未接'**
+  String get historyReasonRingingUnanswered;
+
+  /// No description provided for @historyReasonRemoteBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方忙线'**
+  String get historyReasonRemoteBusy;
+
+  /// No description provided for @historyReasonCanceled.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫已取消'**
+  String get historyReasonCanceled;
+
+  /// No description provided for @historyReasonUnsupportedMedia.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方不支持本次通话'**
+  String get historyReasonUnsupportedMedia;
+
+  /// No description provided for @historyReasonServiceUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务暂时不可用'**
+  String get historyReasonServiceUnavailable;
+
+  /// No description provided for @historyReasonRedirected.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫已转移或重定向'**
+  String get historyReasonRedirected;
+
+  /// No description provided for @historyReasonCallIncomplete.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫未完成'**
+  String get historyReasonCallIncomplete;
+
+  /// No description provided for @historyReasonServiceError.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务异常'**
+  String get historyReasonServiceError;
+
+  /// No description provided for @historyReasonRemoteCannotAnswer.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方无法接听'**
+  String get historyReasonRemoteCannotAnswer;
+
+  /// No description provided for @historyReasonNotConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未接通'**
+  String get historyReasonNotConnected;
+
+  /// No description provided for @historyReasonMediaFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体协商失败'**
+  String get historyReasonMediaFailed;
+
+  /// No description provided for @historyReasonBlindTransfer.
+  ///
+  /// In zh, this message translates to:
+  /// **'已盲转'**
+  String get historyReasonBlindTransfer;
+
+  /// No description provided for @historyReasonShortAuthenticationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'认证失败'**
+  String get historyReasonShortAuthenticationFailed;
+
+  /// No description provided for @historyReasonShortRemoteRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方拒接'**
+  String get historyReasonShortRemoteRejected;
+
+  /// No description provided for @historyReasonShortInvalidNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码无效'**
+  String get historyReasonShortInvalidNumber;
+
+  /// No description provided for @historyReasonShortServiceError.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务异常'**
+  String get historyReasonShortServiceError;
+
+  /// No description provided for @historyReasonShortRedirected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已转移'**
+  String get historyReasonShortRedirected;
+
+  /// No description provided for @historyReasonShortMediaFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体失败'**
+  String get historyReasonShortMediaFailed;
+
+  /// No description provided for @historyReasonShortBlindTransfer.
+  ///
+  /// In zh, this message translates to:
+  /// **'已盲转'**
+  String get historyReasonShortBlindTransfer;
+
+  /// No description provided for @historyReasonWithSipCode.
+  ///
+  /// In zh, this message translates to:
+  /// **'{reason}（SIP {code}）'**
+  String historyReasonWithSipCode(String reason, int code);
 }
 
 class _AppLocalizationsDelegate

@@ -11,12 +11,24 @@ extension _HistoryReasonFormatter on _MyHomePageState {
   /// 完整 SIP 原因保留给右侧详情，避免列表被协议细节干扰。
   String _historyListStatusLabel(_HistoryItem item) {
     if (item.isLive) return item.statusLabel;
+    final l10n = context.l10n;
     return switch (item.status) {
-      CallHistoryStatus.completed => item.statusLabel,
-      CallHistoryStatus.missed => item.statusLabel,
-      CallHistoryStatus.rejected =>
-        item.direction == CallHistoryDirection.inbound ? '已拒接' : '对方拒接',
-      CallHistoryStatus.canceled => item.statusLabel,
+      CallHistoryStatus.completed => CallHistoryLocalizer.status(
+        l10n,
+        CallHistoryStatus.completed,
+      ),
+      CallHistoryStatus.missed => CallHistoryLocalizer.status(
+        l10n,
+        CallHistoryStatus.missed,
+      ),
+      CallHistoryStatus.rejected => CallHistoryLocalizer.rejectedStatus(
+        l10n,
+        item.direction,
+      ),
+      CallHistoryStatus.canceled => CallHistoryLocalizer.status(
+        l10n,
+        CallHistoryStatus.canceled,
+      ),
       CallHistoryStatus.failed => _historyFailedReasonLabel(item),
       null => item.statusLabel,
     };
@@ -24,10 +36,13 @@ extension _HistoryReasonFormatter on _MyHomePageState {
 
   /// SIP 失败码在列表中归类成稳定短文案。
   String _historyFailedReasonLabel(_HistoryItem item) {
-    return SipCallEndReasonMapper.shortLabel(
-      statusCode: item.sipStatusCode,
-      fallbackReason: item.hangupReason,
-      reachedRinging: _historyReachedRinging(item),
+    return CallHistoryLocalizer.shortReason(
+      context.l10n,
+      SipCallEndReasonMapper.shortReason(
+        statusCode: item.sipStatusCode,
+        fallbackReason: item.hangupReason,
+        reachedRinging: _historyReachedRinging(item),
+      ),
     );
   }
 
@@ -42,33 +57,70 @@ extension _HistoryReasonFormatter on _MyHomePageState {
         : SipReasonDirection.outbound;
 
     if (item.status == CallHistoryStatus.rejected) {
-      if (item.direction == CallHistoryDirection.inbound) return '已拒接';
+      if (item.direction == CallHistoryDirection.inbound) {
+        return CallHistoryLocalizer.status(
+          context.l10n,
+          CallHistoryStatus.rejected,
+        );
+      }
       return item.sipStatusCode == null
-          ? '对方已拒接'
-          : SipCallEndReasonMapper.detailText(
+          ? context.l10n.historyReasonRemoteRejected
+          : CallHistoryLocalizer.detailReasonWithSipCode(
+              context.l10n,
+              SipCallEndReasonMapper.detailReason(
+                item.sipStatusCode!,
+                direction: direction,
+                wasConnected: false,
+                reachedRinging: _historyReachedRinging(item),
+              ),
               item.sipStatusCode!,
-              direction: direction,
-              wasConnected: false,
-              reachedRinging: _historyReachedRinging(item),
-              includeSipCode: true,
             );
     }
 
     final sipStatusCode = item.sipStatusCode;
     if (sipStatusCode != null) {
-      return SipCallEndReasonMapper.detailText(
+      return CallHistoryLocalizer.detailReasonWithSipCode(
+        context.l10n,
+        SipCallEndReasonMapper.detailReason(
+          sipStatusCode,
+          direction: direction,
+          wasConnected:
+              item.status == CallHistoryStatus.completed ||
+              item.answeredAt != null,
+          reachedRinging: _historyReachedRinging(item),
+        ),
         sipStatusCode,
-        direction: direction,
-        wasConnected:
-            item.status == CallHistoryStatus.completed ||
-            item.answeredAt != null,
-        reachedRinging: _historyReachedRinging(item),
-        includeSipCode: true,
       );
     }
 
     final reason = item.hangupReason?.trim();
-    return reason == null || reason.isEmpty ? null : reason;
+    if (reason == null || reason.isEmpty) return null;
+    final fallbackReason = SipCallEndReasonMapper.reasonFromFallback(reason);
+    if (fallbackReason != SipCallEndReason.notConnected) {
+      return CallHistoryLocalizer.detailReason(context.l10n, fallbackReason);
+    }
+    return switch (item.status) {
+      CallHistoryStatus.completed => CallHistoryLocalizer.detailReason(
+        context.l10n,
+        SipCallEndReason.callEnded,
+      ),
+      CallHistoryStatus.missed => CallHistoryLocalizer.detailReason(
+        context.l10n,
+        SipCallEndReason.noAnswer,
+      ),
+      CallHistoryStatus.rejected => CallHistoryLocalizer.detailReason(
+        context.l10n,
+        SipCallEndReason.remoteRejected,
+      ),
+      CallHistoryStatus.canceled => CallHistoryLocalizer.detailReason(
+        context.l10n,
+        SipCallEndReason.canceled,
+      ),
+      CallHistoryStatus.failed || null => CallHistoryLocalizer.detailReason(
+        context.l10n,
+        SipCallEndReason.notConnected,
+      ),
+    };
   }
 
   /// 是否已经进入响铃阶段。

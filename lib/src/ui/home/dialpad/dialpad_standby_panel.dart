@@ -212,8 +212,8 @@ extension _DialpadStandbyPanel on _MyHomePageState {
     final lineLabel = item.accountLabel?.trim();
     final shouldShowNumber = number.isNotEmpty && title != number;
     final statusLabel = [
-      _localizedDialpadCallDirection(item.direction),
-      _localizedDialpadCallStatus(item),
+      CallHistoryLocalizer.direction(context.l10n, item.direction),
+      _historyListStatusLabel(item),
       _formatDialpadRecentCallTime(item.startedAt),
     ].join(' · ');
 
@@ -301,26 +301,6 @@ extension _DialpadStandbyPanel on _MyHomePageState {
         ],
       ),
     );
-  }
-
-  /// 最近通话只在展示层做本地化，不改动数据库中稳定的枚举值。
-  String _localizedDialpadCallDirection(CallHistoryDirection direction) {
-    return switch (direction) {
-      CallHistoryDirection.inbound => context.l10n.callDirectionInbound,
-      CallHistoryDirection.outbound => context.l10n.callDirectionOutbound,
-    };
-  }
-
-  /// 将历史状态映射为当前语言；实时记录尚无枚举状态时保留原始文案。
-  String _localizedDialpadCallStatus(_HistoryItem item) {
-    return switch (item.status) {
-      CallHistoryStatus.completed => context.l10n.callStatusCompleted,
-      CallHistoryStatus.missed => context.l10n.callStatusMissed,
-      CallHistoryStatus.rejected => context.l10n.callStatusRejected,
-      CallHistoryStatus.failed => context.l10n.callStatusFailed,
-      CallHistoryStatus.canceled => context.l10n.callStatusCanceled,
-      null => item.statusLabel,
-    };
   }
 
   String _dialpadRecentCallTitle(_HistoryItem item) {

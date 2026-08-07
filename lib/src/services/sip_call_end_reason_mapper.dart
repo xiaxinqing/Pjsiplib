@@ -4,6 +4,34 @@
 /// 这里集中维护 VPhone 当前服务端的业务规则，避免 UI、Toast、通话记录各写一套。
 enum SipReasonDirection { inbound, outbound }
 
+/// 与展示语言无关的通话结束原因。
+///
+/// 数据层只负责把 SIP 状态和历史原因归一成业务语义；具体文案由 UI 的
+/// AppLocalizations 提供，避免切换语言后仍显示归档时的语言。
+enum SipCallEndReason {
+  callEnded,
+  incomingEnded,
+  authenticationFailed,
+  remoteRejected,
+  callRejected,
+  invalidNumber,
+  noAnswer,
+  timeout,
+  remoteUnavailable,
+  ringingUnanswered,
+  remoteBusy,
+  canceled,
+  unsupportedMedia,
+  serviceUnavailable,
+  redirected,
+  callIncomplete,
+  serviceError,
+  remoteCannotAnswer,
+  notConnected,
+  mediaFailed,
+  blindTransfer,
+}
+
 class SipCallEndReasonMapper {
   const SipCallEndReasonMapper._();
 
@@ -15,53 +43,78 @@ class SipCallEndReasonMapper {
     required bool reachedRinging,
     bool includeSipCode = false,
   }) {
-    final label = detailLabel(
-      statusCode,
-      direction: direction,
-      wasConnected: wasConnected,
-      reachedRinging: reachedRinging,
+    final label = _legacyDetailLabel(
+      detailReason(
+        statusCode,
+        direction: direction,
+        wasConnected: wasConnected,
+        reachedRinging: reachedRinging,
+      ),
     );
     if (!includeSipCode || statusCode <= 0) return label;
     return '$label（SIP $statusCode）';
   }
 
-  /// 返回不带 SIP 码的完整业务文案。
+  /// 返回与展示语言无关的完整业务原因。
+  static SipCallEndReason detailReason(
+    int statusCode, {
+    required SipReasonDirection? direction,
+    required bool wasConnected,
+    required bool reachedRinging,
+  }) {
+    if (wasConnected) return SipCallEndReason.callEnded;
+
+    return switch (statusCode) {
+      401 || 407 => SipCallEndReason.authenticationFailed,
+      403 =>
+        reachedRinging
+            ? SipCallEndReason.remoteRejected
+            : SipCallEndReason.callRejected,
+      404 || 484 || 604 => SipCallEndReason.invalidNumber,
+      408 =>
+        reachedRinging ? SipCallEndReason.noAnswer : SipCallEndReason.timeout,
+      410 || 480 => SipCallEndReason.remoteUnavailable,
+      603 =>
+        reachedRinging
+            ? SipCallEndReason.ringingUnanswered
+            : SipCallEndReason.remoteUnavailable,
+      486 => SipCallEndReason.remoteBusy,
+      487 => SipCallEndReason.canceled,
+      488 || 606 => SipCallEndReason.unsupportedMedia,
+      503 =>
+        reachedRinging
+            ? SipCallEndReason.remoteRejected
+            : SipCallEndReason.serviceUnavailable,
+      500 || 502 || 504 => SipCallEndReason.serviceUnavailable,
+      >= 300 && < 400 => SipCallEndReason.redirected,
+      >= 400 && < 500 => SipCallEndReason.callIncomplete,
+      >= 500 && < 600 => SipCallEndReason.serviceError,
+      >= 600 => SipCallEndReason.remoteCannotAnswer,
+      _ =>
+        direction == SipReasonDirection.inbound
+            ? SipCallEndReason.incomingEnded
+            : SipCallEndReason.callEnded,
+    };
+  }
+
+  /// 返回不带 SIP 码的旧版中文文案。
+  ///
+  /// 电话服务内仍有非 Widget 调用依赖字符串；通话记录 UI 使用 [detailReason]
+  /// 后自行本地化。保留此方法可避免扩大本次界面国际化的改动范围。
   static String detailLabel(
     int statusCode, {
     required SipReasonDirection? direction,
     required bool wasConnected,
     required bool reachedRinging,
   }) {
-    if (wasConnected) return '通话已结束';
-
-    return switch (statusCode) {
-      // Digest 鉴权挑战正常会继续重发 INVITE；如果最终停在这里才提示账号问题。
-      401 || 407 => '账号认证失败',
-
-      // 当前 PBX 在响铃后用 403 + Q.850 cause=21 表示明确拒接。
-      // 未响铃的 403 更可能是权限、路由或服务端策略拒绝，不能直接说成对方拒接。
-      403 => reachedRinging ? '对方已拒接' : '呼叫被拒绝',
-
-      404 || 484 || 604 => '号码不存在或无法接通',
-      408 => reachedRinging ? '无人接听' : '呼叫超时',
-      410 || 480 => '对方无法接通',
-      // Asterisk 这边响铃一段时间后可能返回 603 + Q.850 cause=16。
-      // 这种不能精确判断为人为拒接，用“响铃未接”更贴近客服视角。
-      603 => reachedRinging ? '响铃未接' : '对方无法接通',
-      486 => '对方忙线',
-      487 => '呼叫已取消',
-      488 || 606 => '对方不支持本次通话',
-      // 当前 Asterisk + Telephone 测试链路中，外呼已经收到 180 Ringing 后，
-      // 对方手动拒接可能回 503 + Q.850 cause=34，而不是标准的 403/603。
-      // 未响铃的 503 仍按服务/线路异常处理，避免把路由失败误判为客户拒接。
-      503 => reachedRinging ? '对方已拒接' : '电话服务暂时不可用',
-      500 || 502 || 504 => '电话服务暂时不可用',
-      >= 300 && < 400 => '呼叫被转移或重定向',
-      >= 400 && < 500 => '呼叫未完成',
-      >= 500 && < 600 => '电话服务异常',
-      >= 600 => '对方无法接听',
-      _ => direction == SipReasonDirection.inbound ? '来电已结束' : '通话已结束',
-    };
+    return _legacyDetailLabel(
+      detailReason(
+        statusCode,
+        direction: direction,
+        wasConnected: wasConnected,
+        reachedRinging: reachedRinging,
+      ),
+    );
   }
 
   /// 返回通话记录列表使用的短标签，优先按 SIP 状态码判断。
@@ -70,41 +123,91 @@ class SipCallEndReasonMapper {
     String? fallbackReason,
     bool reachedRinging = false,
   }) {
+    return _legacyShortLabel(
+      shortReason(
+        statusCode: statusCode,
+        fallbackReason: fallbackReason,
+        reachedRinging: reachedRinging,
+      ),
+    );
+  }
+
+  /// 返回通话记录列表使用的语言无关短原因。
+  static SipCallEndReason shortReason({
+    int? statusCode,
+    String? fallbackReason,
+    bool reachedRinging = false,
+  }) {
     final code = statusCode ?? _parseSipStatusCode(fallbackReason);
     if (code != null) {
       return switch (code) {
-        401 || 407 => '认证失败',
-        403 => reachedRinging ? '对方拒接' : '无法接通',
-        404 || 484 || 604 => '号码无效',
-        408 => '无人接听',
-        410 || 480 => '无法接通',
-        603 => reachedRinging ? '响铃未接' : '无法接通',
-        486 => '对方忙线',
-        487 => '已取消',
-        488 || 606 => '媒体失败',
-        503 => reachedRinging ? '对方拒接' : '服务异常',
-        500 || 502 || 504 => '服务异常',
-        >= 300 && < 400 => '已转移',
-        >= 400 && < 500 => '未接通',
-        >= 500 && < 600 => '服务异常',
-        >= 600 => '无法接通',
-        _ => '未接通',
+        401 || 407 => SipCallEndReason.authenticationFailed,
+        403 =>
+          reachedRinging
+              ? SipCallEndReason.remoteRejected
+              : SipCallEndReason.notConnected,
+        404 || 484 || 604 => SipCallEndReason.invalidNumber,
+        408 => SipCallEndReason.noAnswer,
+        410 || 480 => SipCallEndReason.notConnected,
+        603 =>
+          reachedRinging
+              ? SipCallEndReason.ringingUnanswered
+              : SipCallEndReason.notConnected,
+        486 => SipCallEndReason.remoteBusy,
+        487 => SipCallEndReason.canceled,
+        488 || 606 => SipCallEndReason.mediaFailed,
+        503 =>
+          reachedRinging
+              ? SipCallEndReason.remoteRejected
+              : SipCallEndReason.serviceError,
+        500 || 502 || 504 => SipCallEndReason.serviceError,
+        >= 300 && < 400 => SipCallEndReason.redirected,
+        >= 400 && < 500 => SipCallEndReason.notConnected,
+        >= 500 && < 600 => SipCallEndReason.serviceError,
+        >= 600 => SipCallEndReason.notConnected,
+        _ => SipCallEndReason.notConnected,
       };
     }
 
+    return reasonFromFallback(fallbackReason);
+  }
+
+  /// 将旧版本保存的中英文原因收敛成稳定业务语义。
+  static SipCallEndReason reasonFromFallback(String? fallbackReason) {
     final reason = fallbackReason?.trim() ?? '';
-    if (reason.isEmpty) return '未接通';
-    if (_containsAny(reason, const ['拒接', 'Forbidden', 'Decline'])) {
-      return '对方拒接';
+    if (reason.isEmpty) return SipCallEndReason.notConnected;
+    final normalized = reason.toLowerCase();
+    if (_containsAny(normalized, const ['盲转', 'blind transfer'])) {
+      return SipCallEndReason.blindTransfer;
     }
-    if (_containsAny(reason, const ['忙', 'Busy'])) return '对方忙线';
-    if (_containsAny(reason, const ['超时', 'Timeout'])) return '无人接听';
-    if (_containsAny(reason, const ['号码', 'Not Found'])) return '号码无效';
-    if (_containsAny(reason, const ['媒体', 'Media'])) return '媒体失败';
-    if (_containsAny(reason, const ['不可用', '无法接通', 'Unavailable'])) {
-      return '无法接通';
+    if (_containsAny(normalized, const ['拒接', 'forbidden', 'decline'])) {
+      return SipCallEndReason.remoteRejected;
     }
-    return '未接通';
+    if (_containsAny(normalized, const ['认证', 'auth'])) {
+      return SipCallEndReason.authenticationFailed;
+    }
+    if (_containsAny(normalized, const ['忙', 'busy'])) {
+      return SipCallEndReason.remoteBusy;
+    }
+    if (_containsAny(normalized, const ['超时', 'timeout'])) {
+      return SipCallEndReason.noAnswer;
+    }
+    if (_containsAny(normalized, const ['号码', 'not found'])) {
+      return SipCallEndReason.invalidNumber;
+    }
+    if (_containsAny(normalized, const ['媒体', 'media'])) {
+      return SipCallEndReason.mediaFailed;
+    }
+    if (_containsAny(normalized, const ['取消', 'canceled', 'cancelled'])) {
+      return SipCallEndReason.canceled;
+    }
+    if (_containsAny(normalized, const ['服务', 'service', 'server error'])) {
+      return SipCallEndReason.serviceError;
+    }
+    if (_containsAny(normalized, const ['不可用', '无法接通', 'unavailable'])) {
+      return SipCallEndReason.notConnected;
+    }
+    return SipCallEndReason.notConnected;
   }
 
   static int? _parseSipStatusCode(String? reason) {
@@ -117,4 +220,46 @@ class SipCallEndReasonMapper {
   static bool _containsAny(String value, List<String> patterns) {
     return patterns.any(value.contains);
   }
+
+  static String _legacyDetailLabel(SipCallEndReason reason) => switch (reason) {
+    SipCallEndReason.callEnded => '通话已结束',
+    SipCallEndReason.incomingEnded => '来电已结束',
+    SipCallEndReason.authenticationFailed => '账号认证失败',
+    SipCallEndReason.remoteRejected => '对方已拒接',
+    SipCallEndReason.callRejected => '呼叫被拒绝',
+    SipCallEndReason.invalidNumber => '号码不存在或无法接通',
+    SipCallEndReason.noAnswer => '无人接听',
+    SipCallEndReason.timeout => '呼叫超时',
+    SipCallEndReason.remoteUnavailable => '对方无法接通',
+    SipCallEndReason.ringingUnanswered => '响铃未接',
+    SipCallEndReason.remoteBusy => '对方忙线',
+    SipCallEndReason.canceled => '呼叫已取消',
+    SipCallEndReason.unsupportedMedia => '对方不支持本次通话',
+    SipCallEndReason.serviceUnavailable => '电话服务暂时不可用',
+    SipCallEndReason.redirected => '呼叫被转移或重定向',
+    SipCallEndReason.callIncomplete => '呼叫未完成',
+    SipCallEndReason.serviceError => '电话服务异常',
+    SipCallEndReason.remoteCannotAnswer => '对方无法接听',
+    SipCallEndReason.notConnected => '未接通',
+    SipCallEndReason.mediaFailed => '媒体失败',
+    SipCallEndReason.blindTransfer => '盲转',
+  };
+
+  static String _legacyShortLabel(SipCallEndReason reason) => switch (reason) {
+    SipCallEndReason.authenticationFailed => '认证失败',
+    SipCallEndReason.remoteRejected => '对方拒接',
+    SipCallEndReason.invalidNumber => '号码无效',
+    SipCallEndReason.noAnswer => '无人接听',
+    SipCallEndReason.ringingUnanswered => '响铃未接',
+    SipCallEndReason.remoteBusy => '对方忙线',
+    SipCallEndReason.canceled => '已取消',
+    SipCallEndReason.mediaFailed || SipCallEndReason.unsupportedMedia => '媒体失败',
+    SipCallEndReason.serviceError ||
+    SipCallEndReason.serviceUnavailable => '服务异常',
+    SipCallEndReason.redirected => '已转移',
+    SipCallEndReason.callEnded => '已结束',
+    SipCallEndReason.incomingEnded => '来电结束',
+    SipCallEndReason.blindTransfer => '已盲转',
+    _ => '未接通',
+  };
 }

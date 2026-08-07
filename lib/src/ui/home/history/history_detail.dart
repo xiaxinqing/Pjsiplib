@@ -60,9 +60,7 @@ extension _HistoryDetail on _MyHomePageState {
             ),
             _buildHistoryDetailLine(
               context.l10n.historyFieldDirection,
-              item.direction == CallHistoryDirection.inbound
-                  ? context.l10n.callDirectionInbound
-                  : context.l10n.callDirectionOutbound,
+              CallHistoryLocalizer.direction(context.l10n, item.direction),
             ),
             _buildHistoryDetailLine(
               context.l10n.historyFieldStatus,
@@ -74,19 +72,19 @@ extension _HistoryDetail on _MyHomePageState {
             ),
             _buildHistoryDetailLine(
               context.l10n.historyFieldCalledAt,
-              DateFormat('yyyy-MM-dd HH:mm:ss').format(item.startedAt),
+              _formatHistoryDateTime(item.startedAt),
             ),
             _buildHistoryDetailLine(
               context.l10n.historyFieldAnsweredAt,
               item.answeredAt == null
                   ? context.l10n.historyNotAnswered
-                  : DateFormat('yyyy-MM-dd HH:mm:ss').format(item.answeredAt!),
+                  : _formatHistoryDateTime(item.answeredAt!),
             ),
             _buildHistoryDetailLine(
               context.l10n.historyFieldEndedAt,
               item.endedAt == null
                   ? context.l10n.historyInProgress
-                  : DateFormat('yyyy-MM-dd HH:mm:ss').format(item.endedAt!),
+                  : _formatHistoryDateTime(item.endedAt!),
             ),
             _buildHistoryDetailLine(
               context.l10n.historyFieldDuration,
@@ -110,6 +108,11 @@ extension _HistoryDetail on _MyHomePageState {
         ),
       ),
     );
+  }
+
+  String _formatHistoryDateTime(DateTime time) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    return DateFormat.yMd(locale).add_jms().format(time);
   }
 
   bool _shouldHighlightHistoryEndReason(_HistoryItem item) {
@@ -336,7 +339,10 @@ extension _HistoryDetail on _MyHomePageState {
   Future<void> _showEditHistoryNoteDialog(_HistoryItem item) {
     final databaseId = item.databaseId;
     if (databaseId == null) return Future<void>.value();
-    final controller = TextEditingController(text: item.note?.trim() ?? '');
+    final controller = TextEditingController(
+      text: _historyNoteText(item) ?? '',
+    );
+    final noteSaveError = context.l10n.historyNoteSaveError;
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.22),
@@ -371,7 +377,7 @@ extension _HistoryDetail on _MyHomePageState {
                 } catch (error, stackTrace) {
                   debugPrint('Update call history note failed: $error');
                   debugPrint('$stackTrace');
-                  ToastUtil.showError(context.l10n.historyNoteSaveError);
+                  ToastUtil.showError(noteSaveError);
                 }
               },
               icon: const Icon(AppIcons.save),
@@ -418,14 +424,20 @@ extension _HistoryDetail on _MyHomePageState {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: color,
           fontWeight: FontWeight.w700,
         ),
       ),
     );
-    if (reason == null || reason.isEmpty || reason == label) return chip;
-    return Tooltip(message: reason, child: chip);
+    return Tooltip(
+      message: reason == null || reason.isEmpty ? label : reason,
+      waitDuration: const Duration(milliseconds: 350),
+      child: chip,
+    );
   }
 
   Future<void> _showHistoryDetail(_HistoryItem item, PjsipService service) {

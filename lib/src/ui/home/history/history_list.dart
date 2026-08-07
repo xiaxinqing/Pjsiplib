@@ -23,7 +23,7 @@ extension _HistoryList on _MyHomePageState {
   static const double _historyDurationColumnWidth = 48;
 
   /// 状态列固定宽度，保证表头和不同长度的状态标签保持同一列起点。
-  static const double _historyStatusColumnWidth = 72;
+  static const double _historyStatusColumnWidth = 88;
 
   /// 拨打时间列固定宽度，方便同一列纵向对齐。
   static const double _historyTimeColumnWidth = 54;
@@ -279,10 +279,8 @@ extension _HistoryList on _MyHomePageState {
                   ),
                   child: SizedBox(
                     width: double.infinity,
-                    child: Text(
+                    child: _buildTooltipText(
                       item.accountLabel ?? context.l10n.historyUnknownLine,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(
                         context,
                       ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -313,7 +311,7 @@ extension _HistoryList on _MyHomePageState {
               SizedBox(
                 width: _historyTimeColumnWidth,
                 child: Text(
-                  DateFormat('HH:mm').format(item.startedAt),
+                  _formatHistoryTime(item.startedAt),
                   textAlign: TextAlign.right,
                   style: Theme.of(
                     context,

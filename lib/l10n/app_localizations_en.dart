@@ -137,6 +137,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commonCancel => 'Cancel';
 
   @override
+  String get commonSave => 'Save';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
   String get commonAdd => 'Add';
 
   @override
@@ -768,6 +774,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contactOpenPage => 'Open contacts';
 
   @override
+  String get historySearchPlaceholder => 'Search calls';
+
+  @override
   String get historySearchHint => 'Search number, customer, line, or notes';
 
   @override
@@ -903,18 +912,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyGroupYesterday => 'Yesterday';
 
   @override
-  String get historyMarkAllReadTitle => 'Mark all as read';
+  String get historyMarkAllReadTitle => 'Mark missed calls as read?';
 
   @override
   String historyMarkAllReadBody(int count) {
-    return 'Mark $count missed calls as read and clear their unread dots?';
+    return 'Mark $count unread missed calls as read.';
   }
 
   @override
-  String get historyMarkAllReadConfirm => 'Mark all read';
+  String get historyMarkAllReadConfirm => 'Mark all as read';
 
   @override
-  String get historyConfirmCallbackTitle => 'Confirm call back';
+  String get historyConfirmCallbackTitle => 'Call this number back?';
 
   @override
   String get historyDialLine => 'Dial line';
@@ -923,7 +932,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyConfirmCallback => 'Call back';
 
   @override
-  String get historyDeleteTitle => 'Delete call record';
+  String get historyDeleteTitle => 'Delete this call record?';
 
   @override
   String get historyFieldNumber => 'Number';
@@ -932,50 +941,52 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyFieldLine => 'Line';
 
   @override
-  String get historyDeleteBody =>
-      'This local call record cannot be recovered after deletion.';
+  String get historyDeleteBody => 'This cannot be undone.';
 
   @override
   String get historyDeleteConfirm => 'Delete';
 
   @override
-  String get historyClearTitle => 'Clear call history';
+  String get historyClearTitle => 'Clear call history?';
 
   @override
   String get historyClearBody =>
-      'Local call history cannot be recovered. Active calls will be kept.';
+      'This cannot be undone. Active calls will be kept.';
 
   @override
   String get historyClearConfirm => 'Clear';
 
   @override
-  String get historyClearError => 'Could not clear call history. Try again.';
+  String get historyClearError =>
+      'Call history couldn\'t be cleared. Try again later.';
 
   @override
-  String get historyCannotRedialActive => 'This call is already active';
+  String get historyCannotRedialActive => 'This call is already in progress.';
 
   @override
-  String get historyNoCallbackNumber => 'This record has no callable number';
+  String get historyNoCallbackNumber =>
+      'This record doesn\'t have a callable number.';
 
   @override
-  String get historyNetworkUnavailable => 'No network connection';
+  String get historyNetworkUnavailable =>
+      'You\'re offline. Reconnect and try again.';
 
   @override
-  String get historyAddLineFirst => 'Add a line first';
+  String get historyAddLineFirst => 'Add a phone line first.';
 
   @override
-  String get historyCallLimitReached => 'The 4-call limit has been reached';
+  String get historyCallLimitReached => 'You\'ve reached the 4-call limit.';
 
   @override
   String get historySplitConferenceFirst =>
-      'Split the conference before starting another call';
+      'End or split the conference first.';
 
   @override
-  String get historyNoRegisteredLine => 'No registered line is available';
+  String get historyNoRegisteredLine => 'No registered line is available.';
 
   @override
   String get historySwitchDetailHint =>
-      'Select a call on the left to view details';
+      'Select another call to view its details';
 
   @override
   String get historyContactDeleted =>
@@ -1034,7 +1045,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String historyTimes(int count) {
-    return '$count times';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# times',
+      one: '1 time',
+      zero: '0 times',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -1064,6 +1082,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyNoteSaveError => 'Could not save call notes. Try again.';
 
   @override
+  String historyNoteBlindTransferTo(String target) {
+    return 'Blind transfer to: $target';
+  }
+
+  @override
+  String historyNoteConference(String note) {
+    return 'Conference note: $note';
+  }
+
+  @override
+  String historyNoteCustomer(String note) {
+    return 'Customer note: $note';
+  }
+
+  @override
   String get historyDetailTitle => 'Call details';
 
   @override
@@ -1076,8 +1109,120 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyAddContact => 'Add contact';
 
   @override
-  String get commonSave => 'Save';
+  String get historyRecentCalls => 'Recent calls';
 
   @override
-  String get commonClose => 'Close';
+  String get historyNoRecentCalls => 'No recent calls';
+
+  @override
+  String historyCallbackNumber(String number) {
+    return 'Call back $number';
+  }
+
+  @override
+  String historyYesterdayAt(String time) {
+    return 'Yesterday at $time';
+  }
+
+  @override
+  String get historyLoadMoreError =>
+      'More calls couldn\'t be loaded. Try again later.';
+
+  @override
+  String get historyStatusPeerRejected => 'Declined';
+
+  @override
+  String get historyReasonCallEnded => 'Call ended';
+
+  @override
+  String get historyReasonIncomingEnded => 'Incoming call ended';
+
+  @override
+  String get historyReasonAuthenticationFailed =>
+      'Account authentication failed';
+
+  @override
+  String get historyReasonRemoteRejected => 'The other party declined the call';
+
+  @override
+  String get historyReasonCallRejected => 'Call rejected';
+
+  @override
+  String get historyReasonInvalidNumber =>
+      'Number doesn\'t exist or can\'t be reached';
+
+  @override
+  String get historyReasonNoAnswer => 'No answer';
+
+  @override
+  String get historyReasonTimeout => 'Call timed out';
+
+  @override
+  String get historyReasonRemoteUnavailable =>
+      'The other party couldn\'t be reached';
+
+  @override
+  String get historyReasonRingingUnanswered => 'Rang with no answer';
+
+  @override
+  String get historyReasonRemoteBusy => 'Line busy';
+
+  @override
+  String get historyReasonCanceled => 'Call canceled';
+
+  @override
+  String get historyReasonUnsupportedMedia =>
+      'The other party doesn\'t support this call';
+
+  @override
+  String get historyReasonServiceUnavailable =>
+      'Phone service is temporarily unavailable';
+
+  @override
+  String get historyReasonRedirected => 'Call forwarded or redirected';
+
+  @override
+  String get historyReasonCallIncomplete => 'Call not completed';
+
+  @override
+  String get historyReasonServiceError => 'Phone service error';
+
+  @override
+  String get historyReasonRemoteCannotAnswer =>
+      'The other party couldn\'t answer';
+
+  @override
+  String get historyReasonNotConnected => 'Not connected';
+
+  @override
+  String get historyReasonMediaFailed => 'Media negotiation failed';
+
+  @override
+  String get historyReasonBlindTransfer => 'Blind transferred';
+
+  @override
+  String get historyReasonShortAuthenticationFailed => 'Authentication failed';
+
+  @override
+  String get historyReasonShortRemoteRejected => 'Declined';
+
+  @override
+  String get historyReasonShortInvalidNumber => 'Invalid number';
+
+  @override
+  String get historyReasonShortServiceError => 'Service error';
+
+  @override
+  String get historyReasonShortRedirected => 'Forwarded';
+
+  @override
+  String get historyReasonShortMediaFailed => 'Media failed';
+
+  @override
+  String get historyReasonShortBlindTransfer => 'Transferred';
+
+  @override
+  String historyReasonWithSipCode(String reason, int code) {
+    return '$reason (SIP $code)';
+  }
 }

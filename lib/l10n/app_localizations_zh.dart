@@ -129,6 +129,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonCancel => '取消';
 
   @override
+  String get commonSave => '保存';
+
+  @override
+  String get commonClose => '关闭';
+
+  @override
   String get commonAdd => '添加';
 
   @override
@@ -744,6 +750,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get contactOpenPage => '打开联系人页';
 
   @override
+  String get historySearchPlaceholder => '搜索通话';
+
+  @override
   String get historySearchHint => '搜索号码、客户、线路、备注';
 
   @override
@@ -878,27 +887,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyGroupYesterday => '昨天';
 
   @override
-  String get historyMarkAllReadTitle => '全部标记为已读';
+  String get historyMarkAllReadTitle => '将未接来电标记为已读？';
 
   @override
   String historyMarkAllReadBody(int count) {
-    return '将 $count 条未读未接来电标记为已读，列表中的未读红点会被清除。';
+    return '将 $count 条未读未接来电标记为已读。';
   }
 
   @override
-  String get historyMarkAllReadConfirm => '全部已读';
+  String get historyMarkAllReadConfirm => '全部标记为已读';
 
   @override
-  String get historyConfirmCallbackTitle => '确认回拨';
+  String get historyConfirmCallbackTitle => '回拨此号码？';
 
   @override
   String get historyDialLine => '拨号线路';
 
   @override
-  String get historyConfirmCallback => '确认回拨';
+  String get historyConfirmCallback => '回拨';
 
   @override
-  String get historyDeleteTitle => '删除通话记录';
+  String get historyDeleteTitle => '删除这条通话记录？';
 
   @override
   String get historyFieldNumber => '号码';
@@ -907,46 +916,46 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyFieldLine => '线路';
 
   @override
-  String get historyDeleteBody => '删除后这条本地通话记录将无法恢复。';
+  String get historyDeleteBody => '删除后无法恢复。';
 
   @override
   String get historyDeleteConfirm => '删除';
 
   @override
-  String get historyClearTitle => '清空通话记录';
+  String get historyClearTitle => '清空通话记录？';
 
   @override
-  String get historyClearBody => '清空后本地通话记录将无法恢复；正在进行的通话不会被清空。';
+  String get historyClearBody => '此操作无法撤销。进行中的通话不会被清除。';
 
   @override
   String get historyClearConfirm => '清空';
 
   @override
-  String get historyClearError => '清空通话记录失败，请稍后重试';
+  String get historyClearError => '暂时无法清空通话记录，请稍后重试。';
 
   @override
-  String get historyCannotRedialActive => '进行中的通话不能重复回拨';
+  String get historyCannotRedialActive => '通话正在进行，无需重复回拨。';
 
   @override
-  String get historyNoCallbackNumber => '这条记录没有可回拨号码';
+  String get historyNoCallbackNumber => '此记录没有可回拨的号码。';
 
   @override
-  String get historyNetworkUnavailable => '当前网络不可用，无法呼叫';
+  String get historyNetworkUnavailable => '网络不可用，请恢复连接后重试。';
 
   @override
-  String get historyAddLineFirst => '请先添加线路';
+  String get historyAddLineFirst => '请先添加电话线路。';
 
   @override
-  String get historyCallLimitReached => '当前通话已达 4 路上限';
+  String get historyCallLimitReached => '已达到 4 路通话上限。';
 
   @override
-  String get historySplitConferenceFirst => '请先拆分三方通话，再发起新的呼叫';
+  String get historySplitConferenceFirst => '请先结束或拆分会议通话。';
 
   @override
-  String get historyNoRegisteredLine => '暂无已注册线路，无法呼叫';
+  String get historyNoRegisteredLine => '没有可用的已注册线路。';
 
   @override
-  String get historySwitchDetailHint => '点击左侧记录切换详情';
+  String get historySwitchDetailHint => '选择左侧其他记录切换详情';
 
   @override
   String get historyContactDeleted => '原联系人已删除，可重新添加';
@@ -1034,6 +1043,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyNoteSaveError => '保存通话备注失败，请稍后重试';
 
   @override
+  String historyNoteBlindTransferTo(String target) {
+    return '盲转至：$target';
+  }
+
+  @override
+  String historyNoteConference(String note) {
+    return '会议备注：$note';
+  }
+
+  @override
+  String historyNoteCustomer(String note) {
+    return '客户备注：$note';
+  }
+
+  @override
   String get historyDetailTitle => '通话详情';
 
   @override
@@ -1046,10 +1070,115 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyAddContact => '添加联系人';
 
   @override
-  String get commonSave => '保存';
+  String get historyRecentCalls => '最近通话';
 
   @override
-  String get commonClose => '关闭';
+  String get historyNoRecentCalls => '暂无最近通话';
+
+  @override
+  String historyCallbackNumber(String number) {
+    return '回拨 $number';
+  }
+
+  @override
+  String historyYesterdayAt(String time) {
+    return '昨天 $time';
+  }
+
+  @override
+  String get historyLoadMoreError => '暂时无法加载更多通话记录，请稍后重试。';
+
+  @override
+  String get historyStatusPeerRejected => '对方拒接';
+
+  @override
+  String get historyReasonCallEnded => '通话已结束';
+
+  @override
+  String get historyReasonIncomingEnded => '来电已结束';
+
+  @override
+  String get historyReasonAuthenticationFailed => '账号认证失败';
+
+  @override
+  String get historyReasonRemoteRejected => '对方已拒接';
+
+  @override
+  String get historyReasonCallRejected => '呼叫被拒绝';
+
+  @override
+  String get historyReasonInvalidNumber => '号码不存在或无法接通';
+
+  @override
+  String get historyReasonNoAnswer => '无人接听';
+
+  @override
+  String get historyReasonTimeout => '呼叫超时';
+
+  @override
+  String get historyReasonRemoteUnavailable => '对方无法接通';
+
+  @override
+  String get historyReasonRingingUnanswered => '响铃未接';
+
+  @override
+  String get historyReasonRemoteBusy => '对方忙线';
+
+  @override
+  String get historyReasonCanceled => '呼叫已取消';
+
+  @override
+  String get historyReasonUnsupportedMedia => '对方不支持本次通话';
+
+  @override
+  String get historyReasonServiceUnavailable => '电话服务暂时不可用';
+
+  @override
+  String get historyReasonRedirected => '呼叫已转移或重定向';
+
+  @override
+  String get historyReasonCallIncomplete => '呼叫未完成';
+
+  @override
+  String get historyReasonServiceError => '电话服务异常';
+
+  @override
+  String get historyReasonRemoteCannotAnswer => '对方无法接听';
+
+  @override
+  String get historyReasonNotConnected => '未接通';
+
+  @override
+  String get historyReasonMediaFailed => '媒体协商失败';
+
+  @override
+  String get historyReasonBlindTransfer => '已盲转';
+
+  @override
+  String get historyReasonShortAuthenticationFailed => '认证失败';
+
+  @override
+  String get historyReasonShortRemoteRejected => '对方拒接';
+
+  @override
+  String get historyReasonShortInvalidNumber => '号码无效';
+
+  @override
+  String get historyReasonShortServiceError => '服务异常';
+
+  @override
+  String get historyReasonShortRedirected => '已转移';
+
+  @override
+  String get historyReasonShortMediaFailed => '媒体失败';
+
+  @override
+  String get historyReasonShortBlindTransfer => '已盲转';
+
+  @override
+  String historyReasonWithSipCode(String reason, int code) {
+    return '$reason（SIP $code）';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1175,6 +1304,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get commonCancel => '取消';
+
+  @override
+  String get commonSave => '儲存';
+
+  @override
+  String get commonClose => '關閉';
 
   @override
   String get commonAdd => '新增';
@@ -1792,6 +1927,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get contactOpenPage => '開啟聯絡人頁面';
 
   @override
+  String get historySearchPlaceholder => '搜尋通話';
+
+  @override
   String get historySearchHint => '搜尋號碼、客戶、線路、備註';
 
   @override
@@ -1926,27 +2064,27 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get historyGroupYesterday => '昨日';
 
   @override
-  String get historyMarkAllReadTitle => '全部標示為已讀';
+  String get historyMarkAllReadTitle => '將未接來電標示為已讀？';
 
   @override
   String historyMarkAllReadBody(int count) {
-    return '將 $count 條未讀未接來電標示為已讀，列表中的未讀紅點會被清除。';
+    return '將 $count 條未讀未接來電標示為已讀。';
   }
 
   @override
-  String get historyMarkAllReadConfirm => '全部已讀';
+  String get historyMarkAllReadConfirm => '全部標示為已讀';
 
   @override
-  String get historyConfirmCallbackTitle => '確認回撥';
+  String get historyConfirmCallbackTitle => '回撥此號碼？';
 
   @override
   String get historyDialLine => '撥號線路';
 
   @override
-  String get historyConfirmCallback => '確認回撥';
+  String get historyConfirmCallback => '回撥';
 
   @override
-  String get historyDeleteTitle => '刪除通話記錄';
+  String get historyDeleteTitle => '刪除此通話記錄？';
 
   @override
   String get historyFieldNumber => '號碼';
@@ -1955,46 +2093,46 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get historyFieldLine => '線路';
 
   @override
-  String get historyDeleteBody => '刪除後，此本機通話記錄將無法復原。';
+  String get historyDeleteBody => '刪除後無法復原。';
 
   @override
   String get historyDeleteConfirm => '刪除';
 
   @override
-  String get historyClearTitle => '清除通話記錄';
+  String get historyClearTitle => '清除通話記錄？';
 
   @override
-  String get historyClearBody => '清除後，本機通話記錄將無法復原；進行中的通話不會被清除。';
+  String get historyClearBody => '此操作無法復原。進行中的通話不會被清除。';
 
   @override
   String get historyClearConfirm => '清除';
 
   @override
-  String get historyClearError => '無法清除通話記錄，請稍後再試';
+  String get historyClearError => '暫時無法清除通話記錄，請稍後再試。';
 
   @override
-  String get historyCannotRedialActive => '進行中的通話不能重複回撥';
+  String get historyCannotRedialActive => '通話正在進行，無需重複回撥。';
 
   @override
-  String get historyNoCallbackNumber => '此記錄沒有可回撥號碼';
+  String get historyNoCallbackNumber => '此記錄沒有可回撥的號碼。';
 
   @override
-  String get historyNetworkUnavailable => '網絡未連線，無法撥號';
+  String get historyNetworkUnavailable => '網絡不可用，請恢復連線後再試。';
 
   @override
-  String get historyAddLineFirst => '請先新增線路';
+  String get historyAddLineFirst => '請先新增電話線路。';
 
   @override
-  String get historyCallLimitReached => '目前已達 4 路通話上限';
+  String get historyCallLimitReached => '已達 4 路通話上限。';
 
   @override
-  String get historySplitConferenceFirst => '請先拆分三方通話，再撥打新通話';
+  String get historySplitConferenceFirst => '請先結束或拆分會議通話。';
 
   @override
-  String get historyNoRegisteredLine => '沒有可用的已註冊線路';
+  String get historyNoRegisteredLine => '沒有可用的已註冊線路。';
 
   @override
-  String get historySwitchDetailHint => '按一下左側記錄切換詳情';
+  String get historySwitchDetailHint => '選擇左側其他記錄以切換詳情';
 
   @override
   String get historyContactDeleted => '原聯絡人已刪除，可重新新增';
@@ -2082,6 +2220,21 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get historyNoteSaveError => '無法儲存通話備註，請稍後再試';
 
   @override
+  String historyNoteBlindTransferTo(String target) {
+    return '盲轉至：$target';
+  }
+
+  @override
+  String historyNoteConference(String note) {
+    return '會議備註：$note';
+  }
+
+  @override
+  String historyNoteCustomer(String note) {
+    return '客戶備註：$note';
+  }
+
+  @override
   String get historyDetailTitle => '通話詳情';
 
   @override
@@ -2094,8 +2247,113 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get historyAddContact => '新增聯絡人';
 
   @override
-  String get commonSave => '儲存';
+  String get historyRecentCalls => '最近通話';
 
   @override
-  String get commonClose => '關閉';
+  String get historyNoRecentCalls => '暫無最近通話';
+
+  @override
+  String historyCallbackNumber(String number) {
+    return '回撥 $number';
+  }
+
+  @override
+  String historyYesterdayAt(String time) {
+    return '昨日 $time';
+  }
+
+  @override
+  String get historyLoadMoreError => '暫時無法載入更多通話記錄，請稍後再試。';
+
+  @override
+  String get historyStatusPeerRejected => '對方拒接';
+
+  @override
+  String get historyReasonCallEnded => '通話已結束';
+
+  @override
+  String get historyReasonIncomingEnded => '來電已結束';
+
+  @override
+  String get historyReasonAuthenticationFailed => '帳戶認證失敗';
+
+  @override
+  String get historyReasonRemoteRejected => '對方已拒接';
+
+  @override
+  String get historyReasonCallRejected => '通話被拒絕';
+
+  @override
+  String get historyReasonInvalidNumber => '號碼不存在或無法接通';
+
+  @override
+  String get historyReasonNoAnswer => '無人接聽';
+
+  @override
+  String get historyReasonTimeout => '通話逾時';
+
+  @override
+  String get historyReasonRemoteUnavailable => '對方無法接通';
+
+  @override
+  String get historyReasonRingingUnanswered => '響鈴未接';
+
+  @override
+  String get historyReasonRemoteBusy => '對方忙線';
+
+  @override
+  String get historyReasonCanceled => '通話已取消';
+
+  @override
+  String get historyReasonUnsupportedMedia => '對方不支援本次通話';
+
+  @override
+  String get historyReasonServiceUnavailable => '電話服務暫時不可用';
+
+  @override
+  String get historyReasonRedirected => '通話已轉駁或重新導向';
+
+  @override
+  String get historyReasonCallIncomplete => '通話未完成';
+
+  @override
+  String get historyReasonServiceError => '電話服務異常';
+
+  @override
+  String get historyReasonRemoteCannotAnswer => '對方無法接聽';
+
+  @override
+  String get historyReasonNotConnected => '未接通';
+
+  @override
+  String get historyReasonMediaFailed => '媒體協商失敗';
+
+  @override
+  String get historyReasonBlindTransfer => '已盲轉';
+
+  @override
+  String get historyReasonShortAuthenticationFailed => '認證失敗';
+
+  @override
+  String get historyReasonShortRemoteRejected => '對方拒接';
+
+  @override
+  String get historyReasonShortInvalidNumber => '號碼無效';
+
+  @override
+  String get historyReasonShortServiceError => '服務異常';
+
+  @override
+  String get historyReasonShortRedirected => '已轉駁';
+
+  @override
+  String get historyReasonShortMediaFailed => '媒體失敗';
+
+  @override
+  String get historyReasonShortBlindTransfer => '已盲轉';
+
+  @override
+  String historyReasonWithSipCode(String reason, int code) {
+    return '$reason（SIP $code）';
+  }
 }

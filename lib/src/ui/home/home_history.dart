@@ -227,7 +227,7 @@ extension _HomeHistory on _MyHomePageState {
       callId: entry.callId,
       direction: CallHistoryDirection.fromStorage(entry.direction),
       status: status,
-      statusLabel: status.label,
+      statusLabel: CallHistoryLocalizer.status(context.l10n, status),
       remoteUri: entry.remoteUri,
       phoneNumber: entry.phoneNumber,
       displayName: contact?.name ?? entry.displayName,
@@ -416,9 +416,44 @@ extension _HomeHistory on _MyHomePageState {
     return h > 0 ? '$h:$mm:$ss' : '$mm:$ss';
   }
 
+  String _formatHistoryTime(DateTime time) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    return DateFormat.jm(locale).format(time);
+  }
+
   String? _historyNoteText(_HistoryItem item) {
     final note = item.note?.trim();
-    return note == null || note.isEmpty ? null : note;
+    if (note == null || note.isEmpty) return null;
+    return note.split('\n\n').map(_localizeHistoryNoteSection).join('\n\n');
+  }
+
+  String _localizeHistoryNoteSection(String section) {
+    const blindTransferPrefixes = ['盲转至：', '盲轉至：', 'Blind transfer to: '];
+    const conferencePrefixes = ['会议备注：', '會議備註：', 'Conference note: '];
+    const customerPrefixes = ['客户备注：', '客戶備註：', 'Customer note: '];
+
+    for (final prefix in blindTransferPrefixes) {
+      if (section.startsWith(prefix)) {
+        return context.l10n.historyNoteBlindTransferTo(
+          section.substring(prefix.length).trimLeft(),
+        );
+      }
+    }
+    for (final prefix in conferencePrefixes) {
+      if (section.startsWith(prefix)) {
+        return context.l10n.historyNoteConference(
+          section.substring(prefix.length).trimLeft(),
+        );
+      }
+    }
+    for (final prefix in customerPrefixes) {
+      if (section.startsWith(prefix)) {
+        return context.l10n.historyNoteCustomer(
+          section.substring(prefix.length).trimLeft(),
+        );
+      }
+    }
+    return section;
   }
 
   Color _historyItemColor(_HistoryItem item) {

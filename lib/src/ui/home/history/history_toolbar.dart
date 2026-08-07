@@ -15,19 +15,23 @@ extension _HistoryToolbar on _MyHomePageState {
           Flexible(
             child: ConstrainedBox(
               constraints: const BoxConstraints(minWidth: 220, maxWidth: 300),
-              child: TextField(
-                controller: _historySearchController,
-                onChanged: (_) => _refreshHistorySearch(),
-                decoration: InputDecoration(
-                  hintText: l10n.historySearchHint,
-                  prefixIcon: const Icon(AppIcons.search),
-                  suffixIcon: _historySearchController.text.trim().isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: l10n.historyClearSearch,
-                          onPressed: _clearHistorySearch,
-                          icon: const Icon(AppIcons.clear),
-                        ),
+              child: Tooltip(
+                message: l10n.historySearchHint,
+                waitDuration: const Duration(milliseconds: 350),
+                child: TextField(
+                  controller: _historySearchController,
+                  onChanged: (_) => _refreshHistorySearch(),
+                  decoration: InputDecoration(
+                    hintText: l10n.historySearchPlaceholder,
+                    prefixIcon: const Icon(AppIcons.search),
+                    suffixIcon: _historySearchController.text.trim().isEmpty
+                        ? null
+                        : IconButton(
+                            tooltip: l10n.historyClearSearch,
+                            onPressed: _clearHistorySearch,
+                            icon: const Icon(AppIcons.clear),
+                          ),
+                  ),
                 ),
               ),
             ),

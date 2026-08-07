@@ -5,7 +5,7 @@ extension _CallSideHistoryCards on _MyHomePageState {
   Widget _buildCallsIdleRecentSection(PjsipService service) {
     return _buildCallContextSection(
       icon: AppIcons.history,
-      title: '最近通话',
+      title: context.l10n.historyRecentCalls,
       child: StreamBuilder<List<CallHistoryEntry>>(
         stream: _watchCallsIdleRecentHistory(),
         builder: (context, snapshot) {
@@ -25,7 +25,7 @@ extension _CallSideHistoryCards on _MyHomePageState {
 
           final entries = snapshot.data ?? const <CallHistoryEntry>[];
           if (entries.isEmpty) {
-            return _buildCallContextEmpty('暂无最近通话');
+            return _buildCallContextEmpty(context.l10n.historyNoRecentCalls);
           }
 
           return Column(
@@ -48,10 +48,10 @@ extension _CallSideHistoryCards on _MyHomePageState {
   ) {
     return _buildCallContextSection(
       icon: AppIcons.history,
-      title: '最近通话',
+      title: context.l10n.historyRecentCalls,
       subtitle: contextLabel,
       child: _isRunningWidgetTest
-          ? _buildCallContextEmpty('暂无通话记录')
+          ? _buildCallContextEmpty(context.l10n.historyEmpty)
           : StreamBuilder<List<CallHistoryEntry>>(
               stream: _watchCallContextHistory(
                 contact: contact,
@@ -74,7 +74,7 @@ extension _CallSideHistoryCards on _MyHomePageState {
 
                 final entries = snapshot.data ?? const <CallHistoryEntry>[];
                 if (entries.isEmpty) {
-                  return _buildCallContextEmpty('暂无通话记录');
+                  return _buildCallContextEmpty(context.l10n.historyEmpty);
                 }
 
                 return Column(
@@ -105,7 +105,8 @@ extension _CallSideHistoryCards on _MyHomePageState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildTooltipText(
-                  '${item.direction.label} · ${item.statusLabel}',
+                  '${CallHistoryLocalizer.direction(context.l10n, item.direction)} · '
+                  '${_historyListStatusLabel(item)}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
@@ -152,7 +153,8 @@ extension _CallSideHistoryCards on _MyHomePageState {
                 ),
                 const SizedBox(height: 2),
                 _buildTooltipText(
-                  '${item.statusLabel} · ${_formatCallContextHistoryTime(item.startedAt)}',
+                  '${_historyListStatusLabel(item)} · '
+                  '${_formatCallContextHistoryTime(item.startedAt)}',
                   style: Theme.of(
                     context,
                   ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -163,8 +165,8 @@ extension _CallSideHistoryCards on _MyHomePageState {
           const SizedBox(width: 8),
           IconButton(
             tooltip: item.phoneNumber.trim().isEmpty
-                ? '没有可回拨号码'
-                : '回拨 ${item.phoneNumber}',
+                ? context.l10n.historyNoCallbackNumber
+                : context.l10n.historyCallbackNumber(item.phoneNumber),
             onPressed: item.phoneNumber.trim().isEmpty
                 ? null
                 : () => _callHistoryItem(item, service),
@@ -235,12 +237,14 @@ extension _CallSideHistoryCards on _MyHomePageState {
   }
 
   String _formatCallContextHistoryTime(DateTime time) {
+    final locale = Localizations.localeOf(context).toLanguageTag();
+    final timeLabel = DateFormat.jm(locale).format(time);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(time.year, time.month, time.day);
     final diff = today.difference(day).inDays;
-    if (diff == 0) return DateFormat('HH:mm').format(time);
-    if (diff == 1) return '昨天 ${DateFormat('HH:mm').format(time)}';
-    return DateFormat('M/d HH:mm').format(time);
+    if (diff == 0) return timeLabel;
+    if (diff == 1) return context.l10n.historyYesterdayAt(timeLabel);
+    return DateFormat.Md(locale).add_jm().format(time);
   }
 }

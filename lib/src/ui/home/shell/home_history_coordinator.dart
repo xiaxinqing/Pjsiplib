@@ -89,7 +89,7 @@ extension _HomeHistoryCoordinator on _MyHomePageState {
         _historyLoadMoreToken = null;
       });
       debugPrint('加载更多通话记录失败: $error');
-      ToastUtil.showError('加载更多通话记录失败，请稍后重试');
+      ToastUtil.showError(context.l10n.historyLoadMoreError);
     }
   }
 

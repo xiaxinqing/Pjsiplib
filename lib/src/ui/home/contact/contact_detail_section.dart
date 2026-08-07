@@ -477,7 +477,7 @@ extension _ContactDetailSection on _MyHomePageState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _localizedContactRecentCallStatus(item),
+                  _historyListStatusLabel(item),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
@@ -507,18 +507,6 @@ extension _ContactDetailSection on _MyHomePageState {
         ],
       ),
     );
-  }
-
-  /// 仅转换联系人详情内的最近通话状态；通话记录页由其自身负责本地化。
-  String _localizedContactRecentCallStatus(_HistoryItem item) {
-    return switch (item.status) {
-      CallHistoryStatus.completed => context.l10n.callStatusCompleted,
-      CallHistoryStatus.missed => context.l10n.callStatusMissed,
-      CallHistoryStatus.rejected => context.l10n.callStatusRejected,
-      CallHistoryStatus.failed => context.l10n.callStatusFailed,
-      CallHistoryStatus.canceled => context.l10n.callStatusCanceled,
-      null => item.statusLabel,
-    };
   }
 
   Future<void> _showContactDetailDialog(
