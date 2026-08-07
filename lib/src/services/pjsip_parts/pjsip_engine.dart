@@ -1059,7 +1059,7 @@ extension PjsipEngineOperations on PjsipService {
     final status = _bindings.pjsua_acc_set_default(accId);
     if (status != 0) {
       _addLog('❌ 设置默认外呼线路失败: acc=$accId, pj_status=$status');
-      ToastUtil.showError('默认外呼切换失败');
+      ToastUtil.showError('默认外呼线路切换失败');
       return;
     }
     _uiState = _uiState.copyWith(
@@ -1071,7 +1071,7 @@ extension PjsipEngineOperations on PjsipService {
     _preferredDefaultLineKey = _lineKey(account.username, account.host);
     unawaited(_persistSeatEnvironment());
     _addLog('✅ 默认外呼线路已切换: ${account.lineLabel}');
-    ToastUtil.showSuccess('默认外呼已切换');
+    ToastUtil.showSuccess('默认外呼线路已切换');
   }
 
   /// 按用户在设置页调整后的顺序存储线路。
@@ -1697,7 +1697,7 @@ extension PjsipEngineOperations on PjsipService {
     final status = _bindings.pjsua_acc_set_default(accId);
     if (status != 0) {
       _addLog('❌ 自动切换默认外呼线路失败: ${account.lineLabel}, pj_status=$status');
-      ToastUtil.showError('默认外呼自动切换失败');
+      ToastUtil.showError('默认外呼线路自动切换失败');
       return;
     }
     _uiState = _uiState.copyWith(

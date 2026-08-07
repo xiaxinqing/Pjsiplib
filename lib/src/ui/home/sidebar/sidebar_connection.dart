@@ -76,7 +76,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
     );
   }
 
-  /// 打开连接状态菜单，可查看网络、电话服务、默认外呼和线路在线数量。
+  /// 打开连接状态菜单，可查看网络、电话服务、默认外呼线路和在线数量。
   Future<void> _showConnectionStatusMenu(
     PjsipUIState uiState,
     PjsipService service,
@@ -126,7 +126,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.outgoing,
-                label: '默认外呼',
+                label: '默认外呼线路',
                 value: uiState.defaultAccount == null
                     ? '暂无'
                     : '${uiState.defaultAccount!.lineLabel} · ${uiState.defaultAccount!.isRegistered ? uiState.defaultAccount!.transportLabel : '不可用'}',
@@ -134,7 +134,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
               if (uiState.isUsingFallbackOutgoingAccount)
                 _buildStatusSummaryRow(
                   icon: AppIcons.call,
-                  label: '当前外呼',
+                  label: '当前外呼线路',
                   value: '${uiState.bestOutgoingAccount!.lineLabel} · 临时使用',
                 ),
               _buildStatusSummaryRow(

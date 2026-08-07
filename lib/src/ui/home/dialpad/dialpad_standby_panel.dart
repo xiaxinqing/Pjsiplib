@@ -62,7 +62,7 @@ extension _DialpadStandbyPanel on _MyHomePageState {
                         children: [
                           _buildDialpadStandbyLine(
                             AppIcons.outgoing,
-                            isUsingFallback ? '临时外呼' : '默认外呼',
+                            isUsingFallback ? '当前外呼线路' : '默认外呼线路',
                             account == null
                                 ? '暂无可用线路'
                                 : '${account.displayName} · ${account.transportLabel}',

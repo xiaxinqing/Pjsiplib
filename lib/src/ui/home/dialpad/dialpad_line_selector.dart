@@ -185,9 +185,12 @@ extension _DialpadLineSelector on _MyHomePageState {
   }) {
     final label = account == null
         ? '暂无可用线路'
-        : '${account.lineLabel} · ${account.transportLabel}';
+        : _buildCompactOutgoingLineLabel(account);
+    final tooltip = account == null
+        ? label
+        : '$label\n${account.lineLabel} · ${account.transportLabel}';
     return Tooltip(
-      message: label,
+      message: tooltip,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -231,6 +234,17 @@ extension _DialpadLineSelector on _MyHomePageState {
     );
   }
 
+  /// 拨号区空间有限，线路名称未包含账号时补充账号，便于快速辨认具体线路。
+  String _buildCompactOutgoingLineLabel(SipAccountInfo account) {
+    final displayName = account.displayName.trim();
+    final username = account.username.trim();
+    if (username.isEmpty ||
+        displayName.toLowerCase().contains(username.toLowerCase())) {
+      return displayName;
+    }
+    return '$displayName · $username';
+  }
+
   Widget _buildOutgoingLineMenuItem(
     SipAccountInfo account, {
     required bool selected,
@@ -246,12 +260,12 @@ extension _DialpadLineSelector on _MyHomePageState {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildTooltipText(
-                account.lineLabel,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                account.displayName,
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
               const SizedBox(height: 2),
               _buildTooltipText(
-                account.transportLabel,
+                '${account.lineLabel} · ${account.transportLabel}',
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: _textSecondary),
