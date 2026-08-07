@@ -6,6 +6,7 @@ extension _DialpadLineSelector on _MyHomePageState {
     PjsipUIState uiState,
     PjsipService service,
   ) {
+    final l10n = context.l10n;
     final accounts = uiState.accountList;
     if (accounts.isEmpty) {
       return Container(
@@ -18,11 +19,14 @@ extension _DialpadLineSelector on _MyHomePageState {
           children: [
             const Icon(AppIcons.outgoing, size: _iconSm),
             const SizedBox(width: 8),
-            const Text('外呼线路', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              l10n.dialOutgoingLine,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '尚未添加',
+                l10n.dialNoLinesAdded,
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.right,
                 style: Theme.of(
@@ -36,7 +40,7 @@ extension _DialpadLineSelector on _MyHomePageState {
                   ? () => _showAddAccountDialog(uiState, service)
                   : null,
               icon: const Icon(AppIcons.add),
-              label: const Text('添加'),
+              label: Text(l10n.commonAdd),
             ),
           ],
         ),
@@ -74,7 +78,10 @@ extension _DialpadLineSelector on _MyHomePageState {
                     : Colors.orange.shade700,
               ),
               const SizedBox(width: 8),
-              const Text('外呼线路', style: TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                l10n.dialOutgoingLine,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: LayoutBuilder(
@@ -144,7 +151,7 @@ extension _DialpadLineSelector on _MyHomePageState {
               if (!hasUsableLine) ...[
                 const SizedBox(width: 4),
                 IconButton(
-                  tooltip: '打开线路设置',
+                  tooltip: l10n.dialOpenLineSettings,
                   onPressed: () =>
                       _openSettingsDrawer(tabIndex: _settingsAccountIndex),
                   icon: const Icon(AppIcons.settings),
@@ -155,7 +162,7 @@ extension _DialpadLineSelector on _MyHomePageState {
           if (!hasUsableLine) ...[
             const SizedBox(height: 4),
             Text(
-              '暂无可用外呼线路，请检查注册状态',
+              l10n.dialNoAvailableOutgoing,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -165,7 +172,7 @@ extension _DialpadLineSelector on _MyHomePageState {
           ] else if (isShowingFallback) ...[
             const SizedBox(height: 4),
             Text(
-              '默认线路 ${uiState.defaultAccount!.lineLabel} 不可用，当前临时使用此线路',
+              l10n.dialFallbackOutgoing(uiState.defaultAccount!.lineLabel),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(
@@ -184,7 +191,7 @@ extension _DialpadLineSelector on _MyHomePageState {
     required bool isOpen,
   }) {
     final label = account == null
-        ? '暂无可用线路'
+        ? context.l10n.dialNoAvailableLine
         : _buildCompactOutgoingLineLabel(account);
     final tooltip = account == null
         ? label
@@ -299,9 +306,18 @@ extension _DialpadLineSelector on _MyHomePageState {
       children: [
         Icon(icon, size: _iconSm, color: _textSecondary),
         const SizedBox(width: 8),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-        const SizedBox(width: 12),
         Expanded(
+          flex: 3,
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          flex: 2,
           child: _buildTooltipText(
             value,
             textAlign: TextAlign.right,

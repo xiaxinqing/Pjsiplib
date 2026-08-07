@@ -132,4 +132,398 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get phoneServiceStopped => 'Phone service stopped';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonAdd => 'Add';
+
+  @override
+  String get commonAll => 'All';
+
+  @override
+  String get commonAvailable => 'Available';
+
+  @override
+  String get commonUnavailable => 'Unavailable';
+
+  @override
+  String get commonClear => 'Clear';
+
+  @override
+  String get headerEndCallsFirst => 'End active calls first';
+
+  @override
+  String get headerPhoneServiceUnavailable =>
+      'Phone service is not initialized';
+
+  @override
+  String get headerAllLinesDisconnected => 'All lines are disconnected';
+
+  @override
+  String get headerDisconnectAllLines => 'Disconnect all lines';
+
+  @override
+  String get headerAddLine => 'Add line';
+
+  @override
+  String get disconnectAllDescription =>
+      'Registration will stop for every line. You can enable them again from the line menu.';
+
+  @override
+  String disconnectAllSummary(int total, int online) {
+    return '$total lines added, $online online';
+  }
+
+  @override
+  String get disconnectAllQuestion => 'Disconnect all lines?';
+
+  @override
+  String get disconnectAllAction => 'Disconnect all';
+
+  @override
+  String get statusNetworkUnavailable => 'Network unavailable';
+
+  @override
+  String get statusCheckingSeatEnvironment =>
+      'Checking your previous workspace';
+
+  @override
+  String get statusRestoringLines => 'Restoring previous line settings';
+
+  @override
+  String statusConnectedNoOutgoing(int total) {
+    return '$total lines added, no dial line available';
+  }
+
+  @override
+  String statusConnectedCurrentOutgoing(int total, String line) {
+    return '$total lines added, current dial line: $line';
+  }
+
+  @override
+  String statusConnectedDefaultOutgoing(int total, String line) {
+    return '$total lines added, default dial line: $line';
+  }
+
+  @override
+  String get statusInitializedNoAccounts =>
+      'Phone service is running. No lines added';
+
+  @override
+  String get statusConnectServiceHint =>
+      'Start phone service to make and receive calls';
+
+  @override
+  String get dialOutgoingLine => 'Dial line';
+
+  @override
+  String get dialNoLinesAdded => 'No lines added';
+
+  @override
+  String get dialOpenLineSettings => 'Open line settings';
+
+  @override
+  String get dialNoAvailableOutgoing =>
+      'No dial line available. Check registration status';
+
+  @override
+  String dialFallbackOutgoing(String line) {
+    return 'Default line $line is unavailable. This line is being used temporarily';
+  }
+
+  @override
+  String get dialNoAvailableLine => 'No line available';
+
+  @override
+  String get dialNetworkUnavailableDescription =>
+      'Restore the network to place calls';
+
+  @override
+  String get dialNoLinesDescription => 'Add a SIP line to place calls';
+
+  @override
+  String get dialNoOutgoingDescription => 'Check line registration status';
+
+  @override
+  String get dialConferenceActive => 'Conference in progress';
+
+  @override
+  String get dialConferenceActiveDescription =>
+      'Split the conference before placing another call';
+
+  @override
+  String get dialCapacityReached => 'Call limit reached';
+
+  @override
+  String dialCapacityDescription(int max) {
+    return 'Up to $max calls can be held at once';
+  }
+
+  @override
+  String get dialReady => 'Ready to call';
+
+  @override
+  String get dialReadyDescription => 'Enter a number, then select Call';
+
+  @override
+  String get dialUnavailable => 'Calling unavailable';
+
+  @override
+  String get dialUnavailableDescription => 'Check the number or line status';
+
+  @override
+  String get dialEnterNumberToCall => 'Enter a number to call';
+
+  @override
+  String get dialAddLineFirst => 'Add a line first';
+
+  @override
+  String get dialUnavailableDuringConference =>
+      'Calling is unavailable during a conference';
+
+  @override
+  String get dialNumberHint => 'Enter number';
+
+  @override
+  String get dialStartCall => 'Place call';
+
+  @override
+  String get dialCall => 'Call';
+
+  @override
+  String get dialCurrentOutgoingLine => 'Current dial line';
+
+  @override
+  String get dialDefaultOutgoingLine => 'Default dial line';
+
+  @override
+  String get dialCallCapacity => 'Call capacity';
+
+  @override
+  String dialCallCapacityValue(int current, int max) {
+    return '$current/$max';
+  }
+
+  @override
+  String get dialNetwork => 'Network';
+
+  @override
+  String get dialNoRecentCalls => 'No recent calls';
+
+  @override
+  String get dialRecentCalls => 'Recent calls';
+
+  @override
+  String get dialNoCallbackNumber => 'No callback number';
+
+  @override
+  String dialCallbackNumber(String number) {
+    return 'Call back $number';
+  }
+
+  @override
+  String dialYesterdayAt(String time) {
+    return 'Yesterday $time';
+  }
+
+  @override
+  String get contactDefaultNumber => 'Default';
+
+  @override
+  String get contactExactMatch => 'Matched';
+
+  @override
+  String get contactSuffixMatch => 'Suffix match';
+
+  @override
+  String get weekdayMonday => 'Mon';
+
+  @override
+  String get weekdayTuesday => 'Tue';
+
+  @override
+  String get weekdayWednesday => 'Wed';
+
+  @override
+  String get weekdayThursday => 'Thu';
+
+  @override
+  String get weekdayFriday => 'Fri';
+
+  @override
+  String get weekdaySaturday => 'Sat';
+
+  @override
+  String get weekdaySunday => 'Sun';
+
+  @override
+  String sidebarConnectedTemporary(String line) {
+    return 'Temporary dial line · $line';
+  }
+
+  @override
+  String sidebarConnectedDefault(String line) {
+    return 'Dial line · $line';
+  }
+
+  @override
+  String get sidebarWaitingAccounts => 'Waiting for lines';
+
+  @override
+  String get sidebarDisconnected => 'Disconnected';
+
+  @override
+  String get sidebarConnectionStatus => 'Connection status';
+
+  @override
+  String get sidebarPhoneService => 'Phone service';
+
+  @override
+  String get sidebarServiceStarted => 'Running';
+
+  @override
+  String get sidebarServiceStopped => 'Stopped';
+
+  @override
+  String get sidebarDefaultDialLine => 'Default dial line';
+
+  @override
+  String get sidebarNone => 'None';
+
+  @override
+  String get sidebarCurrentDialLine => 'Current dial line';
+
+  @override
+  String get sidebarTemporaryUse => 'Temporary';
+
+  @override
+  String get sidebarLines => 'Lines';
+
+  @override
+  String sidebarOnlineCount(int online, int total) {
+    return '$online/$total online';
+  }
+
+  @override
+  String get sidebarRetryFailedLines => 'Retry unavailable lines';
+
+  @override
+  String get sidebarOpenLineSettings => 'Open line settings';
+
+  @override
+  String get sidebarDefaultDial => 'Default dial';
+
+  @override
+  String sidebarManageLines(int count) {
+    return 'Manage $count lines';
+  }
+
+  @override
+  String get sidebarAudio => 'Audio';
+
+  @override
+  String get sidebarAudioIssue => 'Issue';
+
+  @override
+  String get sidebarAudioDevices => 'Audio devices';
+
+  @override
+  String get sidebarAudioInput => 'Input';
+
+  @override
+  String get sidebarAudioOutput => 'Output';
+
+  @override
+  String get sidebarAudioMode => 'Mode';
+
+  @override
+  String get sidebarAudioStatus => 'Status';
+
+  @override
+  String get sidebarAudioAutomatic => 'Automatic';
+
+  @override
+  String get sidebarAudioManual => 'Manual';
+
+  @override
+  String get sidebarAudioSwitchToManual => 'Switch to manual';
+
+  @override
+  String get sidebarAudioSwitchToAutomatic => 'Switch to automatic';
+
+  @override
+  String get sidebarAudioRefreshDevices => 'Refresh devices';
+
+  @override
+  String get sidebarOpenAudioSettings => 'Open audio settings';
+
+  @override
+  String get sidebarSetDefaultDial => 'Set as default dial line';
+
+  @override
+  String sidebarDefaultDialStatus(String status, String transport) {
+    return 'Default dial · $status · $transport';
+  }
+
+  @override
+  String get sidebarRefreshLine => 'Refresh';
+
+  @override
+  String get sidebarRestartLine => 'Restart';
+
+  @override
+  String get sidebarDisableLine => 'Disable';
+
+  @override
+  String get sidebarEnableLine => 'Enable';
+
+  @override
+  String get sidebarEditLine => 'Edit';
+
+  @override
+  String get sidebarDeleteLine => 'Delete';
+
+  @override
+  String get sidebarRestartLineTitle => 'Restart line';
+
+  @override
+  String get sidebarRestartLineDescription =>
+      'The line will briefly unregister and then register again. Its settings will not be deleted.';
+
+  @override
+  String get sidebarRestartLineHint =>
+      'Use this after network recovery or when the line status is incorrect after the computer wakes.';
+
+  @override
+  String get sidebarDeleteLineTitle => 'Delete line';
+
+  @override
+  String get sidebarDeleteLineDescription =>
+      'You will need to add the account again to restore this line.';
+
+  @override
+  String get sidebarDeleteLineQuestion => 'Delete this line?';
+
+  @override
+  String get callDirectionInbound => 'Incoming';
+
+  @override
+  String get callDirectionOutbound => 'Outgoing';
+
+  @override
+  String get callStatusCompleted => 'Connected';
+
+  @override
+  String get callStatusMissed => 'Missed';
+
+  @override
+  String get callStatusRejected => 'Rejected';
+
+  @override
+  String get callStatusFailed => 'Failed';
+
+  @override
+  String get callStatusCanceled => 'Canceled';
 }

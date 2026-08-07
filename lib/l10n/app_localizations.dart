@@ -332,6 +332,714 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'电话服务未启动'**
   String get phoneServiceStopped;
+
+  /// 通用取消操作
+  ///
+  /// In zh, this message translates to:
+  /// **'取消'**
+  String get commonCancel;
+
+  /// 通用添加操作
+  ///
+  /// In zh, this message translates to:
+  /// **'添加'**
+  String get commonAdd;
+
+  /// 查看全部内容
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get commonAll;
+
+  /// 功能或网络可用状态
+  ///
+  /// In zh, this message translates to:
+  /// **'可用'**
+  String get commonAvailable;
+
+  /// 功能或网络不可用状态
+  ///
+  /// In zh, this message translates to:
+  /// **'不可用'**
+  String get commonUnavailable;
+
+  /// 清空输入内容
+  ///
+  /// In zh, this message translates to:
+  /// **'清空'**
+  String get commonClear;
+
+  /// 存在通话时禁用断开线路的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'请先结束当前通话'**
+  String get headerEndCallsFirst;
+
+  /// 电话服务尚未初始化的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务未初始化'**
+  String get headerPhoneServiceUnavailable;
+
+  /// 全部线路已断开的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已全部断开'**
+  String get headerAllLinesDisconnected;
+
+  /// 断开全部线路操作
+  ///
+  /// In zh, this message translates to:
+  /// **'断开全部线路'**
+  String get headerDisconnectAllLines;
+
+  /// 添加 SIP 线路操作
+  ///
+  /// In zh, this message translates to:
+  /// **'添加线路'**
+  String get headerAddLine;
+
+  /// 断开全部线路确认说明
+  ///
+  /// In zh, this message translates to:
+  /// **'所有线路将停止注册，之后可在线路菜单中重新启用。'**
+  String get disconnectAllDescription;
+
+  /// 断开线路前的线路数量摘要
+  ///
+  /// In zh, this message translates to:
+  /// **'已接入 {total} 条线路，{online} 条在线'**
+  String disconnectAllSummary(int total, int online);
+
+  /// 断开全部线路确认问题
+  ///
+  /// In zh, this message translates to:
+  /// **'确定断开全部线路吗？'**
+  String get disconnectAllQuestion;
+
+  /// 确认断开全部线路按钮
+  ///
+  /// In zh, this message translates to:
+  /// **'断开全部'**
+  String get disconnectAllAction;
+
+  /// 顶部网络不可用状态
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络不可用'**
+  String get statusNetworkUnavailable;
+
+  /// 顶部坐席环境检查状态
+  ///
+  /// In zh, this message translates to:
+  /// **'正在检查上次坐席环境'**
+  String get statusCheckingSeatEnvironment;
+
+  /// 顶部线路恢复状态
+  ///
+  /// In zh, this message translates to:
+  /// **'正在恢复上次线路配置'**
+  String get statusRestoringLines;
+
+  /// 已添加线路但无可用拨号线路
+  ///
+  /// In zh, this message translates to:
+  /// **'已接入 {total} 条线路，暂无可用拨号线路'**
+  String statusConnectedNoOutgoing(int total);
+
+  /// 正在临时使用的拨号线路
+  ///
+  /// In zh, this message translates to:
+  /// **'已接入 {total} 条线路，当前拨号线路：{line}'**
+  String statusConnectedCurrentOutgoing(int total, String line);
+
+  /// 当前默认拨号线路
+  ///
+  /// In zh, this message translates to:
+  /// **'已接入 {total} 条线路，默认拨号线路：{line}'**
+  String statusConnectedDefaultOutgoing(int total, String line);
+
+  /// 服务已启动但没有线路的状态
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务已启动，尚未添加线路'**
+  String get statusInitializedNoAccounts;
+
+  /// 电话服务未启动时的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'启动电话服务后即可发起和接听通话'**
+  String get statusConnectServiceHint;
+
+  /// 拨号页线路选择标题
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号线路'**
+  String get dialOutgoingLine;
+
+  /// 没有 SIP 线路时的状态
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未添加线路'**
+  String get dialNoLinesAdded;
+
+  /// 进入线路设置的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'打开线路设置'**
+  String get dialOpenLineSettings;
+
+  /// 没有可用拨号线路时的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可用拨号线路，请检查注册状态'**
+  String get dialNoAvailableOutgoing;
+
+  /// 默认线路不可用时的临时线路提示
+  ///
+  /// In zh, this message translates to:
+  /// **'默认线路 {line} 不可用，当前临时使用此线路'**
+  String dialFallbackOutgoing(String line);
+
+  /// 没有可用线路的简短提示
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无可用线路'**
+  String get dialNoAvailableLine;
+
+  /// 网络不可用时的拨号说明
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复网络后即可拨打电话'**
+  String get dialNetworkUnavailableDescription;
+
+  /// 没有线路时的拨号说明
+  ///
+  /// In zh, this message translates to:
+  /// **'添加 SIP 线路后即可拨打电话'**
+  String get dialNoLinesDescription;
+
+  /// 没有可用拨号线路时的说明
+  ///
+  /// In zh, this message translates to:
+  /// **'请检查线路注册状态'**
+  String get dialNoOutgoingDescription;
+
+  /// 会议期间的拨号状态
+  ///
+  /// In zh, this message translates to:
+  /// **'会议通话中'**
+  String get dialConferenceActive;
+
+  /// 会议期间不可拨号的说明
+  ///
+  /// In zh, this message translates to:
+  /// **'请先拆分会议，再发起新呼叫'**
+  String get dialConferenceActiveDescription;
+
+  /// 通话数量达到上限的状态
+  ///
+  /// In zh, this message translates to:
+  /// **'通话已达上限'**
+  String get dialCapacityReached;
+
+  /// 通话容量上限说明
+  ///
+  /// In zh, this message translates to:
+  /// **'最多同时保持 {max} 路通话'**
+  String dialCapacityDescription(int max);
+
+  /// 拨号准备就绪状态
+  ///
+  /// In zh, this message translates to:
+  /// **'可以发起外呼'**
+  String get dialReady;
+
+  /// 拨号准备就绪说明
+  ///
+  /// In zh, this message translates to:
+  /// **'输入号码后点击呼叫'**
+  String get dialReadyDescription;
+
+  /// 暂时无法拨号的状态
+  ///
+  /// In zh, this message translates to:
+  /// **'暂不可外呼'**
+  String get dialUnavailable;
+
+  /// 暂时无法拨号的说明
+  ///
+  /// In zh, this message translates to:
+  /// **'请检查号码或线路状态'**
+  String get dialUnavailableDescription;
+
+  /// 未输入号码时的按钮提示
+  ///
+  /// In zh, this message translates to:
+  /// **'输入号码后呼叫'**
+  String get dialEnterNumberToCall;
+
+  /// 没有线路时的操作提示
+  ///
+  /// In zh, this message translates to:
+  /// **'请先添加线路'**
+  String get dialAddLineFirst;
+
+  /// 会议期间禁用外呼的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'会议中不可外呼'**
+  String get dialUnavailableDuringConference;
+
+  /// 拨号输入框提示
+  ///
+  /// In zh, this message translates to:
+  /// **'输入号码'**
+  String get dialNumberHint;
+
+  /// 发起外呼操作提示
+  ///
+  /// In zh, this message translates to:
+  /// **'发起外呼'**
+  String get dialStartCall;
+
+  /// 拨号按钮文字
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫'**
+  String get dialCall;
+
+  /// 当前临时拨号线路标签
+  ///
+  /// In zh, this message translates to:
+  /// **'当前拨号线路'**
+  String get dialCurrentOutgoingLine;
+
+  /// 默认拨号线路标签
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拨号线路'**
+  String get dialDefaultOutgoingLine;
+
+  /// 当前通话容量标签
+  ///
+  /// In zh, this message translates to:
+  /// **'通话容量'**
+  String get dialCallCapacity;
+
+  /// 当前通话数量与上限
+  ///
+  /// In zh, this message translates to:
+  /// **'{current}/{max} 路'**
+  String dialCallCapacityValue(int current, int max);
+
+  /// 网络状态标签
+  ///
+  /// In zh, this message translates to:
+  /// **'网络'**
+  String get dialNetwork;
+
+  /// 最近通话为空时的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无最近通话'**
+  String get dialNoRecentCalls;
+
+  /// 最近通话区块标题
+  ///
+  /// In zh, this message translates to:
+  /// **'最近通话'**
+  String get dialRecentCalls;
+
+  /// 通话记录缺少号码时的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可回拨号码'**
+  String get dialNoCallbackNumber;
+
+  /// 回拨指定号码的提示
+  ///
+  /// In zh, this message translates to:
+  /// **'回拨 {number}'**
+  String dialCallbackNumber(String number);
+
+  /// 昨天的通话时间
+  ///
+  /// In zh, this message translates to:
+  /// **'昨天 {time}'**
+  String dialYesterdayAt(String time);
+
+  /// 联系人的默认号码标签
+  ///
+  /// In zh, this message translates to:
+  /// **'默认'**
+  String get contactDefaultNumber;
+
+  /// 号码完整匹配联系人
+  ///
+  /// In zh, this message translates to:
+  /// **'已匹配'**
+  String get contactExactMatch;
+
+  /// 号码尾号匹配联系人
+  ///
+  /// In zh, this message translates to:
+  /// **'尾号匹配'**
+  String get contactSuffixMatch;
+
+  /// No description provided for @weekdayMonday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周一'**
+  String get weekdayMonday;
+
+  /// No description provided for @weekdayTuesday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周二'**
+  String get weekdayTuesday;
+
+  /// No description provided for @weekdayWednesday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周三'**
+  String get weekdayWednesday;
+
+  /// No description provided for @weekdayThursday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周四'**
+  String get weekdayThursday;
+
+  /// No description provided for @weekdayFriday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周五'**
+  String get weekdayFriday;
+
+  /// No description provided for @weekdaySaturday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周六'**
+  String get weekdaySaturday;
+
+  /// No description provided for @weekdaySunday.
+  ///
+  /// In zh, this message translates to:
+  /// **'周日'**
+  String get weekdaySunday;
+
+  /// No description provided for @sidebarConnectedTemporary.
+  ///
+  /// In zh, this message translates to:
+  /// **'临时拨号线路 · {line}'**
+  String sidebarConnectedTemporary(String line);
+
+  /// No description provided for @sidebarConnectedDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号线路 · {line}'**
+  String sidebarConnectedDefault(String line);
+
+  /// No description provided for @sidebarWaitingAccounts.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待账号连接'**
+  String get sidebarWaitingAccounts;
+
+  /// No description provided for @sidebarDisconnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未连接'**
+  String get sidebarDisconnected;
+
+  /// No description provided for @sidebarConnectionStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接状态'**
+  String get sidebarConnectionStatus;
+
+  /// No description provided for @sidebarPhoneService.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务'**
+  String get sidebarPhoneService;
+
+  /// No description provided for @sidebarServiceStarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启动'**
+  String get sidebarServiceStarted;
+
+  /// No description provided for @sidebarServiceStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启动'**
+  String get sidebarServiceStopped;
+
+  /// No description provided for @sidebarDefaultDialLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拨号线路'**
+  String get sidebarDefaultDialLine;
+
+  /// No description provided for @sidebarNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无'**
+  String get sidebarNone;
+
+  /// No description provided for @sidebarCurrentDialLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前拨号线路'**
+  String get sidebarCurrentDialLine;
+
+  /// No description provided for @sidebarTemporaryUse.
+  ///
+  /// In zh, this message translates to:
+  /// **'临时使用'**
+  String get sidebarTemporaryUse;
+
+  /// No description provided for @sidebarLines.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路'**
+  String get sidebarLines;
+
+  /// No description provided for @sidebarOnlineCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{online}/{total} 在线'**
+  String sidebarOnlineCount(int online, int total);
+
+  /// No description provided for @sidebarRetryFailedLines.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新注册异常线路'**
+  String get sidebarRetryFailedLines;
+
+  /// No description provided for @sidebarOpenLineSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开线路设置'**
+  String get sidebarOpenLineSettings;
+
+  /// No description provided for @sidebarDefaultDial.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拨号'**
+  String get sidebarDefaultDial;
+
+  /// No description provided for @sidebarManageLines.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理 {count} 条线路'**
+  String sidebarManageLines(int count);
+
+  /// No description provided for @sidebarAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频'**
+  String get sidebarAudio;
+
+  /// No description provided for @sidebarAudioIssue.
+  ///
+  /// In zh, this message translates to:
+  /// **'异常'**
+  String get sidebarAudioIssue;
+
+  /// No description provided for @sidebarAudioDevices.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频设备'**
+  String get sidebarAudioDevices;
+
+  /// No description provided for @sidebarAudioInput.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入'**
+  String get sidebarAudioInput;
+
+  /// No description provided for @sidebarAudioOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'输出'**
+  String get sidebarAudioOutput;
+
+  /// No description provided for @sidebarAudioMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'模式'**
+  String get sidebarAudioMode;
+
+  /// No description provided for @sidebarAudioStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态'**
+  String get sidebarAudioStatus;
+
+  /// No description provided for @sidebarAudioAutomatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动选择'**
+  String get sidebarAudioAutomatic;
+
+  /// No description provided for @sidebarAudioManual.
+  ///
+  /// In zh, this message translates to:
+  /// **'手动选择'**
+  String get sidebarAudioManual;
+
+  /// No description provided for @sidebarAudioSwitchToManual.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换为手动选择'**
+  String get sidebarAudioSwitchToManual;
+
+  /// No description provided for @sidebarAudioSwitchToAutomatic.
+  ///
+  /// In zh, this message translates to:
+  /// **'切换为自动选择'**
+  String get sidebarAudioSwitchToAutomatic;
+
+  /// No description provided for @sidebarAudioRefreshDevices.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新设备'**
+  String get sidebarAudioRefreshDevices;
+
+  /// No description provided for @sidebarOpenAudioSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开音频设置'**
+  String get sidebarOpenAudioSettings;
+
+  /// No description provided for @sidebarSetDefaultDial.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认拨号线路'**
+  String get sidebarSetDefaultDial;
+
+  /// No description provided for @sidebarDefaultDialStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拨号 · {status} · {transport}'**
+  String sidebarDefaultDialStatus(String status, String transport);
+
+  /// No description provided for @sidebarRefreshLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get sidebarRefreshLine;
+
+  /// No description provided for @sidebarRestartLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启'**
+  String get sidebarRestartLine;
+
+  /// No description provided for @sidebarDisableLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'停用'**
+  String get sidebarDisableLine;
+
+  /// No description provided for @sidebarEnableLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用'**
+  String get sidebarEnableLine;
+
+  /// No description provided for @sidebarEditLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get sidebarEditLine;
+
+  /// No description provided for @sidebarDeleteLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get sidebarDeleteLine;
+
+  /// No description provided for @sidebarRestartLineTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启线路'**
+  String get sidebarRestartLineTitle;
+
+  /// No description provided for @sidebarRestartLineDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'会短暂注销后重新注册，不会删除这条线路。'**
+  String get sidebarRestartLineDescription;
+
+  /// No description provided for @sidebarRestartLineHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'适合网络恢复或电脑休眠唤醒后线路状态异常的情况。'**
+  String get sidebarRestartLineHint;
+
+  /// No description provided for @sidebarDeleteLineTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除线路'**
+  String get sidebarDeleteLineTitle;
+
+  /// No description provided for @sidebarDeleteLineDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除后需要重新添加账号才能恢复。'**
+  String get sidebarDeleteLineDescription;
+
+  /// No description provided for @sidebarDeleteLineQuestion.
+  ///
+  /// In zh, this message translates to:
+  /// **'确定删除这条线路吗？'**
+  String get sidebarDeleteLineQuestion;
+
+  /// No description provided for @callDirectionInbound.
+  ///
+  /// In zh, this message translates to:
+  /// **'来电'**
+  String get callDirectionInbound;
+
+  /// No description provided for @callDirectionOutbound.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼出'**
+  String get callDirectionOutbound;
+
+  /// No description provided for @callStatusCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接通'**
+  String get callStatusCompleted;
+
+  /// No description provided for @callStatusMissed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未接来电'**
+  String get callStatusMissed;
+
+  /// No description provided for @callStatusRejected.
+  ///
+  /// In zh, this message translates to:
+  /// **'已拒接'**
+  String get callStatusRejected;
+
+  /// No description provided for @callStatusFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫失败'**
+  String get callStatusFailed;
+
+  /// No description provided for @callStatusCanceled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已取消'**
+  String get callStatusCanceled;
 }
 
 class _AppLocalizationsDelegate

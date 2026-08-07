@@ -9,6 +9,7 @@ extension _DialpadCard on _MyHomePageState {
     int? selectedAccountId,
     SipAccountInfo? selectedAccount,
   ) {
+    final l10n = context.l10n;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: _panelBackground,
@@ -42,7 +43,7 @@ extension _DialpadCard on _MyHomePageState {
                       fontFeatures: [FontFeature.tabularFigures()],
                     ),
                     decoration: InputDecoration(
-                      hintText: '输入号码',
+                      hintText: l10n.dialNumberHint,
                       prefixIcon: const Icon(AppIcons.dialpad),
                       suffixIcon: ValueListenableBuilder<TextEditingValue>(
                         valueListenable: _numberController,
@@ -51,7 +52,7 @@ extension _DialpadCard on _MyHomePageState {
                             return const SizedBox.shrink();
                           }
                           return IconButton(
-                            tooltip: '清空',
+                            tooltip: l10n.commonClear,
                             onPressed: _clearDialpadNumber,
                             icon: const Icon(AppIcons.clear),
                           );
@@ -93,7 +94,9 @@ extension _DialpadCard on _MyHomePageState {
                       );
                       final enabled = unavailableReason == null;
                       return Tooltip(
-                        message: enabled ? '发起外呼' : unavailableReason,
+                        message: enabled
+                            ? l10n.dialStartCall
+                            : unavailableReason,
                         child: SizedBox(
                           height: 48,
                           child: FilledButton.icon(
@@ -105,7 +108,7 @@ extension _DialpadCard on _MyHomePageState {
                                   )
                                 : null,
                             icon: const Icon(AppIcons.call),
-                            label: Text(unavailableReason ?? '呼叫'),
+                            label: Text(unavailableReason ?? l10n.dialCall),
                             style: FilledButton.styleFrom(
                               backgroundColor: _callGreen,
                               foregroundColor: Colors.white,

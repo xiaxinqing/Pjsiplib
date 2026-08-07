@@ -11,6 +11,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     SipAccountInfo account,
     Offset position,
   ) async {
+    final l10n = context.l10n;
     final isDefault = uiState.defaultAccountId == account.accId;
     final hasActiveCalls = uiState.calls.values.any(
       (call) => call.accountId == account.accId,
@@ -22,9 +23,14 @@ extension _HomeSidebarLineActions on _MyHomePageState {
         : canSetDefault
         ? _textPrimary
         : _textSecondary;
-    final defaultLabel = isDefault ? '默认外呼' : '设为默认外呼';
+    final defaultLabel = isDefault
+        ? l10n.sidebarDefaultDial
+        : l10n.sidebarSetDefaultDial;
     final status = isDefault
-        ? '默认外呼 · ${account.registrationStatusText} · ${account.transportLabel}'
+        ? l10n.sidebarDefaultDialStatus(
+            account.registrationStatusText,
+            account.transportLabel,
+          )
         : '${account.registrationStatusText} · ${account.transportLabel}';
     final action = await showMenu<String>(
       context: context,
@@ -83,7 +89,10 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                 !isRestarting &&
                 !account.registrationActionInProgress &&
                 account.registrationStatus != null,
-            child: _buildPopupActionRow(AppIcons.refresh, '刷新'),
+            child: _buildPopupActionRow(
+              AppIcons.refresh,
+              l10n.sidebarRefreshLine,
+            ),
           ),
           PopupMenuItem<String>(
             value:
@@ -98,7 +107,10 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                 !account.registrationActionInProgress &&
                 !hasActiveCalls &&
                 uiState.isNetworkAvailable,
-            child: _buildPopupActionRow(AppIcons.power, '重启'),
+            child: _buildPopupActionRow(
+              AppIcons.power,
+              l10n.sidebarRestartLine,
+            ),
           ),
           PopupMenuItem<String>(
             value:
@@ -111,7 +123,10 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                 !isRestarting &&
                 !account.registrationActionInProgress &&
                 !hasActiveCalls,
-            child: _buildPopupActionRow(AppIcons.pause, '停用'),
+            child: _buildPopupActionRow(
+              AppIcons.pause,
+              l10n.sidebarDisableLine,
+            ),
           ),
         ] else
           PopupMenuItem<String>(
@@ -127,19 +142,23 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                 uiState.isNetworkAvailable,
             child: _buildPopupActionRow(
               AppIcons.play,
-              '启用',
+              l10n.sidebarEnableLine,
               color: _brandGreen,
             ),
           ),
         PopupMenuItem<String>(
           value: account.registrationActionInProgress ? null : 'edit',
           enabled: !account.registrationActionInProgress,
-          child: _buildPopupActionRow(AppIcons.edit, '编辑'),
+          child: _buildPopupActionRow(AppIcons.edit, l10n.sidebarEditLine),
         ),
         PopupMenuItem<String>(
           value: account.registrationActionInProgress ? null : 'delete',
           enabled: !account.registrationActionInProgress,
-          child: _buildPopupActionRow(AppIcons.delete, '删除', destructive: true),
+          child: _buildPopupActionRow(
+            AppIcons.delete,
+            l10n.sidebarDeleteLine,
+            destructive: true,
+          ),
         ),
       ],
     );
@@ -172,104 +191,108 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     return showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
-      builder: (context) => AlertDialog(
-        contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
-        content: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: _brandGreen.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(_radiusSm),
+      builder: (context) {
+        final l10n = context.l10n;
+        return AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _brandGreen.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(_radiusSm),
+                      ),
+                      child: const Icon(
+                        AppIcons.power,
+                        size: _iconMd,
+                        color: _brandGreen,
+                      ),
                     ),
-                    child: const Icon(
-                      AppIcons.power,
-                      size: _iconMd,
-                      color: _brandGreen,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.sidebarRestartLineTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n.sidebarRestartLineDescription,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: _textSecondary),
+                          ),
+                        ],
+                      ),
                     ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _subtlePanel,
+                    borderRadius: BorderRadius.circular(_radiusSm),
+                    border: Border.all(color: _softBorder),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '重启线路',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                          ),
+                        _buildTooltipText(
+                          account.lineLabel,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
                         Text(
-                          '会短暂注销后重新注册，不会删除这条线路。',
+                          '${account.registrationStatusText} · ${account.transportLabel}',
                           style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: _textSecondary),
+                              ?.copyWith(
+                                color: _textSecondary,
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _subtlePanel,
-                  borderRadius: BorderRadius.circular(_radiusSm),
-                  border: Border.all(color: _softBorder),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTooltipText(
-                        account.lineLabel,
-                        style: const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${account.registrationStatusText} · ${account.transportLabel}',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: _textSecondary,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.sidebarRestartLineHint,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '适合网络恢复、电脑休眠唤醒后线路状态不对的情况。',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(AppIcons.power),
-            label: const Text('重启'),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(AppIcons.power),
+              label: Text(l10n.sidebarRestartLine),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -278,114 +301,117 @@ extension _HomeSidebarLineActions on _MyHomePageState {
     return showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
-      builder: (context) => AlertDialog(
-        contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
-        actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
-        content: SizedBox(
-          width: 380,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: _dangerRed.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(_radiusSm),
+      builder: (context) {
+        final l10n = context.l10n;
+        return AlertDialog(
+          contentPadding: const EdgeInsets.fromLTRB(24, 22, 24, 18),
+          actionsPadding: const EdgeInsets.fromLTRB(24, 0, 24, 22),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _dangerRed.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(_radiusSm),
+                      ),
+                      child: Icon(
+                        AppIcons.delete,
+                        size: _iconMd,
+                        color: _dangerRed,
+                      ),
                     ),
-                    child: Icon(
-                      AppIcons.delete,
-                      size: _iconMd,
-                      color: _dangerRed,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          '删除线路',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.sidebarDeleteLineTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '删除后需要重新添加账号才能恢复。',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: _textSecondary),
+                          const SizedBox(height: 4),
+                          Text(
+                            l10n.sidebarDeleteLineDescription,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: _textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _subtlePanel,
+                    borderRadius: BorderRadius.circular(_radiusSm),
+                    border: Border.all(color: _softBorder),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildTooltipText(
+                                account.lineLabel,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                '${account.registrationStatusText} · ${account.transportLabel}',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: _textSecondary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: _subtlePanel,
-                  borderRadius: BorderRadius.circular(_radiusSm),
-                  border: Border.all(color: _softBorder),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildTooltipText(
-                              account.lineLabel,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              '${account.registrationStatusText} · ${account.transportLabel}',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    color: _textSecondary,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                const SizedBox(height: 12),
+                Text(
+                  l10n.sidebarDeleteLineQuestion,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                '确定删除这条线路吗？',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          FilledButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            icon: const Icon(AppIcons.delete),
-            label: const Text('删除线路'),
-            style: FilledButton.styleFrom(backgroundColor: _dangerRed),
-          ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(l10n.commonCancel),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.of(context).pop(true),
+              icon: const Icon(AppIcons.delete),
+              label: Text(l10n.sidebarDeleteLineTitle),
+              style: FilledButton.styleFrom(backgroundColor: _dangerRed),
+            ),
+          ],
+        );
+      },
     );
   }
 }

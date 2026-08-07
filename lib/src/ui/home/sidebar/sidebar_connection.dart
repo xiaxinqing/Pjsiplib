@@ -4,6 +4,7 @@ part of '../../../../main.dart';
 extension _HomeSidebarConnection on _MyHomePageState {
   /// 构建顶部连接状态按钮，根据当前状态展示圆点、加载态和默认外呼线路。
   Widget _buildConnectionPill(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     final isRegistered = uiState.hasRegisteredAccount;
     final outgoingAccount = uiState.bestOutgoingAccount;
     final isUsingFallback = uiState.isUsingFallbackOutgoingAccount;
@@ -20,18 +21,22 @@ extension _HomeSidebarConnection on _MyHomePageState {
         ? _brandGreen
         : Theme.of(context).colorScheme.outline;
     final label = isCheckingSeat
-        ? '正在检查坐席环境'
+        ? l10n.statusCheckingSeatEnvironment
         : isRestoringSeat
-        ? '正在恢复线路'
+        ? l10n.statusRestoringLines
         : !uiState.isNetworkAvailable
-        ? '网络不可用'
+        ? l10n.statusNetworkUnavailable
         : isRegistered
         ? isUsingFallback
-              ? '已连接 · 临时 ${outgoingAccount?.displayName ?? '--'}'
-              : '已连接 · 默认 ${outgoingAccount?.displayName ?? '--'}'
+              ? l10n.sidebarConnectedTemporary(
+                  outgoingAccount?.displayName ?? '--',
+                )
+              : l10n.sidebarConnectedDefault(
+                  outgoingAccount?.displayName ?? '--',
+                )
         : uiState.isInitialized
-        ? '等待账号连接'
-        : '未连接';
+        ? l10n.sidebarWaitingAccounts
+        : l10n.sidebarDisconnected;
 
     return Material(
       color: _panelBackground.withValues(alpha: 0.72),
@@ -82,6 +87,7 @@ extension _HomeSidebarConnection on _MyHomePageState {
     PjsipService service,
     Offset position,
   ) async {
+    final l10n = context.l10n;
     final accounts = uiState.accountList;
     // 用户主动停用的线路不是异常线路，批量恢复时不能擅自重新启用。
     final failedAccounts = accounts
@@ -105,9 +111,9 @@ extension _HomeSidebarConnection on _MyHomePageState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                '连接状态',
-                style: TextStyle(
+              Text(
+                l10n.sidebarConnectionStatus,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: _textPrimary,
@@ -116,32 +122,39 @@ extension _HomeSidebarConnection on _MyHomePageState {
               const SizedBox(height: 12),
               _buildStatusSummaryRow(
                 icon: AppIcons.network,
-                label: '网络',
-                value: uiState.isNetworkAvailable ? '可用' : '不可用',
+                label: l10n.dialNetwork,
+                value: uiState.isNetworkAvailable
+                    ? l10n.commonAvailable
+                    : l10n.commonUnavailable,
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.server,
-                label: '电话服务',
-                value: uiState.isInitialized ? '已启动' : '未启动',
+                label: l10n.sidebarPhoneService,
+                value: uiState.isInitialized
+                    ? l10n.sidebarServiceStarted
+                    : l10n.sidebarServiceStopped,
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.outgoing,
-                label: '默认外呼线路',
+                label: l10n.sidebarDefaultDialLine,
                 value: uiState.defaultAccount == null
-                    ? '暂无'
-                    : '${uiState.defaultAccount!.lineLabel} · ${uiState.defaultAccount!.isRegistered ? uiState.defaultAccount!.transportLabel : '不可用'}',
+                    ? l10n.sidebarNone
+                    : '${uiState.defaultAccount!.lineLabel} · ${uiState.defaultAccount!.isRegistered ? uiState.defaultAccount!.transportLabel : l10n.commonUnavailable}',
               ),
               if (uiState.isUsingFallbackOutgoingAccount)
                 _buildStatusSummaryRow(
                   icon: AppIcons.call,
-                  label: '当前外呼线路',
-                  value: '${uiState.bestOutgoingAccount!.lineLabel} · 临时使用',
+                  label: l10n.sidebarCurrentDialLine,
+                  value:
+                      '${uiState.bestOutgoingAccount!.lineLabel} · ${l10n.sidebarTemporaryUse}',
                 ),
               _buildStatusSummaryRow(
                 icon: AppIcons.lines,
-                label: '线路',
-                value:
-                    '${uiState.registeredAccounts.length}/${uiState.accounts.length} 在线',
+                label: l10n.sidebarLines,
+                value: l10n.sidebarOnlineCount(
+                  uiState.registeredAccounts.length,
+                  uiState.accounts.length,
+                ),
               ),
             ],
           ),
@@ -150,15 +163,21 @@ extension _HomeSidebarConnection on _MyHomePageState {
         if (failedAccounts.isNotEmpty)
           PopupMenuItem<String>(
             value: 'retry_failed',
-            child: _buildPopupActionRow(AppIcons.refresh, '重新注册异常线路'),
+            child: _buildPopupActionRow(
+              AppIcons.refresh,
+              l10n.sidebarRetryFailedLines,
+            ),
           ),
         PopupMenuItem<String>(
           value: 'add_line',
-          child: _buildPopupActionRow(AppIcons.line, '添加线路'),
+          child: _buildPopupActionRow(AppIcons.line, l10n.headerAddLine),
         ),
         PopupMenuItem<String>(
           value: 'open_settings',
-          child: _buildPopupActionRow(AppIcons.settings, '打开线路设置'),
+          child: _buildPopupActionRow(
+            AppIcons.settings,
+            l10n.sidebarOpenLineSettings,
+          ),
         ),
       ],
     );

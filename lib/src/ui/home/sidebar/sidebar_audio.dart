@@ -4,6 +4,7 @@ part of '../../../../main.dart';
 extension _HomeSidebarAudio on _MyHomePageState {
   /// 构建音频迷你状态卡，显示当前麦克风和扬声器。
   Widget _buildAudioMiniStatus(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     final mic = _deviceLabelById(
       uiState.captureDevices,
       uiState.selectedCaptureDeviceId,
@@ -37,7 +38,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
                   children: [
                     Expanded(
                       child: Text(
-                        '音频',
+                        l10n.sidebarAudio,
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -56,7 +57,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
-                          '异常',
+                          l10n.sidebarAudioIssue,
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -95,6 +96,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
     PjsipService service,
     Offset position,
   ) async {
+    final l10n = context.l10n;
     final mic = _deviceLabelById(
       uiState.captureDevices,
       uiState.selectedCaptureDeviceId,
@@ -122,9 +124,9 @@ extension _HomeSidebarAudio on _MyHomePageState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text(
-                '音频设备',
-                style: TextStyle(
+              Text(
+                l10n.sidebarAudioDevices,
+                style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: _textPrimary,
@@ -133,22 +135,24 @@ extension _HomeSidebarAudio on _MyHomePageState {
               const SizedBox(height: 12),
               _buildStatusSummaryRow(
                 icon: AppIcons.microphone,
-                label: '输入',
+                label: l10n.sidebarAudioInput,
                 value: mic,
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.speaker,
-                label: '输出',
+                label: l10n.sidebarAudioOutput,
                 value: speaker,
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.automatic,
-                label: '模式',
-                value: isAutomatic ? '自动选择' : '手动选择',
+                label: l10n.sidebarAudioMode,
+                value: isAutomatic
+                    ? l10n.sidebarAudioAutomatic
+                    : l10n.sidebarAudioManual,
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.info,
-                label: '状态',
+                label: l10n.sidebarAudioStatus,
                 value: issueMessage ?? uiState.audioDeviceStatus,
               ),
             ],
@@ -160,17 +164,25 @@ extension _HomeSidebarAudio on _MyHomePageState {
           enabled: uiState.isInitialized,
           child: _buildPopupActionRow(
             isAutomatic ? AppIcons.tune : AppIcons.automatic,
-            isAutomatic ? '切换为手动选择' : '切换为自动选择',
+            isAutomatic
+                ? l10n.sidebarAudioSwitchToManual
+                : l10n.sidebarAudioSwitchToAutomatic,
           ),
         ),
         PopupMenuItem<String>(
           value: 'refresh',
           enabled: uiState.isInitialized,
-          child: _buildPopupActionRow(AppIcons.refresh, '刷新设备'),
+          child: _buildPopupActionRow(
+            AppIcons.refresh,
+            l10n.sidebarAudioRefreshDevices,
+          ),
         ),
         PopupMenuItem<String>(
           value: 'open_settings',
-          child: _buildPopupActionRow(AppIcons.settings, '打开音频设置'),
+          child: _buildPopupActionRow(
+            AppIcons.settings,
+            l10n.sidebarOpenAudioSettings,
+          ),
         ),
       ],
     );

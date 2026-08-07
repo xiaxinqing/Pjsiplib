@@ -7,6 +7,7 @@ extension _DialpadStandbyPanel on _MyHomePageState {
     PjsipService service,
     bool canCall,
   ) {
+    final l10n = context.l10n;
     final account = _selectedOutgoingAccountId == null
         ? uiState.bestOutgoingAccount
         : uiState.accounts[_selectedOutgoingAccountId];
@@ -62,22 +63,26 @@ extension _DialpadStandbyPanel on _MyHomePageState {
                         children: [
                           _buildDialpadStandbyLine(
                             AppIcons.outgoing,
-                            isUsingFallback ? '当前外呼线路' : '默认外呼线路',
+                            isUsingFallback
+                                ? l10n.dialCurrentOutgoingLine
+                                : l10n.dialDefaultOutgoingLine,
                             account == null
-                                ? '暂无可用线路'
+                                ? l10n.dialNoAvailableLine
                                 : '${account.displayName} · ${account.transportLabel}',
                           ),
                           const SizedBox(height: 10),
                           _buildDialpadStandbyLine(
                             AppIcons.calls,
-                            '通话容量',
-                            '${uiState.calls.length}/4 路',
+                            l10n.dialCallCapacity,
+                            l10n.dialCallCapacityValue(uiState.calls.length, 4),
                           ),
                           const SizedBox(height: 10),
                           _buildDialpadStandbyLine(
                             AppIcons.network,
-                            '网络',
-                            uiState.isNetworkAvailable ? '可用' : '不可用',
+                            l10n.dialNetwork,
+                            uiState.isNetworkAvailable
+                                ? l10n.commonAvailable
+                                : l10n.commonUnavailable,
                           ),
                         ],
                       ),
@@ -100,7 +105,7 @@ extension _DialpadStandbyPanel on _MyHomePageState {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Text(
-            '暂无最近通话',
+            context.l10n.dialNoRecentCalls,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -132,7 +137,7 @@ extension _DialpadStandbyPanel on _MyHomePageState {
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 14),
               child: Text(
-                '暂无最近通话',
+                context.l10n.dialNoRecentCalls,
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -170,10 +175,10 @@ extension _DialpadStandbyPanel on _MyHomePageState {
               children: [
                 const Icon(AppIcons.history, size: _iconSm),
                 const SizedBox(width: 8),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    '最近通话',
-                    style: TextStyle(fontWeight: FontWeight.w800),
+                    context.l10n.dialRecentCalls,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
                 TextButton(
@@ -182,7 +187,7 @@ extension _DialpadStandbyPanel on _MyHomePageState {
                     minimumSize: const Size(0, 30),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                   ),
-                  child: const Text('全部'),
+                  child: Text(context.l10n.commonAll),
                 ),
               ],
             ),
@@ -207,8 +212,8 @@ extension _DialpadStandbyPanel on _MyHomePageState {
     final lineLabel = item.accountLabel?.trim();
     final shouldShowNumber = number.isNotEmpty && title != number;
     final statusLabel = [
-      item.direction.label,
-      item.statusLabel,
+      _localizedDialpadCallDirection(item.direction),
+      _localizedDialpadCallStatus(item),
       _formatDialpadRecentCallTime(item.startedAt),
     ].join(' · ');
 
@@ -274,7 +279,9 @@ extension _DialpadStandbyPanel on _MyHomePageState {
           ),
           const SizedBox(width: 8),
           Tooltip(
-            message: number.isEmpty ? '没有可回拨号码' : '回拨 $number',
+            message: number.isEmpty
+                ? context.l10n.dialNoCallbackNumber
+                : context.l10n.dialCallbackNumber(number),
             child: IconButton(
               onPressed: number.isEmpty
                   ? null
@@ -296,6 +303,26 @@ extension _DialpadStandbyPanel on _MyHomePageState {
     );
   }
 
+  /// 最近通话只在展示层做本地化，不改动数据库中稳定的枚举值。
+  String _localizedDialpadCallDirection(CallHistoryDirection direction) {
+    return switch (direction) {
+      CallHistoryDirection.inbound => context.l10n.callDirectionInbound,
+      CallHistoryDirection.outbound => context.l10n.callDirectionOutbound,
+    };
+  }
+
+  /// 将历史状态映射为当前语言；实时记录尚无枚举状态时保留原始文案。
+  String _localizedDialpadCallStatus(_HistoryItem item) {
+    return switch (item.status) {
+      CallHistoryStatus.completed => context.l10n.callStatusCompleted,
+      CallHistoryStatus.missed => context.l10n.callStatusMissed,
+      CallHistoryStatus.rejected => context.l10n.callStatusRejected,
+      CallHistoryStatus.failed => context.l10n.callStatusFailed,
+      CallHistoryStatus.canceled => context.l10n.callStatusCanceled,
+      null => item.statusLabel,
+    };
+  }
+
   String _dialpadRecentCallTitle(_HistoryItem item) {
     final displayName = item.displayName?.trim();
     if (displayName != null && displayName.isNotEmpty) return displayName;
@@ -305,14 +332,25 @@ extension _DialpadStandbyPanel on _MyHomePageState {
   }
 
   String _formatDialpadRecentCallTime(DateTime time) {
+    final l10n = context.l10n;
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(time.year, time.month, time.day);
     final diff = today.difference(day).inDays;
     if (diff == 0) return DateFormat('HH:mm').format(time);
-    if (diff == 1) return '昨天 ${DateFormat('HH:mm').format(time)}';
+    if (diff == 1) {
+      return l10n.dialYesterdayAt(DateFormat('HH:mm').format(time));
+    }
     if (diff < 7) {
-      const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+      final weekdays = [
+        l10n.weekdayMonday,
+        l10n.weekdayTuesday,
+        l10n.weekdayWednesday,
+        l10n.weekdayThursday,
+        l10n.weekdayFriday,
+        l10n.weekdaySaturday,
+        l10n.weekdaySunday,
+      ];
       return '${weekdays[time.weekday - 1]} ${DateFormat('HH:mm').format(time)}';
     }
     return DateFormat('M/d HH:mm').format(time);

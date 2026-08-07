@@ -76,6 +76,7 @@ extension _HomeWorkspace on _MyHomePageState {
   }
 
   Widget _buildHeaderAction(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     if (uiState.accounts.isNotEmpty) {
       final hasDisconnectableLine = uiState.accounts.values.any(
         (account) => account.registrationEnabled || account.isRegistered,
@@ -85,12 +86,12 @@ extension _HomeWorkspace on _MyHomePageState {
           uiState.calls.isEmpty &&
           hasDisconnectableLine;
       final tooltip = uiState.calls.isNotEmpty
-          ? '请先结束当前通话'
+          ? l10n.headerEndCallsFirst
           : !uiState.isInitialized
-          ? '电话服务未初始化'
+          ? l10n.headerPhoneServiceUnavailable
           : !hasDisconnectableLine
-          ? '线路已全部断开'
-          : '断开全部线路';
+          ? l10n.headerAllLinesDisconnected
+          : l10n.headerDisconnectAllLines;
       return IconButton(
         tooltip: tooltip,
         onPressed: canDisconnect
@@ -108,12 +109,13 @@ extension _HomeWorkspace on _MyHomePageState {
           ? () => _showAddAccountDialog(uiState, service)
           : null,
       icon: const Icon(AppIcons.login),
-      label: const Text('添加线路'),
+      label: Text(l10n.headerAddLine),
       style: FilledButton.styleFrom(backgroundColor: _textPrimary),
     );
   }
 
   Future<bool?> _confirmDisconnectAllAccounts(PjsipUIState uiState) {
+    final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
@@ -147,16 +149,16 @@ extension _HomeWorkspace on _MyHomePageState {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '断开全部线路',
-                          style: TextStyle(
+                        Text(
+                          l10n.headerDisconnectAllLines,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '所有线路会停用注册，之后可在左侧线路菜单中重新启用。',
+                          l10n.disconnectAllDescription,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: _textSecondary),
                         ),
@@ -184,8 +186,10 @@ extension _HomeWorkspace on _MyHomePageState {
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          '已接入 ${uiState.accounts.length} 条线路，'
-                          '${uiState.registeredAccounts.length} 条在线',
+                          l10n.disconnectAllSummary(
+                            uiState.accounts.length,
+                            uiState.registeredAccounts.length,
+                          ),
                           style: const TextStyle(fontWeight: FontWeight.w800),
                         ),
                       ),
@@ -195,7 +199,7 @@ extension _HomeWorkspace on _MyHomePageState {
               ),
               const SizedBox(height: 12),
               Text(
-                '确定断开全部线路吗？',
+                l10n.disconnectAllQuestion,
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -206,12 +210,12 @@ extension _HomeWorkspace on _MyHomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.power),
-            label: const Text('断开全部'),
+            label: Text(l10n.disconnectAllAction),
             style: FilledButton.styleFrom(backgroundColor: _dangerRed),
           ),
         ],
@@ -220,23 +224,31 @@ extension _HomeWorkspace on _MyHomePageState {
   }
 
   String _statusSubtitle(PjsipUIState uiState) {
-    if (!uiState.isNetworkAvailable) return '当前网络不可用';
+    final l10n = context.l10n;
+    if (!uiState.isNetworkAvailable) return l10n.statusNetworkUnavailable;
     if (uiState.seatEnvironmentState == SeatEnvironmentState.checking) {
-      return '正在检查上次坐席环境';
+      return l10n.statusCheckingSeatEnvironment;
     }
     if (uiState.seatEnvironmentState == SeatEnvironmentState.restoring) {
-      return '正在恢复上次线路配置';
+      return l10n.statusRestoringLines;
     }
     if (uiState.accounts.isNotEmpty) {
       final outgoingAccount = uiState.bestOutgoingAccount;
-      final suffix = outgoingAccount == null
-          ? '，暂无可用外呼线路'
-          : uiState.isUsingFallbackOutgoingAccount
-          ? '，当前外呼：${outgoingAccount.displayName}'
-          : '，默认外呼：${outgoingAccount.displayName}';
-      return '已接入 ${uiState.accounts.length} 条线路$suffix';
+      if (outgoingAccount == null) {
+        return l10n.statusConnectedNoOutgoing(uiState.accounts.length);
+      }
+      if (uiState.isUsingFallbackOutgoingAccount) {
+        return l10n.statusConnectedCurrentOutgoing(
+          uiState.accounts.length,
+          outgoingAccount.displayName,
+        );
+      }
+      return l10n.statusConnectedDefaultOutgoing(
+        uiState.accounts.length,
+        outgoingAccount.displayName,
+      );
     }
-    if (uiState.isInitialized) return '初始化完成，账号尚未连接';
-    return '连接电话服务后即可发起和接听通话';
+    if (uiState.isInitialized) return l10n.statusInitializedNoAccounts;
+    return l10n.statusConnectServiceHint;
   }
 }

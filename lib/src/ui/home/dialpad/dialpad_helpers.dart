@@ -7,25 +7,47 @@ extension _DialpadHelpers on _MyHomePageState {
     SipAccountInfo? account,
     bool canCall,
   ) {
+    final l10n = context.l10n;
     if (!uiState.isNetworkAvailable) {
-      return const _DialpadAvailabilityStatus('网络不可用', '恢复网络后即可拨打电话');
+      return _DialpadAvailabilityStatus(
+        l10n.statusNetworkUnavailable,
+        l10n.dialNetworkUnavailableDescription,
+      );
     }
     if (uiState.accounts.isEmpty) {
-      return const _DialpadAvailabilityStatus('尚未添加线路', '添加 SIP 线路后即可外呼');
+      return _DialpadAvailabilityStatus(
+        l10n.dialNoLinesAdded,
+        l10n.dialNoLinesDescription,
+      );
     }
     if (account?.isRegistered != true) {
-      return const _DialpadAvailabilityStatus('暂无可用外呼线路', '请检查线路注册状态');
+      return _DialpadAvailabilityStatus(
+        l10n.dialNoAvailableOutgoing,
+        l10n.dialNoOutgoingDescription,
+      );
     }
     if (uiState.hasConference) {
-      return const _DialpadAvailabilityStatus('会议通话中', '请先拆分会议后再发起新呼叫');
+      return _DialpadAvailabilityStatus(
+        l10n.dialConferenceActive,
+        l10n.dialConferenceActiveDescription,
+      );
     }
     if (uiState.calls.length >= 4) {
-      return const _DialpadAvailabilityStatus('通话已达上限', '最多同时保持 4 路通话');
+      return _DialpadAvailabilityStatus(
+        l10n.dialCapacityReached,
+        l10n.dialCapacityDescription(4),
+      );
     }
     if (canCall) {
-      return const _DialpadAvailabilityStatus('可以发起外呼', '输入号码后点击呼叫');
+      return _DialpadAvailabilityStatus(
+        l10n.dialReady,
+        l10n.dialReadyDescription,
+      );
     }
-    return const _DialpadAvailabilityStatus('暂不可外呼', '请检查号码或线路状态');
+    return _DialpadAvailabilityStatus(
+      l10n.dialUnavailable,
+      l10n.dialUnavailableDescription,
+    );
   }
 
   String? _dialpadCallUnavailableReason(
@@ -33,12 +55,13 @@ extension _DialpadHelpers on _MyHomePageState {
     SipAccountInfo? account,
     String number,
   ) {
-    if (number.isEmpty) return '输入号码后呼叫';
-    if (!uiState.isNetworkAvailable) return '网络不可用';
-    if (uiState.accounts.isEmpty) return '请先添加线路';
-    if (account?.isRegistered != true) return '暂无可用线路';
-    if (uiState.hasConference) return '会议中不可外呼';
-    if (uiState.calls.length >= 4) return '通话已达上限';
+    final l10n = context.l10n;
+    if (number.isEmpty) return l10n.dialEnterNumberToCall;
+    if (!uiState.isNetworkAvailable) return l10n.statusNetworkUnavailable;
+    if (uiState.accounts.isEmpty) return l10n.dialAddLineFirst;
+    if (account?.isRegistered != true) return l10n.dialNoAvailableLine;
+    if (uiState.hasConference) return l10n.dialUnavailableDuringConference;
+    if (uiState.calls.length >= 4) return l10n.dialCapacityReached;
     return null;
   }
 

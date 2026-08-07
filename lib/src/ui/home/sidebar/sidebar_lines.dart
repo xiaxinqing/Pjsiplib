@@ -4,6 +4,7 @@ part of '../../../../main.dart';
 extension _HomeSidebarLines on _MyHomePageState {
   /// 构建线路状态面板；标题和管理入口固定，仅中间账号列表滚动。
   Widget _buildLineStatusPanel(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     final accounts = uiState.accountList;
     if (accounts.isEmpty) {
       return const SizedBox.shrink();
@@ -21,14 +22,20 @@ extension _HomeSidebarLines on _MyHomePageState {
         children: [
           Row(
             children: [
-              const Text(
-                '线路',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              Text(
+                l10n.sidebarLines,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '${uiState.registeredAccounts.length}/${accounts.length} 在线',
+                  l10n.sidebarOnlineCount(
+                    uiState.registeredAccounts.length,
+                    accounts.length,
+                  ),
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.right,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -66,6 +73,7 @@ extension _HomeSidebarLines on _MyHomePageState {
     PjsipService service,
     SipAccountInfo account,
   ) {
+    final l10n = context.l10n;
     final isDefault = uiState.defaultAccountId == account.accId;
     final color = !account.registrationEnabled
         ? _textSecondary
@@ -76,7 +84,7 @@ extension _HomeSidebarLines on _MyHomePageState {
         ? ''
         : '${account.username} · ';
     final status = isDefault
-        ? '$identityPrefix默认外呼 · ${account.transportLabel}'
+        ? '$identityPrefix${l10n.sidebarDefaultDial} · ${account.transportLabel}'
         : '$identityPrefix${account.registrationStatusText} · ${account.transportLabel}';
     return GestureDetector(
       onSecondaryTapDown: (details) => _showLineActionMenu(
@@ -139,6 +147,7 @@ extension _HomeSidebarLines on _MyHomePageState {
 
   /// 构建线路管理入口，跳转到设置页的账号分组。
   Widget _buildManageLinesButton(int count) {
+    final l10n = context.l10n;
     return Material(
       color: Colors.transparent,
       borderRadius: BorderRadius.circular(8),
@@ -154,7 +163,7 @@ extension _HomeSidebarLines on _MyHomePageState {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  '管理 $count 条线路',
+                  l10n.sidebarManageLines(count),
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),

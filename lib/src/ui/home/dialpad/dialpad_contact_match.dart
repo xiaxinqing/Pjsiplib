@@ -3,9 +3,10 @@ part of '../../../../main.dart';
 /// 拨号联系人匹配卡：负责展示当前输入号码命中的联系人和号码来源。
 extension _DialpadContactMatchView on _MyHomePageState {
   Widget _buildDialpadContactMatch(_DialpadContactMatch match) {
+    final l10n = context.l10n;
     final organization = match.contact.organizationLabel;
     final phoneLabel = match.phone.label.trim().isEmpty
-        ? '默认'
+        ? l10n.contactDefaultNumber
         : match.phone.label.trim();
     return Material(
       color: _subtlePanel,
@@ -67,7 +68,9 @@ extension _DialpadContactMatchView on _MyHomePageState {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    match.exact ? '已匹配' : '尾号匹配',
+                    match.exact
+                        ? l10n.contactExactMatch
+                        : l10n.contactSuffixMatch,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: _brandGreen,
                       fontWeight: FontWeight.w700,
