@@ -514,7 +514,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get callStatusCanceled => '已取消';
 
   @override
-  String get contactNewTitle => '新建联系人';
+  String get contactNewTitle => '新建';
 
   @override
   String get contactEditTitle => '编辑联系人';
@@ -1179,6 +1179,458 @@ class AppLocalizationsZh extends AppLocalizations {
   String historyReasonWithSipCode(String reason, int code) {
     return '$reason（SIP $code）';
   }
+
+  @override
+  String get activeCallEmpty => '暂无进行中的通话';
+
+  @override
+  String get activeCallGoToDialpad => '前往拨号';
+
+  @override
+  String get activeCallAnswer => '接听';
+
+  @override
+  String get activeCallReject => '拒接';
+
+  @override
+  String get activeCallMute => '静音';
+
+  @override
+  String get activeCallUnmute => '取消静音';
+
+  @override
+  String get activeCallKeypad => '键盘';
+
+  @override
+  String get activeCallHold => '保持';
+
+  @override
+  String get activeCallResume => '恢复';
+
+  @override
+  String get activeCallTransfer => '转接';
+
+  @override
+  String get activeCallMuteRemoteAudio => '静音对方';
+
+  @override
+  String get activeCallRestoreRemoteAudio => '恢复对方';
+
+  @override
+  String get activeCallAudio => '音频';
+
+  @override
+  String get activeCallHangUp => '挂断';
+
+  @override
+  String get activeCallHangUpAll => '全部挂断';
+
+  @override
+  String get activeCallMerge => '合并';
+
+  @override
+  String get activeCallSplit => '拆分';
+
+  @override
+  String get activeCallResumeConference => '恢复会议';
+
+  @override
+  String get activeCallOperationAnswering => '正在接听';
+
+  @override
+  String get activeCallOperationRejecting => '正在拒接';
+
+  @override
+  String get activeCallOperationEnding => '正在挂断';
+
+  @override
+  String get activeCallOperationHolding => '正在保持';
+
+  @override
+  String get activeCallOperationResuming => '正在恢复';
+
+  @override
+  String get activeCallOperationSplitting => '正在拆分';
+
+  @override
+  String get activeCallOperationMerging => '正在合并';
+
+  @override
+  String get activeCallOperationTransferring => '正在转接';
+
+  @override
+  String get activeCallStatusLocalHold => '保持中';
+
+  @override
+  String get activeCallStatusRemoteHold => '对方保持';
+
+  @override
+  String get activeCallStatusCalling => '正在呼叫';
+
+  @override
+  String get activeCallStatusIncoming => '来电';
+
+  @override
+  String get activeCallStatusWaitingAnswer => '等待接听';
+
+  @override
+  String get activeCallStatusRemoteRinging => '对方振铃';
+
+  @override
+  String get activeCallStatusConnecting => '正在接通';
+
+  @override
+  String get activeCallStatusInCall => '通话中';
+
+  @override
+  String get activeCallStatusEnded => '通话已结束';
+
+  @override
+  String activeCallStatusUnknown(int state) {
+    return '未知状态 ($state)';
+  }
+
+  @override
+  String activeCallHeldLocallyFor(String duration) {
+    return '本机保持 · $duration';
+  }
+
+  @override
+  String activeCallHeldByRemoteFor(String duration) {
+    return '对方保持 · $duration';
+  }
+
+  @override
+  String get activeCallPriorityContact => '重点客户';
+
+  @override
+  String get activeCallOperationInProgress => '操作进行中';
+
+  @override
+  String get activeCallDuration => '通话时长';
+
+  @override
+  String get activeCallCurrentStatus => '当前状态';
+
+  @override
+  String get activeCallMediaConnected => '媒体已连接';
+
+  @override
+  String get activeCallMediaLocalHold => '本地保持';
+
+  @override
+  String get activeCallMediaRemoteHold => '对方保持';
+
+  @override
+  String get activeCallMediaError => '媒体异常';
+
+  @override
+  String get activeCallMediaNotReady => '媒体未建立';
+
+  @override
+  String get activeCallMediaPending => '媒体待建立';
+
+  @override
+  String get activeCallMediaUnconfirmed => '媒体未确认';
+
+  @override
+  String activeCallMediaUnknown(int status) {
+    return '媒体状态 $status';
+  }
+
+  @override
+  String get activeCallSignalingUnknown => '信令未知';
+
+  @override
+  String activeCallConfiguredMode(String mode) {
+    return '$mode 配置';
+  }
+
+  @override
+  String get activeCallMedia => '媒体';
+
+  @override
+  String get activeCallSignaling => '信令';
+
+  @override
+  String get activeCallMediaEncryption => '媒体加密';
+
+  @override
+  String get activeCallTlsEncrypted => 'TLS 加密';
+
+  @override
+  String get activeCallSrtpNegotiated => 'SRTP 已协商';
+
+  @override
+  String get activeCallSrtpNotDetected => '未检测到 SRTP';
+
+  @override
+  String get activeCallMediaNegotiating => '等待媒体协商';
+
+  @override
+  String activeCallLabeledValue(String label, String value) {
+    return '$label：$value';
+  }
+
+  @override
+  String activeCallValueDetail(String value, String detail) {
+    return '$value（$detail）';
+  }
+
+  @override
+  String get activeCallTransport => '传输协议';
+
+  @override
+  String get activeCallTransferTitle => '直接转接通话';
+
+  @override
+  String get activeCallTransferDescription => '通话将立即转接到目标号码，你将退出本次通话。';
+
+  @override
+  String get activeCallCurrentLineUnknown => '当前线路未知';
+
+  @override
+  String get activeCallTransferTargetHint => '输入号码或 SIP URI';
+
+  @override
+  String activeCallTransferTargetExample(String host) {
+    return '例如 6545 或 sip:6545@$host';
+  }
+
+  @override
+  String get activeCallChooseContact => '从联系人选择';
+
+  @override
+  String activeCallNumberCount(int count) {
+    return '$count 个号码';
+  }
+
+  @override
+  String get activeCallTransferSearchHint => '搜索联系人、号码或公司';
+
+  @override
+  String get activeCallEnterTransferNumber => '输入转接号码';
+
+  @override
+  String get activeCallConfirmTransfer => '确认转接';
+
+  @override
+  String get activeCallNoContacts => '暂无联系人';
+
+  @override
+  String get activeCallNoContactMatches => '没有匹配的联系人';
+
+  @override
+  String get activeCallUnnamedContact => '未命名联系人';
+
+  @override
+  String get activeCallViewingConferenceMember => '正在查看会议成员';
+
+  @override
+  String get activeCallCurrentActiveCall => '当前活动通话';
+
+  @override
+  String get activeCallViewingCall => '正在查看此通话';
+
+  @override
+  String activeCallResumeForAudio(String name) {
+    return '$name · 点击恢复以接入声音';
+  }
+
+  @override
+  String activeCallConferenceInterrupted(int count) {
+    return '会议已自动保持。处理完当前通话后，可恢复 $count 位会议成员。';
+  }
+
+  @override
+  String get activeCallConferenceTitle => '会议通话';
+
+  @override
+  String get activeCallConferencePaused => '会议已暂停';
+
+  @override
+  String get activeCallConferenceInProgress => '会议中';
+
+  @override
+  String get activeCallConferenceStatus => '会议状态';
+
+  @override
+  String get activeCallConferenceDuration => '会议时长';
+
+  @override
+  String get activeCallPaused => '已暂停';
+
+  @override
+  String activeCallMemberCount(int count) {
+    return '$count 位成员';
+  }
+
+  @override
+  String activeCallCustomerCount(int count) {
+    return '$count 位客户';
+  }
+
+  @override
+  String activeCallLineCount(int count) {
+    return '$count 条线路';
+  }
+
+  @override
+  String get activeCallPanelConferenceMembers => '会议成员';
+
+  @override
+  String get activeCallPanelCurrentCalls => '当前通话';
+
+  @override
+  String activeCallPanelCount(int current, int total) {
+    return '$current/$total 路';
+  }
+
+  @override
+  String get activeCallNewIncomingAndOthers => '新来电与其他通话';
+
+  @override
+  String get activeCallOtherCalls => '其他通话';
+
+  @override
+  String get activeCallNoActiveCalls => '没有活动通话';
+
+  @override
+  String get activeCallCustomerInfo => '客户信息';
+
+  @override
+  String get activeCallConferenceCustomers => '会议客户';
+
+  @override
+  String get activeCallConferenceCustomersDescription => '已加入会议的客户';
+
+  @override
+  String get activeCallUnmatchedContact => '未匹配联系人';
+
+  @override
+  String get activeCallUnknownNumber => '未知号码';
+
+  @override
+  String get activeCallAddContact => '添加到联系人';
+
+  @override
+  String get activeCallViewContact => '查看联系人';
+
+  @override
+  String get activeCallDefaultNumber => '默认号码';
+
+  @override
+  String get activeCallCustomer => '通话客户';
+
+  @override
+  String get activeCallViewContactDetails => '查看联系人详情';
+
+  @override
+  String get activeCallCurrentNumber => '当前号码';
+
+  @override
+  String get activeCallCurrentNote => '当前通话备注';
+
+  @override
+  String get activeCallNoteHint => '记录沟通重点，挂断后将保存到通话记录';
+
+  @override
+  String get activeCallConferenceNote => '本次会议备注';
+
+  @override
+  String activeCallNoteSyncMembers(int count) {
+    return '同步到 $count 位会议成员';
+  }
+
+  @override
+  String activeCallNoteSavePrimary(String name) {
+    return '仅保存到会议主记录：$name';
+  }
+
+  @override
+  String get activeCallCustomerNote => '当前客户备注';
+
+  @override
+  String get activeCallSharedConferenceNote => '会议共享备注';
+
+  @override
+  String get activeCallSharedNoteHint => '记录会议结论，并保存到每位成员的通话记录';
+
+  @override
+  String get activeCallCustomerNoteHint => '记录当前客户重点，仅保存到会议主记录';
+
+  @override
+  String get activeCallNoteStaged => '已暂存';
+
+  @override
+  String get activeCallNoteEmpty => '未填写';
+
+  @override
+  String get activeCallNoteStagedTooltip => '备注已暂存，挂断后将写入通话记录';
+
+  @override
+  String get activeCallNoteEmptyTooltip => '填写后自动暂存，挂断后写入通话记录';
+
+  @override
+  String get activeCallViewing => '查看中';
+
+  @override
+  String get activeCallRemoteAudioMuted => '声音已关闭';
+
+  @override
+  String get activeCallDtmfWaiting => '等待输入';
+
+  @override
+  String get activeCallDtmfTitle => 'DTMF 键盘';
+
+  @override
+  String get activeCallDtmfClose => '关闭键盘';
+
+  @override
+  String activeCallDtmfSending(String digit) {
+    return '正在发送 $digit';
+  }
+
+  @override
+  String activeCallDtmfSent(String digit) {
+    return '已发送 $digit';
+  }
+
+  @override
+  String activeCallDtmfFailed(String digit) {
+    return '$digit 发送失败';
+  }
+
+  @override
+  String get activeCallMyAudio => '麦克风';
+
+  @override
+  String get activeCallRemoteAudio => '扬声器';
+
+  @override
+  String activeCallMutedValue(String label) {
+    return '$label：已静音';
+  }
+
+  @override
+  String activeCallVolumeValue(int volume) {
+    return '，音量 $volume%';
+  }
+
+  @override
+  String activeCallMeterMuted(String label, String volume) {
+    return '$label：已静音$volume';
+  }
+
+  @override
+  String activeCallMeterValues(
+    String label,
+    int current,
+    int peak,
+    String volume,
+  ) {
+    return '$label：当前 $current%，峰值 $peak%$volume';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1691,7 +2143,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get callStatusCanceled => '已取消';
 
   @override
-  String get contactNewTitle => '新增聯絡人';
+  String get contactNewTitle => '新增';
 
   @override
   String get contactEditTitle => '編輯聯絡人';
@@ -2355,5 +2807,457 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String historyReasonWithSipCode(String reason, int code) {
     return '$reason（SIP $code）';
+  }
+
+  @override
+  String get activeCallEmpty => '暫無進行中的通話';
+
+  @override
+  String get activeCallGoToDialpad => '前往撥號';
+
+  @override
+  String get activeCallAnswer => '接聽';
+
+  @override
+  String get activeCallReject => '拒接';
+
+  @override
+  String get activeCallMute => '靜音';
+
+  @override
+  String get activeCallUnmute => '取消靜音';
+
+  @override
+  String get activeCallKeypad => '鍵盤';
+
+  @override
+  String get activeCallHold => '保持';
+
+  @override
+  String get activeCallResume => '恢復';
+
+  @override
+  String get activeCallTransfer => '轉駁';
+
+  @override
+  String get activeCallMuteRemoteAudio => '靜音對方';
+
+  @override
+  String get activeCallRestoreRemoteAudio => '恢復對方';
+
+  @override
+  String get activeCallAudio => '音訊';
+
+  @override
+  String get activeCallHangUp => '結束通話';
+
+  @override
+  String get activeCallHangUpAll => '全部結束';
+
+  @override
+  String get activeCallMerge => '合併';
+
+  @override
+  String get activeCallSplit => '拆分';
+
+  @override
+  String get activeCallResumeConference => '恢復會議';
+
+  @override
+  String get activeCallOperationAnswering => '正在接聽';
+
+  @override
+  String get activeCallOperationRejecting => '正在拒接';
+
+  @override
+  String get activeCallOperationEnding => '正在結束通話';
+
+  @override
+  String get activeCallOperationHolding => '正在保持';
+
+  @override
+  String get activeCallOperationResuming => '正在恢復';
+
+  @override
+  String get activeCallOperationSplitting => '正在拆分';
+
+  @override
+  String get activeCallOperationMerging => '正在合併';
+
+  @override
+  String get activeCallOperationTransferring => '正在轉駁';
+
+  @override
+  String get activeCallStatusLocalHold => '保持中';
+
+  @override
+  String get activeCallStatusRemoteHold => '對方保持';
+
+  @override
+  String get activeCallStatusCalling => '正在撥號';
+
+  @override
+  String get activeCallStatusIncoming => '來電';
+
+  @override
+  String get activeCallStatusWaitingAnswer => '等待接聽';
+
+  @override
+  String get activeCallStatusRemoteRinging => '對方響鈴';
+
+  @override
+  String get activeCallStatusConnecting => '正在接通';
+
+  @override
+  String get activeCallStatusInCall => '通話中';
+
+  @override
+  String get activeCallStatusEnded => '通話已結束';
+
+  @override
+  String activeCallStatusUnknown(int state) {
+    return '未知狀態 ($state)';
+  }
+
+  @override
+  String activeCallHeldLocallyFor(String duration) {
+    return '本機保持 · $duration';
+  }
+
+  @override
+  String activeCallHeldByRemoteFor(String duration) {
+    return '對方保持 · $duration';
+  }
+
+  @override
+  String get activeCallPriorityContact => '重點客戶';
+
+  @override
+  String get activeCallOperationInProgress => '操作進行中';
+
+  @override
+  String get activeCallDuration => '通話時長';
+
+  @override
+  String get activeCallCurrentStatus => '目前狀態';
+
+  @override
+  String get activeCallMediaConnected => '媒體已連線';
+
+  @override
+  String get activeCallMediaLocalHold => '本機保持';
+
+  @override
+  String get activeCallMediaRemoteHold => '對方保持';
+
+  @override
+  String get activeCallMediaError => '媒體異常';
+
+  @override
+  String get activeCallMediaNotReady => '媒體尚未建立';
+
+  @override
+  String get activeCallMediaPending => '等待建立媒體';
+
+  @override
+  String get activeCallMediaUnconfirmed => '媒體尚未確認';
+
+  @override
+  String activeCallMediaUnknown(int status) {
+    return '媒體狀態 $status';
+  }
+
+  @override
+  String get activeCallSignalingUnknown => '信令未知';
+
+  @override
+  String activeCallConfiguredMode(String mode) {
+    return '$mode 設定';
+  }
+
+  @override
+  String get activeCallMedia => '媒體';
+
+  @override
+  String get activeCallSignaling => '信令';
+
+  @override
+  String get activeCallMediaEncryption => '媒體加密';
+
+  @override
+  String get activeCallTlsEncrypted => 'TLS 加密';
+
+  @override
+  String get activeCallSrtpNegotiated => '已協商 SRTP';
+
+  @override
+  String get activeCallSrtpNotDetected => '未偵測到 SRTP';
+
+  @override
+  String get activeCallMediaNegotiating => '等待媒體協商';
+
+  @override
+  String activeCallLabeledValue(String label, String value) {
+    return '$label：$value';
+  }
+
+  @override
+  String activeCallValueDetail(String value, String detail) {
+    return '$value（$detail）';
+  }
+
+  @override
+  String get activeCallTransport => '傳輸協定';
+
+  @override
+  String get activeCallTransferTitle => '直接轉駁通話';
+
+  @override
+  String get activeCallTransferDescription => '通話將立即轉駁至目標號碼，你將退出本次通話。';
+
+  @override
+  String get activeCallCurrentLineUnknown => '目前線路未知';
+
+  @override
+  String get activeCallTransferTargetHint => '輸入號碼或 SIP URI';
+
+  @override
+  String activeCallTransferTargetExample(String host) {
+    return '例如 6545 或 sip:6545@$host';
+  }
+
+  @override
+  String get activeCallChooseContact => '從聯絡人選擇';
+
+  @override
+  String activeCallNumberCount(int count) {
+    return '$count 個號碼';
+  }
+
+  @override
+  String get activeCallTransferSearchHint => '搜尋聯絡人、號碼或公司';
+
+  @override
+  String get activeCallEnterTransferNumber => '輸入轉駁號碼';
+
+  @override
+  String get activeCallConfirmTransfer => '確認轉駁';
+
+  @override
+  String get activeCallNoContacts => '暫無聯絡人';
+
+  @override
+  String get activeCallNoContactMatches => '沒有相符的聯絡人';
+
+  @override
+  String get activeCallUnnamedContact => '未命名聯絡人';
+
+  @override
+  String get activeCallViewingConferenceMember => '正在查看會議成員';
+
+  @override
+  String get activeCallCurrentActiveCall => '目前活動通話';
+
+  @override
+  String get activeCallViewingCall => '正在查看此通話';
+
+  @override
+  String activeCallResumeForAudio(String name) {
+    return '$name · 按一下恢復以接入聲音';
+  }
+
+  @override
+  String activeCallConferenceInterrupted(int count) {
+    return '會議已自動保持。處理目前通話後，可恢復 $count 位會議成員。';
+  }
+
+  @override
+  String get activeCallConferenceTitle => '會議通話';
+
+  @override
+  String get activeCallConferencePaused => '會議已暫停';
+
+  @override
+  String get activeCallConferenceInProgress => '會議中';
+
+  @override
+  String get activeCallConferenceStatus => '會議狀態';
+
+  @override
+  String get activeCallConferenceDuration => '會議時長';
+
+  @override
+  String get activeCallPaused => '已暫停';
+
+  @override
+  String activeCallMemberCount(int count) {
+    return '$count 位成員';
+  }
+
+  @override
+  String activeCallCustomerCount(int count) {
+    return '$count 位客戶';
+  }
+
+  @override
+  String activeCallLineCount(int count) {
+    return '$count 條線路';
+  }
+
+  @override
+  String get activeCallPanelConferenceMembers => '會議成員';
+
+  @override
+  String get activeCallPanelCurrentCalls => '目前通話';
+
+  @override
+  String activeCallPanelCount(int current, int total) {
+    return '$current/$total 路';
+  }
+
+  @override
+  String get activeCallNewIncomingAndOthers => '新來電及其他通話';
+
+  @override
+  String get activeCallOtherCalls => '其他通話';
+
+  @override
+  String get activeCallNoActiveCalls => '沒有活動通話';
+
+  @override
+  String get activeCallCustomerInfo => '客戶資料';
+
+  @override
+  String get activeCallConferenceCustomers => '會議客戶';
+
+  @override
+  String get activeCallConferenceCustomersDescription => '已加入會議的客戶';
+
+  @override
+  String get activeCallUnmatchedContact => '未配對聯絡人';
+
+  @override
+  String get activeCallUnknownNumber => '未知號碼';
+
+  @override
+  String get activeCallAddContact => '新增至聯絡人';
+
+  @override
+  String get activeCallViewContact => '查看聯絡人';
+
+  @override
+  String get activeCallDefaultNumber => '預設號碼';
+
+  @override
+  String get activeCallCustomer => '通話客戶';
+
+  @override
+  String get activeCallViewContactDetails => '查看聯絡人詳情';
+
+  @override
+  String get activeCallCurrentNumber => '目前號碼';
+
+  @override
+  String get activeCallCurrentNote => '目前通話備註';
+
+  @override
+  String get activeCallNoteHint => '記錄溝通重點，結束通話後將儲存至通話記錄';
+
+  @override
+  String get activeCallConferenceNote => '本次會議備註';
+
+  @override
+  String activeCallNoteSyncMembers(int count) {
+    return '同步至 $count 位會議成員';
+  }
+
+  @override
+  String activeCallNoteSavePrimary(String name) {
+    return '僅儲存至會議主記錄：$name';
+  }
+
+  @override
+  String get activeCallCustomerNote => '目前客戶備註';
+
+  @override
+  String get activeCallSharedConferenceNote => '會議共享備註';
+
+  @override
+  String get activeCallSharedNoteHint => '記錄會議結論，並儲存至每位成員的通話記錄';
+
+  @override
+  String get activeCallCustomerNoteHint => '記錄目前客戶重點，僅儲存至會議主記錄';
+
+  @override
+  String get activeCallNoteStaged => '已暫存';
+
+  @override
+  String get activeCallNoteEmpty => '未填寫';
+
+  @override
+  String get activeCallNoteStagedTooltip => '備註已暫存，結束通話後將寫入通話記錄';
+
+  @override
+  String get activeCallNoteEmptyTooltip => '填寫後自動暫存，結束通話後寫入通話記錄';
+
+  @override
+  String get activeCallViewing => '查看中';
+
+  @override
+  String get activeCallRemoteAudioMuted => '聲音已關閉';
+
+  @override
+  String get activeCallDtmfWaiting => '等待輸入';
+
+  @override
+  String get activeCallDtmfTitle => 'DTMF 鍵盤';
+
+  @override
+  String get activeCallDtmfClose => '關閉鍵盤';
+
+  @override
+  String activeCallDtmfSending(String digit) {
+    return '正在傳送 $digit';
+  }
+
+  @override
+  String activeCallDtmfSent(String digit) {
+    return '已傳送 $digit';
+  }
+
+  @override
+  String activeCallDtmfFailed(String digit) {
+    return '無法傳送 $digit';
+  }
+
+  @override
+  String get activeCallMyAudio => '麥克風';
+
+  @override
+  String get activeCallRemoteAudio => '揚聲器';
+
+  @override
+  String activeCallMutedValue(String label) {
+    return '$label：已靜音';
+  }
+
+  @override
+  String activeCallVolumeValue(int volume) {
+    return '，音量 $volume%';
+  }
+
+  @override
+  String activeCallMeterMuted(String label, String volume) {
+    return '$label：已靜音$volume';
+  }
+
+  @override
+  String activeCallMeterValues(
+    String label,
+    int current,
+    int peak,
+    String volume,
+  ) {
+    return '$label：目前 $current%，峰值 $peak%$volume';
   }
 }

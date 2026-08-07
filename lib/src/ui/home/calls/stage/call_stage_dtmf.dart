@@ -33,7 +33,9 @@ extension _CallStageDtmf on _MyHomePageState {
   Widget _buildDtmfPanel(CallInfo call, PjsipService service) {
     final hasPreview =
         _dtmfPadCallId == call.callId && _dtmfSentPreview.isNotEmpty;
-    final preview = hasPreview ? _dtmfSentPreview : '等待输入';
+    final preview = hasPreview
+        ? _dtmfSentPreview
+        : context.l10n.activeCallDtmfWaiting;
     final statusText = _dtmfPadCallId == call.callId ? _dtmfStatusText : null;
     final statusColor = _dtmfSendFailed ? _dangerRed : _textSecondary;
     return ConstrainedBox(
@@ -62,14 +64,14 @@ extension _CallStageDtmf on _MyHomePageState {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'DTMF 键盘',
+                      context.l10n.activeCallDtmfTitle,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
                   IconButton(
-                    tooltip: '关闭键盘',
+                    tooltip: context.l10n.activeCallDtmfClose,
                     visualDensity: VisualDensity.compact,
                     onPressed: _toggleInCallDialpad,
                     icon: const Icon(AppIcons.close, size: _iconSm),

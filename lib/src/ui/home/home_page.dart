@@ -13,7 +13,7 @@ enum _CallNoteMode { customer, conference }
 
 /// 当前通话正在执行的操作类型。
 ///
-/// 业务状态使用枚举保存，中文只用于界面展示，避免通过文案反推操作逻辑。
+/// 业务状态使用枚举保存，界面展示通过本地化资源转换，避免通过文案反推操作逻辑。
 enum _CallOperationType {
   answer,
   reject,
@@ -26,24 +26,24 @@ enum _CallOperationType {
 }
 
 extension _CallOperationTypeLabel on _CallOperationType {
-  String get label {
+  String localizedLabel(AppLocalizations l10n) {
     switch (this) {
       case _CallOperationType.answer:
-        return '正在接听';
+        return l10n.activeCallOperationAnswering;
       case _CallOperationType.reject:
-        return '正在拒接';
+        return l10n.activeCallOperationRejecting;
       case _CallOperationType.hangup:
-        return '正在挂断';
+        return l10n.activeCallOperationEnding;
       case _CallOperationType.hold:
-        return '正在保持';
+        return l10n.activeCallOperationHolding;
       case _CallOperationType.resume:
-        return '正在恢复';
+        return l10n.activeCallOperationResuming;
       case _CallOperationType.split:
-        return '正在拆分';
+        return l10n.activeCallOperationSplitting;
       case _CallOperationType.merge:
-        return '正在合并';
+        return l10n.activeCallOperationMerging;
       case _CallOperationType.transfer:
-        return '正在转接';
+        return l10n.activeCallOperationTransferring;
     }
   }
 }

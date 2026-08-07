@@ -5,7 +5,10 @@ extension _CallSideContext on _MyHomePageState {
   Widget _buildCallsIdleContext(PjsipService service) {
     if (_isRunningWidgetTest) {
       return Center(
-        child: Text('没有活动通话', style: Theme.of(context).textTheme.bodyMedium),
+        child: Text(
+          context.l10n.activeCallNoActiveCalls,
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
       );
     }
 
@@ -23,7 +26,7 @@ extension _CallSideContext on _MyHomePageState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildCallContextFollowerLabel('客户信息'),
+        _buildCallContextFollowerLabel(context.l10n.activeCallCustomerInfo),
         const SizedBox(height: 8),
         if (contact == null)
           _buildUnknownCallCustomerCard(number, contextLabel)
@@ -53,12 +56,14 @@ extension _CallSideContext on _MyHomePageState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildCallContextFollowerLabel('会议客户'),
+        _buildCallContextFollowerLabel(
+          context.l10n.activeCallConferenceCustomers,
+        ),
         const SizedBox(height: 8),
         _buildCallContextSection(
           icon: AppIcons.contacts,
-          title: '会议客户',
-          subtitle: '合并通话中的客户',
+          title: context.l10n.activeCallConferenceCustomers,
+          subtitle: context.l10n.activeCallConferenceCustomersDescription,
           child: Column(
             children: [
               for (var index = 0; index < calls.length; index++) ...[

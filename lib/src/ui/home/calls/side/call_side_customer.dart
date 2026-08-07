@@ -8,7 +8,7 @@ extension _CallSideCustomerCards on _MyHomePageState {
     final phone = match?.phone;
     final number = phone?.number ?? _callDisplayNumber(call);
     final statusColor = _callStatusColor(call);
-    final title = contact?.name ?? '未匹配联系人';
+    final title = contact?.name ?? context.l10n.activeCallUnmatchedContact;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -45,7 +45,9 @@ extension _CallSideCustomerCards on _MyHomePageState {
           const SizedBox(width: 8),
           if (contact == null)
             IconButton(
-              tooltip: number.isEmpty ? '未知号码' : '添加到联系人',
+              tooltip: number.isEmpty
+                  ? context.l10n.activeCallUnknownNumber
+                  : context.l10n.activeCallAddContact,
               onPressed: number.isEmpty
                   ? null
                   : () => unawaited(_showContactDialog(initialNumber: number)),
@@ -59,7 +61,7 @@ extension _CallSideCustomerCards on _MyHomePageState {
             )
           else
             IconButton(
-              tooltip: '查看联系人',
+              tooltip: context.l10n.activeCallViewContact,
               onPressed: () => _openCallContact(contact),
               icon: const Icon(AppIcons.next),
               style: IconButton.styleFrom(
@@ -86,12 +88,12 @@ extension _CallSideCustomerCards on _MyHomePageState {
         : contact.number.trim();
     final phoneSummary = phoneNumber.isEmpty
         ? null
-        : '${phoneLabel?.isNotEmpty == true ? phoneLabel : '默认'}号码 · $phoneNumber';
+        : '${phoneLabel?.isNotEmpty == true ? phoneLabel : context.l10n.activeCallDefaultNumber} · $phoneNumber';
     return _buildCallContextSection(
       icon: AppIcons.person,
-      title: '通话客户',
+      title: context.l10n.activeCallCustomer,
       trailing: IconButton(
-        tooltip: '查看联系人详情',
+        tooltip: context.l10n.activeCallViewContactDetails,
         onPressed: () => _openCallContact(contact),
         icon: const Icon(AppIcons.next),
         iconSize: _iconSm,
@@ -149,7 +151,7 @@ extension _CallSideCustomerCards on _MyHomePageState {
               if (contact.isFavorite)
                 _buildCustomerAttribute(
                   icon: AppIcons.favorite,
-                  label: '重点客户',
+                  label: context.l10n.activeCallPriorityContact,
                   color: _brandGreen,
                 ),
               if (contact.hasOrganization)
@@ -202,7 +204,7 @@ extension _CallSideCustomerCards on _MyHomePageState {
   Widget _buildUnknownCallCustomerCard(String number, String contextLabel) {
     return _buildCallContextSection(
       icon: AppIcons.person,
-      title: '当前号码',
+      title: context.l10n.activeCallCurrentNumber,
       subtitle: contextLabel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -220,13 +222,15 @@ extension _CallSideCustomerCards on _MyHomePageState {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      '未匹配联系人',
-                      style: TextStyle(fontWeight: FontWeight.w800),
+                    Text(
+                      context.l10n.activeCallUnmatchedContact,
+                      style: const TextStyle(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 2),
                     _buildTooltipText(
-                      number.isEmpty ? '未知号码' : number,
+                      number.isEmpty
+                          ? context.l10n.activeCallUnknownNumber
+                          : number,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: _textSecondary,
                         fontWeight: FontWeight.w600,
@@ -243,7 +247,7 @@ extension _CallSideCustomerCards on _MyHomePageState {
                 ? null
                 : () => unawaited(_showContactDialog(initialNumber: number)),
             icon: const Icon(AppIcons.contactAdd),
-            label: const Text('添加到联系人'),
+            label: Text(context.l10n.activeCallAddContact),
           ),
         ],
       ),

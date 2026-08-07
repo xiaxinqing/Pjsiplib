@@ -17,7 +17,7 @@ extension _CallStageControls on _MyHomePageState {
       controls.addAll([
         _roundCallButton(
           icon: AppIcons.call,
-          label: '接听',
+          label: context.l10n.activeCallAnswer,
           color: _callGreen,
           emphasized: true,
           onPressed: hasPendingOperation
@@ -26,7 +26,7 @@ extension _CallStageControls on _MyHomePageState {
         ),
         _roundCallButton(
           icon: AppIcons.callEnd,
-          label: '拒接',
+          label: context.l10n.activeCallReject,
           color: _dangerRed,
           onPressed: hasPendingOperation
               ? null
@@ -39,7 +39,9 @@ extension _CallStageControls on _MyHomePageState {
           icon: uiState.isMicrophoneMuted
               ? AppIcons.microphoneOff
               : AppIcons.microphone,
-          label: uiState.isMicrophoneMuted ? '取消静音' : '静音',
+          label: uiState.isMicrophoneMuted
+              ? context.l10n.activeCallUnmute
+              : context.l10n.activeCallMute,
           color: uiState.isMicrophoneMuted
               ? Colors.orange.shade700
               : Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -48,7 +50,7 @@ extension _CallStageControls on _MyHomePageState {
         ),
         _roundCallButton(
           icon: AppIcons.dialpad,
-          label: '键盘',
+          label: context.l10n.activeCallKeypad,
           color: _showInCallDialpad
               ? _brandGreen
               : Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -56,7 +58,9 @@ extension _CallStageControls on _MyHomePageState {
         ),
         _roundCallButton(
           icon: call.isOnHold ? AppIcons.play : AppIcons.pause,
-          label: call.isOnHold ? '恢复' : '保持',
+          label: call.isOnHold
+              ? context.l10n.activeCallResume
+              : context.l10n.activeCallHold,
           color: call.isOnHold
               ? Colors.orange.shade700
               : Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -80,7 +84,7 @@ extension _CallStageControls on _MyHomePageState {
         ),
         _roundCallButton(
           icon: AppIcons.route,
-          label: '转接',
+          label: context.l10n.activeCallTransfer,
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed:
               call.isConnected && !isConferenceMember && !hasPendingOperation
@@ -90,7 +94,9 @@ extension _CallStageControls on _MyHomePageState {
         if (call.isConnected && !isConferenceMember)
           _roundCallButton(
             icon: remoteMuted ? AppIcons.speaker : AppIcons.speakerOff,
-            label: remoteMuted ? '恢复声音' : '本机不听',
+            label: remoteMuted
+                ? context.l10n.activeCallRestoreRemoteAudio
+                : context.l10n.activeCallMuteRemoteAudio,
             color: remoteMuted
                 ? Colors.orange.shade700
                 : Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -99,13 +105,13 @@ extension _CallStageControls on _MyHomePageState {
           ),
         _roundCallButton(
           icon: AppIcons.tune,
-          label: '音频',
+          label: context.l10n.activeCallAudio,
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed: () => _openSettingsDrawer(tabIndex: _settingsAudioIndex),
         ),
         _roundCallButton(
           icon: AppIcons.callEnd,
-          label: '挂断',
+          label: context.l10n.activeCallHangUp,
           color: _dangerRed,
           onPressed: hasPendingOperation
               ? null
@@ -137,11 +143,11 @@ extension _CallStageControls on _MyHomePageState {
       builder: (context) => _BlindTransferDialog(
         participant: participant,
         lineLabel: account == null
-            ? '当前线路未知'
+            ? context.l10n.activeCallCurrentLineUnknown
             : '${account.lineLabel} · ${account.transportLabel}',
         exampleTarget: account == null
-            ? '输入号码或 SIP URI'
-            : '例如 6545 或 sip:6545@${account.host}',
+            ? context.l10n.activeCallTransferTargetHint
+            : context.l10n.activeCallTransferTargetExample(account.host),
         contacts: contacts,
       ),
     );
@@ -188,6 +194,8 @@ extension _CallStageControls on _MyHomePageState {
           Text(
             label,
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
@@ -195,6 +203,6 @@ extension _CallStageControls on _MyHomePageState {
         ],
       ),
     );
-    return button;
+    return Tooltip(message: label, child: button);
   }
 }

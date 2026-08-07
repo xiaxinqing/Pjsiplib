@@ -16,10 +16,15 @@ extension _HomeCallSidePanel on _MyHomePageState {
     final hasStandaloneIncoming = standaloneCalls.any(
       (call) => call.isIncoming && !call.isConnected,
     );
-    final panelTitle = uiState.hasConference ? '会议成员' : '当前通话';
+    final panelTitle = uiState.hasConference
+        ? context.l10n.activeCallPanelConferenceMembers
+        : context.l10n.activeCallPanelCurrentCalls;
     final panelCount = uiState.hasConference
-        ? '${conferenceCalls.length}/${calls.length} 路'
-        : '${calls.length}/4 路';
+        ? context.l10n.activeCallPanelCount(
+            conferenceCalls.length,
+            calls.length,
+          )
+        : context.l10n.activeCallPanelCount(calls.length, 4);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: _panelBackground,
@@ -57,7 +62,7 @@ extension _HomeCallSidePanel on _MyHomePageState {
                         ? null
                         : () => _runConferenceAction(service.resumeConference),
                     icon: const Icon(AppIcons.play),
-                    label: const Text('恢复会议'),
+                    label: Text(context.l10n.activeCallResumeConference),
                   ),
               ],
             ),
@@ -71,7 +76,9 @@ extension _HomeCallSidePanel on _MyHomePageState {
                         children: [
                           if (uiState.hasConference) ...[
                             _buildCallPanelGroupLabel(
-                              uiState.isConferencePaused ? '会议已暂停' : '会议中',
+                              uiState.isConferencePaused
+                                  ? context.l10n.activeCallConferencePaused
+                                  : context.l10n.activeCallConferenceInProgress,
                             ),
                             const SizedBox(height: 8),
                             for (
@@ -90,7 +97,11 @@ extension _HomeCallSidePanel on _MyHomePageState {
                             if (standaloneCalls.isNotEmpty) ...[
                               const SizedBox(height: 12),
                               _buildCallPanelGroupLabel(
-                                hasStandaloneIncoming ? '新来电 / 其他通话' : '其他通话',
+                                hasStandaloneIncoming
+                                    ? context
+                                          .l10n
+                                          .activeCallNewIncomingAndOthers
+                                    : context.l10n.activeCallOtherCalls,
                               ),
                               const SizedBox(height: 8),
                               for (

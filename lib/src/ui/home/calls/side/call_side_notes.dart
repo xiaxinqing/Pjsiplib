@@ -6,12 +6,12 @@ extension _CallSideNoteCards on _MyHomePageState {
     CallInfo call,
     PjsipService service,
     String contextLabel, {
-    String title = '当前通话备注',
+    String? title,
   }) {
     _syncCallNoteController(call, service);
     return _buildCallContextSection(
       icon: AppIcons.note,
-      title: title,
+      title: title ?? context.l10n.activeCallCurrentNote,
       subtitle: contextLabel,
       trailing: _buildCallNoteStatusBadge(
         _callNoteController.text.trim().isNotEmpty,
@@ -25,7 +25,7 @@ extension _CallSideNoteCards on _MyHomePageState {
           service.setCallNote(call.callId, value);
           _refreshCallNoteState();
         },
-        decoration: _callNoteInputDecoration('记录本次沟通重点，挂断后保存到通话记录'),
+        decoration: _callNoteInputDecoration(context.l10n.activeCallNoteHint),
       ),
     );
   }
@@ -42,10 +42,10 @@ extension _CallSideNoteCards on _MyHomePageState {
 
     return _buildCallContextSection(
       icon: AppIcons.note,
-      title: '本次会议备注',
+      title: context.l10n.activeCallConferenceNote,
       subtitle: isSharedMode
-          ? '同步到 ${calls.length} 位会议成员'
-          : '只保存到会议主记录：$primaryLabel',
+          ? context.l10n.activeCallNoteSyncMembers(calls.length)
+          : context.l10n.activeCallNoteSavePrimary(primaryLabel),
       trailing: _buildCallNoteStatusBadge(
         _callNoteController.text.trim().isNotEmpty,
       ),
@@ -54,16 +54,16 @@ extension _CallSideNoteCards on _MyHomePageState {
         children: [
           SegmentedButton<_CallNoteMode>(
             showSelectedIcon: false,
-            segments: const [
+            segments: [
               ButtonSegment<_CallNoteMode>(
                 value: _CallNoteMode.customer,
-                icon: Icon(AppIcons.person),
-                label: Text('当前客户备注'),
+                icon: const Icon(AppIcons.person),
+                label: Text(context.l10n.activeCallCustomerNote),
               ),
               ButtonSegment<_CallNoteMode>(
                 value: _CallNoteMode.conference,
-                icon: Icon(AppIcons.contacts),
-                label: Text('会议共享备注'),
+                icon: const Icon(AppIcons.contacts),
+                label: Text(context.l10n.activeCallSharedConferenceNote),
               ),
             ],
             selected: {_callNoteMode},
@@ -88,7 +88,9 @@ extension _CallSideNoteCards on _MyHomePageState {
               _refreshCallNoteState();
             },
             decoration: _callNoteInputDecoration(
-              isSharedMode ? '记录会议共同结论，会保存到每位会议成员的通话记录' : '记录当前客户重点，只保存到会议主记录',
+              isSharedMode
+                  ? context.l10n.activeCallSharedNoteHint
+                  : context.l10n.activeCallCustomerNoteHint,
             ),
           ),
         ],
@@ -118,10 +120,14 @@ extension _CallSideNoteCards on _MyHomePageState {
   }
 
   Widget _buildCallNoteStatusBadge(bool filled) {
-    final label = filled ? '已暂存' : '未填写';
+    final label = filled
+        ? context.l10n.activeCallNoteStaged
+        : context.l10n.activeCallNoteEmpty;
     final color = filled ? _brandGreen : _textSecondary;
     return Tooltip(
-      message: filled ? '备注已暂存到当前通话，挂断后写入通话记录' : '填写后会记录，挂断后写入通话记录',
+      message: filled
+          ? context.l10n.activeCallNoteStagedTooltip
+          : context.l10n.activeCallNoteEmptyTooltip,
       waitDuration: const Duration(milliseconds: 350),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

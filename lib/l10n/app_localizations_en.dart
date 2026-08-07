@@ -534,7 +534,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get callStatusCanceled => 'Canceled';
 
   @override
-  String get contactNewTitle => 'Add contact';
+  String get contactNewTitle => 'Add';
 
   @override
   String get contactEditTitle => 'Edit contact';
@@ -1224,5 +1224,505 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String historyReasonWithSipCode(String reason, int code) {
     return '$reason (SIP $code)';
+  }
+
+  @override
+  String get activeCallEmpty => 'No active calls';
+
+  @override
+  String get activeCallGoToDialpad => 'Go to dialpad';
+
+  @override
+  String get activeCallAnswer => 'Answer';
+
+  @override
+  String get activeCallReject => 'Decline';
+
+  @override
+  String get activeCallMute => 'Mute';
+
+  @override
+  String get activeCallUnmute => 'Unmute';
+
+  @override
+  String get activeCallKeypad => 'Keypad';
+
+  @override
+  String get activeCallHold => 'Hold';
+
+  @override
+  String get activeCallResume => 'Resume';
+
+  @override
+  String get activeCallTransfer => 'Transfer';
+
+  @override
+  String get activeCallMuteRemoteAudio => 'Mute audio';
+
+  @override
+  String get activeCallRestoreRemoteAudio => 'Unmute audio';
+
+  @override
+  String get activeCallAudio => 'Audio';
+
+  @override
+  String get activeCallHangUp => 'End call';
+
+  @override
+  String get activeCallHangUpAll => 'End all';
+
+  @override
+  String get activeCallMerge => 'Merge';
+
+  @override
+  String get activeCallSplit => 'Split';
+
+  @override
+  String get activeCallResumeConference => 'Resume conference';
+
+  @override
+  String get activeCallOperationAnswering => 'Answering';
+
+  @override
+  String get activeCallOperationRejecting => 'Declining';
+
+  @override
+  String get activeCallOperationEnding => 'Ending call';
+
+  @override
+  String get activeCallOperationHolding => 'Placing on hold';
+
+  @override
+  String get activeCallOperationResuming => 'Resuming';
+
+  @override
+  String get activeCallOperationSplitting => 'Splitting conference';
+
+  @override
+  String get activeCallOperationMerging => 'Merging calls';
+
+  @override
+  String get activeCallOperationTransferring => 'Transferring';
+
+  @override
+  String get activeCallStatusLocalHold => 'On hold';
+
+  @override
+  String get activeCallStatusRemoteHold => 'Remote hold';
+
+  @override
+  String get activeCallStatusCalling => 'Calling';
+
+  @override
+  String get activeCallStatusIncoming => 'Incoming call';
+
+  @override
+  String get activeCallStatusWaitingAnswer => 'Awaiting answer';
+
+  @override
+  String get activeCallStatusRemoteRinging => 'Ringing';
+
+  @override
+  String get activeCallStatusConnecting => 'Connecting';
+
+  @override
+  String get activeCallStatusInCall => 'In call';
+
+  @override
+  String get activeCallStatusEnded => 'Call ended';
+
+  @override
+  String activeCallStatusUnknown(int state) {
+    return 'Unknown status ($state)';
+  }
+
+  @override
+  String activeCallHeldLocallyFor(String duration) {
+    return 'On hold · $duration';
+  }
+
+  @override
+  String activeCallHeldByRemoteFor(String duration) {
+    return 'Held by other party · $duration';
+  }
+
+  @override
+  String get activeCallPriorityContact => 'Priority customer';
+
+  @override
+  String get activeCallOperationInProgress => 'Action in progress';
+
+  @override
+  String get activeCallDuration => 'Call duration';
+
+  @override
+  String get activeCallCurrentStatus => 'Current status';
+
+  @override
+  String get activeCallMediaConnected => 'Media connected';
+
+  @override
+  String get activeCallMediaLocalHold => 'Local hold';
+
+  @override
+  String get activeCallMediaRemoteHold => 'Remote hold';
+
+  @override
+  String get activeCallMediaError => 'Media issue';
+
+  @override
+  String get activeCallMediaNotReady => 'Media not connected';
+
+  @override
+  String get activeCallMediaPending => 'Waiting for media';
+
+  @override
+  String get activeCallMediaUnconfirmed => 'Media not confirmed';
+
+  @override
+  String activeCallMediaUnknown(int status) {
+    return 'Media status $status';
+  }
+
+  @override
+  String get activeCallSignalingUnknown => 'Signaling unknown';
+
+  @override
+  String activeCallConfiguredMode(String mode) {
+    return '$mode configured';
+  }
+
+  @override
+  String get activeCallMedia => 'Media';
+
+  @override
+  String get activeCallSignaling => 'Signaling';
+
+  @override
+  String get activeCallMediaEncryption => 'Media encryption';
+
+  @override
+  String get activeCallTlsEncrypted => 'TLS encrypted';
+
+  @override
+  String get activeCallSrtpNegotiated => 'SRTP negotiated';
+
+  @override
+  String get activeCallSrtpNotDetected => 'SRTP not detected';
+
+  @override
+  String get activeCallMediaNegotiating => 'Waiting for media negotiation';
+
+  @override
+  String activeCallLabeledValue(String label, String value) {
+    return '$label: $value';
+  }
+
+  @override
+  String activeCallValueDetail(String value, String detail) {
+    return '$value ($detail)';
+  }
+
+  @override
+  String get activeCallTransport => 'Transport';
+
+  @override
+  String get activeCallTransferTitle => 'Transfer call';
+
+  @override
+  String get activeCallTransferDescription =>
+      'The call will transfer immediately, and you will leave the call.';
+
+  @override
+  String get activeCallCurrentLineUnknown => 'Current line unknown';
+
+  @override
+  String get activeCallTransferTargetHint => 'Enter a number or SIP URI';
+
+  @override
+  String activeCallTransferTargetExample(String host) {
+    return 'For example, 6545 or sip:6545@$host';
+  }
+
+  @override
+  String get activeCallChooseContact => 'Choose a contact';
+
+  @override
+  String activeCallNumberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# numbers',
+      one: '1 number',
+      zero: 'No numbers',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get activeCallTransferSearchHint =>
+      'Search contacts, numbers, or companies';
+
+  @override
+  String get activeCallEnterTransferNumber => 'Enter a transfer number';
+
+  @override
+  String get activeCallConfirmTransfer => 'Transfer call';
+
+  @override
+  String get activeCallNoContacts => 'No contacts';
+
+  @override
+  String get activeCallNoContactMatches => 'No matching contacts';
+
+  @override
+  String get activeCallUnnamedContact => 'Unnamed contact';
+
+  @override
+  String get activeCallViewingConferenceMember => 'Viewing conference member';
+
+  @override
+  String get activeCallCurrentActiveCall => 'Active call';
+
+  @override
+  String get activeCallViewingCall => 'Viewing this call';
+
+  @override
+  String activeCallResumeForAudio(String name) {
+    return '$name · Resume to join audio';
+  }
+
+  @override
+  String activeCallConferenceInterrupted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# members',
+      one: '1 member',
+    );
+    return 'The conference is on hold. Resume its $_temp0 after handling this call.';
+  }
+
+  @override
+  String get activeCallConferenceTitle => 'Conference call';
+
+  @override
+  String get activeCallConferencePaused => 'Conference paused';
+
+  @override
+  String get activeCallConferenceInProgress => 'In conference';
+
+  @override
+  String get activeCallConferenceStatus => 'Conference status';
+
+  @override
+  String get activeCallConferenceDuration => 'Conference duration';
+
+  @override
+  String get activeCallPaused => 'Paused';
+
+  @override
+  String activeCallMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# members',
+      one: '1 member',
+      zero: 'No members',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String activeCallCustomerCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# customers',
+      one: '1 customer',
+      zero: 'No customers',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String activeCallLineCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# lines',
+      one: '1 line',
+      zero: 'No lines',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get activeCallPanelConferenceMembers => 'Conference members';
+
+  @override
+  String get activeCallPanelCurrentCalls => 'Current calls';
+
+  @override
+  String activeCallPanelCount(int current, int total) {
+    return '$current/$total calls';
+  }
+
+  @override
+  String get activeCallNewIncomingAndOthers => 'New incoming and other calls';
+
+  @override
+  String get activeCallOtherCalls => 'Other calls';
+
+  @override
+  String get activeCallNoActiveCalls => 'No active calls';
+
+  @override
+  String get activeCallCustomerInfo => 'Customer information';
+
+  @override
+  String get activeCallConferenceCustomers => 'Conference customers';
+
+  @override
+  String get activeCallConferenceCustomersDescription =>
+      'Customers in this conference';
+
+  @override
+  String get activeCallUnmatchedContact => 'No matching contact';
+
+  @override
+  String get activeCallUnknownNumber => 'Unknown number';
+
+  @override
+  String get activeCallAddContact => 'Add to contacts';
+
+  @override
+  String get activeCallViewContact => 'View contact';
+
+  @override
+  String get activeCallDefaultNumber => 'Default number';
+
+  @override
+  String get activeCallCustomer => 'Call customer';
+
+  @override
+  String get activeCallViewContactDetails => 'View contact details';
+
+  @override
+  String get activeCallCurrentNumber => 'Current number';
+
+  @override
+  String get activeCallCurrentNote => 'Current call notes';
+
+  @override
+  String get activeCallNoteHint =>
+      'Add key points. Notes are saved to call history when the call ends.';
+
+  @override
+  String get activeCallConferenceNote => 'Conference notes';
+
+  @override
+  String activeCallNoteSyncMembers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '# conference members',
+      one: '1 conference member',
+    );
+    return 'Sync to $_temp0';
+  }
+
+  @override
+  String activeCallNoteSavePrimary(String name) {
+    return 'Save only to the primary record: $name';
+  }
+
+  @override
+  String get activeCallCustomerNote => 'Current customer notes';
+
+  @override
+  String get activeCallSharedConferenceNote => 'Shared conference notes';
+
+  @override
+  String get activeCallSharedNoteHint =>
+      'Add the conference outcome to every member\'s call record';
+
+  @override
+  String get activeCallCustomerNoteHint =>
+      'Add notes for this customer to the primary call record only';
+
+  @override
+  String get activeCallNoteStaged => 'Saved';
+
+  @override
+  String get activeCallNoteEmpty => 'Not added';
+
+  @override
+  String get activeCallNoteStagedTooltip =>
+      'Note saved for this call and added to history when the call ends';
+
+  @override
+  String get activeCallNoteEmptyTooltip =>
+      'Notes save automatically and are added to history when the call ends';
+
+  @override
+  String get activeCallViewing => 'Viewing';
+
+  @override
+  String get activeCallRemoteAudioMuted => 'Audio muted';
+
+  @override
+  String get activeCallDtmfWaiting => 'Waiting for input';
+
+  @override
+  String get activeCallDtmfTitle => 'DTMF keypad';
+
+  @override
+  String get activeCallDtmfClose => 'Close keypad';
+
+  @override
+  String activeCallDtmfSending(String digit) {
+    return 'Sending $digit';
+  }
+
+  @override
+  String activeCallDtmfSent(String digit) {
+    return 'Sent $digit';
+  }
+
+  @override
+  String activeCallDtmfFailed(String digit) {
+    return 'Couldn\'t send $digit';
+  }
+
+  @override
+  String get activeCallMyAudio => 'Microphone';
+
+  @override
+  String get activeCallRemoteAudio => 'Speaker';
+
+  @override
+  String activeCallMutedValue(String label) {
+    return '$label: muted';
+  }
+
+  @override
+  String activeCallVolumeValue(int volume) {
+    return ', volume $volume%';
+  }
+
+  @override
+  String activeCallMeterMuted(String label, String volume) {
+    return '$label: muted$volume';
+  }
+
+  @override
+  String activeCallMeterValues(
+    String label,
+    int current,
+    int peak,
+    String volume,
+  ) {
+    return '$label: current $current%, peak $peak%$volume';
   }
 }

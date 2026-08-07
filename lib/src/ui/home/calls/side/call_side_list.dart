@@ -82,7 +82,10 @@ extension _CallSideList on _MyHomePageState {
                             ),
                             if (isFocused) ...[
                               const SizedBox(width: 6),
-                              _buildCallTinyBadge('查看中', _brandGreen),
+                              _buildCallTinyBadge(
+                                context.l10n.activeCallViewing,
+                                _brandGreen,
+                              ),
                             ],
                             const SizedBox(width: 6),
                             _buildCallTinyBadge(
@@ -92,7 +95,7 @@ extension _CallSideList on _MyHomePageState {
                             if (remoteMuted) ...[
                               const SizedBox(width: 6),
                               _buildCallTinyBadge(
-                                '本机不听',
+                                context.l10n.activeCallRemoteAudioMuted,
                                 Colors.orange.shade700,
                               ),
                             ],
@@ -190,7 +193,9 @@ extension _CallSideList on _MyHomePageState {
                   ),
                   const SizedBox(width: 8),
                   IconButton(
-                    tooltip: call.isIncoming && !call.isConnected ? '拒接' : '挂断',
+                    tooltip: call.isIncoming && !call.isConnected
+                        ? context.l10n.activeCallReject
+                        : context.l10n.activeCallHangUp,
                     onPressed: hasPendingOperation
                         ? null
                         : () => call.isIncoming && !call.isConnected
@@ -219,7 +224,7 @@ extension _CallSideList on _MyHomePageState {
                         ? null
                         : () => _answerCall(service, call.callId),
                     icon: const Icon(AppIcons.call),
-                    label: const Text('接听'),
+                    label: Text(context.l10n.activeCallAnswer),
                     style: FilledButton.styleFrom(
                       foregroundColor: _callGreen,
                       backgroundColor: _callGreen.withValues(alpha: 0.1),
@@ -236,10 +241,10 @@ extension _CallSideList on _MyHomePageState {
                       _compactCallAction(
                         icon: call.isOnHold ? AppIcons.play : AppIcons.pause,
                         label: call.isRemoteOnHold && !call.isOnHold
-                            ? '对方保持'
+                            ? context.l10n.activeCallStatusRemoteHold
                             : call.isOnHold
-                            ? '恢复'
-                            : '保持',
+                            ? context.l10n.activeCallResume
+                            : context.l10n.activeCallHold,
                         active: call.isOnHold || call.isRemoteOnHold,
                         activeColor: Colors.orange.shade700,
                         onPressed:
@@ -263,7 +268,9 @@ extension _CallSideList on _MyHomePageState {
                       icon: remoteMuted
                           ? AppIcons.speaker
                           : AppIcons.speakerOff,
-                      label: remoteMuted ? '恢复声音' : '本机不听',
+                      label: remoteMuted
+                          ? context.l10n.activeCallRestoreRemoteAudio
+                          : context.l10n.activeCallMuteRemoteAudio,
                       active: remoteMuted,
                       activeColor: Colors.orange.shade700,
                       onPressed: () => service.setRemoteAudioMuted(
@@ -274,7 +281,7 @@ extension _CallSideList on _MyHomePageState {
                     if (!isConferenceMember)
                       _compactCallAction(
                         icon: AppIcons.route,
-                        label: '转接',
+                        label: context.l10n.activeCallTransfer,
                         onPressed: hasPendingOperation
                             ? null
                             : () => _showBlindTransferDialog(
@@ -286,7 +293,7 @@ extension _CallSideList on _MyHomePageState {
                     if (canMergeWithActive)
                       _compactCallAction(
                         icon: AppIcons.contacts,
-                        label: '合并',
+                        label: context.l10n.activeCallMerge,
                         onPressed: hasPendingOperation || isCoolingDown
                             ? null
                             : () => _runConferenceActionAndFocus(
@@ -298,7 +305,7 @@ extension _CallSideList on _MyHomePageState {
                     if (isConferenceMember && !uiState.isConferencePaused)
                       _compactCallAction(
                         icon: AppIcons.split,
-                        label: '拆分',
+                        label: context.l10n.activeCallSplit,
                         onPressed: hasPendingOperation || isCoolingDown
                             ? null
                             : () => _runConferenceActionAndFocus(
@@ -318,17 +325,26 @@ extension _CallSideList on _MyHomePageState {
   }
 
   Widget _buildCallTinyBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(_radiusXs),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w800,
+    return Tooltip(
+      message: label,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 116),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(_radiusXs),
+          ),
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ),
       ),
     );

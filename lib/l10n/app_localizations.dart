@@ -1056,7 +1056,7 @@ abstract class AppLocalizations {
   /// No description provided for @contactNewTitle.
   ///
   /// In zh, this message translates to:
-  /// **'新建联系人'**
+  /// **'新建'**
   String get contactNewTitle;
 
   /// No description provided for @contactEditTitle.
@@ -2300,6 +2300,809 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'{reason}（SIP {code}）'**
   String historyReasonWithSipCode(String reason, int code);
+
+  /// No description provided for @activeCallEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无进行中的通话'**
+  String get activeCallEmpty;
+
+  /// No description provided for @activeCallGoToDialpad.
+  ///
+  /// In zh, this message translates to:
+  /// **'前往拨号'**
+  String get activeCallGoToDialpad;
+
+  /// No description provided for @activeCallAnswer.
+  ///
+  /// In zh, this message translates to:
+  /// **'接听'**
+  String get activeCallAnswer;
+
+  /// No description provided for @activeCallReject.
+  ///
+  /// In zh, this message translates to:
+  /// **'拒接'**
+  String get activeCallReject;
+
+  /// No description provided for @activeCallMute.
+  ///
+  /// In zh, this message translates to:
+  /// **'静音'**
+  String get activeCallMute;
+
+  /// No description provided for @activeCallUnmute.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消静音'**
+  String get activeCallUnmute;
+
+  /// No description provided for @activeCallKeypad.
+  ///
+  /// In zh, this message translates to:
+  /// **'键盘'**
+  String get activeCallKeypad;
+
+  /// No description provided for @activeCallHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'保持'**
+  String get activeCallHold;
+
+  /// No description provided for @activeCallResume.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复'**
+  String get activeCallResume;
+
+  /// No description provided for @activeCallTransfer.
+  ///
+  /// In zh, this message translates to:
+  /// **'转接'**
+  String get activeCallTransfer;
+
+  /// No description provided for @activeCallMuteRemoteAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'静音对方'**
+  String get activeCallMuteRemoteAudio;
+
+  /// No description provided for @activeCallRestoreRemoteAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复对方'**
+  String get activeCallRestoreRemoteAudio;
+
+  /// No description provided for @activeCallAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频'**
+  String get activeCallAudio;
+
+  /// No description provided for @activeCallHangUp.
+  ///
+  /// In zh, this message translates to:
+  /// **'挂断'**
+  String get activeCallHangUp;
+
+  /// No description provided for @activeCallHangUpAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部挂断'**
+  String get activeCallHangUpAll;
+
+  /// No description provided for @activeCallMerge.
+  ///
+  /// In zh, this message translates to:
+  /// **'合并'**
+  String get activeCallMerge;
+
+  /// No description provided for @activeCallSplit.
+  ///
+  /// In zh, this message translates to:
+  /// **'拆分'**
+  String get activeCallSplit;
+
+  /// No description provided for @activeCallResumeConference.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复会议'**
+  String get activeCallResumeConference;
+
+  /// No description provided for @activeCallOperationAnswering.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在接听'**
+  String get activeCallOperationAnswering;
+
+  /// No description provided for @activeCallOperationRejecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在拒接'**
+  String get activeCallOperationRejecting;
+
+  /// No description provided for @activeCallOperationEnding.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在挂断'**
+  String get activeCallOperationEnding;
+
+  /// No description provided for @activeCallOperationHolding.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在保持'**
+  String get activeCallOperationHolding;
+
+  /// No description provided for @activeCallOperationResuming.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在恢复'**
+  String get activeCallOperationResuming;
+
+  /// No description provided for @activeCallOperationSplitting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在拆分'**
+  String get activeCallOperationSplitting;
+
+  /// No description provided for @activeCallOperationMerging.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在合并'**
+  String get activeCallOperationMerging;
+
+  /// No description provided for @activeCallOperationTransferring.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在转接'**
+  String get activeCallOperationTransferring;
+
+  /// No description provided for @activeCallStatusLocalHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'保持中'**
+  String get activeCallStatusLocalHold;
+
+  /// No description provided for @activeCallStatusRemoteHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方保持'**
+  String get activeCallStatusRemoteHold;
+
+  /// No description provided for @activeCallStatusCalling.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在呼叫'**
+  String get activeCallStatusCalling;
+
+  /// No description provided for @activeCallStatusIncoming.
+  ///
+  /// In zh, this message translates to:
+  /// **'来电'**
+  String get activeCallStatusIncoming;
+
+  /// No description provided for @activeCallStatusWaitingAnswer.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待接听'**
+  String get activeCallStatusWaitingAnswer;
+
+  /// No description provided for @activeCallStatusRemoteRinging.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方振铃'**
+  String get activeCallStatusRemoteRinging;
+
+  /// No description provided for @activeCallStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在接通'**
+  String get activeCallStatusConnecting;
+
+  /// No description provided for @activeCallStatusInCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话中'**
+  String get activeCallStatusInCall;
+
+  /// No description provided for @activeCallStatusEnded.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话已结束'**
+  String get activeCallStatusEnded;
+
+  /// No description provided for @activeCallStatusUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知状态 ({state})'**
+  String activeCallStatusUnknown(int state);
+
+  /// No description provided for @activeCallHeldLocallyFor.
+  ///
+  /// In zh, this message translates to:
+  /// **'本机保持 · {duration}'**
+  String activeCallHeldLocallyFor(String duration);
+
+  /// No description provided for @activeCallHeldByRemoteFor.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方保持 · {duration}'**
+  String activeCallHeldByRemoteFor(String duration);
+
+  /// No description provided for @activeCallPriorityContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'重点客户'**
+  String get activeCallPriorityContact;
+
+  /// No description provided for @activeCallOperationInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作进行中'**
+  String get activeCallOperationInProgress;
+
+  /// No description provided for @activeCallDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话时长'**
+  String get activeCallDuration;
+
+  /// No description provided for @activeCallCurrentStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前状态'**
+  String get activeCallCurrentStatus;
+
+  /// No description provided for @activeCallMediaConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体已连接'**
+  String get activeCallMediaConnected;
+
+  /// No description provided for @activeCallMediaLocalHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地保持'**
+  String get activeCallMediaLocalHold;
+
+  /// No description provided for @activeCallMediaRemoteHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方保持'**
+  String get activeCallMediaRemoteHold;
+
+  /// No description provided for @activeCallMediaError.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体异常'**
+  String get activeCallMediaError;
+
+  /// No description provided for @activeCallMediaNotReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体未建立'**
+  String get activeCallMediaNotReady;
+
+  /// No description provided for @activeCallMediaPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体待建立'**
+  String get activeCallMediaPending;
+
+  /// No description provided for @activeCallMediaUnconfirmed.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体未确认'**
+  String get activeCallMediaUnconfirmed;
+
+  /// No description provided for @activeCallMediaUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体状态 {status}'**
+  String activeCallMediaUnknown(int status);
+
+  /// No description provided for @activeCallSignalingUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'信令未知'**
+  String get activeCallSignalingUnknown;
+
+  /// No description provided for @activeCallConfiguredMode.
+  ///
+  /// In zh, this message translates to:
+  /// **'{mode} 配置'**
+  String activeCallConfiguredMode(String mode);
+
+  /// No description provided for @activeCallMedia.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体'**
+  String get activeCallMedia;
+
+  /// No description provided for @activeCallSignaling.
+  ///
+  /// In zh, this message translates to:
+  /// **'信令'**
+  String get activeCallSignaling;
+
+  /// No description provided for @activeCallMediaEncryption.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体加密'**
+  String get activeCallMediaEncryption;
+
+  /// No description provided for @activeCallTlsEncrypted.
+  ///
+  /// In zh, this message translates to:
+  /// **'TLS 加密'**
+  String get activeCallTlsEncrypted;
+
+  /// No description provided for @activeCallSrtpNegotiated.
+  ///
+  /// In zh, this message translates to:
+  /// **'SRTP 已协商'**
+  String get activeCallSrtpNegotiated;
+
+  /// No description provided for @activeCallSrtpNotDetected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未检测到 SRTP'**
+  String get activeCallSrtpNotDetected;
+
+  /// No description provided for @activeCallMediaNegotiating.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待媒体协商'**
+  String get activeCallMediaNegotiating;
+
+  /// No description provided for @activeCallLabeledValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}：{value}'**
+  String activeCallLabeledValue(String label, String value);
+
+  /// No description provided for @activeCallValueDetail.
+  ///
+  /// In zh, this message translates to:
+  /// **'{value}（{detail}）'**
+  String activeCallValueDetail(String value, String detail);
+
+  /// No description provided for @activeCallTransport.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输协议'**
+  String get activeCallTransport;
+
+  /// No description provided for @activeCallTransferTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'直接转接通话'**
+  String get activeCallTransferTitle;
+
+  /// No description provided for @activeCallTransferDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话将立即转接到目标号码，你将退出本次通话。'**
+  String get activeCallTransferDescription;
+
+  /// No description provided for @activeCallCurrentLineUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前线路未知'**
+  String get activeCallCurrentLineUnknown;
+
+  /// No description provided for @activeCallTransferTargetHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入号码或 SIP URI'**
+  String get activeCallTransferTargetHint;
+
+  /// No description provided for @activeCallTransferTargetExample.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如 6545 或 sip:6545@{host}'**
+  String activeCallTransferTargetExample(String host);
+
+  /// No description provided for @activeCallChooseContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'从联系人选择'**
+  String get activeCallChooseContact;
+
+  /// No description provided for @activeCallNumberCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 个号码'**
+  String activeCallNumberCount(int count);
+
+  /// No description provided for @activeCallTransferSearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索联系人、号码或公司'**
+  String get activeCallTransferSearchHint;
+
+  /// No description provided for @activeCallEnterTransferNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入转接号码'**
+  String get activeCallEnterTransferNumber;
+
+  /// No description provided for @activeCallConfirmTransfer.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认转接'**
+  String get activeCallConfirmTransfer;
+
+  /// No description provided for @activeCallNoContacts.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无联系人'**
+  String get activeCallNoContacts;
+
+  /// No description provided for @activeCallNoContactMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的联系人'**
+  String get activeCallNoContactMatches;
+
+  /// No description provided for @activeCallUnnamedContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'未命名联系人'**
+  String get activeCallUnnamedContact;
+
+  /// No description provided for @activeCallViewingConferenceMember.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在查看会议成员'**
+  String get activeCallViewingConferenceMember;
+
+  /// No description provided for @activeCallCurrentActiveCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前活动通话'**
+  String get activeCallCurrentActiveCall;
+
+  /// No description provided for @activeCallViewingCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在查看此通话'**
+  String get activeCallViewingCall;
+
+  /// No description provided for @activeCallResumeForAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} · 点击恢复以接入声音'**
+  String activeCallResumeForAudio(String name);
+
+  /// No description provided for @activeCallConferenceInterrupted.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议已自动保持。处理完当前通话后，可恢复 {count} 位会议成员。'**
+  String activeCallConferenceInterrupted(int count);
+
+  /// No description provided for @activeCallConferenceTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议通话'**
+  String get activeCallConferenceTitle;
+
+  /// No description provided for @activeCallConferencePaused.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议已暂停'**
+  String get activeCallConferencePaused;
+
+  /// No description provided for @activeCallConferenceInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议中'**
+  String get activeCallConferenceInProgress;
+
+  /// No description provided for @activeCallConferenceStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议状态'**
+  String get activeCallConferenceStatus;
+
+  /// No description provided for @activeCallConferenceDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议时长'**
+  String get activeCallConferenceDuration;
+
+  /// No description provided for @activeCallPaused.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂停'**
+  String get activeCallPaused;
+
+  /// No description provided for @activeCallMemberCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 位成员'**
+  String activeCallMemberCount(int count);
+
+  /// No description provided for @activeCallCustomerCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 位客户'**
+  String activeCallCustomerCount(int count);
+
+  /// No description provided for @activeCallLineCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条线路'**
+  String activeCallLineCount(int count);
+
+  /// No description provided for @activeCallPanelConferenceMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议成员'**
+  String get activeCallPanelConferenceMembers;
+
+  /// No description provided for @activeCallPanelCurrentCalls.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前通话'**
+  String get activeCallPanelCurrentCalls;
+
+  /// No description provided for @activeCallPanelCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{current}/{total} 路'**
+  String activeCallPanelCount(int current, int total);
+
+  /// No description provided for @activeCallNewIncomingAndOthers.
+  ///
+  /// In zh, this message translates to:
+  /// **'新来电与其他通话'**
+  String get activeCallNewIncomingAndOthers;
+
+  /// No description provided for @activeCallOtherCalls.
+  ///
+  /// In zh, this message translates to:
+  /// **'其他通话'**
+  String get activeCallOtherCalls;
+
+  /// No description provided for @activeCallNoActiveCalls.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有活动通话'**
+  String get activeCallNoActiveCalls;
+
+  /// No description provided for @activeCallCustomerInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'客户信息'**
+  String get activeCallCustomerInfo;
+
+  /// No description provided for @activeCallConferenceCustomers.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议客户'**
+  String get activeCallConferenceCustomers;
+
+  /// No description provided for @activeCallConferenceCustomersDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'已加入会议的客户'**
+  String get activeCallConferenceCustomersDescription;
+
+  /// No description provided for @activeCallUnmatchedContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'未匹配联系人'**
+  String get activeCallUnmatchedContact;
+
+  /// No description provided for @activeCallUnknownNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知号码'**
+  String get activeCallUnknownNumber;
+
+  /// No description provided for @activeCallAddContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加到联系人'**
+  String get activeCallAddContact;
+
+  /// No description provided for @activeCallViewContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看联系人'**
+  String get activeCallViewContact;
+
+  /// No description provided for @activeCallDefaultNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认号码'**
+  String get activeCallDefaultNumber;
+
+  /// No description provided for @activeCallCustomer.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话客户'**
+  String get activeCallCustomer;
+
+  /// No description provided for @activeCallViewContactDetails.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看联系人详情'**
+  String get activeCallViewContactDetails;
+
+  /// No description provided for @activeCallCurrentNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前号码'**
+  String get activeCallCurrentNumber;
+
+  /// No description provided for @activeCallCurrentNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前通话备注'**
+  String get activeCallCurrentNote;
+
+  /// No description provided for @activeCallNoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录沟通重点，挂断后将保存到通话记录'**
+  String get activeCallNoteHint;
+
+  /// No description provided for @activeCallConferenceNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'本次会议备注'**
+  String get activeCallConferenceNote;
+
+  /// No description provided for @activeCallNoteSyncMembers.
+  ///
+  /// In zh, this message translates to:
+  /// **'同步到 {count} 位会议成员'**
+  String activeCallNoteSyncMembers(int count);
+
+  /// No description provided for @activeCallNoteSavePrimary.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅保存到会议主记录：{name}'**
+  String activeCallNoteSavePrimary(String name);
+
+  /// No description provided for @activeCallCustomerNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前客户备注'**
+  String get activeCallCustomerNote;
+
+  /// No description provided for @activeCallSharedConferenceNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议共享备注'**
+  String get activeCallSharedConferenceNote;
+
+  /// No description provided for @activeCallSharedNoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录会议结论，并保存到每位成员的通话记录'**
+  String get activeCallSharedNoteHint;
+
+  /// No description provided for @activeCallCustomerNoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录当前客户重点，仅保存到会议主记录'**
+  String get activeCallCustomerNoteHint;
+
+  /// No description provided for @activeCallNoteStaged.
+  ///
+  /// In zh, this message translates to:
+  /// **'已暂存'**
+  String get activeCallNoteStaged;
+
+  /// No description provided for @activeCallNoteEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'未填写'**
+  String get activeCallNoteEmpty;
+
+  /// No description provided for @activeCallNoteStagedTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'备注已暂存，挂断后将写入通话记录'**
+  String get activeCallNoteStagedTooltip;
+
+  /// No description provided for @activeCallNoteEmptyTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'填写后自动暂存，挂断后写入通话记录'**
+  String get activeCallNoteEmptyTooltip;
+
+  /// No description provided for @activeCallViewing.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看中'**
+  String get activeCallViewing;
+
+  /// No description provided for @activeCallRemoteAudioMuted.
+  ///
+  /// In zh, this message translates to:
+  /// **'声音已关闭'**
+  String get activeCallRemoteAudioMuted;
+
+  /// No description provided for @activeCallDtmfWaiting.
+  ///
+  /// In zh, this message translates to:
+  /// **'等待输入'**
+  String get activeCallDtmfWaiting;
+
+  /// No description provided for @activeCallDtmfTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'DTMF 键盘'**
+  String get activeCallDtmfTitle;
+
+  /// No description provided for @activeCallDtmfClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭键盘'**
+  String get activeCallDtmfClose;
+
+  /// No description provided for @activeCallDtmfSending.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在发送 {digit}'**
+  String activeCallDtmfSending(String digit);
+
+  /// No description provided for @activeCallDtmfSent.
+  ///
+  /// In zh, this message translates to:
+  /// **'已发送 {digit}'**
+  String activeCallDtmfSent(String digit);
+
+  /// No description provided for @activeCallDtmfFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{digit} 发送失败'**
+  String activeCallDtmfFailed(String digit);
+
+  /// No description provided for @activeCallMyAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风'**
+  String get activeCallMyAudio;
+
+  /// No description provided for @activeCallRemoteAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'扬声器'**
+  String get activeCallRemoteAudio;
+
+  /// No description provided for @activeCallMutedValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}：已静音'**
+  String activeCallMutedValue(String label);
+
+  /// No description provided for @activeCallVolumeValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'，音量 {volume}%'**
+  String activeCallVolumeValue(int volume);
+
+  /// No description provided for @activeCallMeterMuted.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}：已静音{volume}'**
+  String activeCallMeterMuted(String label, String volume);
+
+  /// No description provided for @activeCallMeterValues.
+  ///
+  /// In zh, this message translates to:
+  /// **'{label}：当前 {current}%，峰值 {peak}%{volume}'**
+  String activeCallMeterValues(
+    String label,
+    int current,
+    int peak,
+    String volume,
+  );
 }
 
 class _AppLocalizationsDelegate

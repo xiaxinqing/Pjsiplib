@@ -23,7 +23,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
           icon: uiState.isMicrophoneMuted
               ? AppIcons.microphoneOff
               : AppIcons.microphone,
-          label: '我方说话',
+          label: context.l10n.activeCallMyAudio,
           value: _audioMeterValue(
             uiState.microphoneLevel,
             muted: uiState.isMicrophoneMuted,
@@ -36,7 +36,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
         SizedBox(height: compact ? 9 : 11),
         _buildAudioMeterRow(
           icon: uiState.isSpeakerMuted ? AppIcons.speakerOff : AppIcons.meters,
-          label: '对方声音',
+          label: context.l10n.activeCallRemoteAudio,
           value: _audioMeterValue(
             uiState.speakerLevel,
             muted: uiState.isSpeakerMuted,
@@ -64,7 +64,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
             ),
             muted: uiState.isMicrophoneMuted,
             color: _callGreen,
-            tooltip: '我方说话',
+            tooltip: context.l10n.activeCallMyAudio,
           ),
         ),
         const SizedBox(width: 10),
@@ -79,7 +79,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
             ),
             muted: uiState.isSpeakerMuted,
             color: Theme.of(context).colorScheme.primary,
-            tooltip: '对方声音',
+            tooltip: context.l10n.activeCallRemoteAudio,
           ),
         ),
       ],
@@ -101,7 +101,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
         Icon(icon, size: 18, color: effectiveColor),
         const SizedBox(width: 10),
         SizedBox(
-          width: 70,
+          width: 82,
           child: Text(
             label,
             style: const TextStyle(fontWeight: FontWeight.w700),
@@ -131,7 +131,7 @@ extension _HomeCallAudioMeters on _MyHomePageState {
   }) {
     final effectiveColor = muted ? _textSecondary : color;
     return Tooltip(
-      message: muted ? '$tooltip：静音' : tooltip,
+      message: muted ? context.l10n.activeCallMutedValue(tooltip) : tooltip,
       child: Row(
         children: [
           Icon(icon, size: 15, color: effectiveColor),
@@ -314,7 +314,9 @@ class _SegmentedAudioMeter extends StatelessWidget {
           handler((ratio * 100).round());
         }
 
-        final volumeText = onVolumeChanged == null ? '' : '，音量 $volume%';
+        final volumeText = onVolumeChanged == null
+            ? ''
+            : context.l10n.activeCallVolumeValue(volume);
         final meter = Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -366,8 +368,13 @@ class _SegmentedAudioMeter extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Tooltip(
             message: muted
-                ? '$label：静音$volumeText'
-                : '$label：当前 ${(activeValue * 100).round()}%，峰值 ${(activePeakValue * 100).round()}%$volumeText',
+                ? context.l10n.activeCallMeterMuted(label, volumeText)
+                : context.l10n.activeCallMeterValues(
+                    label,
+                    (activeValue * 100).round(),
+                    (activePeakValue * 100).round(),
+                    volumeText,
+                  ),
             child: MouseRegion(
               cursor: onVolumeChanged == null
                   ? MouseCursor.defer

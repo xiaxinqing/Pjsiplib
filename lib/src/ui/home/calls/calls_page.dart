@@ -208,16 +208,16 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
-                        '盲转通话',
-                        style: TextStyle(
+                      Text(
+                        context.l10n.activeCallTransferTitle,
+                        style: const TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '直接将当前通话转接到目标号码，本机不先咨询对方。',
+                        context.l10n.activeCallTransferDescription,
                         style: Theme.of(
                           context,
                         ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -268,17 +268,17 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
             const SizedBox(height: 14),
             _BlindTransferSectionTitle(
               icon: AppIcons.contacts,
-              title: '通讯录直接选择',
-              trailing: '${targets.length} 个号码',
+              title: context.l10n.activeCallChooseContact,
+              trailing: context.l10n.activeCallNumberCount(targets.length),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: _contactSearchController,
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.search,
-              decoration: const InputDecoration(
-                hintText: '搜索联系人、号码、公司',
-                prefixIcon: Icon(AppIcons.search),
+              decoration: InputDecoration(
+                hintText: context.l10n.activeCallTransferSearchHint,
+                prefixIcon: const Icon(AppIcons.search),
                 isDense: true,
               ),
             ),
@@ -287,7 +287,7 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
             const SizedBox(height: 16),
             _BlindTransferSectionTitle(
               icon: AppIcons.dialpad,
-              title: '手动输入盲转号码',
+              title: context.l10n.activeCallEnterTransferNumber,
             ),
             const SizedBox(height: 8),
             TextField(
@@ -306,7 +306,7 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(context.l10n.commonCancel),
         ),
         ValueListenableBuilder<TextEditingValue>(
           valueListenable: _manualController,
@@ -314,7 +314,7 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
             return FilledButton.icon(
               onPressed: value.text.trim().isEmpty ? null : _submitManual,
               icon: const Icon(AppIcons.route),
-              label: const Text('发起盲转'),
+              label: Text(context.l10n.activeCallConfirmTransfer),
               style: FilledButton.styleFrom(backgroundColor: _brandGreen),
             );
           },
@@ -325,10 +325,14 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
 
   Widget _buildContactTargetList(List<_BlindTransferContactTarget> targets) {
     if (widget.contacts.isEmpty) {
-      return const _BlindTransferEmptyContacts(message: '暂无联系人');
+      return _BlindTransferEmptyContacts(
+        message: context.l10n.activeCallNoContacts,
+      );
     }
     if (targets.isEmpty) {
-      return const _BlindTransferEmptyContacts(message: '没有匹配的联系人');
+      return _BlindTransferEmptyContacts(
+        message: context.l10n.activeCallNoContactMatches,
+      );
     }
 
     return DecoratedBox(
@@ -391,7 +395,7 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
                           children: [
                             Text(
                               contact.name.trim().isEmpty
-                                  ? '未命名联系人'
+                                  ? context.l10n.activeCallUnnamedContact
                                   : contact.name,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

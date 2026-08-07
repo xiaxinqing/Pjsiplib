@@ -110,7 +110,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
           _dtmfSentPreview.length - 18,
         );
       }
-      _dtmfStatusText = '正在发送 $digit';
+      _dtmfStatusText = context.l10n.activeCallDtmfSending(digit);
       _dtmfSendFailed = false;
     });
     unawaited(
@@ -118,7 +118,9 @@ extension _HomeCallCoordinator on _MyHomePageState {
         final sent = await service.sendDtmf(call.callId, digit);
         if (!mounted || _dtmfPadCallId != call.callId) return;
         _update(() {
-          _dtmfStatusText = sent ? '已发送 $digit' : '发送失败 $digit';
+          _dtmfStatusText = sent
+              ? context.l10n.activeCallDtmfSent(digit)
+              : context.l10n.activeCallDtmfFailed(digit);
           _dtmfSendFailed = !sent;
         });
       })(),
@@ -226,7 +228,8 @@ extension _HomeCallCoordinator on _MyHomePageState {
   _CallOperationType? _callOperation(int callId) =>
       _pendingCallOperations[callId];
 
-  String? _callOperationLabel(int callId) => _callOperation(callId)?.label;
+  String? _callOperationLabel(int callId) =>
+      _callOperation(callId)?.localizedLabel(context.l10n);
 
   /// 判断指定通话是否仍处在接听、挂断、保持等等待反馈状态。
   bool _hasPendingCallOperation(int callId) {

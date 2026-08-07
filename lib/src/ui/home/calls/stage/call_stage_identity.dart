@@ -49,7 +49,7 @@ extension _CallStageIdentity on _MyHomePageState {
               _buildCallIconBadge(
                 icon: AppIcons.favorite,
                 color: _brandGreen,
-                tooltip: '重点客户',
+                tooltip: context.l10n.activeCallPriorityContact,
               ),
           ],
         ),
@@ -161,14 +161,7 @@ extension _CallStageIdentity on _MyHomePageState {
   }
 
   String _plainCallStatusLabel(CallInfo call) {
-    return call.statusLabel
-        .replaceAll('⏸ ', '')
-        .replaceAll('📲 ', '')
-        .replaceAll('🔔 ', '')
-        .replaceAll('📳 ', '')
-        .replaceAll('🔗 ', '')
-        .replaceAll('📞 ', '')
-        .replaceAll('🔚 ', '');
+    return ActiveCallLocalizer.status(context.l10n, call);
   }
 
   _LiveCallVisualState _liveCallVisualState(
@@ -177,7 +170,7 @@ extension _CallStageIdentity on _MyHomePageState {
     _CallOperationType? pendingOperation,
   ) {
     if (pendingOperation != null) {
-      final pendingLabel = pendingOperation.label;
+      final pendingLabel = pendingOperation.localizedLabel(context.l10n);
       final isDanger =
           pendingOperation == _CallOperationType.hangup ||
           pendingOperation == _CallOperationType.reject;
@@ -199,9 +192,9 @@ extension _CallStageIdentity on _MyHomePageState {
       );
     }
     if (call.isIncoming && !call.isConnected) {
-      return const _LiveCallVisualState(
-        label: '来电',
-        detail: '等待接听',
+      return _LiveCallVisualState(
+        label: context.l10n.activeCallStatusIncoming,
+        detail: context.l10n.activeCallStatusWaitingAnswer,
         icon: AppIcons.incoming,
         color: _callGreen,
         emphasizeDetail: true,
@@ -210,8 +203,12 @@ extension _CallStageIdentity on _MyHomePageState {
     if (uiState.isInConference(call.callId)) {
       final paused = uiState.isConferencePaused;
       return _LiveCallVisualState(
-        label: paused ? '会议暂停' : '会议中',
-        detail: paused ? '会议已暂停' : call.durationLabel,
+        label: paused
+            ? context.l10n.activeCallConferencePaused
+            : context.l10n.activeCallConferenceInProgress,
+        detail: paused
+            ? context.l10n.activeCallConferencePaused
+            : call.durationLabel,
         icon: paused ? AppIcons.pause : AppIcons.contacts,
         color: paused ? Colors.orange.shade700 : _callGreen,
         emphasizeDetail: paused,
@@ -219,8 +216,8 @@ extension _CallStageIdentity on _MyHomePageState {
     }
     if (call.isOnHold) {
       return _LiveCallVisualState(
-        label: '保持中',
-        detail: '本机保持 · ${call.durationLabel}',
+        label: context.l10n.activeCallStatusLocalHold,
+        detail: context.l10n.activeCallHeldLocallyFor(call.durationLabel),
         icon: AppIcons.pause,
         color: Colors.orange.shade700,
         emphasizeDetail: true,
@@ -228,8 +225,8 @@ extension _CallStageIdentity on _MyHomePageState {
     }
     if (call.isRemoteOnHold) {
       return _LiveCallVisualState(
-        label: '对方保持',
-        detail: '对方保持 · ${call.durationLabel}',
+        label: context.l10n.activeCallStatusRemoteHold,
+        detail: context.l10n.activeCallHeldByRemoteFor(call.durationLabel),
         icon: AppIcons.pause,
         color: Colors.orange.shade700,
         emphasizeDetail: true,
@@ -237,7 +234,7 @@ extension _CallStageIdentity on _MyHomePageState {
     }
     if (call.isConnected) {
       return _LiveCallVisualState(
-        label: '通话中',
+        label: context.l10n.activeCallStatusInCall,
         detail: call.durationLabel,
         icon: AppIcons.activity,
         color: _callGreen,
@@ -254,15 +251,7 @@ extension _CallStageIdentity on _MyHomePageState {
 
   _CallQualityView _callQualityView(CallInfo call, SipAccountInfo? account) {
     final mediaStatus = call.mediaStatus;
-    final mediaLabel = switch (mediaStatus) {
-      1 => '媒体已连接',
-      2 => '本地保持',
-      3 => '对方保持',
-      4 => '媒体异常',
-      0 => call.isConnected ? '媒体未建立' : '媒体待建立',
-      null => call.isConnected ? '媒体未确认' : '媒体待建立',
-      _ => '媒体状态 $mediaStatus',
-    };
+    final mediaLabel = ActiveCallLocalizer.mediaStatus(context.l10n, call);
 
     final mediaReady = mediaStatus == 1;
     final mediaProblem =
@@ -277,7 +266,8 @@ extension _CallStageIdentity on _MyHomePageState {
         ? _textSecondary
         : Colors.orange.shade700;
 
-    final signalingLabel = account?.transport.label ?? '信令未知';
+    final signalingLabel =
+        account?.transport.label ?? context.l10n.activeCallSignalingUnknown;
     final signalingSecure = account?.transport.isSecure == true;
     final configuredMode = account?.mediaSecurity.mode;
     final actualSrtp = call.mediaSecurity?.hasSrtpTransport;
@@ -285,7 +275,9 @@ extension _CallStageIdentity on _MyHomePageState {
       true => configuredMode?.usesSrtp == true ? configuredMode!.label : 'SRTP',
       false => 'RTP',
       null =>
-        configuredMode?.usesSrtp == true ? '${configuredMode!.label}配置' : 'RTP',
+        configuredMode?.usesSrtp == true
+            ? context.l10n.activeCallConfiguredMode(configuredMode!.label)
+            : 'RTP',
     };
     final stack = call.mediaSecurity?.transportStack ?? const <String>[];
     final secureVerified = signalingSecure && actualSrtp == true;
@@ -294,15 +286,38 @@ extension _CallStageIdentity on _MyHomePageState {
     final compactLabel = mediaReady
         ? '$signalingLabel · $mediaSecurityLabel'
         : mediaLabel;
+    final signalingValue = signalingSecure
+        ? context.l10n.activeCallValueDetail(
+            signalingLabel,
+            context.l10n.activeCallTlsEncrypted,
+          )
+        : signalingLabel;
+    final mediaSecurityDetail = actualSrtp == true
+        ? context.l10n.activeCallSrtpNegotiated
+        : actualSrtp == false
+        ? context.l10n.activeCallSrtpNotDetected
+        : context.l10n.activeCallMediaNegotiating;
     final tooltip = [
-      '媒体：$mediaLabel',
-      '信令：$signalingLabel${signalingSecure ? '（TLS 加密）' : ''}',
-      '媒体加密：$mediaSecurityLabel${actualSrtp == true
-          ? '（SRTP 已协商）'
-          : actualSrtp == false
-          ? '（未检测到 SRTP）'
-          : '（等待媒体协商）'}',
-      if (stack.isNotEmpty) 'Transport：${stack.join(' / ')}',
+      context.l10n.activeCallLabeledValue(
+        context.l10n.activeCallMedia,
+        mediaLabel,
+      ),
+      context.l10n.activeCallLabeledValue(
+        context.l10n.activeCallSignaling,
+        signalingValue,
+      ),
+      context.l10n.activeCallLabeledValue(
+        context.l10n.activeCallMediaEncryption,
+        context.l10n.activeCallValueDetail(
+          mediaSecurityLabel,
+          mediaSecurityDetail,
+        ),
+      ),
+      if (stack.isNotEmpty)
+        context.l10n.activeCallLabeledValue(
+          context.l10n.activeCallTransport,
+          stack.join(' / '),
+        ),
     ].join('\n');
 
     return _CallQualityView(

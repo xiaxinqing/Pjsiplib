@@ -11,11 +11,11 @@ extension _HomeCallStage on _MyHomePageState {
     if (primary == null) {
       return _buildEmptyState(
         icon: AppIcons.call,
-        title: '暂无通话',
+        title: context.l10n.activeCallEmpty,
         action: FilledButton.icon(
           onPressed: () => _selectSection(_WorkspaceSection.dialpad),
           icon: const Icon(AppIcons.dialpad),
-          label: const Text('去拨号'),
+          label: Text(context.l10n.activeCallGoToDialpad),
         ),
       );
     }
@@ -132,7 +132,11 @@ extension _HomeCallStage on _MyHomePageState {
                                   ? AppIcons.pause
                                   : AppIcons.contacts,
                             ),
-                            label: Text(isConferencePaused ? '会议已暂停' : '三方通话'),
+                            label: Text(
+                              isConferencePaused
+                                  ? context.l10n.activeCallConferencePaused
+                                  : context.l10n.activeCallConferenceTitle,
+                            ),
                           ),
                         ),
                       ],
@@ -173,13 +177,13 @@ extension _HomeCallStage on _MyHomePageState {
     final isConferenceMember = uiState.isInConference(call.callId);
     final isActive = uiState.activeCallId == call.callId;
     final title = isConferenceMember
-        ? '当前查看会议成员'
+        ? context.l10n.activeCallViewingConferenceMember
         : isActive
-        ? '当前活动通话'
-        : '当前查看通话';
+        ? context.l10n.activeCallCurrentActiveCall
+        : context.l10n.activeCallViewingCall;
     final subtitle = isActive || isConferenceMember
         ? pendingLabel
-        : pendingLabel ?? '$label · 如需接入声音，请点击恢复';
+        : pendingLabel ?? context.l10n.activeCallResumeForAudio(label);
     final text = subtitle == null ? title : '$title · $subtitle';
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -236,7 +240,7 @@ extension _HomeCallStage on _MyHomePageState {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '三方会议已自动保持，正在处理当前通话。处理完成后可恢复 $count 位会议成员。',
+                context.l10n.activeCallConferenceInterrupted(count),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Colors.orange.shade800,
                   fontWeight: FontWeight.w800,
@@ -279,13 +283,18 @@ extension _HomeCallStage on _MyHomePageState {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                '三方通话',
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
+              Text(
+                context.l10n.activeCallConferenceTitle,
+                style: const TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
               const SizedBox(height: 6),
               _buildTooltipText(
-                memberNames.isEmpty ? '${calls.length} 位成员' : memberNames,
+                memberNames.isEmpty
+                    ? context.l10n.activeCallMemberCount(calls.length)
+                    : memberNames,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: _textSecondary,
                   fontWeight: FontWeight.w700,
@@ -299,19 +308,23 @@ extension _HomeCallStage on _MyHomePageState {
                 children: [
                   _buildCallMetaStrip(
                     icon: paused ? AppIcons.pause : AppIcons.contacts,
-                    label: paused ? '会议已暂停' : '会议中',
+                    label: paused
+                        ? context.l10n.activeCallConferencePaused
+                        : context.l10n.activeCallConferenceInProgress,
                     color: paused ? Colors.orange.shade700 : _brandGreen,
                   ),
                   _buildCallMetaStrip(
                     icon: AppIcons.person,
-                    label: '${calls.length} 位客户',
+                    label: context.l10n.activeCallCustomerCount(calls.length),
                   ),
                   if (accountLabels.isNotEmpty)
                     _buildCallMetaStrip(
                       icon: AppIcons.line,
                       label: accountLabels.length == 1
                           ? accountLabels.first
-                          : '${accountLabels.length} 条线路',
+                          : context.l10n.activeCallLineCount(
+                              accountLabels.length,
+                            ),
                     ),
                 ],
               ),
@@ -347,14 +360,18 @@ extension _HomeCallStage on _MyHomePageState {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    paused ? '会议状态' : '会议时长',
+                    paused
+                        ? context.l10n.activeCallConferenceStatus
+                        : context.l10n.activeCallConferenceDuration,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: _textSecondary),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    paused ? '已暂停' : _conferenceDurationLabel(calls),
+                    paused
+                        ? context.l10n.activeCallPaused
+                        : _conferenceDurationLabel(calls),
                     style: TextStyle(
                       fontSize: paused ? 28 : 38,
                       fontWeight: FontWeight.w800,
@@ -366,7 +383,7 @@ extension _HomeCallStage on _MyHomePageState {
             ),
             _buildCallMetaStrip(
               icon: AppIcons.contacts,
-              label: '${calls.length} 位成员',
+              label: context.l10n.activeCallMemberCount(calls.length),
               color: paused ? Colors.orange.shade700 : _brandGreen,
             ),
           ],
@@ -487,7 +504,9 @@ extension _HomeCallStage on _MyHomePageState {
           icon: uiState.isMicrophoneMuted
               ? AppIcons.microphoneOff
               : AppIcons.microphone,
-          label: uiState.isMicrophoneMuted ? '取消静音' : '静音',
+          label: uiState.isMicrophoneMuted
+              ? context.l10n.activeCallUnmute
+              : context.l10n.activeCallMute,
           color: uiState.isMicrophoneMuted
               ? Colors.orange.shade700
               : Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -496,7 +515,7 @@ extension _HomeCallStage on _MyHomePageState {
         ),
         _roundCallButton(
           icon: AppIcons.dialpad,
-          label: '键盘',
+          label: context.l10n.activeCallKeypad,
           color: _showInCallDialpad
               ? _brandGreen
               : Theme.of(context).colorScheme.surfaceContainerHigh,
@@ -504,7 +523,9 @@ extension _HomeCallStage on _MyHomePageState {
         ),
         _roundCallButton(
           icon: uiState.isConferencePaused ? AppIcons.play : AppIcons.split,
-          label: uiState.isConferencePaused ? '恢复会议' : '拆分',
+          label: uiState.isConferencePaused
+              ? context.l10n.activeCallResumeConference
+              : context.l10n.activeCallSplit,
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed: hasPendingOperation || isCoolingDown
               ? null
@@ -520,13 +541,13 @@ extension _HomeCallStage on _MyHomePageState {
         ),
         _roundCallButton(
           icon: AppIcons.tune,
-          label: '音频',
+          label: context.l10n.activeCallAudio,
           color: Theme.of(context).colorScheme.surfaceContainerHigh,
           onPressed: () => _openSettingsDrawer(tabIndex: _settingsAudioIndex),
         ),
         _roundCallButton(
           icon: AppIcons.callEnd,
-          label: '挂断全部',
+          label: context.l10n.activeCallHangUpAll,
           color: _dangerRed,
           onPressed: calls.isEmpty
               ? null

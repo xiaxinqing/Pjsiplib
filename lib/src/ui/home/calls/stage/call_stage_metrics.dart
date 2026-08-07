@@ -36,10 +36,10 @@ extension _CallStageMetrics on _MyHomePageState {
                 children: [
                   Text(
                     pendingLabel != null
-                        ? '操作中'
+                        ? context.l10n.activeCallOperationInProgress
                         : connected
-                        ? '通话时长'
-                        : '当前状态',
+                        ? context.l10n.activeCallDuration
+                        : context.l10n.activeCallCurrentStatus,
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -66,7 +66,9 @@ extension _CallStageMetrics on _MyHomePageState {
             if (call.isOnHold || call.isRemoteOnHold)
               _buildCallMetaStrip(
                 icon: AppIcons.pause,
-                label: call.isRemoteOnHold ? '对方保持' : '本地保持',
+                label: call.isRemoteOnHold
+                    ? context.l10n.activeCallMediaRemoteHold
+                    : context.l10n.activeCallMediaLocalHold,
                 color: Colors.orange.shade700,
               ),
           ],
