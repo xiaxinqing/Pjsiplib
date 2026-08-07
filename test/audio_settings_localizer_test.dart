@@ -53,5 +53,22 @@ void main() {
         'The microphone is temporarily unavailable. Speaker-only audio is active; check the input device',
       );
     });
+
+    test('仅转换应用补入的系统默认设备名称', () async {
+      final en = await AppLocalizations.delegate.load(const Locale('en'));
+
+      expect(
+        AudioSettingsLocalizer.deviceName(en, id: -1, name: '跟随系统输入'),
+        'System default input',
+      );
+      expect(
+        AudioSettingsLocalizer.deviceName(en, id: -2, name: '跟随系统输出'),
+        'System default output',
+      );
+      expect(
+        AudioSettingsLocalizer.deviceName(en, id: 7, name: 'AirPods Pro'),
+        'AirPods Pro',
+      );
+    });
   });
 }

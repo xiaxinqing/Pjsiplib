@@ -855,7 +855,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           if (_shouldRouteCallToLocalSpeaker(callId)) {
             _bindings.pjsua_conf_connect(confSlot, 0);
           }
-          if (!_uiState.isMicrophoneMuted) {
+          if (_shouldRouteMicrophoneToCall(callId)) {
             _bindings.pjsua_conf_connect(0, confSlot);
           }
           _applyAudioVolumeState();

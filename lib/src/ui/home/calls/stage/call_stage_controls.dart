@@ -11,6 +11,7 @@ extension _CallStageControls on _MyHomePageState {
     final hasPendingOperation = _hasPendingCallOperation(call.callId);
     final isCoolingDown = _isMediaBridgeActionCoolingDown;
     final remoteMuted = uiState.remoteMutedCallIds.contains(call.callId);
+    final microphoneMuted = uiState.isMicrophoneMutedForCall(call.callId);
     final controls = <Widget>[];
 
     if (call.isIncoming && !call.isConnected) {
@@ -36,17 +37,18 @@ extension _CallStageControls on _MyHomePageState {
     } else {
       controls.addAll([
         _roundCallButton(
-          icon: uiState.isMicrophoneMuted
-              ? AppIcons.microphoneOff
-              : AppIcons.microphone,
-          label: uiState.isMicrophoneMuted
+          icon: microphoneMuted ? AppIcons.microphoneOff : AppIcons.microphone,
+          label: microphoneMuted
               ? context.l10n.activeCallUnmute
               : context.l10n.activeCallMute,
-          color: uiState.isMicrophoneMuted
-              ? Colors.orange.shade700
-              : Theme.of(context).colorScheme.surfaceContainerHigh,
-          onPressed: () =>
-              service.setMicrophoneMuted(!uiState.isMicrophoneMuted),
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          foregroundColor: microphoneMuted ? Colors.orange.shade700 : null,
+          onPressed: uiState.isMicrophoneMuted
+              ? null
+              : () => service.setCallMicrophoneMuted(
+                  call.callId,
+                  !microphoneMuted,
+                ),
         ),
         _roundCallButton(
           icon: AppIcons.dialpad,
@@ -97,9 +99,8 @@ extension _CallStageControls on _MyHomePageState {
             label: remoteMuted
                 ? context.l10n.activeCallRestoreRemoteAudio
                 : context.l10n.activeCallMuteRemoteAudio,
-            color: remoteMuted
-                ? Colors.orange.shade700
-                : Theme.of(context).colorScheme.surfaceContainerHigh,
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
+            foregroundColor: remoteMuted ? Colors.orange.shade700 : null,
             onPressed: () =>
                 service.setRemoteAudioMuted(call.callId, !remoteMuted),
           ),
@@ -174,6 +175,7 @@ extension _CallStageControls on _MyHomePageState {
     required Color color,
     required VoidCallback? onPressed,
     bool emphasized = false,
+    Color? foregroundColor,
   }) {
     final button = SizedBox(
       width: 76,
@@ -185,6 +187,7 @@ extension _CallStageControls on _MyHomePageState {
               child: _AnimatedIconButton(
                 icon: icon,
                 color: color,
+                foregroundColor: foregroundColor,
                 onPressed: onPressed,
                 emphasized: emphasized,
               ),

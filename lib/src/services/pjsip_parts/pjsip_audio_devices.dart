@@ -655,6 +655,40 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _addLog(muted ? '🔇 麦克风已静音' : '🎙️ 麦克风已恢复');
   }
 
+  /// 只停止向指定通话发送本机麦克风，不改变设置页的全局静音状态。
+  void setCallMicrophoneMuted(int callId, bool muted) {
+    if (!_uiState.calls.containsKey(callId)) return;
+    final mutedCallIds = Set<int>.of(_uiState.microphoneMutedCallIds);
+    final changed = muted
+        ? mutedCallIds.add(callId)
+        : mutedCallIds.remove(callId);
+    if (!changed) return;
+
+    _uiState = _uiState.copyWith(microphoneMutedCallIds: mutedCallIds);
+    _applyAudioMuteState();
+    _addLog(
+      muted ? '🔇 当前通话麦克风已静音: call=$callId' : '🎙️ 当前通话麦克风已恢复: call=$callId',
+    );
+  }
+
+  /// 会议在 UI 中是一通逻辑通话，因此同时控制本机到所有会议成员的麦克风路径。
+  void setConferenceMicrophoneMuted(bool muted) {
+    if (_uiState.conferenceCallIds.isEmpty) return;
+    final mutedCallIds = Set<int>.of(_uiState.microphoneMutedCallIds);
+    var changed = false;
+    for (final callId in _uiState.conferenceCallIds) {
+      final callChanged = muted
+          ? mutedCallIds.add(callId)
+          : mutedCallIds.remove(callId);
+      changed = changed || callChanged;
+    }
+    if (!changed) return;
+
+    _uiState = _uiState.copyWith(microphoneMutedCallIds: mutedCallIds);
+    _applyAudioMuteState();
+    _addLog(muted ? '🔇 会议麦克风已静音' : '🎙️ 会议麦克风已恢复');
+  }
+
   /// 设置本地扬声器静音。
   ///
   /// 和麦克风静音一样，这里不会销毁播放设备，只是控制远端声音是否连接到本地声卡。
@@ -1869,6 +1903,10 @@ extension PjsipAudioDeviceOperations on PjsipService {
   bool _shouldRouteCallToLocalSpeaker(int callId) =>
       !_uiState.isSpeakerMuted && !_uiState.remoteMutedCallIds.contains(callId);
 
+  bool _shouldRouteMicrophoneToCall(int callId) =>
+      !_uiState.isMicrophoneMuted &&
+      !_uiState.microphoneMutedCallIds.contains(callId);
+
   /// 普通通话是否应连接本机声卡。
   ///
   /// 开启自动保持时只连接主通话；关闭时允许多路通话同时连接。
@@ -2493,7 +2531,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
       if (!_shouldUseLocalAudioForCall(callId)) continue;
 
-      if (!_uiState.isMicrophoneMuted) {
+      if (_shouldRouteMicrophoneToCall(callId)) {
         _bindings.pjsua_conf_connect(0, slot);
       }
       if (_shouldRouteCallToLocalSpeaker(callId)) {

@@ -25,11 +25,17 @@ extension _HomeHelpers on _MyHomePageState {
   }
 
   String _deviceLabelById(List<PjsipAudioDevice> devices, int? id) {
-    if (id == null) return '未选择';
+    if (id == null) return context.l10n.audioDeviceNotSelected;
     for (final device in devices) {
-      if (device.id == id) return device.name;
+      if (device.id == id) {
+        return AudioSettingsLocalizer.deviceName(
+          context.l10n,
+          id: device.id,
+          name: device.name,
+        );
+      }
     }
-    return '设备不可用';
+    return context.l10n.audioDeviceUnavailable;
   }
 
   String _displayRemote(String remoteUri) {

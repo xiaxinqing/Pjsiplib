@@ -729,7 +729,14 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
           .map(
             (device) => DropdownMenuItem<int>(
               value: device.id,
-              child: Text(device.name, overflow: TextOverflow.ellipsis),
+              child: Text(
+                AudioSettingsLocalizer.deviceName(
+                  context.l10n,
+                  id: device.id,
+                  name: device.name,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           )
           .toList(),

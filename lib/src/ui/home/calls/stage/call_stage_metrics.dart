@@ -14,6 +14,7 @@ extension _CallStageMetrics on _MyHomePageState {
 
   Widget _buildCallStatePanel(CallInfo call, Color statusColor) {
     final connected = call.isConnected;
+    final held = call.isOnHold || call.isRemoteOnHold;
     final pendingLabel = _callOperationLabel(call.callId);
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -27,7 +28,7 @@ extension _CallStageMetrics on _MyHomePageState {
             Icon(
               connected ? AppIcons.activity : AppIcons.info,
               size: _iconLg,
-              color: statusColor,
+              color: held ? _textSecondary : statusColor,
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -63,14 +64,6 @@ extension _CallStageMetrics on _MyHomePageState {
                 ],
               ),
             ),
-            if (call.isOnHold || call.isRemoteOnHold)
-              _buildCallMetaStrip(
-                icon: AppIcons.pause,
-                label: call.isRemoteOnHold
-                    ? context.l10n.activeCallMediaRemoteHold
-                    : context.l10n.activeCallMediaLocalHold,
-                color: Colors.orange.shade700,
-              ),
           ],
         ),
       ),

@@ -1711,6 +1711,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get audioOutputDevice => '输出设备';
 
   @override
+  String get audioSystemDefaultInput => '跟随系统输入';
+
+  @override
+  String get audioSystemDefaultOutput => '跟随系统输出';
+
+  @override
+  String get audioDeviceNotSelected => '未选择';
+
+  @override
+  String get audioDeviceUnavailable => '设备不可用';
+
+  @override
   String audioRecordingRemaining(int seconds) {
     return '录音中 $seconds 秒';
   }
@@ -3576,6 +3588,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get audioOutputDevice => '輸出裝置';
+
+  @override
+  String get audioSystemDefaultInput => '跟隨系統輸入';
+
+  @override
+  String get audioSystemDefaultOutput => '跟隨系統輸出';
+
+  @override
+  String get audioDeviceNotSelected => '未選擇';
+
+  @override
+  String get audioDeviceUnavailable => '裝置不可用';
 
   @override
   String audioRecordingRemaining(int seconds) {

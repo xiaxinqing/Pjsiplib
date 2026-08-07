@@ -39,6 +39,30 @@ void main() {
     expect(state.conferenceInterruptionCallId, 3);
   });
 
+  test('单路麦克风静音不影响其他通话或全局设置', () {
+    final state = PjsipUIState(logs: [], microphoneMutedCallIds: const {1});
+
+    expect(state.isMicrophoneMuted, isFalse);
+    expect(state.isMicrophoneMutedForCall(1), isTrue);
+    expect(state.isMicrophoneMutedForCall(2), isFalse);
+  });
+
+  test('会议麦克风状态要求全部成员静音且服从全局静音', () {
+    final partiallyMuted = PjsipUIState(
+      logs: [],
+      conferenceCallIds: const {1, 2},
+      microphoneMutedCallIds: const {1},
+    );
+    final fullyMuted = partiallyMuted.copyWith(
+      microphoneMutedCallIds: const {1, 2},
+    );
+    final globallyMuted = partiallyMuted.copyWith(isMicrophoneMuted: true);
+
+    expect(partiallyMuted.isConferenceMicrophoneMuted, isFalse);
+    expect(fullyMuted.isConferenceMicrophoneMuted, isTrue);
+    expect(globallyMuted.isConferenceMicrophoneMuted, isTrue);
+  });
+
   test('断开连接时账号状态应回到未登录', () {
     final disconnected = PjsipUIState(
       logs: [],

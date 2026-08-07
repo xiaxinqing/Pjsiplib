@@ -394,6 +394,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       selectedCaptureDeviceId: null,
       selectedPlaybackDeviceId: null,
       isMicrophoneMuted: false,
+      microphoneMutedCallIds: const {},
       isSpeakerMuted: false,
       remoteMutedCallIds: const {},
       microphoneLevel: 0,

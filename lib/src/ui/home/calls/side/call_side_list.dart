@@ -21,6 +21,14 @@ extension _CallSideList on _MyHomePageState {
     final contact = contactMatch?.contact;
     final identity = _callDisplayIdentity(call, contactMatch);
     final remoteMuted = uiState.remoteMutedCallIds.contains(call.callId);
+    final microphoneMuted = uiState.isMicrophoneMutedForCall(call.callId);
+    final held = call.isOnHold || call.isRemoteOnHold;
+    final detailColor = held
+        ? _textPrimary
+        : !visualState.emphasizeDetail
+        ? _textPrimary
+        : statusColor;
+    final detailLabel = held ? call.durationLabel : visualState.detail;
     final canMergeWithActive =
         !uiState.hasConference &&
         call.isConnected &&
@@ -57,8 +65,8 @@ extension _CallSideList on _MyHomePageState {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: statusColor.withValues(alpha: 0.12),
-                    foregroundColor: statusColor,
+                    backgroundColor: _brandGreen.withValues(alpha: 0.12),
+                    foregroundColor: _brandGreen,
                     child: Text(
                       contact?.initials ?? _avatarText(call.remoteUri),
                     ),
@@ -87,16 +95,14 @@ extension _CallSideList on _MyHomePageState {
                             Icon(
                               visualState.icon,
                               size: _iconXs,
-                              color: statusColor,
+                              color: held ? _textSecondary : statusColor,
                             ),
                             const SizedBox(width: 5),
                             Text(
-                              visualState.detail,
+                              detailLabel,
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: !visualState.emphasizeDetail
-                                        ? _textPrimary
-                                        : statusColor,
+                                    color: detailColor,
                                     fontWeight: FontWeight.w700,
                                     fontFeatures: const [
                                       FontFeature.tabularFigures(),
@@ -136,7 +142,7 @@ extension _CallSideList on _MyHomePageState {
                         if (remoteMuted)
                           _buildCallTinyBadge(
                             context.l10n.activeCallRemoteAudioMuted,
-                            Colors.orange.shade700,
+                            _textSecondary,
                           ),
                       ],
                     ),
@@ -156,7 +162,10 @@ extension _CallSideList on _MyHomePageState {
               ],
               if (_shouldShowCallAudioMeters(call, uiState)) ...[
                 const SizedBox(height: 10),
-                _buildCompactCallAudioMeters(uiState),
+                _buildCompactCallAudioMeters(
+                  uiState,
+                  microphoneMuted: microphoneMuted,
+                ),
               ],
               if (call.isIncoming && !call.isConnected) ...[
                 const SizedBox(height: 10),
@@ -224,7 +233,7 @@ extension _CallSideList on _MyHomePageState {
                           ? context.l10n.activeCallRestoreRemoteAudio
                           : context.l10n.activeCallMuteRemoteAudio,
                       active: remoteMuted,
-                      activeColor: Colors.orange.shade700,
+                      activeColor: _textSecondary,
                       onPressed: () => service.setRemoteAudioMuted(
                         call.callId,
                         !remoteMuted,
@@ -317,7 +326,7 @@ extension _CallSideList on _MyHomePageState {
             ),
           ),
         ],
-        if (call.isConnected) ...[
+        if (call.isConnected && !call.isOnHold && !call.isRemoteOnHold) ...[
           if (account != null) const SizedBox(width: 10),
           Tooltip(
             message: quality.tooltip,

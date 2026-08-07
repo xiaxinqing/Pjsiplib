@@ -85,6 +85,9 @@ class PjsipUIState {
   /// 本地麦克风静音状态。
   final bool isMicrophoneMuted;
 
+  /// 只停止向指定通话发送本机麦克风的 callId 集合。
+  final Set<int> microphoneMutedCallIds;
+
   /// 本地扬声器静音状态。
   final bool isSpeakerMuted;
 
@@ -177,6 +180,7 @@ class PjsipUIState {
     this.selectedCaptureDeviceId,
     this.selectedPlaybackDeviceId,
     this.isMicrophoneMuted = false,
+    this.microphoneMutedCallIds = const {},
     this.isSpeakerMuted = false,
     this.remoteMutedCallIds = const {},
     this.microphoneLevel = 0,
@@ -221,6 +225,7 @@ class PjsipUIState {
     Object? selectedCaptureDeviceId = _unset,
     Object? selectedPlaybackDeviceId = _unset,
     bool? isMicrophoneMuted,
+    Set<int>? microphoneMutedCallIds,
     bool? isSpeakerMuted,
     Set<int>? remoteMutedCallIds,
     int? microphoneLevel,
@@ -276,6 +281,8 @@ class PjsipUIState {
           ? this.selectedPlaybackDeviceId
           : selectedPlaybackDeviceId as int?,
       isMicrophoneMuted: isMicrophoneMuted ?? this.isMicrophoneMuted,
+      microphoneMutedCallIds:
+          microphoneMutedCallIds ?? this.microphoneMutedCallIds,
       isSpeakerMuted: isSpeakerMuted ?? this.isSpeakerMuted,
       remoteMutedCallIds: remoteMutedCallIds ?? this.remoteMutedCallIds,
       microphoneLevel: microphoneLevel ?? this.microphoneLevel,
@@ -326,6 +333,15 @@ class PjsipUIState {
   /// 是否存在需要用户注意的音频设备问题。
   bool get hasAudioDeviceIssue =>
       audioDeviceIssueMessage?.trim().isNotEmpty == true;
+
+  /// 设置页的全局静音优先于单路通话静音。
+  bool isMicrophoneMutedForCall(int callId) =>
+      isMicrophoneMuted || microphoneMutedCallIds.contains(callId);
+
+  bool get isConferenceMicrophoneMuted =>
+      isMicrophoneMuted ||
+      (conferenceCallIds.isNotEmpty &&
+          conferenceCallIds.every(microphoneMutedCallIds.contains));
 
   Iterable<SipAccountInfo> get registeredAccounts =>
       accounts.values.where((account) => account.isRegistered);

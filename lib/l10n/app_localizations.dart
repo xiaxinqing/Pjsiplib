@@ -3260,6 +3260,30 @@ abstract class AppLocalizations {
   /// **'输出设备'**
   String get audioOutputDevice;
 
+  /// No description provided for @audioSystemDefaultInput.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统输入'**
+  String get audioSystemDefaultInput;
+
+  /// No description provided for @audioSystemDefaultOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统输出'**
+  String get audioSystemDefaultOutput;
+
+  /// No description provided for @audioDeviceNotSelected.
+  ///
+  /// In zh, this message translates to:
+  /// **'未选择'**
+  String get audioDeviceNotSelected;
+
+  /// No description provided for @audioDeviceUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备不可用'**
+  String get audioDeviceUnavailable;
+
   /// No description provided for @audioRecordingRemaining.
   ///
   /// In zh, this message translates to:

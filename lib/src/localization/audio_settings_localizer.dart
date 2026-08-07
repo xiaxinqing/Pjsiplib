@@ -20,6 +20,20 @@ abstract final class AudioSettingsLocalizer {
     return context == null ? null : AppLocalizations.of(context);
   }
 
+  /// 系统默认输入/输出是应用补入的虚拟设备，需要按当前语言显示。
+  /// 真实硬件名称来自操作系统，保持原样，避免错误翻译用户自定义设备名。
+  static String deviceName(
+    AppLocalizations l10n, {
+    required int id,
+    required String name,
+  }) {
+    return switch (id) {
+      -1 => l10n.audioSystemDefaultInput,
+      -2 => l10n.audioSystemDefaultOutput,
+      _ => name,
+    };
+  }
+
   static String deviceIssue(
     AppLocalizations l10n,
     int? status, {

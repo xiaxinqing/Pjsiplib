@@ -761,12 +761,14 @@ class _AnimatedIconButton extends StatelessWidget {
   const _AnimatedIconButton({
     required this.icon,
     required this.color,
+    this.foregroundColor,
     required this.onPressed,
     required this.emphasized,
   });
 
   final IconData icon;
   final Color color;
+  final Color? foregroundColor;
   final VoidCallback? onPressed;
   final bool emphasized;
 
@@ -791,9 +793,9 @@ class _AnimatedIconButton extends StatelessWidget {
         iconSize: 24,
         style: IconButton.styleFrom(
           backgroundColor: color,
-          foregroundColor: color.computeLuminance() > 0.45
-              ? Colors.black87
-              : Colors.white,
+          foregroundColor:
+              foregroundColor ??
+              (color.computeLuminance() > 0.45 ? Colors.black87 : Colors.white),
           disabledBackgroundColor: Theme.of(context).disabledColor,
           minimumSize: const Size.square(54),
           fixedSize: const Size.square(54),

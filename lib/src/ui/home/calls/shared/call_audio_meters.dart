@@ -16,19 +16,18 @@ extension _HomeCallAudioMeters on _MyHomePageState {
     PjsipUIState uiState,
     PjsipService service, {
     required bool compact,
+    required bool microphoneMuted,
   }) {
     return Column(
       children: [
         _buildAudioMeterRow(
-          icon: uiState.isMicrophoneMuted
-              ? AppIcons.microphoneOff
-              : AppIcons.microphone,
+          icon: microphoneMuted ? AppIcons.microphoneOff : AppIcons.microphone,
           label: context.l10n.activeCallMyAudio,
           value: _audioMeterValue(
             uiState.microphoneLevel,
-            muted: uiState.isMicrophoneMuted,
+            muted: microphoneMuted,
           ),
-          muted: uiState.isMicrophoneMuted,
+          muted: microphoneMuted,
           color: _callGreen,
           volume: uiState.microphoneVolume,
           onVolumeChanged: service.setMicrophoneVolume,
@@ -50,19 +49,22 @@ extension _HomeCallAudioMeters on _MyHomePageState {
     );
   }
 
-  Widget _buildCompactCallAudioMeters(PjsipUIState uiState) {
+  Widget _buildCompactCallAudioMeters(
+    PjsipUIState uiState, {
+    required bool microphoneMuted,
+  }) {
     return Row(
       children: [
         Expanded(
           child: _buildTinyAudioMeter(
-            icon: uiState.isMicrophoneMuted
+            icon: microphoneMuted
                 ? AppIcons.microphoneOff
                 : AppIcons.microphone,
             value: _audioMeterValue(
               uiState.microphoneLevel,
-              muted: uiState.isMicrophoneMuted,
+              muted: microphoneMuted,
             ),
-            muted: uiState.isMicrophoneMuted,
+            muted: microphoneMuted,
             color: _callGreen,
             tooltip: context.l10n.activeCallMyAudio,
           ),

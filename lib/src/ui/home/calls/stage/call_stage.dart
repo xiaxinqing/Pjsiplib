@@ -114,6 +114,11 @@ extension _HomeCallStage on _MyHomePageState {
                             child: _buildCallAudioMeters(
                               uiState,
                               service,
+                              microphoneMuted: showConferenceStage
+                                  ? uiState.isConferenceMicrophoneMuted
+                                  : uiState.isMicrophoneMutedForCall(
+                                      primary.callId,
+                                    ),
                               compact: compact,
                             ),
                           ),
@@ -493,23 +498,22 @@ extension _HomeCallStage on _MyHomePageState {
   ) {
     final hasPendingOperation = _hasPendingCallOperation(primary.callId);
     final isCoolingDown = _isConferenceActionCoolingDown;
+    final microphoneMuted = uiState.isConferenceMicrophoneMuted;
     final controls = Wrap(
       alignment: WrapAlignment.center,
       spacing: 14,
       runSpacing: 14,
       children: [
         _roundCallButton(
-          icon: uiState.isMicrophoneMuted
-              ? AppIcons.microphoneOff
-              : AppIcons.microphone,
-          label: uiState.isMicrophoneMuted
+          icon: microphoneMuted ? AppIcons.microphoneOff : AppIcons.microphone,
+          label: microphoneMuted
               ? context.l10n.activeCallUnmute
               : context.l10n.activeCallMute,
-          color: uiState.isMicrophoneMuted
-              ? Colors.orange.shade700
-              : Theme.of(context).colorScheme.surfaceContainerHigh,
-          onPressed: () =>
-              service.setMicrophoneMuted(!uiState.isMicrophoneMuted),
+          color: Theme.of(context).colorScheme.surfaceContainerHigh,
+          foregroundColor: microphoneMuted ? Colors.orange.shade700 : null,
+          onPressed: uiState.isMicrophoneMuted
+              ? null
+              : () => service.setConferenceMicrophoneMuted(!microphoneMuted),
         ),
         _roundCallButton(
           icon: AppIcons.dialpad,

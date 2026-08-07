@@ -592,9 +592,15 @@ extension PjsipCallOperations on PjsipService {
     }
 
     final members = <int>{activeId!, callId};
+    final previousMicrophoneMutedCallIds = _uiState.microphoneMutedCallIds;
+    final microphoneMutedCallIds = Set<int>.of(previousMicrophoneMutedCallIds);
+    if (members.any(microphoneMutedCallIds.contains)) {
+      microphoneMutedCallIds.addAll(members);
+    }
     // 先标记为会议成员，确保目标通话恢复媒体时的回调不会被单路模式断开。
     _uiState = _uiState.copyWith(
       conferenceCallIds: members,
+      microphoneMutedCallIds: microphoneMutedCallIds,
       isConferencePaused: false,
       conferenceInterruptionCallId: null,
       activeCallId: null,
@@ -606,6 +612,7 @@ extension PjsipCallOperations on PjsipService {
       if (status != 0) {
         _uiState = _uiState.copyWith(
           conferenceCallIds: const {},
+          microphoneMutedCallIds: previousMicrophoneMutedCallIds,
           isConferencePaused: false,
           conferenceInterruptionCallId: null,
           activeCallId: activeId,
@@ -868,7 +875,7 @@ extension PjsipCallOperations on PjsipService {
     if (_shouldRouteCallToLocalSpeaker(callId)) {
       _bindings.pjsua_conf_connect(slot, 0);
     }
-    if (!_uiState.isMicrophoneMuted) {
+    if (_shouldRouteMicrophoneToCall(callId)) {
       _bindings.pjsua_conf_connect(0, slot);
     }
     _mediaConnectedCalls.add(callId);
@@ -914,7 +921,7 @@ extension PjsipCallOperations on PjsipService {
     for (final entry in slots.entries) {
       final callId = entry.key;
       final slot = entry.value;
-      if (!_uiState.isMicrophoneMuted) {
+      if (_shouldRouteMicrophoneToCall(callId)) {
         _bindings.pjsua_conf_connect(0, slot); // 本机麦克风 -> 远端
       }
       if (_shouldRouteCallToLocalSpeaker(callId)) {
@@ -1004,6 +1011,8 @@ extension PjsipCallOperations on PjsipService {
     }
     final calls = Map<int, CallInfo>.of(_uiState.calls)..remove(callId);
     _mediaConnectedCalls.remove(callId);
+    final microphoneMutedCallIds = Set<int>.of(_uiState.microphoneMutedCallIds)
+      ..remove(callId);
     final remoteMutedCallIds = Set<int>.of(_uiState.remoteMutedCallIds)
       ..remove(callId);
     final wasConferencePaused = _uiState.isConferencePaused;
@@ -1029,6 +1038,7 @@ extension PjsipCallOperations on PjsipService {
         : currentActiveId;
     _uiState = _uiState.copyWith(
       calls: calls,
+      microphoneMutedCallIds: microphoneMutedCallIds,
       remoteMutedCallIds: remoteMutedCallIds,
       conferenceCallIds: keepConference ? conferenceCallIds : const {},
       isConferencePaused: keepConference && wasConferencePaused,

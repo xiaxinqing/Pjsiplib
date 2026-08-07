@@ -1811,6 +1811,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get audioOutputDevice => 'Output device';
 
   @override
+  String get audioSystemDefaultInput => 'System default input';
+
+  @override
+  String get audioSystemDefaultOutput => 'System default output';
+
+  @override
+  String get audioDeviceNotSelected => 'Not selected';
+
+  @override
+  String get audioDeviceUnavailable => 'Device unavailable';
+
+  @override
   String audioRecordingRemaining(int seconds) {
     return 'Recording · ${seconds}s';
   }

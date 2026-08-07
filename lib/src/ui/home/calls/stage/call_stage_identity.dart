@@ -31,12 +31,13 @@ extension _CallStageIdentity on _MyHomePageState {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             _buildCallStatusPill(call),
-            _buildCallMetaStrip(
-              icon: quality.icon,
-              label: quality.compactLabel,
-              color: quality.color,
-              tooltip: quality.tooltip,
-            ),
+            if (!call.isOnHold && !call.isRemoteOnHold)
+              _buildCallMetaStrip(
+                icon: quality.icon,
+                label: quality.compactLabel,
+                color: quality.color,
+                tooltip: quality.tooltip,
+              ),
             if (contact?.isFavorite == true)
               _buildCallIconBadge(
                 icon: AppIcons.favorite,
