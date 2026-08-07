@@ -17,21 +17,24 @@ enum AppLocalePreference {
 extension AppLocalePreferenceValue on AppLocalePreference {
   Locale? get locale => switch (this) {
     AppLocalePreference.system => null,
-    AppLocalePreference.simplifiedChinese => const Locale('zh', 'CN'),
-    AppLocalePreference.traditionalChinese => const Locale('zh', 'TW'),
+    AppLocalePreference.simplifiedChinese => const Locale('zh'),
+    AppLocalePreference.traditionalChinese => const Locale.fromSubtags(
+      languageCode: 'zh',
+      scriptCode: 'Hant',
+    ),
     AppLocalePreference.english => const Locale('en'),
   };
 
   String get storageValue => switch (this) {
     AppLocalePreference.system => 'system',
-    AppLocalePreference.simplifiedChinese => 'zh_CN',
-    AppLocalePreference.traditionalChinese => 'zh_TW',
+    AppLocalePreference.simplifiedChinese => 'zh',
+    AppLocalePreference.traditionalChinese => 'zh_Hant',
     AppLocalePreference.english => 'en',
   };
 
   static AppLocalePreference fromStorage(String? value) => switch (value) {
-    'zh_CN' => AppLocalePreference.simplifiedChinese,
-    'zh_TW' => AppLocalePreference.traditionalChinese,
+    'zh' || 'zh_Hans' || 'zh_CN' => AppLocalePreference.simplifiedChinese,
+    'zh_Hant' || 'zh_TW' => AppLocalePreference.traditionalChinese,
     'en' => AppLocalePreference.english,
     _ => AppLocalePreference.system,
   };
@@ -85,7 +88,7 @@ final localeControllerProvider =
 /// 将系统 Locale 收敛到应用实际支持的语言。
 ///
 /// Flutter 默认只按语言代码匹配时，香港、澳门等繁体中文系统可能命中
-/// 简体中文资源，因此这里显式识别繁体脚本和常见繁体地区；系统语言不在
+/// 简体中文资源，因此这里显式识别繁体书写体系和常见繁体地区；系统语言不在
 /// 支持列表中，或系统未返回语言时，统一回退到英文。
 Locale resolveAppLocale(
   List<Locale>? preferredLocales,
@@ -100,8 +103,8 @@ Locale resolveAppLocale(
         preferred?.scriptCode == 'Hant' ||
         const {'TW', 'HK', 'MO'}.contains(preferred?.countryCode);
     resolvedLocale = usesTraditionalChinese
-        ? const Locale('zh', 'TW')
-        : const Locale('zh', 'CN');
+        ? const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant')
+        : const Locale('zh');
   } else if (preferred?.languageCode == 'en') {
     resolvedLocale = const Locale('en');
   } else {

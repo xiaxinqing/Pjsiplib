@@ -12,16 +12,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'VPhone';
 
   @override
-  String get navDialpad => 'Dialpad';
+  String get navDialpad => 'Dial';
 
   @override
-  String get navCurrentCalls => 'Current calls';
+  String get navCurrentCalls => 'Calls';
 
   @override
   String get navContacts => 'Contacts';
 
   @override
-  String get navCallHistory => 'Call history';
+  String get navCallHistory => 'History';
 
   @override
   String get settings => 'Settings';
@@ -33,27 +33,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsGeneral => 'General';
 
   @override
-  String get settingsGeneralDescription =>
-      'Configure language and app preferences';
+  String get settingsGeneralDescription => 'Language and app preferences';
 
   @override
-  String get settingsLanguageSection => 'Language & region';
+  String get settingsLanguageSection => 'Language';
 
   @override
   String get settingsDisplayLanguage => 'Display language';
 
   @override
   String get settingsDisplayLanguageDescription =>
-      'Changes apply immediately and are remembered for the next launch';
+      'Changes apply now and are saved';
 
   @override
-  String get languageFollowSystem => 'Use system language';
+  String get languageFollowSystem => 'Follow system';
 
   @override
   String get languageSimplifiedChinese => '简体中文';
 
   @override
-  String get languageTraditionalChinese => '繁體中文';
+  String get languageTraditionalChinese => '繁體中文（香港）';
 
   @override
   String get languageEnglish => 'English';
@@ -65,18 +64,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLaunchAtLogin => 'Launch at login';
 
   @override
-  String get settingsLaunchAtLoginDescription =>
-      'Start VPhone automatically after signing in';
+  String get settingsLaunchAtLoginDescription => 'Start VPhone at sign-in';
 
   @override
   String get settingsStartMinimized => 'Start minimized';
 
   @override
   String get settingsStartMinimizedDescription =>
-      'Keep the phone service available in the background after launch';
+      'Run in the background and keep phone service online';
 
   @override
-  String get settingsNotificationsSection => 'Calls & alerts';
+  String get settingsNotificationsSection => 'Calls & notifications';
 
   @override
   String get settingsShowWindowForIncomingCall =>
@@ -84,14 +82,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShowWindowForIncomingCallDescription =>
-      'Open the current calls view when a new call arrives';
+      'Open Calls when a call arrives';
 
   @override
   String get settingsAppBadge => 'App badge';
 
   @override
   String get settingsAppBadgeDescription =>
-      'Show pending calls and unread missed-call counts';
+      'Show active incoming calls and unread missed calls';
 
   @override
   String get settingsComingSoon => 'Coming soon';
@@ -101,39 +99,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAccountDescription =>
-      'Manage SIP lines, the default outgoing line, and registration status';
+      'Manage SIP lines, default outbound line, and registration';
 
   @override
   String get settingsAudio => 'Audio';
 
   @override
-  String get settingsAudioDescription =>
-      'Choose input and output devices and test call audio';
+  String get settingsAudioDescription => 'Select devices and test call audio';
 
   @override
   String get settingsCalls => 'Calls';
 
   @override
   String get settingsCallsDescription =>
-      'Configure call behavior, shortcuts, and conference status';
+      'Call behavior, shortcuts, and conferencing';
 
   @override
   String get settingsDiagnostics => 'Diagnostics';
 
   @override
   String get settingsDiagnosticsDescription =>
-      'Review device, registration, and call event logs';
+      'Device, registration, and call logs';
 
   @override
   String get settingsAbout => 'About';
 
   @override
-  String get settingsAboutDescription =>
-      'Version, application identity, and support information';
+  String get settingsAboutDescription => 'Version and support information';
 
   @override
-  String get phoneServiceStarted => 'Phone service is running';
+  String get phoneServiceStarted => 'Phone service running';
 
   @override
-  String get phoneServiceStopped => 'Phone service is stopped';
+  String get phoneServiceStopped => 'Phone service stopped';
 }

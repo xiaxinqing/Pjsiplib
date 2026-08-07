@@ -47,6 +47,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   var _advancedExpanded = false;
 
   bool get _isEditing => widget.account != null;
+
   bool get _usesUdpWithIce =>
       _selectedTransport == SipTransport.udp && _iceEnabled;
 
@@ -200,7 +201,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         textInputAction: TextInputAction.next,
                         decoration: const InputDecoration(
                           labelText: '线路名称（可选）',
-                          helperText: '仅用于本地显示，例如“客服一线”或“默认外呼”',
+                          helperText: '仅用于本地显示，例如“客服一线”或“售后专线”',
                           prefixIcon: Icon(AppIcons.line),
                         ),
                       ),

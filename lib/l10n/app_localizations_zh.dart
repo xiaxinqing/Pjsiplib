@@ -33,7 +33,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsGeneral => '通用';
 
   @override
-  String get settingsGeneralDescription => '配置显示语言和应用偏好';
+  String get settingsGeneralDescription => '设置语言和应用偏好';
 
   @override
   String get settingsLanguageSection => '语言与地区';
@@ -42,7 +42,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDisplayLanguage => '显示语言';
 
   @override
-  String get settingsDisplayLanguageDescription => '更改后立即生效，并在下次启动时继续使用';
+  String get settingsDisplayLanguageDescription => '更改立即生效，并在下次启动时保留';
 
   @override
   String get languageFollowSystem => '跟随系统';
@@ -51,7 +51,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get languageSimplifiedChinese => '简体中文';
 
   @override
-  String get languageTraditionalChinese => '繁體中文';
+  String get languageTraditionalChinese => '繁體中文（香港）';
 
   @override
   String get languageEnglish => 'English';
@@ -69,188 +69,66 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsStartMinimized => '启动后最小化';
 
   @override
-  String get settingsStartMinimizedDescription => '启动后在后台保持电话服务在线';
+  String get settingsStartMinimizedDescription => '在后台启动，并保持电话服务在线';
 
   @override
-  String get settingsNotificationsSection => '来电与提醒';
-
-  @override
-  String get settingsShowWindowForIncomingCall => '来电时显示主窗口';
-
-  @override
-  String get settingsShowWindowForIncomingCallDescription => '收到新来电时切换到当前通话页面';
-
-  @override
-  String get settingsAppBadge => '应用角标';
-
-  @override
-  String get settingsAppBadgeDescription => '显示未处理来电和未读未接来电数量';
-
-  @override
-  String get settingsComingSoon => '暂未开放';
-
-  @override
-  String get settingsAccount => '账号';
-
-  @override
-  String get settingsAccountDescription => '管理 SIP 线路、默认外呼和注册状态';
-
-  @override
-  String get settingsAudio => '音频';
-
-  @override
-  String get settingsAudioDescription => '选择输入输出设备，并测试通话音频';
-
-  @override
-  String get settingsCalls => '通话';
-
-  @override
-  String get settingsCallsDescription => '配置通话行为、快捷操作和会议状态';
-
-  @override
-  String get settingsDiagnostics => '诊断';
-
-  @override
-  String get settingsDiagnosticsDescription => '查看设备、注册和通话事件日志';
-
-  @override
-  String get settingsAbout => '关于';
-
-  @override
-  String get settingsAboutDescription => '版本信息、应用标识和支持信息';
-
-  @override
-  String get phoneServiceStarted => '电话服务已启动';
-
-  @override
-  String get phoneServiceStopped => '电话服务未启动';
-}
-
-/// The translations for Chinese, as used in China (`zh_CN`).
-class AppLocalizationsZhCn extends AppLocalizationsZh {
-  AppLocalizationsZhCn() : super('zh_CN');
-
-  @override
-  String get appTitle => 'VPhone';
-
-  @override
-  String get navDialpad => '拨号';
-
-  @override
-  String get navCurrentCalls => '当前通话';
-
-  @override
-  String get navContacts => '联系人';
-
-  @override
-  String get navCallHistory => '通话记录';
-
-  @override
-  String get settings => '设置';
-
-  @override
-  String get settingsClose => '关闭';
-
-  @override
-  String get settingsGeneral => '通用';
-
-  @override
-  String get settingsGeneralDescription => '配置显示语言和应用偏好';
-
-  @override
-  String get settingsLanguageSection => '语言与地区';
-
-  @override
-  String get settingsDisplayLanguage => '显示语言';
-
-  @override
-  String get settingsDisplayLanguageDescription => '更改后立即生效，并在下次启动时继续使用';
-
-  @override
-  String get languageFollowSystem => '跟随系统';
-
-  @override
-  String get languageSimplifiedChinese => '简体中文';
-
-  @override
-  String get languageTraditionalChinese => '繁體中文';
-
-  @override
-  String get languageEnglish => 'English';
-
-  @override
-  String get settingsStartupSection => '启动与窗口';
-
-  @override
-  String get settingsLaunchAtLogin => '开机自动启动';
-
-  @override
-  String get settingsLaunchAtLoginDescription => '登录系统后自动启动 VPhone';
-
-  @override
-  String get settingsStartMinimized => '启动后最小化';
-
-  @override
-  String get settingsStartMinimizedDescription => '启动后在后台保持电话服务在线';
-
-  @override
-  String get settingsNotificationsSection => '来电与提醒';
+  String get settingsNotificationsSection => '来电与通知';
 
   @override
   String get settingsShowWindowForIncomingCall => '来电时显示主窗口';
 
   @override
-  String get settingsShowWindowForIncomingCallDescription => '收到新来电时切换到当前通话页面';
+  String get settingsShowWindowForIncomingCallDescription => '收到来电时打开当前通话页面';
 
   @override
   String get settingsAppBadge => '应用角标';
 
   @override
-  String get settingsAppBadgeDescription => '显示未处理来电和未读未接来电数量';
+  String get settingsAppBadgeDescription => '显示正在来电和未读未接来电数量';
 
   @override
-  String get settingsComingSoon => '暂未开放';
+  String get settingsComingSoon => '即将推出';
 
   @override
   String get settingsAccount => '账号';
 
   @override
-  String get settingsAccountDescription => '管理 SIP 线路、默认外呼和注册状态';
+  String get settingsAccountDescription => '管理 SIP 线路、默认外呼线路和注册状态';
 
   @override
   String get settingsAudio => '音频';
 
   @override
-  String get settingsAudioDescription => '选择输入输出设备，并测试通话音频';
+  String get settingsAudioDescription => '选择输入和输出设备，测试通话音频';
 
   @override
   String get settingsCalls => '通话';
 
   @override
-  String get settingsCallsDescription => '配置通话行为、快捷操作和会议状态';
+  String get settingsCallsDescription => '设置通话行为、快捷操作和会议功能';
 
   @override
   String get settingsDiagnostics => '诊断';
 
   @override
-  String get settingsDiagnosticsDescription => '查看设备、注册和通话事件日志';
+  String get settingsDiagnosticsDescription => '查看设备、注册和通话日志';
 
   @override
   String get settingsAbout => '关于';
 
   @override
-  String get settingsAboutDescription => '版本信息、应用标识和支持信息';
+  String get settingsAboutDescription => '查看版本、应用标识和支持信息';
 
   @override
-  String get phoneServiceStarted => '电话服务已启动';
+  String get phoneServiceStarted => '电话服务运行中';
 
   @override
   String get phoneServiceStopped => '电话服务未启动';
 }
 
-/// The translations for Chinese, as used in Taiwan (`zh_TW`).
-class AppLocalizationsZhTw extends AppLocalizationsZh {
-  AppLocalizationsZhTw() : super('zh_TW');
+/// The translations for Chinese, using the Han script (`zh_Hant`).
+class AppLocalizationsZhHant extends AppLocalizationsZh {
+  AppLocalizationsZhHant() : super('zh_Hant');
 
   @override
   String get appTitle => 'VPhone';
@@ -277,16 +155,16 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get settingsGeneral => '一般';
 
   @override
-  String get settingsGeneralDescription => '設定顯示語言和應用程式偏好';
+  String get settingsGeneralDescription => '設定語言及應用程式偏好';
 
   @override
-  String get settingsLanguageSection => '語言與地區';
+  String get settingsLanguageSection => '語言及地區';
 
   @override
   String get settingsDisplayLanguage => '顯示語言';
 
   @override
-  String get settingsDisplayLanguageDescription => '變更後立即生效，並在下次啟動時繼續使用';
+  String get settingsDisplayLanguageDescription => '變更會即時生效，並於下次啟動時沿用';
 
   @override
   String get languageFollowSystem => '跟隨系統';
@@ -295,13 +173,13 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get languageSimplifiedChinese => '简体中文';
 
   @override
-  String get languageTraditionalChinese => '繁體中文';
+  String get languageTraditionalChinese => '繁體中文（香港）';
 
   @override
   String get languageEnglish => 'English';
 
   @override
-  String get settingsStartupSection => '啟動與視窗';
+  String get settingsStartupSection => '啟動及視窗';
 
   @override
   String get settingsLaunchAtLogin => '登入時自動啟動';
@@ -310,61 +188,61 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
   String get settingsLaunchAtLoginDescription => '登入系統後自動啟動 VPhone';
 
   @override
-  String get settingsStartMinimized => '啟動後最小化';
+  String get settingsStartMinimized => '啟動後縮至最小';
 
   @override
-  String get settingsStartMinimizedDescription => '啟動後在背景保持電話服務上線';
+  String get settingsStartMinimizedDescription => '在背景啟動，並保持電話服務連線';
 
   @override
-  String get settingsNotificationsSection => '來電與提醒';
+  String get settingsNotificationsSection => '來電及通知';
 
   @override
   String get settingsShowWindowForIncomingCall => '來電時顯示主視窗';
 
   @override
-  String get settingsShowWindowForIncomingCallDescription => '收到新來電時切換到目前通話頁面';
+  String get settingsShowWindowForIncomingCallDescription => '收到來電時開啟目前通話頁面';
 
   @override
-  String get settingsAppBadge => '應用程式標記';
+  String get settingsAppBadge => 'App 圖示標記';
 
   @override
-  String get settingsAppBadgeDescription => '顯示未處理來電和未讀未接來電數量';
+  String get settingsAppBadgeDescription => '顯示正在來電及未讀的未接來電數目';
 
   @override
-  String get settingsComingSoon => '尚未開放';
+  String get settingsComingSoon => '即將推出';
 
   @override
-  String get settingsAccount => '帳號';
+  String get settingsAccount => '帳戶';
 
   @override
-  String get settingsAccountDescription => '管理 SIP 線路、預設外撥和註冊狀態';
+  String get settingsAccountDescription => '管理 SIP 線路、預設外撥線路及註冊狀態';
 
   @override
   String get settingsAudio => '音訊';
 
   @override
-  String get settingsAudioDescription => '選擇輸入輸出裝置，並測試通話音訊';
+  String get settingsAudioDescription => '選擇輸入及輸出裝置，並測試通話音訊';
 
   @override
   String get settingsCalls => '通話';
 
   @override
-  String get settingsCallsDescription => '設定通話行為、快速操作和會議狀態';
+  String get settingsCallsDescription => '設定通話行為、快速操作及會議功能';
 
   @override
   String get settingsDiagnostics => '診斷';
 
   @override
-  String get settingsDiagnosticsDescription => '查看裝置、註冊和通話事件記錄';
+  String get settingsDiagnosticsDescription => '查看裝置、註冊及通話日誌';
 
   @override
   String get settingsAbout => '關於';
 
   @override
-  String get settingsAboutDescription => '版本資訊、應用程式識別和支援資訊';
+  String get settingsAboutDescription => '查看版本、應用程式資料及支援資訊';
 
   @override
-  String get phoneServiceStarted => '電話服務已啟動';
+  String get phoneServiceStarted => '電話服務運作中';
 
   @override
   String get phoneServiceStopped => '電話服務未啟動';

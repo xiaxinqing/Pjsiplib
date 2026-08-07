@@ -96,8 +96,7 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
     Locale('zh'),
-    Locale('zh', 'CN'),
-    Locale('zh', 'TW'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
   ];
 
   /// 应用名称
@@ -151,7 +150,7 @@ abstract class AppLocalizations {
   /// 通用设置分组说明
   ///
   /// In zh, this message translates to:
-  /// **'配置显示语言和应用偏好'**
+  /// **'设置语言和应用偏好'**
   String get settingsGeneralDescription;
 
   /// 语言设置区块标题
@@ -169,7 +168,7 @@ abstract class AppLocalizations {
   /// 应用显示语言设置说明
   ///
   /// In zh, this message translates to:
-  /// **'更改后立即生效，并在下次启动时继续使用'**
+  /// **'更改立即生效，并在下次启动时保留'**
   String get settingsDisplayLanguageDescription;
 
   /// 使用操作系统语言
@@ -187,7 +186,7 @@ abstract class AppLocalizations {
   /// 繁体中文语言选项
   ///
   /// In zh, this message translates to:
-  /// **'繁體中文'**
+  /// **'繁體中文（香港）'**
   String get languageTraditionalChinese;
 
   /// 英文语言选项
@@ -223,13 +222,13 @@ abstract class AppLocalizations {
   /// 启动后最小化设置说明
   ///
   /// In zh, this message translates to:
-  /// **'启动后在后台保持电话服务在线'**
+  /// **'在后台启动，并保持电话服务在线'**
   String get settingsStartMinimizedDescription;
 
   /// 来电和提醒设置区块标题
   ///
   /// In zh, this message translates to:
-  /// **'来电与提醒'**
+  /// **'来电与通知'**
   String get settingsNotificationsSection;
 
   /// 收到来电时显示应用窗口的设置名称
@@ -241,7 +240,7 @@ abstract class AppLocalizations {
   /// 来电显示窗口设置说明
   ///
   /// In zh, this message translates to:
-  /// **'收到新来电时切换到当前通话页面'**
+  /// **'收到来电时打开当前通话页面'**
   String get settingsShowWindowForIncomingCallDescription;
 
   /// 显示应用未读角标的设置名称
@@ -253,13 +252,13 @@ abstract class AppLocalizations {
   /// 应用角标设置说明
   ///
   /// In zh, this message translates to:
-  /// **'显示未处理来电和未读未接来电数量'**
+  /// **'显示正在来电和未读未接来电数量'**
   String get settingsAppBadgeDescription;
 
   /// 尚未接入业务逻辑的设置状态
   ///
   /// In zh, this message translates to:
-  /// **'暂未开放'**
+  /// **'即将推出'**
   String get settingsComingSoon;
 
   /// 账号设置分组名称
@@ -271,7 +270,7 @@ abstract class AppLocalizations {
   /// 账号设置分组说明
   ///
   /// In zh, this message translates to:
-  /// **'管理 SIP 线路、默认外呼和注册状态'**
+  /// **'管理 SIP 线路、默认外呼线路和注册状态'**
   String get settingsAccountDescription;
 
   /// 音频设置分组名称
@@ -283,7 +282,7 @@ abstract class AppLocalizations {
   /// 音频设置分组说明
   ///
   /// In zh, this message translates to:
-  /// **'选择输入输出设备，并测试通话音频'**
+  /// **'选择输入和输出设备，测试通话音频'**
   String get settingsAudioDescription;
 
   /// 通话设置分组名称
@@ -295,7 +294,7 @@ abstract class AppLocalizations {
   /// 通话设置分组说明
   ///
   /// In zh, this message translates to:
-  /// **'配置通话行为、快捷操作和会议状态'**
+  /// **'设置通话行为、快捷操作和会议功能'**
   String get settingsCallsDescription;
 
   /// 诊断设置分组名称
@@ -307,7 +306,7 @@ abstract class AppLocalizations {
   /// 诊断设置分组说明
   ///
   /// In zh, this message translates to:
-  /// **'查看设备、注册和通话事件日志'**
+  /// **'查看设备、注册和通话日志'**
   String get settingsDiagnosticsDescription;
 
   /// 关于设置分组名称
@@ -319,13 +318,13 @@ abstract class AppLocalizations {
   /// 关于设置分组说明
   ///
   /// In zh, this message translates to:
-  /// **'版本信息、应用标识和支持信息'**
+  /// **'查看版本、应用标识和支持信息'**
   String get settingsAboutDescription;
 
   /// 电话服务运行状态
   ///
   /// In zh, this message translates to:
-  /// **'电话服务已启动'**
+  /// **'电话服务运行中'**
   String get phoneServiceStarted;
 
   /// 电话服务停止状态
@@ -353,15 +352,13 @@ class _AppLocalizationsDelegate
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-  // Lookup logic when language+country codes are specified.
+  // Lookup logic when language+script codes are specified.
   switch (locale.languageCode) {
     case 'zh':
       {
-        switch (locale.countryCode) {
-          case 'CN':
-            return AppLocalizationsZhCn();
-          case 'TW':
-            return AppLocalizationsZhTw();
+        switch (locale.scriptCode) {
+          case 'Hant':
+            return AppLocalizationsZhHant();
         }
         break;
       }

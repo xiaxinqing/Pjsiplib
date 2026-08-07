@@ -2,6 +2,11 @@
 
 A new Flutter project.
 
+## Project documentation
+
+- [Localization maintenance guide](docs/LOCALIZATION.md)
+- [Windows VM debug setup](docs/WINDOWS_VM_DEBUG.md)
+
 ## Getting Started
 
 This project is a starting point for a Flutter application.
