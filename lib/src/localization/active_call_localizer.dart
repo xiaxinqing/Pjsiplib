@@ -41,4 +41,26 @@ abstract final class ActiveCallLocalizer {
       final status => l10n.activeCallMediaUnknown(status),
     };
   }
+
+  /// Converts negotiated call security into user-facing language.
+  ///
+  /// Technical protocol names stay in diagnostics and tooltips. The primary UI
+  /// communicates the outcome without presenting a standard RTP call as an
+  /// alarming error state.
+  static String securityStatus(
+    AppLocalizations l10n, {
+    required bool signalingEncrypted,
+    required bool? audioEncrypted,
+    required bool encryptionConfigured,
+  }) {
+    if (audioEncrypted == true) {
+      return signalingEncrypted
+          ? l10n.activeCallEncryptedCall
+          : l10n.activeCallEncryptedAudio;
+    }
+    if (audioEncrypted == false || !encryptionConfigured) {
+      return l10n.activeCallStandardCall;
+    }
+    return l10n.activeCallVerifyingEncryption;
+  }
 }

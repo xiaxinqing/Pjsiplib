@@ -2,6 +2,7 @@ part of '../../../main.dart';
 
 extension _HomeSettingsAudioTab on _MyHomePageState {
   Widget _buildAudioSettingsTab(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     if (!uiState.isInitialized) {
       return Center(
         child: FilledButton.icon(
@@ -9,7 +10,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
               ? () => _showAddAccountDialog(uiState, service)
               : null,
           icon: const Icon(AppIcons.login),
-          label: const Text('添加电话线路'),
+          label: Text(l10n.audioAddLine),
         ),
       );
     }
@@ -20,34 +21,34 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
         _buildAudioStatusPanel(uiState, service),
         const SizedBox(height: 18),
         _buildSettingsSection(
-          title: '声音提示',
+          title: l10n.audioSoundAlerts,
           icon: AppIcons.audio,
           children: [
             _buildAudioEffectSwitch(
               icon: AppIcons.incoming,
-              title: '来电铃声',
-              subtitle: '有新来电时播放 ringtone.wav',
+              title: l10n.audioIncomingRingtone,
+              subtitle: l10n.audioIncomingRingtoneDescription,
               value: uiState.incomingRingtoneEnabled,
               onChanged: service.setIncomingRingtoneEnabled,
             ),
             _buildAudioEffectSwitch(
               icon: AppIcons.outgoing,
-              title: '外呼回铃音',
-              subtitle: '主动拨号等待接通时播放 ringing_loop.wav',
+              title: l10n.audioOutgoingRingback,
+              subtitle: l10n.audioOutgoingRingbackDescription,
               value: uiState.outgoingRingbackEnabled,
               onChanged: service.setOutgoingRingbackEnabled,
             ),
             _buildAudioEffectSwitch(
               icon: AppIcons.callEnd,
-              title: '通话结束提示音',
-              subtitle: '已接通通话结束时播放 hangup.wav',
+              title: l10n.audioCallEndedTone,
+              subtitle: l10n.audioCallEndedToneDescription,
               value: uiState.callEndedSoundEnabled,
               onChanged: service.setCallEndedSoundEnabled,
             ),
             _buildAudioEffectSwitch(
               icon: AppIcons.dialpad,
-              title: '拨号按键音',
-              subtitle: '拨号盘输入时播放本地 DTMF 合成音，默认关闭',
+              title: l10n.audioDialpadTones,
+              subtitle: l10n.audioDialpadTonesDescription,
               value: uiState.dialpadKeySoundEnabled,
               onChanged: service.setDialpadKeySoundEnabled,
             ),
@@ -55,7 +56,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
         ),
         const SizedBox(height: 18),
         _buildSettingsSection(
-          title: '音频路由',
+          title: l10n.audioRouting,
           icon: AppIcons.automatic,
           children: [
             SegmentedButton<PjsipAudioDeviceMode>(
@@ -69,16 +70,16 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                   ),
                 ),
               ),
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: PjsipAudioDeviceMode.automatic,
-                  icon: Icon(AppIcons.automatic),
-                  label: Text('跟随系统'),
+                  icon: const Icon(AppIcons.automatic),
+                  label: Text(l10n.audioFollowSystem),
                 ),
                 ButtonSegment(
                   value: PjsipAudioDeviceMode.manual,
-                  icon: Icon(AppIcons.tune),
-                  label: Text('尝试指定'),
+                  icon: const Icon(AppIcons.tune),
+                  label: Text(l10n.audioChooseDevices),
                 ),
               ],
               selected: {uiState.audioDeviceMode},
@@ -91,8 +92,8 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
             const SizedBox(height: 10),
             Text(
               uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic
-                  ? '建议保持跟随系统，插拔耳机时自动刷新音频路径。'
-                  : '适合排查问题；macOS 通话音频可能仍跟随系统声音设置。',
+                  ? l10n.audioFollowSystemDescription
+                  : l10n.audioChooseDevicesDescription,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -103,14 +104,14 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
               value: uiState.allowInCallAudioDeviceSwitch,
               onChanged: service.setAllowInCallAudioDeviceSwitch,
               secondary: const Icon(AppIcons.refresh),
-              title: const Text('通话中自动切换'),
-              subtitle: const Text('耳机插拔时恢复音频路径'),
+              title: Text(l10n.audioAutoSwitch),
+              subtitle: Text(l10n.audioAutoSwitchDescription),
             ),
           ],
         ),
         const SizedBox(height: 18),
         _buildSettingsSection(
-          title: '输入与输出',
+          title: l10n.audioInputOutput,
           icon: AppIcons.devices,
           children: [
             LayoutBuilder(
@@ -120,11 +121,14 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     switch (uiState.microphoneTestPhase) {
                       PjsipMicrophoneTestPhase.recording =>
                         uiState.microphoneTestRemainingSeconds > 0
-                            ? '录音中 ${uiState.microphoneTestRemainingSeconds}s'
-                            : '录音中',
-                      PjsipMicrophoneTestPhase.preparingPlayback => '准备播放',
-                      PjsipMicrophoneTestPhase.playing => '播放中',
-                      PjsipMicrophoneTestPhase.idle => '录音测试',
+                            ? l10n.audioRecordingRemaining(
+                                uiState.microphoneTestRemainingSeconds,
+                              )
+                            : l10n.audioRecording,
+                      PjsipMicrophoneTestPhase.preparingPlayback =>
+                        l10n.audioPreparingPlayback,
+                      PjsipMicrophoneTestPhase.playing => l10n.audioPlaying,
+                      PjsipMicrophoneTestPhase.idle => l10n.audioRecordingTest,
                     };
                 final microphoneTestIcon =
                     switch (uiState.microphoneTestPhase) {
@@ -139,15 +143,15 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     icon: uiState.isMicrophoneMuted
                         ? AppIcons.microphoneOff
                         : AppIcons.microphone,
-                    title: '麦克风',
-                    subtitle: '输入设备',
+                    title: l10n.audioMicrophone,
+                    subtitle: l10n.audioInputDevice,
                     level: _audioSettingsLevel(uiState.microphoneLevel),
                     volume: uiState.microphoneVolume,
                     muted: uiState.isMicrophoneMuted,
                     testing: uiState.isMicrophoneTesting,
                     onVolumeChanged: service.setMicrophoneVolume,
                     dropdown: _buildAudioDeviceDropdown(
-                      label: '麦克风',
+                      label: l10n.audioMicrophone,
                       icon: AppIcons.microphone,
                       value: _selectedCaptureDeviceValue(uiState),
                       devices: uiState.captureDevices,
@@ -176,22 +180,26 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                             ? AppIcons.microphone
                             : AppIcons.microphoneOff,
                       ),
-                      label: Text(uiState.isMicrophoneMuted ? '取消静音' : '静音'),
+                      label: Text(
+                        uiState.isMicrophoneMuted
+                            ? l10n.audioUnmute
+                            : l10n.audioMute,
+                      ),
                     ),
                   ),
                   _buildAudioDeviceCard(
                     icon: uiState.isSpeakerMuted
                         ? AppIcons.speakerOff
                         : AppIcons.speaker,
-                    title: '扬声器',
-                    subtitle: '输出设备',
+                    title: l10n.audioSpeaker,
+                    subtitle: l10n.audioOutputDevice,
                     level: _audioSettingsLevel(uiState.speakerLevel),
                     volume: uiState.speakerVolume,
                     muted: uiState.isSpeakerMuted,
                     testing: uiState.isSpeakerTesting,
                     onVolumeChanged: service.setSpeakerVolume,
                     dropdown: _buildAudioDeviceDropdown(
-                      label: '扬声器',
+                      label: l10n.audioSpeaker,
                       icon: AppIcons.speaker,
                       value: _selectedPlaybackDeviceValue(uiState),
                       devices: uiState.playbackDevices,
@@ -209,7 +217,11 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                           ? null
                           : service.testSpeakerOutput,
                       icon: const Icon(AppIcons.speaker),
-                      label: Text(uiState.isSpeakerTesting ? '播放中' : '测试输出'),
+                      label: Text(
+                        uiState.isSpeakerTesting
+                            ? l10n.audioPlaying
+                            : l10n.audioTestOutput,
+                      ),
                     ),
                     secondaryAction: TextButton.icon(
                       onPressed: () =>
@@ -219,7 +231,11 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                             ? AppIcons.speaker
                             : AppIcons.speakerOff,
                       ),
-                      label: Text(uiState.isSpeakerMuted ? '取消静音' : '静音'),
+                      label: Text(
+                        uiState.isSpeakerMuted
+                            ? l10n.audioUnmute
+                            : l10n.audioMute,
+                      ),
                     ),
                   ),
                 ];
@@ -247,6 +263,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
   }
 
   Widget _buildAudioStatusPanel(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     final automatic = uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
     final hasIssue = uiState.hasAudioDeviceIssue;
     final needsPermissionAction =
@@ -256,8 +273,15 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
             PjsipMicrophonePermissionStatus.restricted;
     final showRepairAction = hasIssue && !needsPermissionAction;
     final issueColor = Colors.orange.shade700;
-    final statusText =
-        uiState.audioDeviceIssueMessage ?? uiState.audioDeviceStatus;
+    final statusText = hasIssue
+        ? AudioSettingsLocalizer.deviceIssue(
+            l10n,
+            uiState.audioDeviceIssueStatus,
+            diagnosticMessage: uiState.audioDeviceIssueMessage,
+          )
+        : automatic
+        ? l10n.audioFollowingSystemStatus
+        : l10n.audioUsingSelectedDevicesStatus;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: hasIssue ? issueColor.withValues(alpha: 0.06) : _panelBackground,
@@ -299,10 +323,10 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     children: [
                       Text(
                         hasIssue
-                            ? '音频设备需要处理'
+                            ? l10n.audioDeviceNeedsAttention
                             : automatic
-                            ? '跟随系统声音'
-                            : '尝试指定设备',
+                            ? l10n.audioFollowingSystem
+                            : l10n.audioUsingSelectedDevices,
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -322,7 +346,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                   children: [
                     IconButton(
                       onPressed: service.refreshAudioDevices,
-                      tooltip: '刷新音频设备',
+                      tooltip: l10n.audioRefreshDevices,
                       style: IconButton.styleFrom(
                         fixedSize: const Size(38, 38),
                         backgroundColor: _subtlePanel,
@@ -336,7 +360,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     const SizedBox(width: 8),
                     IconButton(
                       onPressed: () => unawaited(_openSystemSoundSettings()),
-                      tooltip: '打开系统声音设置',
+                      tooltip: l10n.audioOpenSystemSoundSettings,
                       style: IconButton.styleFrom(
                         fixedSize: const Size(38, 38),
                         backgroundColor: _subtlePanel,
@@ -352,7 +376,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                       FilledButton.tonalIcon(
                         onPressed: service.repairAudioPath,
                         icon: const Icon(AppIcons.activity),
-                        label: const Text('修复音频'),
+                        label: Text(l10n.audioReconnectDevices),
                       ),
                     ],
                   ],
@@ -374,6 +398,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
   /// macOS 的 PJSIP/CoreAudio 在 VoiceProcessingIO 下可能忽略具体设备 ID，
   /// 因此设置页给用户一个明确的系统入口，比在应用里做过多判断更可靠。
   Future<void> _openSystemSoundSettings() async {
+    final message = context.l10n.audioOpenSystemSoundSettingsHint;
     try {
       if (Platform.isMacOS) {
         await Process.run('open', [
@@ -388,13 +413,14 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
     } catch (_) {
       // 下面统一提示即可，避免系统设置 URI 差异影响主流程。
     }
-    ToastUtil.showInfo('请在系统设置中打开声音设置');
+    ToastUtil.showInfo(message);
   }
 
   Widget _buildMicrophonePermissionRow(
     PjsipUIState uiState,
     PjsipService service,
   ) {
+    final l10n = context.l10n;
     final status = uiState.microphonePermissionStatus;
     final enabled = status == PjsipMicrophonePermissionStatus.authorized;
     final color = switch (status) {
@@ -406,20 +432,29 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
       PjsipMicrophonePermissionStatus.unknown => _textSecondary,
     };
     final title = switch (status) {
-      PjsipMicrophonePermissionStatus.authorized => '麦克风权限已开启',
-      PjsipMicrophonePermissionStatus.denied => '麦克风权限未开启',
-      PjsipMicrophonePermissionStatus.restricted => '麦克风权限受限制',
-      PjsipMicrophonePermissionStatus.notDetermined => '麦克风权限待授权',
-      PjsipMicrophonePermissionStatus.unsupported => '当前平台无需检查',
-      PjsipMicrophonePermissionStatus.unknown => '麦克风权限未检查',
+      PjsipMicrophonePermissionStatus.authorized => l10n.audioPermissionEnabled,
+      PjsipMicrophonePermissionStatus.denied => l10n.audioPermissionDisabled,
+      PjsipMicrophonePermissionStatus.restricted =>
+        l10n.audioPermissionRestricted,
+      PjsipMicrophonePermissionStatus.notDetermined =>
+        l10n.audioPermissionPending,
+      PjsipMicrophonePermissionStatus.unsupported =>
+        l10n.audioPermissionSystemManaged,
+      PjsipMicrophonePermissionStatus.unknown => l10n.audioPermissionUnknown,
     };
     final subtitle = switch (status) {
-      PjsipMicrophonePermissionStatus.authorized => '已允许 VPhone 使用麦克风',
-      PjsipMicrophonePermissionStatus.denied => '点击打开系统设置，手动允许麦克风权限',
-      PjsipMicrophonePermissionStatus.restricted => '系统或管理员限制了麦克风权限',
-      PjsipMicrophonePermissionStatus.notDetermined => '点击向系统申请麦克风权限',
-      PjsipMicrophonePermissionStatus.unsupported => 'Windows 或 Linux 下按系统设备处理',
-      PjsipMicrophonePermissionStatus.unknown => '点击检查当前麦克风权限状态',
+      PjsipMicrophonePermissionStatus.authorized =>
+        l10n.audioPermissionEnabledDescription,
+      PjsipMicrophonePermissionStatus.denied =>
+        l10n.audioPermissionDisabledDescription,
+      PjsipMicrophonePermissionStatus.restricted =>
+        l10n.audioPermissionRestrictedDescription,
+      PjsipMicrophonePermissionStatus.notDetermined =>
+        l10n.audioPermissionPendingDescription,
+      PjsipMicrophonePermissionStatus.unsupported =>
+        l10n.audioPermissionSystemManagedDescription,
+      PjsipMicrophonePermissionStatus.unknown =>
+        l10n.audioPermissionUnknownDescription,
     };
 
     return Material(
@@ -482,12 +517,17 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
     required Color color,
   }) {
     final tooltip = switch (status) {
-      PjsipMicrophonePermissionStatus.authorized => '麦克风权限已开启',
+      PjsipMicrophonePermissionStatus.authorized =>
+        context.l10n.audioPermissionEnabled,
       PjsipMicrophonePermissionStatus.denied ||
-      PjsipMicrophonePermissionStatus.restricted => '打开系统设置',
-      PjsipMicrophonePermissionStatus.notDetermined => '申请麦克风权限',
-      PjsipMicrophonePermissionStatus.unsupported => '当前平台无需检查',
-      PjsipMicrophonePermissionStatus.unknown => '检查麦克风权限',
+      PjsipMicrophonePermissionStatus.restricted =>
+        context.l10n.audioPermissionOpenSettings,
+      PjsipMicrophonePermissionStatus.notDetermined =>
+        context.l10n.audioPermissionRequest,
+      PjsipMicrophonePermissionStatus.unsupported =>
+        context.l10n.audioPermissionSystemManaged,
+      PjsipMicrophonePermissionStatus.unknown =>
+        context.l10n.audioPermissionCheck,
     };
 
     return Tooltip(
@@ -565,10 +605,10 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                 ),
                 Text(
                   testing
-                      ? '测试中'
+                      ? context.l10n.audioTesting
                       : muted
-                      ? '静音'
-                      : '就绪',
+                      ? context.l10n.audioMute
+                      : context.l10n.audioReady,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: muted ? _textSecondary : _textPrimary,
                   ),
@@ -681,7 +721,9 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        helperText: automaticMode ? '跟随系统声音设置' : '尝试指定，可能受系统路由影响',
+        helperText: automaticMode
+            ? context.l10n.audioFollowSystemDeviceHint
+            : context.l10n.audioSelectedDeviceHint,
       ),
       items: devices
           .map(
@@ -697,7 +739,8 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
 
     return InkWell(
       borderRadius: BorderRadius.circular(8),
-      onTap: () => ToastUtil.showInfo('跟随系统模式下，请到系统声音设置切换输入和输出'),
+      onTap: () =>
+          ToastUtil.showInfo(context.l10n.audioChangeDevicesInSystemHint),
       child: IgnorePointer(child: dropdown),
     );
   }
@@ -738,7 +781,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
         SizedBox(
           width: 44,
           child: Text(
-            muted ? '静音' : '${(value * 100).round()}%',
+            muted ? context.l10n.audioMute : '${(value * 100).round()}%',
             textAlign: TextAlign.right,
             style: Theme.of(context).textTheme.bodySmall,
           ),

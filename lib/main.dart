@@ -15,6 +15,7 @@ import 'l10n/app_localizations.dart';
 import 'src/app_identity.dart';
 import 'src/localization/build_context_l10n.dart';
 import 'src/localization/active_call_localizer.dart';
+import 'src/localization/audio_settings_localizer.dart';
 import 'src/localization/call_history_localizer.dart';
 import 'src/localization/locale_controller.dart';
 import 'src/services/app_shutdown_coordinator.dart';

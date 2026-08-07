@@ -95,7 +95,12 @@ extension PjsipAudioIssueOperations on PjsipService {
     _addLog(
       '❌ $action失败: capture=$captureId, playback=$playbackId, pj_status=$status, message=$message',
     );
-    _showAudioDeviceIssueToast(message);
+    _showAudioDeviceIssueToast(
+      AudioSettingsLocalizer.runtimeDeviceIssue(
+        status,
+        diagnosticMessage: message,
+      ),
+    );
   }
 
   /// 记录“无麦克风但扬声器可用”的降级状态。
@@ -114,7 +119,7 @@ extension PjsipAudioIssueOperations on PjsipService {
     _addLog(
       '⚠️ $action使用仅扬声器模式: capture=$captureId, playback=$playbackId, original_status=$status',
     );
-    _showAudioDeviceIssueToast('$message，请检查麦克风');
+    _showAudioDeviceIssueToast(AudioSettingsLocalizer.runtimeSpeakerOnly());
   }
 
   /// 清理已恢复的音频异常。只在 PJSIP 成功打开真实声卡后调用。
@@ -299,7 +304,14 @@ extension PjsipAudioIssueOperations on PjsipService {
       audioDeviceIssueMessage: message,
       audioDeviceIssueStatus: status,
     );
-    _showAudioDeviceIssueToast(message);
+    _showAudioDeviceIssueToast(
+      status == null
+          ? message
+          : AudioSettingsLocalizer.runtimeDeviceIssue(
+              status,
+              diagnosticMessage: message,
+            ),
+    );
 
     final now = DateTime.now();
     final last = _audio.lastSoundDeviceCooldownLogAt;

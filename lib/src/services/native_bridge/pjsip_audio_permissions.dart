@@ -25,20 +25,30 @@ extension PjsipAudioPermissionOperations on PjsipService {
 
     switch (status) {
       case PjsipMicrophonePermissionStatus.authorized:
-        ToastUtil.showSuccess('麦克风权限正常');
+        ToastUtil.showSuccess(
+          AudioSettingsLocalizer.runtimePermissionAvailable(),
+        );
       case PjsipMicrophonePermissionStatus.denied:
       case PjsipMicrophonePermissionStatus.restricted:
-        ToastUtil.showWarning('麦克风权限未开启，请在系统设置中允许 VPhone 使用麦克风');
+        ToastUtil.showWarning(
+          AudioSettingsLocalizer.runtimePermissionRequired(),
+        );
       case PjsipMicrophonePermissionStatus.notDetermined:
-        ToastUtil.showInfo('系统尚未确认麦克风权限，开始通话时会弹出授权提示');
+        ToastUtil.showInfo(AudioSettingsLocalizer.runtimePermissionPending());
       case null:
         if (!Platform.isMacOS) {
-          ToastUtil.showInfo('当前平台不需要 macOS 麦克风权限检查');
+          ToastUtil.showInfo(
+            AudioSettingsLocalizer.runtimePermissionSystemManaged(),
+          );
         }
       case PjsipMicrophonePermissionStatus.unsupported:
-        ToastUtil.showInfo('当前平台不需要 macOS 麦克风权限检查');
+        ToastUtil.showInfo(
+          AudioSettingsLocalizer.runtimePermissionSystemManaged(),
+        );
       case PjsipMicrophonePermissionStatus.unknown:
-        ToastUtil.showWarning('暂时无法确认麦克风权限状态');
+        ToastUtil.showWarning(
+          AudioSettingsLocalizer.runtimePermissionUnknown(),
+        );
     }
   }
 
@@ -53,7 +63,9 @@ extension PjsipAudioPermissionOperations on PjsipService {
 
     switch (status) {
       case PjsipMicrophonePermissionStatus.authorized:
-        ToastUtil.showSuccess('麦克风权限已开启');
+        ToastUtil.showSuccess(
+          AudioSettingsLocalizer.runtimePermissionAvailable(),
+        );
       case PjsipMicrophonePermissionStatus.notDetermined:
         final requestedStatus = await _requestMacOsMicrophoneAccess();
         final nextStatus = _applyMicrophonePermissionStatus(
@@ -61,16 +73,22 @@ extension PjsipAudioPermissionOperations on PjsipService {
           reason: '系统麦克风授权',
         );
         if (nextStatus == PjsipMicrophonePermissionStatus.authorized) {
-          ToastUtil.showSuccess('麦克风权限已开启');
+          ToastUtil.showSuccess(
+            AudioSettingsLocalizer.runtimePermissionAvailable(),
+          );
         }
       case PjsipMicrophonePermissionStatus.denied:
       case PjsipMicrophonePermissionStatus.restricted:
         await _openMacOsMicrophonePrivacySettings();
-        ToastUtil.showInfo('请在系统设置中开启 VPhone 的麦克风权限');
+        ToastUtil.showInfo(AudioSettingsLocalizer.runtimePermissionRequired());
       case PjsipMicrophonePermissionStatus.unsupported:
-        ToastUtil.showInfo('当前平台不需要 macOS 麦克风权限检查');
+        ToastUtil.showInfo(
+          AudioSettingsLocalizer.runtimePermissionSystemManaged(),
+        );
       case PjsipMicrophonePermissionStatus.unknown:
-        ToastUtil.showWarning('暂时无法确认麦克风权限状态');
+        ToastUtil.showWarning(
+          AudioSettingsLocalizer.runtimePermissionUnknown(),
+        );
     }
   }
 
@@ -109,7 +127,9 @@ extension PjsipAudioPermissionOperations on PjsipService {
           microphonePermissionStatus: status,
         );
         _addLog('⚠️ macOS 麦克风权限不可用: status=${status.name}, reason=$reason');
-        _showAudioDeviceIssueToast(message);
+        _showAudioDeviceIssueToast(
+          AudioSettingsLocalizer.runtimePermissionRequired(),
+        );
       }
       return status;
     }

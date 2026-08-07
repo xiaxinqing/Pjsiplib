@@ -72,6 +72,16 @@ class _CallContactMatch {
   final ContactPhoneEntry phone;
 }
 
+/// 当前通话统一身份展示：有联系人时以姓名为主、号码为辅；未匹配时只展示号码。
+class _CallDisplayIdentity {
+  const _CallDisplayIdentity({required this.primary, this.secondary});
+
+  final String primary;
+  final String? secondary;
+
+  String get tooltip => secondary == null ? primary : '$primary · $secondary';
+}
+
 /// 通话视觉状态：把通话状态转换成图标、颜色、标签和详情文案。
 class _LiveCallVisualState {
   const _LiveCallVisualState({
@@ -661,10 +671,9 @@ class _CallAvatarState extends State<_CallAvatar>
     );
 
     if (!widget.isIncoming) {
-      return SizedBox.square(
-        dimension: widget.size,
-        child: Center(child: avatar),
-      );
+      // 普通通话不需要为来电光晕预留画布，直接使用头像实际尺寸，避免身份信息
+      // 与头像之间出现一段不可见的空白。
+      return avatar;
     }
 
     return SizedBox.square(

@@ -19,11 +19,8 @@ extension _CallSideList on _MyHomePageState {
     final statusColor = visualState.color;
     final contactMatch = _callContactMatch(call);
     final contact = contactMatch?.contact;
-    final displayName = contact?.name ?? _displayRemote(call.remoteUri);
+    final identity = _callDisplayIdentity(call, contactMatch);
     final remoteMuted = uiState.remoteMutedCallIds.contains(call.callId);
-    final displayNumber = contact == null
-        ? null
-        : contactMatch?.phone.number ?? _callDisplayNumber(call);
     final canMergeWithActive =
         !uiState.hasConference &&
         call.isConnected &&
@@ -56,6 +53,7 @@ extension _CallSideList on _MyHomePageState {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   CircleAvatar(
                     radius: 18,
@@ -70,49 +68,19 @@ extension _CallSideList on _MyHomePageState {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildTooltipText(
-                                displayName,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            if (isFocused) ...[
-                              const SizedBox(width: 6),
-                              _buildCallTinyBadge(
-                                context.l10n.activeCallViewing,
-                                _brandGreen,
-                              ),
-                            ],
-                            const SizedBox(width: 6),
-                            _buildCallTinyBadge(
-                              visualState.label,
-                              visualState.color,
-                            ),
-                            if (remoteMuted) ...[
-                              const SizedBox(width: 6),
-                              _buildCallTinyBadge(
-                                context.l10n.activeCallRemoteAudioMuted,
-                                Colors.orange.shade700,
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (displayNumber != null &&
-                            displayNumber.trim().isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          _buildTooltipText(
-                            displayNumber,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: _textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                        _buildCallIdentityLine(
+                          identity,
+                          primaryStyle: const TextStyle(
+                            fontWeight: FontWeight.w700,
                           ),
-                        ],
+                          secondaryStyle:
+                              (Theme.of(context).textTheme.bodySmall ??
+                                      const TextStyle())
+                                  .copyWith(
+                                    color: _textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
@@ -142,94 +110,78 @@ extension _CallSideList on _MyHomePageState {
                                 size: _iconXs,
                                 color: _textSecondary,
                               ),
-                            ] else if (isActive) ...[
-                              const SizedBox(width: 8),
-                              Icon(
-                                AppIcons.meters,
-                                size: _iconXs,
-                                color: _textSecondary,
-                              ),
                             ],
                           ],
                         ),
-                        if (account != null) ...[
-                          const SizedBox(height: 3),
-                          _buildTooltipText(
-                            '${account.lineLabel} · ${account.transportLabel}',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: _textSecondary),
-                          ),
-                        ],
-                        if (call.isConnected) ...[
-                          const SizedBox(height: 3),
-                          Tooltip(
-                            message: quality.tooltip,
-                            child: Row(
-                              children: [
-                                Icon(
-                                  quality.icon,
-                                  size: _iconXs,
-                                  color: quality.color,
-                                ),
-                                const SizedBox(width: 5),
-                                Expanded(
-                                  child: Text(
-                                    quality.compactLabel,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: quality.color,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
                       ],
                     ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: call.isIncoming && !call.isConnected
-                        ? context.l10n.activeCallReject
-                        : context.l10n.activeCallHangUp,
-                    onPressed: hasPendingOperation
-                        ? null
-                        : () => call.isIncoming && !call.isConnected
-                              ? _rejectCall(service, call.callId)
-                              : _hangupCall(service, call.callId),
-                    icon: const Icon(AppIcons.callEnd),
-                    color: _dangerRed,
-                    style: IconButton.styleFrom(
-                      backgroundColor: _dangerRed.withValues(alpha: 0.08),
-                      hoverColor: _dangerRed.withValues(alpha: 0.12),
-                      highlightColor: _dangerRed.withValues(alpha: 0.16),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 180),
+                    child: Wrap(
+                      alignment: WrapAlignment.end,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        if (isFocused)
+                          _buildCallTinyBadge(
+                            context.l10n.activeCallViewing,
+                            _brandGreen,
+                          ),
+                        _buildCallTinyBadge(
+                          visualState.label,
+                          visualState.color,
+                        ),
+                        if (remoteMuted)
+                          _buildCallTinyBadge(
+                            context.l10n.activeCallRemoteAudioMuted,
+                            Colors.orange.shade700,
+                          ),
+                      ],
                     ),
                   ),
                 ],
               ),
+              if (account != null || call.isConnected) ...[
+                const SizedBox(height: 3),
+                Padding(
+                  padding: const EdgeInsets.only(left: 46),
+                  child: _buildCallLineAndSecurityRow(
+                    call: call,
+                    account: account,
+                    quality: quality,
+                  ),
+                ),
+              ],
               if (_shouldShowCallAudioMeters(call, uiState)) ...[
                 const SizedBox(height: 10),
                 _buildCompactCallAudioMeters(uiState),
               ],
               if (call.isIncoming && !call.isConnected) ...[
                 const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: FilledButton.tonalIcon(
-                    onPressed: hasPendingOperation
-                        ? null
-                        : () => _answerCall(service, call.callId),
-                    icon: const Icon(AppIcons.call),
-                    label: Text(context.l10n.activeCallAnswer),
-                    style: FilledButton.styleFrom(
-                      foregroundColor: _callGreen,
-                      backgroundColor: _callGreen.withValues(alpha: 0.1),
+                Row(
+                  children: [
+                    FilledButton.tonalIcon(
+                      onPressed: hasPendingOperation
+                          ? null
+                          : () => _answerCall(service, call.callId),
+                      icon: const Icon(AppIcons.call),
+                      label: Text(context.l10n.activeCallAnswer),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: _callGreen,
+                        backgroundColor: _callGreen.withValues(alpha: 0.1),
+                      ),
                     ),
-                  ),
+                    const Spacer(),
+                    _compactCallEndAction(
+                      label: context.l10n.activeCallReject,
+                      height: 40,
+                      onPressed: hasPendingOperation
+                          ? null
+                          : () => _rejectCall(service, call.callId),
+                    ),
+                  ],
                 ),
               ] else if (call.isConnected) ...[
                 const SizedBox(height: 10),
@@ -314,6 +266,12 @@ extension _CallSideList on _MyHomePageState {
                                 () => service.splitConference(call.callId),
                               ),
                       ),
+                    _compactCallEndAction(
+                      label: context.l10n.activeCallHangUp,
+                      onPressed: hasPendingOperation
+                          ? null
+                          : () => _hangupCall(service, call.callId),
+                    ),
                   ],
                 ),
               ],
@@ -322,6 +280,78 @@ extension _CallSideList on _MyHomePageState {
         ),
       ),
     );
+  }
+
+  Widget _buildCallLineAndSecurityRow({
+    required CallInfo call,
+    required SipAccountInfo? account,
+    required _CallQualityView quality,
+  }) {
+    final lineDisplay = account == null ? null : _callLineDisplayLabel(account);
+    final technicalLine = account == null
+        ? null
+        : '${account.lineLabel} · ${account.transportLabel}';
+    final lineTooltip = lineDisplay == null
+        ? null
+        : lineDisplay == technicalLine
+        ? lineDisplay
+        : '$lineDisplay\n$technicalLine';
+
+    return Row(
+      children: [
+        if (account != null) ...[
+          Icon(AppIcons.line, size: _iconXs, color: _textSecondary),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Tooltip(
+              message: lineTooltip!,
+              waitDuration: const Duration(milliseconds: 350),
+              child: Text(
+                lineDisplay!,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: _textSecondary),
+              ),
+            ),
+          ),
+        ],
+        if (call.isConnected) ...[
+          if (account != null) const SizedBox(width: 10),
+          Tooltip(
+            message: quality.tooltip,
+            waitDuration: const Duration(milliseconds: 350),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(quality.icon, size: _iconXs, color: quality.color),
+                const SizedBox(width: 5),
+                Text(
+                  quality.compactLabel,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: quality.color,
+                    fontWeight: FontWeight.normal,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _callLineDisplayLabel(SipAccountInfo account) {
+    final name = account.displayName.trim();
+    final username = account.username.trim();
+    if (name.isEmpty) return username;
+    if (username.isEmpty || name.toLowerCase() == username.toLowerCase()) {
+      return name;
+    }
+    return '$name · $username';
   }
 
   Widget _buildCallTinyBadge(String label, Color color) {
@@ -367,7 +397,7 @@ extension _CallSideList on _MyHomePageState {
         padding: const EdgeInsets.symmetric(horizontal: 9),
         textStyle: Theme.of(
           context,
-        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+        ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w500),
         iconSize: _iconSm,
         foregroundColor: active ? color : _textPrimary,
         backgroundColor: active
@@ -379,6 +409,27 @@ extension _CallSideList on _MyHomePageState {
             color: active ? color.withValues(alpha: 0.22) : _softBorder,
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _compactCallEndAction({
+    required String label,
+    required VoidCallback? onPressed,
+    double height = 30,
+  }) {
+    return IconButton(
+      tooltip: label,
+      onPressed: onPressed,
+      icon: const Icon(AppIcons.callEnd),
+      iconSize: _iconSm,
+      constraints: BoxConstraints.tightFor(width: 36, height: height),
+      padding: EdgeInsets.zero,
+      color: _dangerRed,
+      style: IconButton.styleFrom(
+        backgroundColor: _dangerRed.withValues(alpha: 0.08),
+        hoverColor: _dangerRed.withValues(alpha: 0.12),
+        highlightColor: _dangerRed.withValues(alpha: 0.16),
       ),
     );
   }

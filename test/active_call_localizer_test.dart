@@ -49,6 +49,38 @@ void main() {
         '媒體狀態 99',
       );
     });
+
+    test('安全状态面向用户隐藏协议术语并中性描述标准通话', () async {
+      final zh = await AppLocalizations.delegate.load(const Locale('zh'));
+
+      expect(
+        ActiveCallLocalizer.securityStatus(
+          zh,
+          signalingEncrypted: true,
+          audioEncrypted: true,
+          encryptionConfigured: true,
+        ),
+        '通话已加密',
+      );
+      expect(
+        ActiveCallLocalizer.securityStatus(
+          zh,
+          signalingEncrypted: false,
+          audioEncrypted: false,
+          encryptionConfigured: false,
+        ),
+        '标准通话',
+      );
+      expect(
+        ActiveCallLocalizer.securityStatus(
+          zh,
+          signalingEncrypted: true,
+          audioEncrypted: null,
+          encryptionConfigured: true,
+        ),
+        '正在确认加密',
+      );
+    });
   });
 }
 

@@ -9,30 +9,22 @@ extension _CallStageIdentity on _MyHomePageState {
     required bool isIncoming,
   }) {
     final contact = contactMatch?.contact;
-    final displayName = contact?.name ?? _displayRemote(call.remoteUri);
-    final displayNumber = contact == null
-        ? null
-        : contactMatch?.phone.number ?? _callDisplayNumber(call);
+    final identity = _callDisplayIdentity(call, contactMatch);
     final quality = _callQualityView(call, account);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildTooltipText(
-          displayName,
-          maxLines: 2,
-          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800),
-        ),
-        if (displayNumber != null && displayNumber.trim().isNotEmpty) ...[
-          const SizedBox(height: 4),
-          _buildTooltipText(
-            displayNumber,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: _textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
+        _buildCallIdentityLine(
+          identity,
+          primaryStyle: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
           ),
-        ],
-        const SizedBox(height: 10),
+          secondaryStyle:
+              (Theme.of(context).textTheme.bodyLarge ?? const TextStyle())
+                  .copyWith(color: _textSecondary, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
@@ -54,6 +46,55 @@ extension _CallStageIdentity on _MyHomePageState {
           ],
         ),
       ],
+    );
+  }
+
+  _CallDisplayIdentity _callDisplayIdentity(
+    CallInfo call, [
+    _CallContactMatch? match,
+  ]) {
+    final number = (match?.phone.number ?? _callDisplayNumber(call)).trim();
+    final contactName = match?.contact.name.trim() ?? '';
+
+    if (contactName.isEmpty) {
+      final fallback = number.isNotEmpty
+          ? number
+          : _displayRemote(call.remoteUri).trim();
+      return _CallDisplayIdentity(
+        primary: fallback.isEmpty ? call.remoteUri : fallback,
+      );
+    }
+
+    final hasDistinctNumber =
+        number.isNotEmpty && number.toLowerCase() != contactName.toLowerCase();
+    return _CallDisplayIdentity(
+      primary: contactName,
+      secondary: hasDistinctNumber ? number : null,
+    );
+  }
+
+  Widget _buildCallIdentityLine(
+    _CallDisplayIdentity identity, {
+    required TextStyle primaryStyle,
+    required TextStyle secondaryStyle,
+  }) {
+    final secondary = identity.secondary;
+    return Tooltip(
+      message: identity.tooltip,
+      waitDuration: const Duration(milliseconds: 350),
+      child: Text.rich(
+        TextSpan(
+          text: identity.primary,
+          style: primaryStyle,
+          children: secondary == null
+              ? const <InlineSpan>[]
+              : <InlineSpan>[
+                  TextSpan(text: '  ·  $secondary', style: secondaryStyle),
+                ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -280,12 +321,19 @@ extension _CallStageIdentity on _MyHomePageState {
             : 'RTP',
     };
     final stack = call.mediaSecurity?.transportStack ?? const <String>[];
-    final secureVerified = signalingSecure && actualSrtp == true;
-    final icon = secureVerified ? AppIcons.security : AppIcons.activity;
-    final label = '$mediaLabel · $signalingLabel · $mediaSecurityLabel';
-    final compactLabel = mediaReady
-        ? '$signalingLabel · $mediaSecurityLabel'
-        : mediaLabel;
+    final securityLabel = ActiveCallLocalizer.securityStatus(
+      context.l10n,
+      signalingEncrypted: signalingSecure,
+      audioEncrypted: actualSrtp,
+      encryptionConfigured: configuredMode?.usesSrtp == true,
+    );
+    final icon = mediaReady
+        ? actualSrtp == true
+              ? AppIcons.security
+              : AppIcons.call
+        : AppIcons.activity;
+    final label = mediaReady ? securityLabel : mediaLabel;
+    final compactLabel = mediaReady ? securityLabel : mediaLabel;
     final signalingValue = signalingSecure
         ? context.l10n.activeCallValueDetail(
             signalingLabel,

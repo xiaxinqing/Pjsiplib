@@ -431,8 +431,7 @@ extension _HomeCallStage on _MyHomePageState {
   ) {
     final match = _callContactMatch(call);
     final account = uiState.accountForCall(call);
-    final name = match?.contact.name ?? _displayRemote(call.remoteUri);
-    final number = match?.phone.number ?? _callDisplayNumber(call);
+    final identity = _callDisplayIdentity(call, match);
     final statusColor = _callStatusColor(call);
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -457,17 +456,16 @@ extension _HomeCallStage on _MyHomePageState {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildTooltipText(
-                    name,
-                    style: const TextStyle(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 2),
-                  _buildTooltipText(
-                    number,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _textSecondary,
-                      fontWeight: FontWeight.w600,
-                    ),
+                  _buildCallIdentityLine(
+                    identity,
+                    primaryStyle: const TextStyle(fontWeight: FontWeight.w800),
+                    secondaryStyle:
+                        (Theme.of(context).textTheme.bodySmall ??
+                                const TextStyle())
+                            .copyWith(
+                              color: _textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
                   ),
                   if (account != null) ...[
                     const SizedBox(height: 2),

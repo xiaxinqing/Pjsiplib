@@ -627,7 +627,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get contactsClearSearch => 'Clear search';
 
   @override
-  String get contactsAdd => 'Add contact';
+  String get contactsAdd => 'Add';
 
   @override
   String contactsVisibleCount(int visible, int total) {
@@ -1414,6 +1414,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activeCallMediaNegotiating => 'Waiting for media negotiation';
 
   @override
+  String get activeCallEncryptedCall => 'Call encrypted';
+
+  @override
+  String get activeCallEncryptedAudio => 'Audio encrypted';
+
+  @override
+  String get activeCallStandardCall => 'Standard call';
+
+  @override
+  String get activeCallVerifyingEncryption => 'Verifying encryption';
+
+  @override
   String activeCallLabeledValue(String label, String value) {
     return '$label: $value';
   }
@@ -1725,4 +1737,260 @@ class AppLocalizationsEn extends AppLocalizations {
   ) {
     return '$label: current $current%, peak $peak%$volume';
   }
+
+  @override
+  String get audioAddLine => 'Add line';
+
+  @override
+  String get audioSoundAlerts => 'Sounds';
+
+  @override
+  String get audioIncomingRingtone => 'Incoming ringtone';
+
+  @override
+  String get audioIncomingRingtoneDescription =>
+      'Play a ringtone for incoming calls';
+
+  @override
+  String get audioOutgoingRingback => 'Outgoing ringback';
+
+  @override
+  String get audioOutgoingRingbackDescription =>
+      'Play while waiting for the other person to answer';
+
+  @override
+  String get audioCallEndedTone => 'Call ended sound';
+
+  @override
+  String get audioCallEndedToneDescription => 'Play when a connected call ends';
+
+  @override
+  String get audioDialpadTones => 'Dialpad tones';
+
+  @override
+  String get audioDialpadTonesDescription =>
+      'Play tones while entering a number; off by default';
+
+  @override
+  String get audioRouting => 'Audio routing';
+
+  @override
+  String get audioFollowSystem => 'Follow system';
+
+  @override
+  String get audioChooseDevices => 'Choose devices';
+
+  @override
+  String get audioFollowSystemDescription =>
+      'Recommended. Automatically follows system audio when devices change';
+
+  @override
+  String get audioChooseDevicesDescription =>
+      'Choose devices for VPhone; system settings may affect actual routing';
+
+  @override
+  String get audioAutoSwitch => 'Switch when devices change';
+
+  @override
+  String get audioAutoSwitchDescription =>
+      'Restore an available audio path when a headset changes during a call';
+
+  @override
+  String get audioInputOutput => 'Input & output';
+
+  @override
+  String get audioMicrophone => 'Microphone';
+
+  @override
+  String get audioInputDevice => 'Input device';
+
+  @override
+  String get audioSpeaker => 'Speaker';
+
+  @override
+  String get audioOutputDevice => 'Output device';
+
+  @override
+  String audioRecordingRemaining(int seconds) {
+    return 'Recording · ${seconds}s';
+  }
+
+  @override
+  String get audioRecording => 'Recording';
+
+  @override
+  String get audioPreparingPlayback => 'Preparing playback';
+
+  @override
+  String get audioPlaying => 'Playing';
+
+  @override
+  String get audioRecordingTest => 'Test microphone';
+
+  @override
+  String get audioTestOutput => 'Test speaker';
+
+  @override
+  String get audioMute => 'Mute';
+
+  @override
+  String get audioUnmute => 'Unmute';
+
+  @override
+  String get audioTesting => 'Testing';
+
+  @override
+  String get audioReady => 'Ready';
+
+  @override
+  String get audioDeviceNeedsAttention => 'Audio device needs attention';
+
+  @override
+  String get audioFollowingSystem => 'Following system audio';
+
+  @override
+  String get audioUsingSelectedDevices => 'Using selected devices';
+
+  @override
+  String get audioFollowingSystemStatus =>
+      'Input and output follow system sound settings';
+
+  @override
+  String get audioUsingSelectedDevicesStatus =>
+      'Using the selected microphone and speaker';
+
+  @override
+  String get audioRefreshDevices => 'Refresh audio devices';
+
+  @override
+  String get audioOpenSystemSoundSettings => 'Open system sound settings';
+
+  @override
+  String get audioReconnectDevices => 'Reconnect audio devices';
+
+  @override
+  String get audioOpenSystemSoundSettingsHint =>
+      'Open Sound in system settings';
+
+  @override
+  String get audioFollowSystemDeviceHint => 'Follows system sound settings';
+
+  @override
+  String get audioSelectedDeviceHint =>
+      'Uses this device when possible; system settings may affect routing';
+
+  @override
+  String get audioChangeDevicesInSystemHint =>
+      'VPhone is following the system. Change input and output in system sound settings';
+
+  @override
+  String get audioPermissionEnabled => 'Microphone access is on';
+
+  @override
+  String get audioPermissionDisabled => 'Microphone access is off';
+
+  @override
+  String get audioPermissionRestricted => 'Microphone access is restricted';
+
+  @override
+  String get audioPermissionPending => 'Microphone access is required';
+
+  @override
+  String get audioPermissionSystemManaged =>
+      'Microphone access is managed by the system';
+
+  @override
+  String get audioPermissionUnknown => 'Microphone access not checked';
+
+  @override
+  String get audioPermissionEnabledDescription =>
+      'VPhone can use the microphone';
+
+  @override
+  String get audioPermissionDisabledDescription =>
+      'Allow VPhone to use the microphone in system settings';
+
+  @override
+  String get audioPermissionRestrictedDescription =>
+      'Microphone access is restricted by the system or an administrator';
+
+  @override
+  String get audioPermissionPendingDescription =>
+      'Click to request microphone access';
+
+  @override
+  String get audioPermissionSystemManagedDescription =>
+      'Microphone access is managed by the operating system';
+
+  @override
+  String get audioPermissionUnknownDescription =>
+      'Click to check microphone access';
+
+  @override
+  String get audioPermissionOpenSettings => 'Open system settings';
+
+  @override
+  String get audioPermissionRequest => 'Request microphone access';
+
+  @override
+  String get audioPermissionCheck => 'Check microphone access';
+
+  @override
+  String get audioPermissionAvailableToast => 'Microphone access is on';
+
+  @override
+  String get audioPermissionRequiredToast =>
+      'Allow VPhone to use the microphone in system settings';
+
+  @override
+  String get audioPermissionPendingToast =>
+      'The system will request microphone access when a call starts';
+
+  @override
+  String get audioPermissionSystemManagedToast =>
+      'Microphone access is managed by the operating system';
+
+  @override
+  String get audioPermissionUnknownToast =>
+      'Microphone access could not be confirmed';
+
+  @override
+  String get audioIssueMicrophonePermission =>
+      'Allow VPhone to use the microphone in system settings';
+
+  @override
+  String get audioIssueNoMicrophone =>
+      'No microphone detected. Connect a headset or input device';
+
+  @override
+  String get audioIssueNoSpeaker =>
+      'No speaker detected. Connect a headset or output device';
+
+  @override
+  String get audioIssueNoInputOutput =>
+      'No microphone or speaker detected. Connect an audio device';
+
+  @override
+  String get audioIssueInvalidDevice =>
+      'The current audio device is no longer available. Refresh or choose another device';
+
+  @override
+  String get audioIssueNoDevice => 'No microphone or speaker was detected';
+
+  @override
+  String get audioIssueNoDefaultDevice =>
+      'The default microphone or speaker is unavailable';
+
+  @override
+  String get audioIssueNotReady =>
+      'The audio device is not ready. Try again shortly';
+
+  @override
+  String audioIssueUnavailable(int code) {
+    return 'Audio is temporarily unavailable (error $code). Reconnect the device and try again';
+  }
+
+  @override
+  String get audioIssueSpeakerOnly =>
+      'The microphone is temporarily unavailable. Speaker-only audio is active; check the input device';
 }

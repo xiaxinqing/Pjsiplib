@@ -1236,7 +1236,7 @@ abstract class AppLocalizations {
   /// No description provided for @contactsAdd.
   ///
   /// In zh, this message translates to:
-  /// **'新建联系人'**
+  /// **'新建'**
   String get contactsAdd;
 
   /// No description provided for @contactsVisibleCount.
@@ -2655,6 +2655,30 @@ abstract class AppLocalizations {
   /// **'等待媒体协商'**
   String get activeCallMediaNegotiating;
 
+  /// No description provided for @activeCallEncryptedCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话已加密'**
+  String get activeCallEncryptedCall;
+
+  /// No description provided for @activeCallEncryptedAudio.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音已加密'**
+  String get activeCallEncryptedAudio;
+
+  /// No description provided for @activeCallStandardCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准通话'**
+  String get activeCallStandardCall;
+
+  /// No description provided for @activeCallVerifyingEncryption.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在确认加密'**
+  String get activeCallVerifyingEncryption;
+
   /// No description provided for @activeCallLabeledValue.
   ///
   /// In zh, this message translates to:
@@ -3103,6 +3127,450 @@ abstract class AppLocalizations {
     int peak,
     String volume,
   );
+
+  /// No description provided for @audioAddLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加线路'**
+  String get audioAddLine;
+
+  /// No description provided for @audioSoundAlerts.
+  ///
+  /// In zh, this message translates to:
+  /// **'声音提示'**
+  String get audioSoundAlerts;
+
+  /// No description provided for @audioIncomingRingtone.
+  ///
+  /// In zh, this message translates to:
+  /// **'来电铃声'**
+  String get audioIncomingRingtone;
+
+  /// No description provided for @audioIncomingRingtoneDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'有新来电时播放铃声'**
+  String get audioIncomingRingtoneDescription;
+
+  /// No description provided for @audioOutgoingRingback.
+  ///
+  /// In zh, this message translates to:
+  /// **'外呼回铃音'**
+  String get audioOutgoingRingback;
+
+  /// No description provided for @audioOutgoingRingbackDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号后等待对方接听时播放'**
+  String get audioOutgoingRingbackDescription;
+
+  /// No description provided for @audioCallEndedTone.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话结束提示音'**
+  String get audioCallEndedTone;
+
+  /// No description provided for @audioCallEndedToneDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'已接通的通话结束时播放'**
+  String get audioCallEndedToneDescription;
+
+  /// No description provided for @audioDialpadTones.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号按键音'**
+  String get audioDialpadTones;
+
+  /// No description provided for @audioDialpadTonesDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号盘输入时播放按键音，默认关闭'**
+  String get audioDialpadTonesDescription;
+
+  /// No description provided for @audioRouting.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频路由'**
+  String get audioRouting;
+
+  /// No description provided for @audioFollowSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统'**
+  String get audioFollowSystem;
+
+  /// No description provided for @audioChooseDevices.
+  ///
+  /// In zh, this message translates to:
+  /// **'指定设备'**
+  String get audioChooseDevices;
+
+  /// No description provided for @audioFollowSystemDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'推荐使用。插拔耳机时自动跟随系统声音设置'**
+  String get audioFollowSystemDescription;
+
+  /// No description provided for @audioChooseDevicesDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'选择应用使用的设备；系统限制可能影响实际音频路由'**
+  String get audioChooseDevicesDescription;
+
+  /// No description provided for @audioAutoSwitch.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备变化时自动切换'**
+  String get audioAutoSwitch;
+
+  /// No description provided for @audioAutoSwitchDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话中插拔耳机时，自动恢复可用的音频路径'**
+  String get audioAutoSwitchDescription;
+
+  /// No description provided for @audioInputOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入与输出'**
+  String get audioInputOutput;
+
+  /// No description provided for @audioMicrophone.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风'**
+  String get audioMicrophone;
+
+  /// No description provided for @audioInputDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入设备'**
+  String get audioInputDevice;
+
+  /// No description provided for @audioSpeaker.
+  ///
+  /// In zh, this message translates to:
+  /// **'扬声器'**
+  String get audioSpeaker;
+
+  /// No description provided for @audioOutputDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'输出设备'**
+  String get audioOutputDevice;
+
+  /// No description provided for @audioRecordingRemaining.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音中 {seconds} 秒'**
+  String audioRecordingRemaining(int seconds);
+
+  /// No description provided for @audioRecording.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音中'**
+  String get audioRecording;
+
+  /// No description provided for @audioPreparingPlayback.
+  ///
+  /// In zh, this message translates to:
+  /// **'准备播放'**
+  String get audioPreparingPlayback;
+
+  /// No description provided for @audioPlaying.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放中'**
+  String get audioPlaying;
+
+  /// No description provided for @audioRecordingTest.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音测试'**
+  String get audioRecordingTest;
+
+  /// No description provided for @audioTestOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试扬声器'**
+  String get audioTestOutput;
+
+  /// No description provided for @audioMute.
+  ///
+  /// In zh, this message translates to:
+  /// **'静音'**
+  String get audioMute;
+
+  /// No description provided for @audioUnmute.
+  ///
+  /// In zh, this message translates to:
+  /// **'取消静音'**
+  String get audioUnmute;
+
+  /// No description provided for @audioTesting.
+  ///
+  /// In zh, this message translates to:
+  /// **'测试中'**
+  String get audioTesting;
+
+  /// No description provided for @audioReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'就绪'**
+  String get audioReady;
+
+  /// No description provided for @audioDeviceNeedsAttention.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频设备需要处理'**
+  String get audioDeviceNeedsAttention;
+
+  /// No description provided for @audioFollowingSystem.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统声音'**
+  String get audioFollowingSystem;
+
+  /// No description provided for @audioUsingSelectedDevices.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用指定设备'**
+  String get audioUsingSelectedDevices;
+
+  /// No description provided for @audioFollowingSystemStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'输入和输出跟随系统声音设置'**
+  String get audioFollowingSystemStatus;
+
+  /// No description provided for @audioUsingSelectedDevicesStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'使用所选的麦克风和扬声器'**
+  String get audioUsingSelectedDevicesStatus;
+
+  /// No description provided for @audioRefreshDevices.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新音频设备'**
+  String get audioRefreshDevices;
+
+  /// No description provided for @audioOpenSystemSoundSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开系统声音设置'**
+  String get audioOpenSystemSoundSettings;
+
+  /// No description provided for @audioReconnectDevices.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新连接音频设备'**
+  String get audioReconnectDevices;
+
+  /// No description provided for @audioOpenSystemSoundSettingsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在系统设置中打开声音设置'**
+  String get audioOpenSystemSoundSettingsHint;
+
+  /// No description provided for @audioFollowSystemDeviceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'跟随系统声音设置'**
+  String get audioFollowSystemDeviceHint;
+
+  /// No description provided for @audioSelectedDeviceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'优先使用此设备，实际路由可能受系统设置影响'**
+  String get audioSelectedDeviceHint;
+
+  /// No description provided for @audioChangeDevicesInSystemHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前为跟随系统模式，请在系统声音设置中切换输入和输出设备'**
+  String get audioChangeDevicesInSystemHint;
+
+  /// No description provided for @audioPermissionEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限已开启'**
+  String get audioPermissionEnabled;
+
+  /// No description provided for @audioPermissionDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限未开启'**
+  String get audioPermissionDisabled;
+
+  /// No description provided for @audioPermissionRestricted.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限受限制'**
+  String get audioPermissionRestricted;
+
+  /// No description provided for @audioPermissionPending.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限待授权'**
+  String get audioPermissionPending;
+
+  /// No description provided for @audioPermissionSystemManaged.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限由系统管理'**
+  String get audioPermissionSystemManaged;
+
+  /// No description provided for @audioPermissionUnknown.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限未检查'**
+  String get audioPermissionUnknown;
+
+  /// No description provided for @audioPermissionEnabledDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'VPhone 可以使用麦克风'**
+  String get audioPermissionEnabledDescription;
+
+  /// No description provided for @audioPermissionDisabledDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'请前往系统设置允许 VPhone 使用麦克风'**
+  String get audioPermissionDisabledDescription;
+
+  /// No description provided for @audioPermissionRestrictedDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统或管理员限制了麦克风访问'**
+  String get audioPermissionRestrictedDescription;
+
+  /// No description provided for @audioPermissionPendingDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击向系统申请麦克风权限'**
+  String get audioPermissionPendingDescription;
+
+  /// No description provided for @audioPermissionSystemManagedDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限由当前操作系统统一管理'**
+  String get audioPermissionSystemManagedDescription;
+
+  /// No description provided for @audioPermissionUnknownDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击检查当前麦克风权限状态'**
+  String get audioPermissionUnknownDescription;
+
+  /// No description provided for @audioPermissionOpenSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开系统设置'**
+  String get audioPermissionOpenSettings;
+
+  /// No description provided for @audioPermissionRequest.
+  ///
+  /// In zh, this message translates to:
+  /// **'申请麦克风权限'**
+  String get audioPermissionRequest;
+
+  /// No description provided for @audioPermissionCheck.
+  ///
+  /// In zh, this message translates to:
+  /// **'检查麦克风权限'**
+  String get audioPermissionCheck;
+
+  /// No description provided for @audioPermissionAvailableToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限已开启'**
+  String get audioPermissionAvailableToast;
+
+  /// No description provided for @audioPermissionRequiredToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在系统设置中允许 VPhone 使用麦克风'**
+  String get audioPermissionRequiredToast;
+
+  /// No description provided for @audioPermissionPendingToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'开始通话时，系统将请求麦克风权限'**
+  String get audioPermissionPendingToast;
+
+  /// No description provided for @audioPermissionSystemManagedToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风权限由当前操作系统统一管理'**
+  String get audioPermissionSystemManagedToast;
+
+  /// No description provided for @audioPermissionUnknownToast.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂时无法确认麦克风权限状态'**
+  String get audioPermissionUnknownToast;
+
+  /// No description provided for @audioIssueMicrophonePermission.
+  ///
+  /// In zh, this message translates to:
+  /// **'请在系统设置中允许 VPhone 使用麦克风'**
+  String get audioIssueMicrophonePermission;
+
+  /// No description provided for @audioIssueNoMicrophone.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有检测到可用麦克风，请连接耳机或输入设备'**
+  String get audioIssueNoMicrophone;
+
+  /// No description provided for @audioIssueNoSpeaker.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有检测到可用扬声器，请连接耳机或输出设备'**
+  String get audioIssueNoSpeaker;
+
+  /// No description provided for @audioIssueNoInputOutput.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有检测到可用麦克风或扬声器，请连接音频设备'**
+  String get audioIssueNoInputOutput;
+
+  /// No description provided for @audioIssueInvalidDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前音频设备已失效，请刷新或重新选择设备'**
+  String get audioIssueInvalidDevice;
+
+  /// No description provided for @audioIssueNoDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有检测到可用麦克风或扬声器'**
+  String get audioIssueNoDevice;
+
+  /// No description provided for @audioIssueNoDefaultDevice.
+  ///
+  /// In zh, this message translates to:
+  /// **'系统默认麦克风或扬声器不可用'**
+  String get audioIssueNoDefaultDevice;
+
+  /// No description provided for @audioIssueNotReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频设备暂未就绪，请稍后重试'**
+  String get audioIssueNotReady;
+
+  /// No description provided for @audioIssueUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'音频设备暂不可用（错误码 {code}），请重新连接设备后重试'**
+  String audioIssueUnavailable(int code);
+
+  /// No description provided for @audioIssueSpeakerOnly.
+  ///
+  /// In zh, this message translates to:
+  /// **'麦克风暂不可用，当前仅使用扬声器，请检查输入设备'**
+  String get audioIssueSpeakerOnly;
 }
 
 class _AppLocalizationsDelegate

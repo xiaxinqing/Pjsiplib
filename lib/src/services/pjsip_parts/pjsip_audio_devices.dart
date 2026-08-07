@@ -1154,7 +1154,15 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
     if (_isAudioDeviceAvailabilityIssue(_uiState.audioDeviceIssueStatus)) {
       final message = _uiState.audioDeviceIssueMessage ?? '没有检测到可用音频设备';
-      _showAudioDeviceIssueToast(message);
+      final status = _uiState.audioDeviceIssueStatus;
+      _showAudioDeviceIssueToast(
+        status == null
+            ? message
+            : AudioSettingsLocalizer.runtimeDeviceIssue(
+                status,
+                diagnosticMessage: message,
+              ),
+      );
       _addLog('⚠️ 修复音频已刷新设备，但跳过打开声卡: $message');
       return;
     }

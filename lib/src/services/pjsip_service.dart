@@ -12,6 +12,7 @@ import 'package:flutter/services.dart'
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../app_identity.dart';
 import '../generated/pjsip_bindings.g.dart';
+import '../localization/audio_settings_localizer.dart';
 import 'call_history_database.dart';
 import 'contact_service.dart';
 import 'diagnostic_log_exporter.dart';

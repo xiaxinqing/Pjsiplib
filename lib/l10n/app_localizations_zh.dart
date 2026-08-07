@@ -606,7 +606,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get contactsClearSearch => '清空搜索';
 
   @override
-  String get contactsAdd => '新建联系人';
+  String get contactsAdd => '新建';
 
   @override
   String contactsVisibleCount(int visible, int total) {
@@ -1368,6 +1368,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activeCallMediaNegotiating => '等待媒体协商';
 
   @override
+  String get activeCallEncryptedCall => '通话已加密';
+
+  @override
+  String get activeCallEncryptedAudio => '语音已加密';
+
+  @override
+  String get activeCallStandardCall => '标准通话';
+
+  @override
+  String get activeCallVerifyingEncryption => '正在确认加密';
+
+  @override
   String activeCallLabeledValue(String label, String value) {
     return '$label：$value';
   }
@@ -1631,6 +1643,232 @@ class AppLocalizationsZh extends AppLocalizations {
   ) {
     return '$label：当前 $current%，峰值 $peak%$volume';
   }
+
+  @override
+  String get audioAddLine => '添加线路';
+
+  @override
+  String get audioSoundAlerts => '声音提示';
+
+  @override
+  String get audioIncomingRingtone => '来电铃声';
+
+  @override
+  String get audioIncomingRingtoneDescription => '有新来电时播放铃声';
+
+  @override
+  String get audioOutgoingRingback => '外呼回铃音';
+
+  @override
+  String get audioOutgoingRingbackDescription => '拨号后等待对方接听时播放';
+
+  @override
+  String get audioCallEndedTone => '通话结束提示音';
+
+  @override
+  String get audioCallEndedToneDescription => '已接通的通话结束时播放';
+
+  @override
+  String get audioDialpadTones => '拨号按键音';
+
+  @override
+  String get audioDialpadTonesDescription => '拨号盘输入时播放按键音，默认关闭';
+
+  @override
+  String get audioRouting => '音频路由';
+
+  @override
+  String get audioFollowSystem => '跟随系统';
+
+  @override
+  String get audioChooseDevices => '指定设备';
+
+  @override
+  String get audioFollowSystemDescription => '推荐使用。插拔耳机时自动跟随系统声音设置';
+
+  @override
+  String get audioChooseDevicesDescription => '选择应用使用的设备；系统限制可能影响实际音频路由';
+
+  @override
+  String get audioAutoSwitch => '设备变化时自动切换';
+
+  @override
+  String get audioAutoSwitchDescription => '通话中插拔耳机时，自动恢复可用的音频路径';
+
+  @override
+  String get audioInputOutput => '输入与输出';
+
+  @override
+  String get audioMicrophone => '麦克风';
+
+  @override
+  String get audioInputDevice => '输入设备';
+
+  @override
+  String get audioSpeaker => '扬声器';
+
+  @override
+  String get audioOutputDevice => '输出设备';
+
+  @override
+  String audioRecordingRemaining(int seconds) {
+    return '录音中 $seconds 秒';
+  }
+
+  @override
+  String get audioRecording => '录音中';
+
+  @override
+  String get audioPreparingPlayback => '准备播放';
+
+  @override
+  String get audioPlaying => '播放中';
+
+  @override
+  String get audioRecordingTest => '录音测试';
+
+  @override
+  String get audioTestOutput => '测试扬声器';
+
+  @override
+  String get audioMute => '静音';
+
+  @override
+  String get audioUnmute => '取消静音';
+
+  @override
+  String get audioTesting => '测试中';
+
+  @override
+  String get audioReady => '就绪';
+
+  @override
+  String get audioDeviceNeedsAttention => '音频设备需要处理';
+
+  @override
+  String get audioFollowingSystem => '跟随系统声音';
+
+  @override
+  String get audioUsingSelectedDevices => '使用指定设备';
+
+  @override
+  String get audioFollowingSystemStatus => '输入和输出跟随系统声音设置';
+
+  @override
+  String get audioUsingSelectedDevicesStatus => '使用所选的麦克风和扬声器';
+
+  @override
+  String get audioRefreshDevices => '刷新音频设备';
+
+  @override
+  String get audioOpenSystemSoundSettings => '打开系统声音设置';
+
+  @override
+  String get audioReconnectDevices => '重新连接音频设备';
+
+  @override
+  String get audioOpenSystemSoundSettingsHint => '请在系统设置中打开声音设置';
+
+  @override
+  String get audioFollowSystemDeviceHint => '跟随系统声音设置';
+
+  @override
+  String get audioSelectedDeviceHint => '优先使用此设备，实际路由可能受系统设置影响';
+
+  @override
+  String get audioChangeDevicesInSystemHint => '当前为跟随系统模式，请在系统声音设置中切换输入和输出设备';
+
+  @override
+  String get audioPermissionEnabled => '麦克风权限已开启';
+
+  @override
+  String get audioPermissionDisabled => '麦克风权限未开启';
+
+  @override
+  String get audioPermissionRestricted => '麦克风权限受限制';
+
+  @override
+  String get audioPermissionPending => '麦克风权限待授权';
+
+  @override
+  String get audioPermissionSystemManaged => '麦克风权限由系统管理';
+
+  @override
+  String get audioPermissionUnknown => '麦克风权限未检查';
+
+  @override
+  String get audioPermissionEnabledDescription => 'VPhone 可以使用麦克风';
+
+  @override
+  String get audioPermissionDisabledDescription => '请前往系统设置允许 VPhone 使用麦克风';
+
+  @override
+  String get audioPermissionRestrictedDescription => '系统或管理员限制了麦克风访问';
+
+  @override
+  String get audioPermissionPendingDescription => '点击向系统申请麦克风权限';
+
+  @override
+  String get audioPermissionSystemManagedDescription => '麦克风权限由当前操作系统统一管理';
+
+  @override
+  String get audioPermissionUnknownDescription => '点击检查当前麦克风权限状态';
+
+  @override
+  String get audioPermissionOpenSettings => '打开系统设置';
+
+  @override
+  String get audioPermissionRequest => '申请麦克风权限';
+
+  @override
+  String get audioPermissionCheck => '检查麦克风权限';
+
+  @override
+  String get audioPermissionAvailableToast => '麦克风权限已开启';
+
+  @override
+  String get audioPermissionRequiredToast => '请在系统设置中允许 VPhone 使用麦克风';
+
+  @override
+  String get audioPermissionPendingToast => '开始通话时，系统将请求麦克风权限';
+
+  @override
+  String get audioPermissionSystemManagedToast => '麦克风权限由当前操作系统统一管理';
+
+  @override
+  String get audioPermissionUnknownToast => '暂时无法确认麦克风权限状态';
+
+  @override
+  String get audioIssueMicrophonePermission => '请在系统设置中允许 VPhone 使用麦克风';
+
+  @override
+  String get audioIssueNoMicrophone => '没有检测到可用麦克风，请连接耳机或输入设备';
+
+  @override
+  String get audioIssueNoSpeaker => '没有检测到可用扬声器，请连接耳机或输出设备';
+
+  @override
+  String get audioIssueNoInputOutput => '没有检测到可用麦克风或扬声器，请连接音频设备';
+
+  @override
+  String get audioIssueInvalidDevice => '当前音频设备已失效，请刷新或重新选择设备';
+
+  @override
+  String get audioIssueNoDevice => '没有检测到可用麦克风或扬声器';
+
+  @override
+  String get audioIssueNoDefaultDevice => '系统默认麦克风或扬声器不可用';
+
+  @override
+  String get audioIssueNotReady => '音频设备暂未就绪，请稍后重试';
+
+  @override
+  String audioIssueUnavailable(int code) {
+    return '音频设备暂不可用（错误码 $code），请重新连接设备后重试';
+  }
+
+  @override
+  String get audioIssueSpeakerOnly => '麦克风暂不可用，当前仅使用扬声器，请检查输入设备';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -2235,7 +2473,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get contactsClearSearch => '清除搜尋';
 
   @override
-  String get contactsAdd => '新增聯絡人';
+  String get contactsAdd => '新增';
 
   @override
   String contactsVisibleCount(int visible, int total) {
@@ -2997,6 +3235,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get activeCallMediaNegotiating => '等待媒體協商';
 
   @override
+  String get activeCallEncryptedCall => '通話已加密';
+
+  @override
+  String get activeCallEncryptedAudio => '語音已加密';
+
+  @override
+  String get activeCallStandardCall => '標準通話';
+
+  @override
+  String get activeCallVerifyingEncryption => '正在確認加密';
+
+  @override
   String activeCallLabeledValue(String label, String value) {
     return '$label：$value';
   }
@@ -3260,4 +3510,230 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   ) {
     return '$label：目前 $current%，峰值 $peak%$volume';
   }
+
+  @override
+  String get audioAddLine => '新增線路';
+
+  @override
+  String get audioSoundAlerts => '聲音提示';
+
+  @override
+  String get audioIncomingRingtone => '來電鈴聲';
+
+  @override
+  String get audioIncomingRingtoneDescription => '有新來電時播放鈴聲';
+
+  @override
+  String get audioOutgoingRingback => '外撥回鈴音';
+
+  @override
+  String get audioOutgoingRingbackDescription => '撥號後等待對方接聽時播放';
+
+  @override
+  String get audioCallEndedTone => '通話結束提示音';
+
+  @override
+  String get audioCallEndedToneDescription => '已接通的通話結束時播放';
+
+  @override
+  String get audioDialpadTones => '撥號按鍵音';
+
+  @override
+  String get audioDialpadTonesDescription => '在撥號鍵盤輸入時播放按鍵音，預設關閉';
+
+  @override
+  String get audioRouting => '音訊路由';
+
+  @override
+  String get audioFollowSystem => '跟隨系統';
+
+  @override
+  String get audioChooseDevices => '指定裝置';
+
+  @override
+  String get audioFollowSystemDescription => '建議使用。插拔耳機時自動跟隨系統聲音設定';
+
+  @override
+  String get audioChooseDevicesDescription => '選擇應用程式使用的裝置；系統限制可能影響實際音訊路由';
+
+  @override
+  String get audioAutoSwitch => '裝置變更時自動切換';
+
+  @override
+  String get audioAutoSwitchDescription => '通話中插拔耳機時，自動恢復可用的音訊路徑';
+
+  @override
+  String get audioInputOutput => '輸入與輸出';
+
+  @override
+  String get audioMicrophone => '麥克風';
+
+  @override
+  String get audioInputDevice => '輸入裝置';
+
+  @override
+  String get audioSpeaker => '揚聲器';
+
+  @override
+  String get audioOutputDevice => '輸出裝置';
+
+  @override
+  String audioRecordingRemaining(int seconds) {
+    return '錄音中 $seconds 秒';
+  }
+
+  @override
+  String get audioRecording => '錄音中';
+
+  @override
+  String get audioPreparingPlayback => '準備播放';
+
+  @override
+  String get audioPlaying => '播放中';
+
+  @override
+  String get audioRecordingTest => '錄音測試';
+
+  @override
+  String get audioTestOutput => '測試揚聲器';
+
+  @override
+  String get audioMute => '靜音';
+
+  @override
+  String get audioUnmute => '取消靜音';
+
+  @override
+  String get audioTesting => '測試中';
+
+  @override
+  String get audioReady => '就緒';
+
+  @override
+  String get audioDeviceNeedsAttention => '音訊裝置需要處理';
+
+  @override
+  String get audioFollowingSystem => '跟隨系統聲音';
+
+  @override
+  String get audioUsingSelectedDevices => '使用指定裝置';
+
+  @override
+  String get audioFollowingSystemStatus => '輸入及輸出跟隨系統聲音設定';
+
+  @override
+  String get audioUsingSelectedDevicesStatus => '使用所選的麥克風及揚聲器';
+
+  @override
+  String get audioRefreshDevices => '重新整理音訊裝置';
+
+  @override
+  String get audioOpenSystemSoundSettings => '開啟系統聲音設定';
+
+  @override
+  String get audioReconnectDevices => '重新連接音訊裝置';
+
+  @override
+  String get audioOpenSystemSoundSettingsHint => '請在系統設定中開啟聲音設定';
+
+  @override
+  String get audioFollowSystemDeviceHint => '跟隨系統聲音設定';
+
+  @override
+  String get audioSelectedDeviceHint => '優先使用此裝置，實際路由可能受系統設定影響';
+
+  @override
+  String get audioChangeDevicesInSystemHint => '目前為跟隨系統模式，請在系統聲音設定中切換輸入及輸出裝置';
+
+  @override
+  String get audioPermissionEnabled => '麥克風權限已開啟';
+
+  @override
+  String get audioPermissionDisabled => '麥克風權限未開啟';
+
+  @override
+  String get audioPermissionRestricted => '麥克風權限受限制';
+
+  @override
+  String get audioPermissionPending => '麥克風權限待授權';
+
+  @override
+  String get audioPermissionSystemManaged => '麥克風權限由系統管理';
+
+  @override
+  String get audioPermissionUnknown => '麥克風權限未檢查';
+
+  @override
+  String get audioPermissionEnabledDescription => 'VPhone 可以使用麥克風';
+
+  @override
+  String get audioPermissionDisabledDescription => '請前往系統設定允許 VPhone 使用麥克風';
+
+  @override
+  String get audioPermissionRestrictedDescription => '系統或管理員限制了麥克風存取';
+
+  @override
+  String get audioPermissionPendingDescription => '點擊向系統申請麥克風權限';
+
+  @override
+  String get audioPermissionSystemManagedDescription => '麥克風權限由目前作業系統統一管理';
+
+  @override
+  String get audioPermissionUnknownDescription => '點擊檢查目前麥克風權限狀態';
+
+  @override
+  String get audioPermissionOpenSettings => '開啟系統設定';
+
+  @override
+  String get audioPermissionRequest => '申請麥克風權限';
+
+  @override
+  String get audioPermissionCheck => '檢查麥克風權限';
+
+  @override
+  String get audioPermissionAvailableToast => '麥克風權限已開啟';
+
+  @override
+  String get audioPermissionRequiredToast => '請在系統設定中允許 VPhone 使用麥克風';
+
+  @override
+  String get audioPermissionPendingToast => '開始通話時，系統將要求麥克風權限';
+
+  @override
+  String get audioPermissionSystemManagedToast => '麥克風權限由目前作業系統統一管理';
+
+  @override
+  String get audioPermissionUnknownToast => '暫時無法確認麥克風權限狀態';
+
+  @override
+  String get audioIssueMicrophonePermission => '請在系統設定中允許 VPhone 使用麥克風';
+
+  @override
+  String get audioIssueNoMicrophone => '未偵測到可用麥克風，請連接耳機或輸入裝置';
+
+  @override
+  String get audioIssueNoSpeaker => '未偵測到可用揚聲器，請連接耳機或輸出裝置';
+
+  @override
+  String get audioIssueNoInputOutput => '未偵測到可用麥克風或揚聲器，請連接音訊裝置';
+
+  @override
+  String get audioIssueInvalidDevice => '目前的音訊裝置已失效，請重新整理或重新選擇裝置';
+
+  @override
+  String get audioIssueNoDevice => '未偵測到可用麥克風或揚聲器';
+
+  @override
+  String get audioIssueNoDefaultDevice => '系統預設麥克風或揚聲器不可用';
+
+  @override
+  String get audioIssueNotReady => '音訊裝置尚未就緒，請稍後再試';
+
+  @override
+  String audioIssueUnavailable(int code) {
+    return '音訊裝置暫時不可用（錯誤碼 $code），請重新連接裝置後再試';
+  }
+
+  @override
+  String get audioIssueSpeakerOnly => '麥克風暫時不可用，目前僅使用揚聲器，請檢查輸入裝置';
 }
