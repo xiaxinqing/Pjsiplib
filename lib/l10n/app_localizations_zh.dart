@@ -742,6 +742,314 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get contactOpenPage => '打开联系人页';
+
+  @override
+  String get historySearchHint => '搜索号码、客户、线路、备注';
+
+  @override
+  String get historyClearSearch => '清除搜索';
+
+  @override
+  String get historyFilterAll => '全部';
+
+  @override
+  String get historyFilterOutbound => '呼出';
+
+  @override
+  String get historyFilterInbound => '来电';
+
+  @override
+  String get historyFilterMissed => '未接';
+
+  @override
+  String get historyFilterByDate => '按时间筛选';
+
+  @override
+  String get historyDateAll => '全部时间';
+
+  @override
+  String get historyDateToday => '今天';
+
+  @override
+  String get historyDateLast7Days => '近 7 天';
+
+  @override
+  String get historyDateThisMonth => '本月';
+
+  @override
+  String historyMarkAllReadCount(int count) {
+    return '全部已读 ($count)';
+  }
+
+  @override
+  String historyRecordCount(int count) {
+    return '$count 条';
+  }
+
+  @override
+  String get historyClearRecords => '清空通话记录';
+
+  @override
+  String get historyEmpty => '暂无通话记录';
+
+  @override
+  String get historyNoMatches => '没有匹配的通话记录';
+
+  @override
+  String get historyColumnCustomer => '客户';
+
+  @override
+  String get historyColumnLine => '线路';
+
+  @override
+  String get historyColumnStatus => '状态';
+
+  @override
+  String get historyColumnDuration => '时长';
+
+  @override
+  String get historyColumnTime => '时间';
+
+  @override
+  String get historyColumnActions => '操作';
+
+  @override
+  String get historyUnknownLine => '未知线路';
+
+  @override
+  String get historyDeleteRecord => '删除记录';
+
+  @override
+  String get historyCannotDeleteActive => '进行中的通话不能删除';
+
+  @override
+  String get historyCannotCallBackActive => '进行中的通话不能回拨';
+
+  @override
+  String get historyCallBack => '回拨';
+
+  @override
+  String get historyLive => '实时';
+
+  @override
+  String get historyHasNoteTooltip => '有备注，点击记录查看';
+
+  @override
+  String get historyLoadingMore => '正在加载更多';
+
+  @override
+  String historyLoadMoreCount(int count) {
+    return '加载更多 · 已显示 $count 条';
+  }
+
+  @override
+  String get historyNoMore => '没有更多历史记录';
+
+  @override
+  String historyAllShownCount(int count) {
+    return '已显示全部 $count 条历史记录';
+  }
+
+  @override
+  String get historyStatusOnHold => '保持中';
+
+  @override
+  String get historyStatusRemoteOnHold => '对方保持';
+
+  @override
+  String get historyStatusInCall => '通话中';
+
+  @override
+  String get historyStatusRinging => '响铃中';
+
+  @override
+  String get historyStatusRemoteRinging => '对方振铃';
+
+  @override
+  String get historyStatusCalling => '呼叫中';
+
+  @override
+  String get historyStatusTiming => '计时中';
+
+  @override
+  String get historyGroupToday => '今天';
+
+  @override
+  String get historyGroupYesterday => '昨天';
+
+  @override
+  String get historyMarkAllReadTitle => '全部标记为已读';
+
+  @override
+  String historyMarkAllReadBody(int count) {
+    return '将 $count 条未读未接来电标记为已读，列表中的未读红点会被清除。';
+  }
+
+  @override
+  String get historyMarkAllReadConfirm => '全部已读';
+
+  @override
+  String get historyConfirmCallbackTitle => '确认回拨';
+
+  @override
+  String get historyDialLine => '拨号线路';
+
+  @override
+  String get historyConfirmCallback => '确认回拨';
+
+  @override
+  String get historyDeleteTitle => '删除通话记录';
+
+  @override
+  String get historyFieldNumber => '号码';
+
+  @override
+  String get historyFieldLine => '线路';
+
+  @override
+  String get historyDeleteBody => '删除后这条本地通话记录将无法恢复。';
+
+  @override
+  String get historyDeleteConfirm => '删除';
+
+  @override
+  String get historyClearTitle => '清空通话记录';
+
+  @override
+  String get historyClearBody => '清空后本地通话记录将无法恢复；正在进行的通话不会被清空。';
+
+  @override
+  String get historyClearConfirm => '清空';
+
+  @override
+  String get historyClearError => '清空通话记录失败，请稍后重试';
+
+  @override
+  String get historyCannotRedialActive => '进行中的通话不能重复回拨';
+
+  @override
+  String get historyNoCallbackNumber => '这条记录没有可回拨号码';
+
+  @override
+  String get historyNetworkUnavailable => '当前网络不可用，无法呼叫';
+
+  @override
+  String get historyAddLineFirst => '请先添加线路';
+
+  @override
+  String get historyCallLimitReached => '当前通话已达 4 路上限';
+
+  @override
+  String get historySplitConferenceFirst => '请先拆分三方通话，再发起新的呼叫';
+
+  @override
+  String get historyNoRegisteredLine => '暂无已注册线路，无法呼叫';
+
+  @override
+  String get historySwitchDetailHint => '点击左侧记录切换详情';
+
+  @override
+  String get historyContactDeleted => '原联系人已删除，可重新添加';
+
+  @override
+  String get historyFieldContact => '联系人';
+
+  @override
+  String get historyFieldDirection => '方向';
+
+  @override
+  String get historyFieldStatus => '状态';
+
+  @override
+  String get historyFieldCalledAt => '呼叫时间';
+
+  @override
+  String get historyFieldAnsweredAt => '接通时间';
+
+  @override
+  String get historyFieldEndedAt => '挂断时间';
+
+  @override
+  String get historyFieldDuration => '通话时长';
+
+  @override
+  String get historyFieldEndReason => '结束原因';
+
+  @override
+  String get historyNotAnswered => '未接通';
+
+  @override
+  String get historyInProgress => '进行中';
+
+  @override
+  String get historyStatsTitle => '通话统计';
+
+  @override
+  String get historyMetricDialToRing => '拨号到响铃';
+
+  @override
+  String get historyMetricRingingDuration => '响铃时长';
+
+  @override
+  String get historyMetricRingToAnswer => '响铃到接听';
+
+  @override
+  String get historyMetricMediaReady => '语音建立';
+
+  @override
+  String get historyMetricHoldCount => '保持次数';
+
+  @override
+  String get historyMetricHoldDuration => '累计保持';
+
+  @override
+  String historyTimes(int count) {
+    return '$count 次';
+  }
+
+  @override
+  String get historyImmediate => '即时';
+
+  @override
+  String historySeconds(String value) {
+    return '$value 秒';
+  }
+
+  @override
+  String get historyAddNote => '添加备注';
+
+  @override
+  String get historyNote => '通话备注';
+
+  @override
+  String get historyEditNote => '编辑备注';
+
+  @override
+  String get historyEditNoteTitle => '编辑通话备注';
+
+  @override
+  String get historyNoteHint => '记录本次沟通重点';
+
+  @override
+  String get historyNoteSaveError => '保存通话备注失败，请稍后重试';
+
+  @override
+  String get historyDetailTitle => '通话详情';
+
+  @override
+  String get historyViewContact => '查看联系人';
+
+  @override
+  String get historyReAddContact => '重新添加联系人';
+
+  @override
+  String get historyAddContact => '添加联系人';
+
+  @override
+  String get commonSave => '保存';
+
+  @override
+  String get commonClose => '关闭';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -1482,4 +1790,312 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get contactOpenPage => '開啟聯絡人頁面';
+
+  @override
+  String get historySearchHint => '搜尋號碼、客戶、線路、備註';
+
+  @override
+  String get historyClearSearch => '清除搜尋';
+
+  @override
+  String get historyFilterAll => '全部';
+
+  @override
+  String get historyFilterOutbound => '撥出';
+
+  @override
+  String get historyFilterInbound => '來電';
+
+  @override
+  String get historyFilterMissed => '未接';
+
+  @override
+  String get historyFilterByDate => '按時間篩選';
+
+  @override
+  String get historyDateAll => '全部時間';
+
+  @override
+  String get historyDateToday => '今日';
+
+  @override
+  String get historyDateLast7Days => '近 7 日';
+
+  @override
+  String get historyDateThisMonth => '本月';
+
+  @override
+  String historyMarkAllReadCount(int count) {
+    return '全部已讀 ($count)';
+  }
+
+  @override
+  String historyRecordCount(int count) {
+    return '$count 條';
+  }
+
+  @override
+  String get historyClearRecords => '清除通話記錄';
+
+  @override
+  String get historyEmpty => '暫無通話記錄';
+
+  @override
+  String get historyNoMatches => '沒有相符的通話記錄';
+
+  @override
+  String get historyColumnCustomer => '客戶';
+
+  @override
+  String get historyColumnLine => '線路';
+
+  @override
+  String get historyColumnStatus => '狀態';
+
+  @override
+  String get historyColumnDuration => '時長';
+
+  @override
+  String get historyColumnTime => '時間';
+
+  @override
+  String get historyColumnActions => '操作';
+
+  @override
+  String get historyUnknownLine => '未知線路';
+
+  @override
+  String get historyDeleteRecord => '刪除記錄';
+
+  @override
+  String get historyCannotDeleteActive => '進行中的通話不能刪除';
+
+  @override
+  String get historyCannotCallBackActive => '進行中的通話不能回撥';
+
+  @override
+  String get historyCallBack => '回撥';
+
+  @override
+  String get historyLive => '即時';
+
+  @override
+  String get historyHasNoteTooltip => '已有備註，按一下記錄查看';
+
+  @override
+  String get historyLoadingMore => '正在載入更多';
+
+  @override
+  String historyLoadMoreCount(int count) {
+    return '載入更多 · 已顯示 $count 條';
+  }
+
+  @override
+  String get historyNoMore => '沒有更多通話記錄';
+
+  @override
+  String historyAllShownCount(int count) {
+    return '已顯示全部 $count 條通話記錄';
+  }
+
+  @override
+  String get historyStatusOnHold => '保持中';
+
+  @override
+  String get historyStatusRemoteOnHold => '對方保持';
+
+  @override
+  String get historyStatusInCall => '通話中';
+
+  @override
+  String get historyStatusRinging => '響鈴中';
+
+  @override
+  String get historyStatusRemoteRinging => '對方響鈴';
+
+  @override
+  String get historyStatusCalling => '撥號中';
+
+  @override
+  String get historyStatusTiming => '計時中';
+
+  @override
+  String get historyGroupToday => '今日';
+
+  @override
+  String get historyGroupYesterday => '昨日';
+
+  @override
+  String get historyMarkAllReadTitle => '全部標示為已讀';
+
+  @override
+  String historyMarkAllReadBody(int count) {
+    return '將 $count 條未讀未接來電標示為已讀，列表中的未讀紅點會被清除。';
+  }
+
+  @override
+  String get historyMarkAllReadConfirm => '全部已讀';
+
+  @override
+  String get historyConfirmCallbackTitle => '確認回撥';
+
+  @override
+  String get historyDialLine => '撥號線路';
+
+  @override
+  String get historyConfirmCallback => '確認回撥';
+
+  @override
+  String get historyDeleteTitle => '刪除通話記錄';
+
+  @override
+  String get historyFieldNumber => '號碼';
+
+  @override
+  String get historyFieldLine => '線路';
+
+  @override
+  String get historyDeleteBody => '刪除後，此本機通話記錄將無法復原。';
+
+  @override
+  String get historyDeleteConfirm => '刪除';
+
+  @override
+  String get historyClearTitle => '清除通話記錄';
+
+  @override
+  String get historyClearBody => '清除後，本機通話記錄將無法復原；進行中的通話不會被清除。';
+
+  @override
+  String get historyClearConfirm => '清除';
+
+  @override
+  String get historyClearError => '無法清除通話記錄，請稍後再試';
+
+  @override
+  String get historyCannotRedialActive => '進行中的通話不能重複回撥';
+
+  @override
+  String get historyNoCallbackNumber => '此記錄沒有可回撥號碼';
+
+  @override
+  String get historyNetworkUnavailable => '網絡未連線，無法撥號';
+
+  @override
+  String get historyAddLineFirst => '請先新增線路';
+
+  @override
+  String get historyCallLimitReached => '目前已達 4 路通話上限';
+
+  @override
+  String get historySplitConferenceFirst => '請先拆分三方通話，再撥打新通話';
+
+  @override
+  String get historyNoRegisteredLine => '沒有可用的已註冊線路';
+
+  @override
+  String get historySwitchDetailHint => '按一下左側記錄切換詳情';
+
+  @override
+  String get historyContactDeleted => '原聯絡人已刪除，可重新新增';
+
+  @override
+  String get historyFieldContact => '聯絡人';
+
+  @override
+  String get historyFieldDirection => '方向';
+
+  @override
+  String get historyFieldStatus => '狀態';
+
+  @override
+  String get historyFieldCalledAt => '撥號時間';
+
+  @override
+  String get historyFieldAnsweredAt => '接聽時間';
+
+  @override
+  String get historyFieldEndedAt => '結束時間';
+
+  @override
+  String get historyFieldDuration => '通話時長';
+
+  @override
+  String get historyFieldEndReason => '結束原因';
+
+  @override
+  String get historyNotAnswered => '未接通';
+
+  @override
+  String get historyInProgress => '進行中';
+
+  @override
+  String get historyStatsTitle => '通話統計';
+
+  @override
+  String get historyMetricDialToRing => '撥號至響鈴';
+
+  @override
+  String get historyMetricRingingDuration => '響鈴時長';
+
+  @override
+  String get historyMetricRingToAnswer => '響鈴至接聽';
+
+  @override
+  String get historyMetricMediaReady => '語音建立';
+
+  @override
+  String get historyMetricHoldCount => '保持次數';
+
+  @override
+  String get historyMetricHoldDuration => '累計保持';
+
+  @override
+  String historyTimes(int count) {
+    return '$count 次';
+  }
+
+  @override
+  String get historyImmediate => '即時';
+
+  @override
+  String historySeconds(String value) {
+    return '$value 秒';
+  }
+
+  @override
+  String get historyAddNote => '新增備註';
+
+  @override
+  String get historyNote => '通話備註';
+
+  @override
+  String get historyEditNote => '編輯備註';
+
+  @override
+  String get historyEditNoteTitle => '編輯通話備註';
+
+  @override
+  String get historyNoteHint => '記錄本次溝通重點';
+
+  @override
+  String get historyNoteSaveError => '無法儲存通話備註，請稍後再試';
+
+  @override
+  String get historyDetailTitle => '通話詳情';
+
+  @override
+  String get historyViewContact => '查看聯絡人';
+
+  @override
+  String get historyReAddContact => '重新新增聯絡人';
+
+  @override
+  String get historyAddContact => '新增聯絡人';
+
+  @override
+  String get commonSave => '儲存';
+
+  @override
+  String get commonClose => '關閉';
 }

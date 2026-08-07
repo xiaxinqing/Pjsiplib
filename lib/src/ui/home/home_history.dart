@@ -67,8 +67,8 @@ extension _HomeHistory on _MyHomePageState {
                     ? _buildHistoryEmptyState(
                         icon: AppIcons.history,
                         title: _historySearchController.text.trim().isEmpty
-                            ? '暂无通话记录'
-                            : '没有匹配的通话记录',
+                            ? context.l10n.historyEmpty
+                            : context.l10n.historyNoMatches,
                       )
                     : LayoutBuilder(
                         builder: (context, constraints) {
@@ -360,14 +360,17 @@ extension _HomeHistory on _MyHomePageState {
   }
 
   String _liveHistoryStatusLabel(CallInfo call) {
-    if (call.isOnHold) return '保持中';
-    if (call.isRemoteOnHold) return '对方保持';
-    if (call.isConnected) return '通话中';
-    if (call.direction == PjsipCallDirection.inbound) return '响铃中';
-    if (call.state == 3) {
-      return '对方振铃';
+    final l10n = context.l10n;
+    if (call.isOnHold) return l10n.historyStatusOnHold;
+    if (call.isRemoteOnHold) return l10n.historyStatusRemoteOnHold;
+    if (call.isConnected) return l10n.historyStatusInCall;
+    if (call.direction == PjsipCallDirection.inbound) {
+      return l10n.historyStatusRinging;
     }
-    return '呼叫中';
+    if (call.state == 3) {
+      return l10n.historyStatusRemoteRinging;
+    }
+    return l10n.historyStatusCalling;
   }
 
   /// 将日期标题和记录行展平，交给 ListView 按可视区域懒加载。
@@ -390,18 +393,20 @@ extension _HomeHistory on _MyHomePageState {
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(time.year, time.month, time.day);
     final diff = today.difference(day).inDays;
-    if (diff == 0) return '今天';
-    if (diff == 1) return '昨天';
+    if (diff == 0) return context.l10n.historyGroupToday;
+    if (diff == 1) return context.l10n.historyGroupYesterday;
+    final locale = Localizations.localeOf(context).toLanguageTag();
     if (diff < 7) {
-      const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-      return weekdays[time.weekday - 1];
+      return DateFormat.E(locale).format(time);
     }
-    return DateFormat('yyyy年M月d日').format(time);
+    return DateFormat.yMMMd(locale).format(time);
   }
 
   String _formatHistoryDuration(_HistoryItem item) {
     final seconds = item.durationSeconds;
-    if (seconds <= 0) return item.isLive ? '计时中' : '--';
+    if (seconds <= 0) {
+      return item.isLive ? context.l10n.historyStatusTiming : '--';
+    }
     final duration = Duration(seconds: seconds);
     final h = duration.inHours;
     final m = duration.inMinutes % 60;

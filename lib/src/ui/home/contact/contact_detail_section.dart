@@ -118,7 +118,9 @@ extension _ContactDetailSection on _MyHomePageState {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    contact.organizationLabel,
+                    contact.hasOrganization
+                        ? contact.organizationLabel
+                        : context.l10n.contactNotProvided,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(
@@ -137,7 +139,7 @@ extension _ContactDetailSection on _MyHomePageState {
         const SizedBox(height: 18),
         _buildContactDetailFocusCard(
           icon: AppIcons.call,
-          label: context.l10n.contactDefaultPhone,
+          label: context.l10n.contactDefaultNumber,
           value: contact.number,
         ),
         if (contact.phoneEntries.length > 1) ...[
@@ -156,13 +158,11 @@ extension _ContactDetailSection on _MyHomePageState {
               children: [
                 _buildContactDetailLine(
                   context.l10n.contactCompany,
-                  company.isEmpty ? context.l10n.contactNotProvided : company,
+                  company.isEmpty ? '-' : company,
                 ),
                 _buildContactDetailLine(
                   context.l10n.contactDepartment,
-                  department.isEmpty
-                      ? context.l10n.contactNotProvided
-                      : department,
+                  department.isEmpty ? '-' : department,
                 ),
                 _buildContactDetailLine(
                   context.l10n.contactCreatedAt,
@@ -224,9 +224,15 @@ extension _ContactDetailSection on _MyHomePageState {
             Icon(icon, size: _iconMd, color: _textPrimary),
             const SizedBox(width: 10),
             SizedBox(
-              width: 72,
-              child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+              width: 60,
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 value,
@@ -271,7 +277,7 @@ extension _ContactDetailSection on _MyHomePageState {
       child: Row(
         children: [
           SizedBox(
-            width: 72,
+            width: 88,
             child: Text(
               phone.isPrimary
                   ? '${phone.label} · ${context.l10n.contactDefaultNumber}'
@@ -283,6 +289,7 @@ extension _ContactDetailSection on _MyHomePageState {
               ).textTheme.bodySmall?.copyWith(color: _textSecondary),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               phone.number,
@@ -326,18 +333,21 @@ extension _ContactDetailSection on _MyHomePageState {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 54,
+            width: 76,
             child: Text(
               label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: _textSecondary),
             ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               value,
-              maxLines: 2,
+              maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
@@ -467,7 +477,7 @@ extension _ContactDetailSection on _MyHomePageState {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item.statusLabel,
+                  _localizedContactRecentCallStatus(item),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(
@@ -497,6 +507,18 @@ extension _ContactDetailSection on _MyHomePageState {
         ],
       ),
     );
+  }
+
+  /// 仅转换联系人详情内的最近通话状态；通话记录页由其自身负责本地化。
+  String _localizedContactRecentCallStatus(_HistoryItem item) {
+    return switch (item.status) {
+      CallHistoryStatus.completed => context.l10n.callStatusCompleted,
+      CallHistoryStatus.missed => context.l10n.callStatusMissed,
+      CallHistoryStatus.rejected => context.l10n.callStatusRejected,
+      CallHistoryStatus.failed => context.l10n.callStatusFailed,
+      CallHistoryStatus.canceled => context.l10n.callStatusCanceled,
+      null => item.statusLabel,
+    };
   }
 
   Future<void> _showContactDetailDialog(

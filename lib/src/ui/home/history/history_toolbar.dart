@@ -7,6 +7,7 @@ extension _HistoryToolbar on _MyHomePageState {
     required bool canClearHistory,
     required Stream<int> unreadMissedCountStream,
   }) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
       child: Row(
@@ -18,12 +19,12 @@ extension _HistoryToolbar on _MyHomePageState {
                 controller: _historySearchController,
                 onChanged: (_) => _refreshHistorySearch(),
                 decoration: InputDecoration(
-                  hintText: '搜索号码、客户、线路、备注',
+                  hintText: l10n.historySearchHint,
                   prefixIcon: const Icon(AppIcons.search),
                   suffixIcon: _historySearchController.text.trim().isEmpty
                       ? null
                       : IconButton(
-                          tooltip: '清空搜索',
+                          tooltip: l10n.historyClearSearch,
                           onPressed: _clearHistorySearch,
                           icon: const Icon(AppIcons.clear),
                         ),
@@ -33,22 +34,25 @@ extension _HistoryToolbar on _MyHomePageState {
           ),
           const SizedBox(width: 12),
           SegmentedButton<_HistoryCallFilter>(
-            segments: const [
-              ButtonSegment(value: _HistoryCallFilter.all, label: Text('全部')),
+            segments: [
+              ButtonSegment(
+                value: _HistoryCallFilter.all,
+                label: Text(l10n.historyFilterAll),
+              ),
               ButtonSegment(
                 value: _HistoryCallFilter.outbound,
-                icon: Icon(AppIcons.outgoing),
-                label: Text('呼出'),
+                icon: const Icon(AppIcons.outgoing),
+                label: Text(l10n.historyFilterOutbound),
               ),
               ButtonSegment(
                 value: _HistoryCallFilter.inbound,
-                icon: Icon(AppIcons.incoming),
-                label: Text('来电'),
+                icon: const Icon(AppIcons.incoming),
+                label: Text(l10n.historyFilterInbound),
               ),
               ButtonSegment(
                 value: _HistoryCallFilter.missed,
-                icon: Icon(AppIcons.missed),
-                label: Text('未接'),
+                icon: const Icon(AppIcons.missed),
+                label: Text(l10n.historyFilterMissed),
               ),
             ],
             selected: {_historyCallFilter},
@@ -63,17 +67,20 @@ extension _HistoryToolbar on _MyHomePageState {
           ),
           const SizedBox(width: 8),
           PopupMenuButton<_HistoryDateFilter>(
-            tooltip: '按时间筛选',
+            tooltip: l10n.historyFilterByDate,
             initialValue: _historyDateFilter,
             onSelected: _setHistoryDateFilter,
             itemBuilder: (context) => [
               for (final filter in _HistoryDateFilter.values)
-                PopupMenuItem(value: filter, child: Text(filter.label)),
+                PopupMenuItem(
+                  value: filter,
+                  child: Text(_historyDateFilterLabel(filter, l10n)),
+                ),
             ],
             child: OutlinedButton.icon(
               onPressed: null,
               icon: const Icon(AppIcons.calendar),
-              label: Text(_historyDateFilter.label),
+              label: Text(_historyDateFilterLabel(_historyDateFilter, l10n)),
               style: OutlinedButton.styleFrom(
                 disabledForegroundColor: _textPrimary,
                 side: const BorderSide(color: _softBorder),
@@ -91,7 +98,7 @@ extension _HistoryToolbar on _MyHomePageState {
                 child: TextButton.icon(
                   onPressed: () => _confirmMarkAllMissedCallsRead(count),
                   icon: const Icon(AppIcons.check),
-                  label: Text('全部已读 ($count)'),
+                  label: Text(l10n.historyMarkAllReadCount(count)),
                   style: TextButton.styleFrom(
                     foregroundColor: _dangerRed,
                     visualDensity: VisualDensity.compact,
@@ -101,14 +108,14 @@ extension _HistoryToolbar on _MyHomePageState {
             },
           ),
           Text(
-            '$itemCount 条',
+            l10n.historyRecordCount(itemCount),
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: _textSecondary),
           ),
           const SizedBox(width: 8),
           IconButton(
-            tooltip: '清空记录',
+            tooltip: l10n.historyClearRecords,
             onPressed: canClearHistory ? _confirmClearHistory : null,
             icon: const Icon(AppIcons.delete),
           ),

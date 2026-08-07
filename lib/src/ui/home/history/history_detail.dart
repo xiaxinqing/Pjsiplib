@@ -36,7 +36,7 @@ extension _HistoryDetail on _MyHomePageState {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '点击左侧记录切换详情',
+                        context.l10n.historySwitchDetailHint,
                         style: Theme.of(
                           context,
                         ).textTheme.bodySmall?.copyWith(color: _textSecondary),
@@ -50,33 +50,53 @@ extension _HistoryDetail on _MyHomePageState {
             _buildHistoryContactAction(item),
             const SizedBox(height: 18),
             if (item.hasDeletedContactSnapshot)
-              _buildHistoryDetailLine('联系人', '原联系人已删除，可重新添加'),
-            _buildHistoryDetailLine('号码', item.phoneNumber),
-            _buildHistoryDetailLine('方向', item.direction.label),
-            _buildHistoryDetailLine('状态', item.statusLabel),
-            _buildHistoryDetailLine('线路', item.accountLabel ?? '未知线路'),
+              _buildHistoryDetailLine(
+                context.l10n.historyFieldContact,
+                context.l10n.historyContactDeleted,
+              ),
             _buildHistoryDetailLine(
-              '呼叫时间',
+              context.l10n.historyFieldNumber,
+              item.phoneNumber,
+            ),
+            _buildHistoryDetailLine(
+              context.l10n.historyFieldDirection,
+              item.direction == CallHistoryDirection.inbound
+                  ? context.l10n.callDirectionInbound
+                  : context.l10n.callDirectionOutbound,
+            ),
+            _buildHistoryDetailLine(
+              context.l10n.historyFieldStatus,
+              _historyListStatusLabel(item),
+            ),
+            _buildHistoryDetailLine(
+              context.l10n.historyFieldLine,
+              item.accountLabel ?? context.l10n.historyUnknownLine,
+            ),
+            _buildHistoryDetailLine(
+              context.l10n.historyFieldCalledAt,
               DateFormat('yyyy-MM-dd HH:mm:ss').format(item.startedAt),
             ),
             _buildHistoryDetailLine(
-              '接通时间',
+              context.l10n.historyFieldAnsweredAt,
               item.answeredAt == null
-                  ? '未接通'
+                  ? context.l10n.historyNotAnswered
                   : DateFormat('yyyy-MM-dd HH:mm:ss').format(item.answeredAt!),
             ),
             _buildHistoryDetailLine(
-              '挂断时间',
+              context.l10n.historyFieldEndedAt,
               item.endedAt == null
-                  ? '进行中'
+                  ? context.l10n.historyInProgress
                   : DateFormat('yyyy-MM-dd HH:mm:ss').format(item.endedAt!),
             ),
-            _buildHistoryDetailLine('通话时长', _formatHistoryDuration(item)),
+            _buildHistoryDetailLine(
+              context.l10n.historyFieldDuration,
+              _formatHistoryDuration(item),
+            ),
             if (_historyEndReasonText(item)?.isNotEmpty == true)
               _shouldHighlightHistoryEndReason(item)
                   ? _buildHistoryEndReasonNotice(item)
                   : _buildHistoryDetailLine(
-                      '结束原因',
+                      context.l10n.historyFieldEndReason,
                       _historyEndReasonText(item)!,
                     ),
             if (item.hasCallStats) ...[
@@ -164,7 +184,7 @@ extension _HistoryDetail on _MyHomePageState {
                 Icon(AppIcons.activity, size: _iconSm, color: _textSecondary),
                 const SizedBox(width: 8),
                 Text(
-                  '通话统计',
+                  context.l10n.historyStatsTitle,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -190,37 +210,53 @@ extension _HistoryDetail on _MyHomePageState {
     final stats = <(String, String)>[];
     if (item.direction == CallHistoryDirection.outbound &&
         item.timeToRingingMs != null) {
-      stats.add(('拨号到响铃', _formatHistoryMetricMs(item.timeToRingingMs!)));
+      stats.add((
+        context.l10n.historyMetricDialToRing,
+        _formatHistoryMetricMs(item.timeToRingingMs!),
+      ));
     }
     if (item.ringingToAnswerMs != null) {
       stats.add((
-        item.answeredAt == null ? '响铃时长' : '响铃到接听',
+        item.answeredAt == null
+            ? context.l10n.historyMetricRingingDuration
+            : context.l10n.historyMetricRingToAnswer,
         _formatHistoryMetricMs(item.ringingToAnswerMs!),
       ));
     }
     if (item.answerToMediaMs != null) {
-      stats.add(('语音建立', _formatHistoryMetricMs(item.answerToMediaMs!)));
+      stats.add((
+        context.l10n.historyMetricMediaReady,
+        _formatHistoryMetricMs(item.answerToMediaMs!),
+      ));
     }
     if (item.holdCount > 0) {
-      stats.add(('保持次数', '${item.holdCount} 次'));
+      stats.add((
+        context.l10n.historyMetricHoldCount,
+        context.l10n.historyTimes(item.holdCount),
+      ));
     }
     if (item.holdSeconds > 0) {
-      stats.add(('累计保持', _formatHistoryMetricSeconds(item.holdSeconds)));
+      stats.add((
+        context.l10n.historyMetricHoldDuration,
+        _formatHistoryMetricSeconds(item.holdSeconds),
+      ));
     }
     return stats;
   }
 
   String _formatHistoryMetricMs(int milliseconds) {
-    if (milliseconds < 300) return '即时';
+    if (milliseconds < 300) return context.l10n.historyImmediate;
     if (milliseconds < 1000) return '${milliseconds}ms';
     if (milliseconds < 10000) {
-      return '${(milliseconds / 1000).toStringAsFixed(1)} 秒';
+      return context.l10n.historySeconds(
+        (milliseconds / 1000).toStringAsFixed(1),
+      );
     }
     return _formatHistoryMetricSeconds((milliseconds / 1000).round());
   }
 
   String _formatHistoryMetricSeconds(int seconds) {
-    if (seconds < 60) return '$seconds 秒';
+    if (seconds < 60) return context.l10n.historySeconds('$seconds');
     final minutes = seconds ~/ 60;
     final remain = seconds % 60;
     return '$minutes:${remain.toString().padLeft(2, '0')}';
@@ -235,7 +271,7 @@ extension _HistoryDetail on _MyHomePageState {
         child: OutlinedButton.icon(
           onPressed: () => _showEditHistoryNoteDialog(item),
           icon: const Icon(AppIcons.note),
-          label: const Text('添加备注'),
+          label: Text(context.l10n.historyAddNote),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: _softBorder),
           ),
@@ -263,7 +299,7 @@ extension _HistoryDetail on _MyHomePageState {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    '通话备注',
+                    context.l10n.historyNote,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -271,7 +307,7 @@ extension _HistoryDetail on _MyHomePageState {
                 ),
                 if (item.canEditNote)
                   IconButton(
-                    tooltip: '编辑备注',
+                    tooltip: context.l10n.historyEditNote,
                     onPressed: () => _showEditHistoryNoteDialog(item),
                     icon: const Icon(AppIcons.edit),
                     iconSize: _iconSm,
@@ -306,7 +342,7 @@ extension _HistoryDetail on _MyHomePageState {
       barrierColor: Colors.black.withValues(alpha: 0.22),
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('编辑通话备注'),
+          title: Text(context.l10n.historyEditNoteTitle),
           content: SizedBox(
             width: 460,
             child: TextField(
@@ -315,13 +351,15 @@ extension _HistoryDetail on _MyHomePageState {
               minLines: 5,
               maxLines: 8,
               textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(hintText: '记录本次沟通重点'),
+              decoration: InputDecoration(
+                hintText: context.l10n.historyNoteHint,
+              ),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('取消'),
+              child: Text(context.l10n.commonCancel),
             ),
             FilledButton.icon(
               onPressed: () async {
@@ -333,11 +371,11 @@ extension _HistoryDetail on _MyHomePageState {
                 } catch (error, stackTrace) {
                   debugPrint('Update call history note failed: $error');
                   debugPrint('$stackTrace');
-                  ToastUtil.showError('保存通话备注失败，请稍后重试');
+                  ToastUtil.showError(context.l10n.historyNoteSaveError);
                 }
               },
               icon: const Icon(AppIcons.save),
-              label: const Text('保存'),
+              label: Text(context.l10n.commonSave),
             ),
           ],
         );
@@ -400,9 +438,9 @@ extension _HistoryDetail on _MyHomePageState {
           titlePadding: const EdgeInsets.fromLTRB(24, 18, 14, 0),
           title: Row(
             children: [
-              const Expanded(child: Text('通话详情')),
+              Expanded(child: Text(context.l10n.historyDetailTitle)),
               IconButton(
-                tooltip: '关闭',
+                tooltip: context.l10n.commonClose,
                 onPressed: () => Navigator.of(context).pop(),
                 icon: const Icon(AppIcons.close),
               ),
@@ -419,7 +457,7 @@ extension _HistoryDetail on _MyHomePageState {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('关闭'),
+              child: Text(context.l10n.commonClose),
             ),
             FilledButton.icon(
               onPressed: item.isLive || item.phoneNumber.trim().isEmpty
@@ -429,7 +467,7 @@ extension _HistoryDetail on _MyHomePageState {
                       _callHistoryItem(item, service);
                     },
               icon: const Icon(AppIcons.call),
-              label: const Text('回拨'),
+              label: Text(context.l10n.historyCallBack),
             ),
             FilledButton.tonalIcon(
               onPressed: item.phoneNumber.trim().isEmpty
@@ -443,10 +481,10 @@ extension _HistoryDetail on _MyHomePageState {
               ),
               label: Text(
                 item.hasCurrentContact
-                    ? '查看联系人'
+                    ? context.l10n.historyViewContact
                     : item.hasDeletedContactSnapshot
-                    ? '重新添加联系人'
-                    : '添加联系人',
+                    ? context.l10n.historyReAddContact
+                    : context.l10n.historyAddContact,
               ),
             ),
           ],

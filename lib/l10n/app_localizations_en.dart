@@ -766,4 +766,318 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get contactOpenPage => 'Open contacts';
+
+  @override
+  String get historySearchHint => 'Search number, customer, line, or notes';
+
+  @override
+  String get historyClearSearch => 'Clear search';
+
+  @override
+  String get historyFilterAll => 'All';
+
+  @override
+  String get historyFilterOutbound => 'Outgoing';
+
+  @override
+  String get historyFilterInbound => 'Incoming';
+
+  @override
+  String get historyFilterMissed => 'Missed';
+
+  @override
+  String get historyFilterByDate => 'Filter by date';
+
+  @override
+  String get historyDateAll => 'All time';
+
+  @override
+  String get historyDateToday => 'Today';
+
+  @override
+  String get historyDateLast7Days => 'Last 7 days';
+
+  @override
+  String get historyDateThisMonth => 'This month';
+
+  @override
+  String historyMarkAllReadCount(int count) {
+    return 'Mark read ($count)';
+  }
+
+  @override
+  String historyRecordCount(int count) {
+    return '$count calls';
+  }
+
+  @override
+  String get historyClearRecords => 'Clear history';
+
+  @override
+  String get historyEmpty => 'No call history';
+
+  @override
+  String get historyNoMatches => 'No matching calls';
+
+  @override
+  String get historyColumnCustomer => 'Customer';
+
+  @override
+  String get historyColumnLine => 'Line';
+
+  @override
+  String get historyColumnStatus => 'Status';
+
+  @override
+  String get historyColumnDuration => 'Duration';
+
+  @override
+  String get historyColumnTime => 'Time';
+
+  @override
+  String get historyColumnActions => 'Actions';
+
+  @override
+  String get historyUnknownLine => 'Unknown line';
+
+  @override
+  String get historyDeleteRecord => 'Delete call';
+
+  @override
+  String get historyCannotDeleteActive => 'Active calls cannot be deleted';
+
+  @override
+  String get historyCannotCallBackActive =>
+      'Active calls cannot be called back';
+
+  @override
+  String get historyCallBack => 'Call back';
+
+  @override
+  String get historyLive => 'Live';
+
+  @override
+  String get historyHasNoteTooltip => 'Has notes. Select to view';
+
+  @override
+  String get historyLoadingMore => 'Loading more';
+
+  @override
+  String historyLoadMoreCount(int count) {
+    return 'Load more · $count shown';
+  }
+
+  @override
+  String get historyNoMore => 'No more calls';
+
+  @override
+  String historyAllShownCount(int count) {
+    return 'All $count calls shown';
+  }
+
+  @override
+  String get historyStatusOnHold => 'On hold';
+
+  @override
+  String get historyStatusRemoteOnHold => 'Remote hold';
+
+  @override
+  String get historyStatusInCall => 'In call';
+
+  @override
+  String get historyStatusRinging => 'Ringing';
+
+  @override
+  String get historyStatusRemoteRinging => 'Remote ringing';
+
+  @override
+  String get historyStatusCalling => 'Calling';
+
+  @override
+  String get historyStatusTiming => 'Timing';
+
+  @override
+  String get historyGroupToday => 'Today';
+
+  @override
+  String get historyGroupYesterday => 'Yesterday';
+
+  @override
+  String get historyMarkAllReadTitle => 'Mark all as read';
+
+  @override
+  String historyMarkAllReadBody(int count) {
+    return 'Mark $count missed calls as read and clear their unread dots?';
+  }
+
+  @override
+  String get historyMarkAllReadConfirm => 'Mark all read';
+
+  @override
+  String get historyConfirmCallbackTitle => 'Confirm call back';
+
+  @override
+  String get historyDialLine => 'Dial line';
+
+  @override
+  String get historyConfirmCallback => 'Call back';
+
+  @override
+  String get historyDeleteTitle => 'Delete call record';
+
+  @override
+  String get historyFieldNumber => 'Number';
+
+  @override
+  String get historyFieldLine => 'Line';
+
+  @override
+  String get historyDeleteBody =>
+      'This local call record cannot be recovered after deletion.';
+
+  @override
+  String get historyDeleteConfirm => 'Delete';
+
+  @override
+  String get historyClearTitle => 'Clear call history';
+
+  @override
+  String get historyClearBody =>
+      'Local call history cannot be recovered. Active calls will be kept.';
+
+  @override
+  String get historyClearConfirm => 'Clear';
+
+  @override
+  String get historyClearError => 'Could not clear call history. Try again.';
+
+  @override
+  String get historyCannotRedialActive => 'This call is already active';
+
+  @override
+  String get historyNoCallbackNumber => 'This record has no callable number';
+
+  @override
+  String get historyNetworkUnavailable => 'No network connection';
+
+  @override
+  String get historyAddLineFirst => 'Add a line first';
+
+  @override
+  String get historyCallLimitReached => 'The 4-call limit has been reached';
+
+  @override
+  String get historySplitConferenceFirst =>
+      'Split the conference before starting another call';
+
+  @override
+  String get historyNoRegisteredLine => 'No registered line is available';
+
+  @override
+  String get historySwitchDetailHint =>
+      'Select a call on the left to view details';
+
+  @override
+  String get historyContactDeleted =>
+      'Original contact deleted. You can add it again.';
+
+  @override
+  String get historyFieldContact => 'Contact';
+
+  @override
+  String get historyFieldDirection => 'Direction';
+
+  @override
+  String get historyFieldStatus => 'Status';
+
+  @override
+  String get historyFieldCalledAt => 'Started';
+
+  @override
+  String get historyFieldAnsweredAt => 'Answered';
+
+  @override
+  String get historyFieldEndedAt => 'Ended';
+
+  @override
+  String get historyFieldDuration => 'Duration';
+
+  @override
+  String get historyFieldEndReason => 'End reason';
+
+  @override
+  String get historyNotAnswered => 'Not answered';
+
+  @override
+  String get historyInProgress => 'In progress';
+
+  @override
+  String get historyStatsTitle => 'Call stats';
+
+  @override
+  String get historyMetricDialToRing => 'Dial to ring';
+
+  @override
+  String get historyMetricRingingDuration => 'Ring duration';
+
+  @override
+  String get historyMetricRingToAnswer => 'Ring to answer';
+
+  @override
+  String get historyMetricMediaReady => 'Media ready';
+
+  @override
+  String get historyMetricHoldCount => 'Holds';
+
+  @override
+  String get historyMetricHoldDuration => 'Hold time';
+
+  @override
+  String historyTimes(int count) {
+    return '$count times';
+  }
+
+  @override
+  String get historyImmediate => 'Instant';
+
+  @override
+  String historySeconds(String value) {
+    return '${value}s';
+  }
+
+  @override
+  String get historyAddNote => 'Add note';
+
+  @override
+  String get historyNote => 'Call notes';
+
+  @override
+  String get historyEditNote => 'Edit note';
+
+  @override
+  String get historyEditNoteTitle => 'Edit call notes';
+
+  @override
+  String get historyNoteHint => 'Add key points from this call';
+
+  @override
+  String get historyNoteSaveError => 'Could not save call notes. Try again.';
+
+  @override
+  String get historyDetailTitle => 'Call details';
+
+  @override
+  String get historyViewContact => 'View contact';
+
+  @override
+  String get historyReAddContact => 'Add contact again';
+
+  @override
+  String get historyAddContact => 'Add contact';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get commonClose => 'Close';
 }

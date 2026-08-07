@@ -366,7 +366,9 @@ extension _ContactListSection on _MyHomePageState {
               Expanded(
                 flex: 3,
                 child: _buildTooltipText(
-                  contact.organizationLabel,
+                  contact.hasOrganization
+                      ? contact.organizationLabel
+                      : context.l10n.contactNotProvided,
                   style: Theme.of(
                     context,
                   ).textTheme.bodyMedium?.copyWith(color: _textSecondary),

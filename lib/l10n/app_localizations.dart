@@ -1478,6 +1478,594 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'打开联系人页'**
   String get contactOpenPage;
+
+  /// No description provided for @historySearchHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'搜索号码、客户、线路、备注'**
+  String get historySearchHint;
+
+  /// No description provided for @historyClearSearch.
+  ///
+  /// In zh, this message translates to:
+  /// **'清除搜索'**
+  String get historyClearSearch;
+
+  /// No description provided for @historyFilterAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部'**
+  String get historyFilterAll;
+
+  /// No description provided for @historyFilterOutbound.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼出'**
+  String get historyFilterOutbound;
+
+  /// No description provided for @historyFilterInbound.
+  ///
+  /// In zh, this message translates to:
+  /// **'来电'**
+  String get historyFilterInbound;
+
+  /// No description provided for @historyFilterMissed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未接'**
+  String get historyFilterMissed;
+
+  /// No description provided for @historyFilterByDate.
+  ///
+  /// In zh, this message translates to:
+  /// **'按时间筛选'**
+  String get historyFilterByDate;
+
+  /// No description provided for @historyDateAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部时间'**
+  String get historyDateAll;
+
+  /// No description provided for @historyDateToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天'**
+  String get historyDateToday;
+
+  /// No description provided for @historyDateLast7Days.
+  ///
+  /// In zh, this message translates to:
+  /// **'近 7 天'**
+  String get historyDateLast7Days;
+
+  /// No description provided for @historyDateThisMonth.
+  ///
+  /// In zh, this message translates to:
+  /// **'本月'**
+  String get historyDateThisMonth;
+
+  /// No description provided for @historyMarkAllReadCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部已读 ({count})'**
+  String historyMarkAllReadCount(int count);
+
+  /// No description provided for @historyRecordCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 条'**
+  String historyRecordCount(int count);
+
+  /// No description provided for @historyClearRecords.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空通话记录'**
+  String get historyClearRecords;
+
+  /// No description provided for @historyEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无通话记录'**
+  String get historyEmpty;
+
+  /// No description provided for @historyNoMatches.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有匹配的通话记录'**
+  String get historyNoMatches;
+
+  /// No description provided for @historyColumnCustomer.
+  ///
+  /// In zh, this message translates to:
+  /// **'客户'**
+  String get historyColumnCustomer;
+
+  /// No description provided for @historyColumnLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路'**
+  String get historyColumnLine;
+
+  /// No description provided for @historyColumnStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态'**
+  String get historyColumnStatus;
+
+  /// No description provided for @historyColumnDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'时长'**
+  String get historyColumnDuration;
+
+  /// No description provided for @historyColumnTime.
+  ///
+  /// In zh, this message translates to:
+  /// **'时间'**
+  String get historyColumnTime;
+
+  /// No description provided for @historyColumnActions.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作'**
+  String get historyColumnActions;
+
+  /// No description provided for @historyUnknownLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'未知线路'**
+  String get historyUnknownLine;
+
+  /// No description provided for @historyDeleteRecord.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除记录'**
+  String get historyDeleteRecord;
+
+  /// No description provided for @historyCannotDeleteActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中的通话不能删除'**
+  String get historyCannotDeleteActive;
+
+  /// No description provided for @historyCannotCallBackActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中的通话不能回拨'**
+  String get historyCannotCallBackActive;
+
+  /// No description provided for @historyCallBack.
+  ///
+  /// In zh, this message translates to:
+  /// **'回拨'**
+  String get historyCallBack;
+
+  /// No description provided for @historyLive.
+  ///
+  /// In zh, this message translates to:
+  /// **'实时'**
+  String get historyLive;
+
+  /// No description provided for @historyHasNoteTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'有备注，点击记录查看'**
+  String get historyHasNoteTooltip;
+
+  /// No description provided for @historyLoadingMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在加载更多'**
+  String get historyLoadingMore;
+
+  /// No description provided for @historyLoadMoreCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'加载更多 · 已显示 {count} 条'**
+  String historyLoadMoreCount(int count);
+
+  /// No description provided for @historyNoMore.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有更多历史记录'**
+  String get historyNoMore;
+
+  /// No description provided for @historyAllShownCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'已显示全部 {count} 条历史记录'**
+  String historyAllShownCount(int count);
+
+  /// No description provided for @historyStatusOnHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'保持中'**
+  String get historyStatusOnHold;
+
+  /// No description provided for @historyStatusRemoteOnHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方保持'**
+  String get historyStatusRemoteOnHold;
+
+  /// No description provided for @historyStatusInCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话中'**
+  String get historyStatusInCall;
+
+  /// No description provided for @historyStatusRinging.
+  ///
+  /// In zh, this message translates to:
+  /// **'响铃中'**
+  String get historyStatusRinging;
+
+  /// No description provided for @historyStatusRemoteRinging.
+  ///
+  /// In zh, this message translates to:
+  /// **'对方振铃'**
+  String get historyStatusRemoteRinging;
+
+  /// No description provided for @historyStatusCalling.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫中'**
+  String get historyStatusCalling;
+
+  /// No description provided for @historyStatusTiming.
+  ///
+  /// In zh, this message translates to:
+  /// **'计时中'**
+  String get historyStatusTiming;
+
+  /// No description provided for @historyGroupToday.
+  ///
+  /// In zh, this message translates to:
+  /// **'今天'**
+  String get historyGroupToday;
+
+  /// No description provided for @historyGroupYesterday.
+  ///
+  /// In zh, this message translates to:
+  /// **'昨天'**
+  String get historyGroupYesterday;
+
+  /// No description provided for @historyMarkAllReadTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部标记为已读'**
+  String get historyMarkAllReadTitle;
+
+  /// No description provided for @historyMarkAllReadBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'将 {count} 条未读未接来电标记为已读，列表中的未读红点会被清除。'**
+  String historyMarkAllReadBody(int count);
+
+  /// No description provided for @historyMarkAllReadConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'全部已读'**
+  String get historyMarkAllReadConfirm;
+
+  /// No description provided for @historyConfirmCallbackTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认回拨'**
+  String get historyConfirmCallbackTitle;
+
+  /// No description provided for @historyDialLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号线路'**
+  String get historyDialLine;
+
+  /// No description provided for @historyConfirmCallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认回拨'**
+  String get historyConfirmCallback;
+
+  /// No description provided for @historyDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除通话记录'**
+  String get historyDeleteTitle;
+
+  /// No description provided for @historyFieldNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'号码'**
+  String get historyFieldNumber;
+
+  /// No description provided for @historyFieldLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路'**
+  String get historyFieldLine;
+
+  /// No description provided for @historyDeleteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除后这条本地通话记录将无法恢复。'**
+  String get historyDeleteBody;
+
+  /// No description provided for @historyDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get historyDeleteConfirm;
+
+  /// No description provided for @historyClearTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空通话记录'**
+  String get historyClearTitle;
+
+  /// No description provided for @historyClearBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空后本地通话记录将无法恢复；正在进行的通话不会被清空。'**
+  String get historyClearBody;
+
+  /// No description provided for @historyClearConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空'**
+  String get historyClearConfirm;
+
+  /// No description provided for @historyClearError.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空通话记录失败，请稍后重试'**
+  String get historyClearError;
+
+  /// No description provided for @historyCannotRedialActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中的通话不能重复回拨'**
+  String get historyCannotRedialActive;
+
+  /// No description provided for @historyNoCallbackNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'这条记录没有可回拨号码'**
+  String get historyNoCallbackNumber;
+
+  /// No description provided for @historyNetworkUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前网络不可用，无法呼叫'**
+  String get historyNetworkUnavailable;
+
+  /// No description provided for @historyAddLineFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先添加线路'**
+  String get historyAddLineFirst;
+
+  /// No description provided for @historyCallLimitReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前通话已达 4 路上限'**
+  String get historyCallLimitReached;
+
+  /// No description provided for @historySplitConferenceFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先拆分三方通话，再发起新的呼叫'**
+  String get historySplitConferenceFirst;
+
+  /// No description provided for @historyNoRegisteredLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无已注册线路，无法呼叫'**
+  String get historyNoRegisteredLine;
+
+  /// No description provided for @historySwitchDetailHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'点击左侧记录切换详情'**
+  String get historySwitchDetailHint;
+
+  /// No description provided for @historyContactDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'原联系人已删除，可重新添加'**
+  String get historyContactDeleted;
+
+  /// No description provided for @historyFieldContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人'**
+  String get historyFieldContact;
+
+  /// No description provided for @historyFieldDirection.
+  ///
+  /// In zh, this message translates to:
+  /// **'方向'**
+  String get historyFieldDirection;
+
+  /// No description provided for @historyFieldStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'状态'**
+  String get historyFieldStatus;
+
+  /// No description provided for @historyFieldCalledAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'呼叫时间'**
+  String get historyFieldCalledAt;
+
+  /// No description provided for @historyFieldAnsweredAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'接通时间'**
+  String get historyFieldAnsweredAt;
+
+  /// No description provided for @historyFieldEndedAt.
+  ///
+  /// In zh, this message translates to:
+  /// **'挂断时间'**
+  String get historyFieldEndedAt;
+
+  /// No description provided for @historyFieldDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话时长'**
+  String get historyFieldDuration;
+
+  /// No description provided for @historyFieldEndReason.
+  ///
+  /// In zh, this message translates to:
+  /// **'结束原因'**
+  String get historyFieldEndReason;
+
+  /// No description provided for @historyNotAnswered.
+  ///
+  /// In zh, this message translates to:
+  /// **'未接通'**
+  String get historyNotAnswered;
+
+  /// No description provided for @historyInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中'**
+  String get historyInProgress;
+
+  /// No description provided for @historyStatsTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话统计'**
+  String get historyStatsTitle;
+
+  /// No description provided for @historyMetricDialToRing.
+  ///
+  /// In zh, this message translates to:
+  /// **'拨号到响铃'**
+  String get historyMetricDialToRing;
+
+  /// No description provided for @historyMetricRingingDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'响铃时长'**
+  String get historyMetricRingingDuration;
+
+  /// No description provided for @historyMetricRingToAnswer.
+  ///
+  /// In zh, this message translates to:
+  /// **'响铃到接听'**
+  String get historyMetricRingToAnswer;
+
+  /// No description provided for @historyMetricMediaReady.
+  ///
+  /// In zh, this message translates to:
+  /// **'语音建立'**
+  String get historyMetricMediaReady;
+
+  /// No description provided for @historyMetricHoldCount.
+  ///
+  /// In zh, this message translates to:
+  /// **'保持次数'**
+  String get historyMetricHoldCount;
+
+  /// No description provided for @historyMetricHoldDuration.
+  ///
+  /// In zh, this message translates to:
+  /// **'累计保持'**
+  String get historyMetricHoldDuration;
+
+  /// No description provided for @historyTimes.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 次'**
+  String historyTimes(int count);
+
+  /// No description provided for @historyImmediate.
+  ///
+  /// In zh, this message translates to:
+  /// **'即时'**
+  String get historyImmediate;
+
+  /// No description provided for @historySeconds.
+  ///
+  /// In zh, this message translates to:
+  /// **'{value} 秒'**
+  String historySeconds(String value);
+
+  /// No description provided for @historyAddNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加备注'**
+  String get historyAddNote;
+
+  /// No description provided for @historyNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话备注'**
+  String get historyNote;
+
+  /// No description provided for @historyEditNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑备注'**
+  String get historyEditNote;
+
+  /// No description provided for @historyEditNoteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑通话备注'**
+  String get historyEditNoteTitle;
+
+  /// No description provided for @historyNoteHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'记录本次沟通重点'**
+  String get historyNoteHint;
+
+  /// No description provided for @historyNoteSaveError.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存通话备注失败，请稍后重试'**
+  String get historyNoteSaveError;
+
+  /// No description provided for @historyDetailTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话详情'**
+  String get historyDetailTitle;
+
+  /// No description provided for @historyViewContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看联系人'**
+  String get historyViewContact;
+
+  /// No description provided for @historyReAddContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'重新添加联系人'**
+  String get historyReAddContact;
+
+  /// No description provided for @historyAddContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加联系人'**
+  String get historyAddContact;
+
+  /// No description provided for @commonSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get commonSave;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get commonClose;
 }
 
 class _AppLocalizationsDelegate

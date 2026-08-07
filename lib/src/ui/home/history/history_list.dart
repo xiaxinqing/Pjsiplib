@@ -97,7 +97,7 @@ extension _HistoryList on _MyHomePageState {
           const SizedBox(width: 12),
           SizedBox(
             width: _historyPrimaryWidth,
-            child: Text('客户', style: style),
+            child: Text(context.l10n.historyColumnCustomer, style: style),
           ),
           const SizedBox(width: 12),
           Flexible(
@@ -109,7 +109,7 @@ extension _HistoryList on _MyHomePageState {
               child: SizedBox(
                 width: double.infinity,
                 child: Text(
-                  '线路',
+                  context.l10n.historyColumnLine,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: style,
@@ -120,23 +120,35 @@ extension _HistoryList on _MyHomePageState {
           const SizedBox(width: 14),
           SizedBox(
             width: _historyStatusColumnWidth,
-            child: Text('状态', style: style),
+            child: Text(context.l10n.historyColumnStatus, style: style),
           ),
           const SizedBox(width: 14),
           SizedBox(
             width: _historyDurationColumnWidth,
-            child: Text('时长', textAlign: TextAlign.right, style: style),
+            child: Text(
+              context.l10n.historyColumnDuration,
+              textAlign: TextAlign.right,
+              style: style,
+            ),
           ),
           const SizedBox(width: 12),
           SizedBox(
             width: _historyTimeColumnWidth,
-            child: Text('时间', textAlign: TextAlign.right, style: style),
+            child: Text(
+              context.l10n.historyColumnTime,
+              textAlign: TextAlign.right,
+              style: style,
+            ),
           ),
           const Spacer(),
           const SizedBox(width: 8),
           SizedBox(
             width: _historyActionColumnWidth,
-            child: Text('操作', textAlign: TextAlign.center, style: style),
+            child: Text(
+              context.l10n.historyColumnActions,
+              textAlign: TextAlign.center,
+              style: style,
+            ),
           ),
         ],
       ),
@@ -268,7 +280,7 @@ extension _HistoryList on _MyHomePageState {
                   child: SizedBox(
                     width: double.infinity,
                     child: Text(
-                      item.accountLabel ?? '未知线路',
+                      item.accountLabel ?? context.l10n.historyUnknownLine,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: Theme.of(
@@ -317,7 +329,9 @@ extension _HistoryList on _MyHomePageState {
                   children: [
                     _buildHistoryCallButton(item, service),
                     IconButton(
-                      tooltip: item.canDelete ? '删除记录' : '进行中的通话不能删除',
+                      tooltip: item.canDelete
+                          ? context.l10n.historyDeleteRecord
+                          : context.l10n.historyCannotDeleteActive,
                       onPressed: item.canDelete
                           ? () => _deleteHistoryEntry(item)
                           : null,
@@ -342,7 +356,9 @@ extension _HistoryList on _MyHomePageState {
   Widget _buildHistoryCallButton(_HistoryItem item, PjsipService service) {
     final canCall = !item.isLive && item.phoneNumber.trim().isNotEmpty;
     return _CallActionButton(
-      tooltip: item.isLive ? '进行中的通话不能回拨' : '回拨',
+      tooltip: item.isLive
+          ? context.l10n.historyCannotCallBackActive
+          : context.l10n.historyCallBack,
       onPressed: canCall ? () => _callHistoryItem(item, service) : null,
     );
   }
@@ -355,7 +371,7 @@ extension _HistoryList on _MyHomePageState {
         borderRadius: BorderRadius.circular(_radiusXs),
       ),
       child: Text(
-        '实时',
+        context.l10n.historyLive,
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
           color: _callGreen,
           fontWeight: FontWeight.w700,
@@ -366,7 +382,7 @@ extension _HistoryList on _MyHomePageState {
 
   Widget _buildHistoryNoteBadge() {
     return Tooltip(
-      message: '有备注，点击记录查看',
+      message: context.l10n.historyHasNoteTooltip,
       waitDuration: const Duration(milliseconds: 350),
       child: SizedBox.square(
         dimension: 22,
@@ -401,8 +417,8 @@ extension _HistoryList on _MyHomePageState {
                     : const Icon(AppIcons.next),
                 label: Text(
                   isLoadingMore
-                      ? '正在加载更多'
-                      : '加载更多 · 已显示 $persistedEntryCount 条',
+                      ? context.l10n.historyLoadingMore
+                      : context.l10n.historyLoadMoreCount(persistedEntryCount),
                 ),
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: _softBorder),
@@ -413,8 +429,8 @@ extension _HistoryList on _MyHomePageState {
               )
             : Text(
                 persistedEntryCount == 0
-                    ? '没有更多历史记录'
-                    : '已显示全部 $persistedEntryCount 条历史记录',
+                    ? context.l10n.historyNoMore
+                    : context.l10n.historyAllShownCount(persistedEntryCount),
                 style: Theme.of(
                   context,
                 ).textTheme.bodySmall?.copyWith(color: _textSecondary),

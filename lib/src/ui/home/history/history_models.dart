@@ -1,15 +1,11 @@
 part of '../../../../main.dart';
 
-/// 通话记录日期筛选项：提供常用时间范围和展示文案。
+/// 通话记录日期筛选项：仅保存查询语义，展示文案由本地化层提供。
 enum _HistoryDateFilter {
-  all('全部时间'),
-  today('今天'),
-  last7Days('近 7 天'),
-  thisMonth('本月');
-
-  const _HistoryDateFilter(this.label);
-
-  final String label;
+  all,
+  today,
+  last7Days,
+  thisMonth;
 
   _HistoryDateRange? range() {
     final now = DateTime.now();
@@ -53,17 +49,27 @@ class _HistoryPageCursor {
 
 /// 通话记录类型筛选：比单纯方向多一个“未接”，但未接仍只代表本机漏接来电。
 enum _HistoryCallFilter {
-  all('全部', null, false),
-  outbound('呼出', CallHistoryDirection.outbound, false),
-  inbound('来电', CallHistoryDirection.inbound, false),
-  missed('未接', CallHistoryDirection.inbound, true);
+  all(null, false),
+  outbound(CallHistoryDirection.outbound, false),
+  inbound(CallHistoryDirection.inbound, false),
+  missed(CallHistoryDirection.inbound, true);
 
-  const _HistoryCallFilter(this.label, this.direction, this.missedOnly);
+  const _HistoryCallFilter(this.direction, this.missedOnly);
 
-  final String label;
   final CallHistoryDirection? direction;
   final bool missedOnly;
 }
+
+/// 返回日期筛选项的本地化显示文案。
+String _historyDateFilterLabel(
+  _HistoryDateFilter filter,
+  AppLocalizations l10n,
+) => switch (filter) {
+  _HistoryDateFilter.all => l10n.historyDateAll,
+  _HistoryDateFilter.today => l10n.historyDateToday,
+  _HistoryDateFilter.last7Days => l10n.historyDateLast7Days,
+  _HistoryDateFilter.thisMonth => l10n.historyDateThisMonth,
+};
 
 /// 通话记录视图模型：统一数据库记录和实时通话在列表里的展示字段。
 class _HistoryItem {
