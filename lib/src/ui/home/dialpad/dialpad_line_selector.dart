@@ -282,7 +282,7 @@ extension _DialpadLineSelector on _MyHomePageState {
         ),
         const SizedBox(width: 12),
         Text(
-          account.registrationStatusText,
+          AccountLocalizer.status(context.l10n, account),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(

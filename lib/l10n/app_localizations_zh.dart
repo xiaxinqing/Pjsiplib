@@ -2294,6 +2294,244 @@ class AppLocalizationsZh extends AppLocalizations {
   String accountLimitReached(int count) {
     return '最多支持 $count 条线路，请删除不再使用的线路后重试';
   }
+
+  @override
+  String get runtimeNetworkUnavailable => '网络不可用，请稍后重试';
+
+  @override
+  String get runtimeLineExists => '线路已存在';
+
+  @override
+  String get runtimeLineExistsRecreate => '线路已存在，更改连接方式需重新添加';
+
+  @override
+  String get runtimeLineOnline => '线路已在线';
+
+  @override
+  String runtimeConnectionInitFailed(String transport) {
+    return '$transport 连接失败';
+  }
+
+  @override
+  String get runtimeLineAddFailed => '添加线路失败';
+
+  @override
+  String get runtimeLineBusy => '线路处理中，请稍后重试';
+
+  @override
+  String runtimeLineActiveCallBlocked(String action) {
+    return '线路正在通话，无法$action';
+  }
+
+  @override
+  String get runtimeActionEdit => '编辑';
+
+  @override
+  String get runtimeActionDisable => '停用';
+
+  @override
+  String get runtimeActionRestart => '重启';
+
+  @override
+  String get runtimeActionDelete => '删除';
+
+  @override
+  String get runtimeLineSaveFailed => '线路保存失败';
+
+  @override
+  String get runtimeLineSavedReconnectFailed => '已保存，重新连接失败';
+
+  @override
+  String get runtimeLineUpdated => '已更新，正在重新连接';
+
+  @override
+  String get runtimeLineSaved => '线路已保存';
+
+  @override
+  String get runtimeLineOffline => '线路尚未连接';
+
+  @override
+  String get runtimeDefaultLineFailed => '默认拨号线路切换失败';
+
+  @override
+  String get runtimeDefaultLineChanged => '默认拨号线路已切换';
+
+  @override
+  String get runtimeLineConnecting => '线路正在连接';
+
+  @override
+  String get runtimeLineDisabled => '线路已停用';
+
+  @override
+  String runtimeLineActionFailed(String action) {
+    return '$action线路失败';
+  }
+
+  @override
+  String get runtimeActionRefresh => '刷新';
+
+  @override
+  String get runtimeActionEnable => '启用';
+
+  @override
+  String get runtimeLineRestarting => '正在重启线路';
+
+  @override
+  String get runtimeLineRestartFailed => '线路重启失败';
+
+  @override
+  String get runtimePhoneServiceRestarting => '电话服务正在重启';
+
+  @override
+  String get runtimeEndCallsFirst => '请先结束当前通话';
+
+  @override
+  String get runtimeAllLinesDisconnected => '线路已全部断开';
+
+  @override
+  String get runtimeNoLinesToDisconnect => '没有可断开的线路';
+
+  @override
+  String get runtimeDisconnectingAllLines => '正在断开全部线路';
+
+  @override
+  String get runtimeSomeLinesDisconnectFailed => '部分线路断开失败';
+
+  @override
+  String get runtimePhoneServiceRestarted => '电话服务已重启';
+
+  @override
+  String get runtimePhoneServiceRestartFailed => '电话服务重启失败';
+
+  @override
+  String get runtimeLineDeleteFailed => '线路删除失败';
+
+  @override
+  String get runtimeLineDeleted => '线路已删除';
+
+  @override
+  String get runtimeTransferCompleted => '通话已转接';
+
+  @override
+  String runtimeTransferFailed(int code) {
+    return '转接失败（$code）';
+  }
+
+  @override
+  String runtimeLineDisabledNamed(String name) {
+    return '$name 已停用';
+  }
+
+  @override
+  String get runtimeLineConnected => '线路连接成功';
+
+  @override
+  String runtimeLineConnectionFailed(String status) {
+    return '线路连接失败：$status';
+  }
+
+  @override
+  String get runtimeDuplicateCall => '该号码已在当前通话中';
+
+  @override
+  String runtimeDuplicateCallNumber(String number) {
+    return '$number 已在当前通话中';
+  }
+
+  @override
+  String get runtimeCallInProgress => '已有呼叫正在进行';
+
+  @override
+  String runtimeCallingNumber(String number) {
+    return '正在呼叫 $number';
+  }
+
+  @override
+  String get runtimeNoTransferableCall => '没有可转接的通话';
+
+  @override
+  String get runtimeSplitConferenceFirst => '请先拆分会议通话';
+
+  @override
+  String get runtimeEnterTransferNumber => '请输入转接号码';
+
+  @override
+  String get runtimeTransferRequested => '正在转接通话';
+
+  @override
+  String get runtimeTransferRequestFailed => '转接请求失败';
+
+  @override
+  String runtimeCallEnded(String target) {
+    return '与 $target 的通话已结束';
+  }
+
+  @override
+  String runtimeCallNotConnected(
+    String direction,
+    String target,
+    String status,
+  ) {
+    return '$direction$target未接通：$status';
+  }
+
+  @override
+  String runtimeNetworkRecovering(int seconds) {
+    return '网络正在恢复，请在 $seconds 秒后重试';
+  }
+
+  @override
+  String get runtimeRestartUnsupported => '当前平台不支持重启';
+
+  @override
+  String get runtimeRestartFailed => '重启失败，请退出后重新打开';
+
+  @override
+  String get runtimeRestartEnvironmentUnsupported => '当前环境不支持重启';
+
+  @override
+  String trayOpenApp(String app) {
+    return '打开 $app';
+  }
+
+  @override
+  String get trayCurrentCalls => '当前通话';
+
+  @override
+  String get trayCallHistory => '通话记录';
+
+  @override
+  String trayConnectionStatus(int connected, int total) {
+    return '已连接 $connected/$total 条线路';
+  }
+
+  @override
+  String get trayIncomingRingtone => '来电铃声';
+
+  @override
+  String get trayDisconnectAll => '断开全部线路';
+
+  @override
+  String get traySettings => '设置';
+
+  @override
+  String trayAboutApp(String app) {
+    return '关于 $app';
+  }
+
+  @override
+  String get trayRestartApp => '重启应用…';
+
+  @override
+  String trayExitApp(String app) {
+    return '退出 $app';
+  }
+
+  @override
+  String get contactLoadFailed => '联系人加载失败，请稍后重试';
+
+  @override
+  String get contactNoLongerExists => '联系人已不存在';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -4586,4 +4824,242 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String accountLimitReached(int count) {
     return '最多支援 $count 條線路，請刪除不再使用的線路後再試';
   }
+
+  @override
+  String get runtimeNetworkUnavailable => '網絡不可用，請稍後再試';
+
+  @override
+  String get runtimeLineExists => '線路已存在';
+
+  @override
+  String get runtimeLineExistsRecreate => '線路已存在，變更連接方式需重新新增';
+
+  @override
+  String get runtimeLineOnline => '線路已在線';
+
+  @override
+  String runtimeConnectionInitFailed(String transport) {
+    return '$transport 連接失敗';
+  }
+
+  @override
+  String get runtimeLineAddFailed => '新增線路失敗';
+
+  @override
+  String get runtimeLineBusy => '線路處理中，請稍後再試';
+
+  @override
+  String runtimeLineActiveCallBlocked(String action) {
+    return '線路正在通話，無法$action';
+  }
+
+  @override
+  String get runtimeActionEdit => '編輯';
+
+  @override
+  String get runtimeActionDisable => '停用';
+
+  @override
+  String get runtimeActionRestart => '重新啟動';
+
+  @override
+  String get runtimeActionDelete => '刪除';
+
+  @override
+  String get runtimeLineSaveFailed => '線路儲存失敗';
+
+  @override
+  String get runtimeLineSavedReconnectFailed => '已儲存，重新連接失敗';
+
+  @override
+  String get runtimeLineUpdated => '已更新，正在重新連接';
+
+  @override
+  String get runtimeLineSaved => '線路已儲存';
+
+  @override
+  String get runtimeLineOffline => '線路尚未連接';
+
+  @override
+  String get runtimeDefaultLineFailed => '預設撥號線路切換失敗';
+
+  @override
+  String get runtimeDefaultLineChanged => '預設撥號線路已切換';
+
+  @override
+  String get runtimeLineConnecting => '線路正在連接';
+
+  @override
+  String get runtimeLineDisabled => '線路已停用';
+
+  @override
+  String runtimeLineActionFailed(String action) {
+    return '$action線路失敗';
+  }
+
+  @override
+  String get runtimeActionRefresh => '重新整理';
+
+  @override
+  String get runtimeActionEnable => '啟用';
+
+  @override
+  String get runtimeLineRestarting => '正在重新啟動線路';
+
+  @override
+  String get runtimeLineRestartFailed => '線路重新啟動失敗';
+
+  @override
+  String get runtimePhoneServiceRestarting => '電話服務正在重新啟動';
+
+  @override
+  String get runtimeEndCallsFirst => '請先結束目前通話';
+
+  @override
+  String get runtimeAllLinesDisconnected => '線路已全部中斷';
+
+  @override
+  String get runtimeNoLinesToDisconnect => '沒有可中斷的線路';
+
+  @override
+  String get runtimeDisconnectingAllLines => '正在中斷全部線路';
+
+  @override
+  String get runtimeSomeLinesDisconnectFailed => '部分線路中斷失敗';
+
+  @override
+  String get runtimePhoneServiceRestarted => '電話服務已重新啟動';
+
+  @override
+  String get runtimePhoneServiceRestartFailed => '電話服務重新啟動失敗';
+
+  @override
+  String get runtimeLineDeleteFailed => '線路刪除失敗';
+
+  @override
+  String get runtimeLineDeleted => '線路已刪除';
+
+  @override
+  String get runtimeTransferCompleted => '通話已轉接';
+
+  @override
+  String runtimeTransferFailed(int code) {
+    return '轉接失敗（$code）';
+  }
+
+  @override
+  String runtimeLineDisabledNamed(String name) {
+    return '$name 已停用';
+  }
+
+  @override
+  String get runtimeLineConnected => '線路連接成功';
+
+  @override
+  String runtimeLineConnectionFailed(String status) {
+    return '線路連接失敗：$status';
+  }
+
+  @override
+  String get runtimeDuplicateCall => '此號碼已在目前通話中';
+
+  @override
+  String runtimeDuplicateCallNumber(String number) {
+    return '$number 已在目前通話中';
+  }
+
+  @override
+  String get runtimeCallInProgress => '已有呼叫正在進行';
+
+  @override
+  String runtimeCallingNumber(String number) {
+    return '正在呼叫 $number';
+  }
+
+  @override
+  String get runtimeNoTransferableCall => '沒有可轉接的通話';
+
+  @override
+  String get runtimeSplitConferenceFirst => '請先拆分會議通話';
+
+  @override
+  String get runtimeEnterTransferNumber => '請輸入轉接號碼';
+
+  @override
+  String get runtimeTransferRequested => '正在轉接通話';
+
+  @override
+  String get runtimeTransferRequestFailed => '轉接要求失敗';
+
+  @override
+  String runtimeCallEnded(String target) {
+    return '與 $target 的通話已結束';
+  }
+
+  @override
+  String runtimeCallNotConnected(
+    String direction,
+    String target,
+    String status,
+  ) {
+    return '$direction$target未接通：$status';
+  }
+
+  @override
+  String runtimeNetworkRecovering(int seconds) {
+    return '網絡正在恢復，請在 $seconds 秒後再試';
+  }
+
+  @override
+  String get runtimeRestartUnsupported => '目前平台不支援重新啟動';
+
+  @override
+  String get runtimeRestartFailed => '重新啟動失敗，請退出後重新開啟';
+
+  @override
+  String get runtimeRestartEnvironmentUnsupported => '目前環境不支援重新啟動';
+
+  @override
+  String trayOpenApp(String app) {
+    return '開啟 $app';
+  }
+
+  @override
+  String get trayCurrentCalls => '目前通話';
+
+  @override
+  String get trayCallHistory => '通話記錄';
+
+  @override
+  String trayConnectionStatus(int connected, int total) {
+    return '已連接 $connected/$total 條線路';
+  }
+
+  @override
+  String get trayIncomingRingtone => '來電鈴聲';
+
+  @override
+  String get trayDisconnectAll => '中斷全部線路';
+
+  @override
+  String get traySettings => '設定';
+
+  @override
+  String trayAboutApp(String app) {
+    return '關於 $app';
+  }
+
+  @override
+  String get trayRestartApp => '重新啟動應用程式…';
+
+  @override
+  String trayExitApp(String app) {
+    return '退出 $app';
+  }
+
+  @override
+  String get contactLoadFailed => '聯絡人載入失敗，請稍後再試';
+
+  @override
+  String get contactNoLongerExists => '聯絡人已不存在';
 }

@@ -24,6 +24,17 @@ extension _HomeHelpers on _MyHomePageState {
     return calls.isEmpty ? null : calls.first;
   }
 
+  String _contactPhoneLabel(
+    ContactPhoneEntry phone, {
+    bool markPrimary = true,
+  }) {
+    return _localizedContactPhoneLabel(
+      context,
+      phone,
+      markPrimary: markPrimary,
+    );
+  }
+
   String _displayRemote(String remoteUri) {
     final sipIndex = remoteUri.indexOf('sip:');
     var value = sipIndex >= 0 ? remoteUri.substring(sipIndex + 4) : remoteUri;
@@ -60,6 +71,25 @@ extension _HomeHelpers on _MyHomePageState {
       ),
     );
   }
+}
+
+String _localizedContactPhoneLabel(
+  BuildContext context,
+  ContactPhoneEntry phone, {
+  bool markPrimary = true,
+}) {
+  final raw = phone.label.trim();
+  final isLegacyDefault =
+      raw.isEmpty ||
+      raw == '默认' ||
+      raw == '默认号码' ||
+      raw == '預設' ||
+      raw == '預設號碼' ||
+      raw.toLowerCase() == 'default' ||
+      raw.toLowerCase() == 'default number';
+  final label = isLegacyDefault ? context.l10n.contactDefaultNumber : raw;
+  if (!markPrimary || !phone.isPrimary || isLegacyDefault) return label;
+  return '$label · ${context.l10n.contactDefaultNumber}';
 }
 
 extension _IncomingCallSnapshot on PjsipUIState {

@@ -268,7 +268,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         ' · STUN'
         '${account.iceConfig.enabled ? ' · ICE' : ''}'
         '${account.turnConfig.isUsable ? ' · TURN' : ''}'
-        ' · ${_accountSettingsStatus(l10n, account)}';
+        ' · ${AccountLocalizer.status(l10n, account)}';
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -568,18 +568,5 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         ),
       ],
     );
-  }
-
-  String _accountSettingsStatus(AppLocalizations l10n, SipAccountInfo account) {
-    if (account.isRestoringPlaceholder) return l10n.accountStatusRestoring;
-    if (!account.registrationEnabled) return l10n.accountStatusDisabled;
-    if (account.registrationActionInProgress) {
-      return l10n.accountStatusUpdating;
-    }
-    if (account.isRegistered) return l10n.accountStatusOnline;
-    final status = account.registrationStatus;
-    if (status == null || status < 200) return l10n.accountStatusConnecting;
-    if (status >= 300) return l10n.accountStatusFailed;
-    return l10n.accountStatusOffline;
   }
 }

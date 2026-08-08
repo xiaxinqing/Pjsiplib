@@ -73,9 +73,9 @@ extension _HomeContactCoordinator on _MyHomePageState {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || _pendingContactRevealId != targetId) return;
         _update(() => _pendingContactRevealId = null);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('联系人已不存在')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.contactNoLongerExists)),
+        );
       });
       return;
     }

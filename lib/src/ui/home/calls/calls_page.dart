@@ -368,7 +368,7 @@ class _BlindTransferDialogState extends State<_BlindTransferDialog> {
             final contact = target.contact;
             final phone = target.phone;
             final subtitle = [
-              phone.label,
+              _localizedContactPhoneLabel(context, phone),
               if (contact.hasOrganization) contact.organizationLabel,
             ].join(' · ');
             return Material(

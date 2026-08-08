@@ -4393,6 +4393,418 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'最多支持 {count} 条线路，请删除不再使用的线路后重试'**
   String accountLimitReached(int count);
+
+  /// No description provided for @runtimeNetworkUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络不可用，请稍后重试'**
+  String get runtimeNetworkUnavailable;
+
+  /// No description provided for @runtimeLineExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已存在'**
+  String get runtimeLineExists;
+
+  /// No description provided for @runtimeLineExistsRecreate.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已存在，更改连接方式需重新添加'**
+  String get runtimeLineExistsRecreate;
+
+  /// No description provided for @runtimeLineOnline.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已在线'**
+  String get runtimeLineOnline;
+
+  /// No description provided for @runtimeConnectionInitFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{transport} 连接失败'**
+  String runtimeConnectionInitFailed(String transport);
+
+  /// No description provided for @runtimeLineAddFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加线路失败'**
+  String get runtimeLineAddFailed;
+
+  /// No description provided for @runtimeLineBusy.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路处理中，请稍后重试'**
+  String get runtimeLineBusy;
+
+  /// No description provided for @runtimeLineActiveCallBlocked.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路正在通话，无法{action}'**
+  String runtimeLineActiveCallBlocked(String action);
+
+  /// No description provided for @runtimeActionEdit.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑'**
+  String get runtimeActionEdit;
+
+  /// No description provided for @runtimeActionDisable.
+  ///
+  /// In zh, this message translates to:
+  /// **'停用'**
+  String get runtimeActionDisable;
+
+  /// No description provided for @runtimeActionRestart.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启'**
+  String get runtimeActionRestart;
+
+  /// No description provided for @runtimeActionDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除'**
+  String get runtimeActionDelete;
+
+  /// No description provided for @runtimeLineSaveFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路保存失败'**
+  String get runtimeLineSaveFailed;
+
+  /// No description provided for @runtimeLineSavedReconnectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'已保存，重新连接失败'**
+  String get runtimeLineSavedReconnectFailed;
+
+  /// No description provided for @runtimeLineUpdated.
+  ///
+  /// In zh, this message translates to:
+  /// **'已更新，正在重新连接'**
+  String get runtimeLineUpdated;
+
+  /// No description provided for @runtimeLineSaved.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已保存'**
+  String get runtimeLineSaved;
+
+  /// No description provided for @runtimeLineOffline.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路尚未连接'**
+  String get runtimeLineOffline;
+
+  /// No description provided for @runtimeDefaultLineFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拨号线路切换失败'**
+  String get runtimeDefaultLineFailed;
+
+  /// No description provided for @runtimeDefaultLineChanged.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认拨号线路已切换'**
+  String get runtimeDefaultLineChanged;
+
+  /// No description provided for @runtimeLineConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路正在连接'**
+  String get runtimeLineConnecting;
+
+  /// No description provided for @runtimeLineDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已停用'**
+  String get runtimeLineDisabled;
+
+  /// No description provided for @runtimeLineActionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{action}线路失败'**
+  String runtimeLineActionFailed(String action);
+
+  /// No description provided for @runtimeActionRefresh.
+  ///
+  /// In zh, this message translates to:
+  /// **'刷新'**
+  String get runtimeActionRefresh;
+
+  /// No description provided for @runtimeActionEnable.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用'**
+  String get runtimeActionEnable;
+
+  /// No description provided for @runtimeLineRestarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在重启线路'**
+  String get runtimeLineRestarting;
+
+  /// No description provided for @runtimeLineRestartFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路重启失败'**
+  String get runtimeLineRestartFailed;
+
+  /// No description provided for @runtimePhoneServiceRestarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务正在重启'**
+  String get runtimePhoneServiceRestarting;
+
+  /// No description provided for @runtimeEndCallsFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先结束当前通话'**
+  String get runtimeEndCallsFirst;
+
+  /// No description provided for @runtimeAllLinesDisconnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已全部断开'**
+  String get runtimeAllLinesDisconnected;
+
+  /// No description provided for @runtimeNoLinesToDisconnect.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可断开的线路'**
+  String get runtimeNoLinesToDisconnect;
+
+  /// No description provided for @runtimeDisconnectingAllLines.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在断开全部线路'**
+  String get runtimeDisconnectingAllLines;
+
+  /// No description provided for @runtimeSomeLinesDisconnectFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'部分线路断开失败'**
+  String get runtimeSomeLinesDisconnectFailed;
+
+  /// No description provided for @runtimePhoneServiceRestarted.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务已重启'**
+  String get runtimePhoneServiceRestarted;
+
+  /// No description provided for @runtimePhoneServiceRestartFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务重启失败'**
+  String get runtimePhoneServiceRestartFailed;
+
+  /// No description provided for @runtimeLineDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路删除失败'**
+  String get runtimeLineDeleteFailed;
+
+  /// No description provided for @runtimeLineDeleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路已删除'**
+  String get runtimeLineDeleted;
+
+  /// No description provided for @runtimeTransferCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话已转接'**
+  String get runtimeTransferCompleted;
+
+  /// No description provided for @runtimeTransferFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'转接失败（{code}）'**
+  String runtimeTransferFailed(int code);
+
+  /// No description provided for @runtimeLineDisabledNamed.
+  ///
+  /// In zh, this message translates to:
+  /// **'{name} 已停用'**
+  String runtimeLineDisabledNamed(String name);
+
+  /// No description provided for @runtimeLineConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路连接成功'**
+  String get runtimeLineConnected;
+
+  /// No description provided for @runtimeLineConnectionFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路连接失败：{status}'**
+  String runtimeLineConnectionFailed(String status);
+
+  /// No description provided for @runtimeDuplicateCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'该号码已在当前通话中'**
+  String get runtimeDuplicateCall;
+
+  /// No description provided for @runtimeDuplicateCallNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'{number} 已在当前通话中'**
+  String runtimeDuplicateCallNumber(String number);
+
+  /// No description provided for @runtimeCallInProgress.
+  ///
+  /// In zh, this message translates to:
+  /// **'已有呼叫正在进行'**
+  String get runtimeCallInProgress;
+
+  /// No description provided for @runtimeCallingNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在呼叫 {number}'**
+  String runtimeCallingNumber(String number);
+
+  /// No description provided for @runtimeNoTransferableCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有可转接的通话'**
+  String get runtimeNoTransferableCall;
+
+  /// No description provided for @runtimeSplitConferenceFirst.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先拆分会议通话'**
+  String get runtimeSplitConferenceFirst;
+
+  /// No description provided for @runtimeEnterTransferNumber.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入转接号码'**
+  String get runtimeEnterTransferNumber;
+
+  /// No description provided for @runtimeTransferRequested.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在转接通话'**
+  String get runtimeTransferRequested;
+
+  /// No description provided for @runtimeTransferRequestFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'转接请求失败'**
+  String get runtimeTransferRequestFailed;
+
+  /// No description provided for @runtimeCallEnded.
+  ///
+  /// In zh, this message translates to:
+  /// **'与 {target} 的通话已结束'**
+  String runtimeCallEnded(String target);
+
+  /// No description provided for @runtimeCallNotConnected.
+  ///
+  /// In zh, this message translates to:
+  /// **'{direction}{target}未接通：{status}'**
+  String runtimeCallNotConnected(
+    String direction,
+    String target,
+    String status,
+  );
+
+  /// No description provided for @runtimeNetworkRecovering.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络正在恢复，请在 {seconds} 秒后重试'**
+  String runtimeNetworkRecovering(int seconds);
+
+  /// No description provided for @runtimeRestartUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前平台不支持重启'**
+  String get runtimeRestartUnsupported;
+
+  /// No description provided for @runtimeRestartFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启失败，请退出后重新打开'**
+  String get runtimeRestartFailed;
+
+  /// No description provided for @runtimeRestartEnvironmentUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前环境不支持重启'**
+  String get runtimeRestartEnvironmentUnsupported;
+
+  /// No description provided for @trayOpenApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开 {app}'**
+  String trayOpenApp(String app);
+
+  /// No description provided for @trayCurrentCalls.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前通话'**
+  String get trayCurrentCalls;
+
+  /// No description provided for @trayCallHistory.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话记录'**
+  String get trayCallHistory;
+
+  /// No description provided for @trayConnectionStatus.
+  ///
+  /// In zh, this message translates to:
+  /// **'已连接 {connected}/{total} 条线路'**
+  String trayConnectionStatus(int connected, int total);
+
+  /// No description provided for @trayIncomingRingtone.
+  ///
+  /// In zh, this message translates to:
+  /// **'来电铃声'**
+  String get trayIncomingRingtone;
+
+  /// No description provided for @trayDisconnectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'断开全部线路'**
+  String get trayDisconnectAll;
+
+  /// No description provided for @traySettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'设置'**
+  String get traySettings;
+
+  /// No description provided for @trayAboutApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'关于 {app}'**
+  String trayAboutApp(String app);
+
+  /// No description provided for @trayRestartApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启应用…'**
+  String get trayRestartApp;
+
+  /// No description provided for @trayExitApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'退出 {app}'**
+  String trayExitApp(String app);
+
+  /// No description provided for @contactLoadFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人加载失败，请稍后重试'**
+  String get contactLoadFailed;
+
+  /// No description provided for @contactNoLongerExists.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系人已不存在'**
+  String get contactNoLongerExists;
 }
 
 class _AppLocalizationsDelegate

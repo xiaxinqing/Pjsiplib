@@ -145,11 +145,7 @@ extension _ContactActions on _MyHomePageState {
                                     ],
                                   ),
                             ),
-                            subtitle: Text(
-                              phone.isPrimary
-                                  ? '${phone.label} · ${context.l10n.contactDefaultNumber}'
-                                  : phone.label,
-                            ),
+                            subtitle: Text(_contactPhoneLabel(phone)),
                             secondary: const Icon(AppIcons.call),
                             dense: true,
                           ),
@@ -363,7 +359,7 @@ extension _ContactActions on _MyHomePageState {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              '${conflict.phone.label} · $conflictNumber',
+                              '${_contactPhoneLabel(conflict.phone)} · $conflictNumber',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: Theme.of(context).textTheme.bodySmall

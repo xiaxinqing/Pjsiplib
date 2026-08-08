@@ -33,7 +33,9 @@ extension _CallSideCustomerCards on _MyHomePageState {
                 ),
                 const SizedBox(height: 2),
                 _buildTooltipText(
-                  phone == null ? number : '${phone.label} · $number',
+                  phone == null
+                      ? number
+                      : '${_contactPhoneLabel(phone)} · $number',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: _textSecondary,
                     fontWeight: FontWeight.w600,

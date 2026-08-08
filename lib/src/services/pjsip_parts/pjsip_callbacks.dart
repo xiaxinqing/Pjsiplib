@@ -342,7 +342,12 @@ extension _PjsipNativeCallbacks on PjsipService {
       }
 
       if (statusCode >= 200 && statusCode < 300) {
-        ToastUtil.showSuccess('转接已完成');
+        ToastUtil.showSuccess(
+          AppRuntimeLocalizer.resolve(
+            (l) => l.runtimeTransferCompleted,
+            '转接已完成',
+          ),
+        );
         unawaited(
           Future<void>.delayed(const Duration(milliseconds: 120), () async {
             if (!_uiState.calls.containsKey(callId)) return;
@@ -352,7 +357,12 @@ extension _PjsipNativeCallbacks on PjsipService {
         return;
       }
 
-      ToastUtil.showError('转接失败：$statusCode');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeTransferFailed(statusCode),
+          '转接失败：$statusCode',
+        ),
+      );
     });
 
     // 账号注册状态回调。
@@ -408,20 +418,42 @@ extension _PjsipNativeCallbacks on PjsipService {
               );
             _uiState = _uiState.copyWith(accounts: accounts);
             if (isPaused && wasActionInProgress) {
-              ToastUtil.showSuccess('${account.displayName}线路已停用');
+              ToastUtil.showSuccess(
+                AppRuntimeLocalizer.resolve(
+                  (l) => l.runtimeLineDisabledNamed(account.displayName),
+                  '${account.displayName}线路已停用',
+                ),
+              );
             } else if (sipStatus == 200 &&
                 expires != 0 &&
                 account.registrationEnabled &&
                 (wasActionInProgress || !wasRegistered)) {
-              ToastUtil.showSuccess('线路注册成功');
+              ToastUtil.showSuccess(
+                AppRuntimeLocalizer.resolve(
+                  (l) => l.runtimeLineConnected,
+                  '线路注册成功',
+                ),
+              );
             } else if (sipStatus >= 300 &&
                 account.registrationEnabled &&
                 (wasActionInProgress || wasRegistered)) {
-              ToastUtil.showError('线路注册失败：$statusText', longTime: true);
+              ToastUtil.showError(
+                AppRuntimeLocalizer.resolve(
+                  (l) => l.runtimeLineConnectionFailed('SIP $sipStatus'),
+                  '线路注册失败：$statusText',
+                ),
+                longTime: true,
+              );
             } else if (sipStatus >= 300 &&
                 !account.registrationEnabled &&
                 wasActionInProgress) {
-              ToastUtil.showError('停用线路失败：$statusText', longTime: true);
+              ToastUtil.showError(
+                AppRuntimeLocalizer.resolve(
+                  (l) => l.runtimeLineActionFailed(l.runtimeActionDisable),
+                  '停用线路失败：$statusText',
+                ),
+                longTime: true,
+              );
             }
           }
           if (sipStatus == 200) {

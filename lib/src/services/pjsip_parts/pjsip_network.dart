@@ -556,7 +556,12 @@ extension PjsipNetworkOperations on PjsipService {
     final seconds = math.max(1, (remaining.inMilliseconds / 1000).ceil());
     final reason = _outgoingMediaRecoveryReason ?? '网络媒体恢复中';
     final message = '网络媒体恢复中，请 ${seconds}s 后再外呼';
-    ToastUtil.showWarning(message);
+    ToastUtil.showWarning(
+      AppRuntimeLocalizer.resolve(
+        (l) => l.runtimeNetworkRecovering(seconds),
+        message,
+      ),
+    );
     _addLog(
       '⚠️ $message: $reason'
       '${_lastSipIpChangeAt == null ? '' : ', lastIpChange=${_lastSipIpChangeAt!.toIso8601String()}'}',

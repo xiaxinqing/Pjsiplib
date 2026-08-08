@@ -4,10 +4,10 @@ part of '../../../../main.dart';
 extension _DialpadContactMatchView on _MyHomePageState {
   Widget _buildDialpadContactMatch(_DialpadContactMatch match) {
     final l10n = context.l10n;
-    final organization = match.contact.organizationLabel;
-    final phoneLabel = match.phone.label.trim().isEmpty
-        ? l10n.contactDefaultNumber
-        : match.phone.label.trim();
+    final organization = match.contact.hasOrganization
+        ? match.contact.organizationLabel
+        : l10n.contactNotProvided;
+    final phoneLabel = _contactPhoneLabel(match.phone, markPrimary: false);
     return Material(
       color: _subtlePanel,
       borderRadius: BorderRadius.circular(_radiusSm),

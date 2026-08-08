@@ -317,9 +317,10 @@ extension _DialpadStandbyPanel on _MyHomePageState {
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(time.year, time.month, time.day);
     final diff = today.difference(day).inDays;
-    if (diff == 0) return DateFormat('HH:mm').format(time);
+    final timeText = DateFormat.jm(l10n.localeName).format(time);
+    if (diff == 0) return timeText;
     if (diff == 1) {
-      return l10n.dialYesterdayAt(DateFormat('HH:mm').format(time));
+      return l10n.dialYesterdayAt(timeText);
     }
     if (diff < 7) {
       final weekdays = [
@@ -331,8 +332,8 @@ extension _DialpadStandbyPanel on _MyHomePageState {
         l10n.weekdaySaturday,
         l10n.weekdaySunday,
       ];
-      return '${weekdays[time.weekday - 1]} ${DateFormat('HH:mm').format(time)}';
+      return '${weekdays[time.weekday - 1]} $timeText';
     }
-    return DateFormat('M/d HH:mm').format(time);
+    return DateFormat.Md(l10n.localeName).add_jm().format(time);
   }
 }

@@ -3,7 +3,45 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 
+import '../../../l10n/app_localizations.dart';
+import '../../app_identity.dart';
 import 'app_window_controller.dart';
+
+class AppDockMenuLabels {
+  const AppDockMenuLabels({
+    required this.openApp,
+    required this.settings,
+    required this.aboutApp,
+    required this.restartApp,
+    required this.exitApp,
+  });
+
+  factory AppDockMenuLabels.localized(AppLocalizations l10n) {
+    return AppDockMenuLabels(
+      openApp: l10n.trayOpenApp(appDisplayName),
+      settings: l10n.traySettings,
+      aboutApp: l10n.trayAboutApp(appDisplayName),
+      restartApp: l10n.trayRestartApp,
+      exitApp: l10n.trayExitApp(appDisplayName),
+    );
+  }
+
+  final String openApp;
+  final String settings;
+  final String aboutApp;
+  final String restartApp;
+  final String exitApp;
+
+  String get signature => '$openApp|$settings|$aboutApp|$restartApp|$exitApp';
+
+  Map<String, String> toMap() => {
+    'openApp': openApp,
+    'settings': settings,
+    'aboutApp': aboutApp,
+    'restartApp': restartApp,
+    'exitApp': exitApp,
+  };
+}
 
 /// Handles macOS Dock menu commands that need Flutter-side UI, such as opening
 /// settings or showing the restart confirmation dialog.
@@ -15,6 +53,7 @@ class AppDockMenuController {
   static const MethodChannel _channel = MethodChannel('voip_desk/dock_menu');
 
   bool _initialized = false;
+  String? _labelsSignature;
   VoidCallback? _onOpenSettings;
   VoidCallback? _onOpenAbout;
   Future<void> Function()? _onRestartApplication;
@@ -38,6 +77,20 @@ class AppDockMenuController {
     _onOpenAbout = null;
     _onRestartApplication = null;
     _onExitApplication = null;
+  }
+
+  Future<void> updateMenuLabels(AppDockMenuLabels labels) async {
+    if (!AppWindowController.isDesktop || !Platform.isMacOS) return;
+    _ensureInitialized();
+    if (_labelsSignature == labels.signature) return;
+    try {
+      await _channel.invokeMethod<void>('updateMenuLabels', labels.toMap());
+      _labelsSignature = labels.signature;
+    } on MissingPluginException {
+      // 测试环境或旧版原生壳未注册菜单通道，不影响主界面。
+    } on PlatformException {
+      // Dock 菜单同步失败时保留原生默认文案。
+    }
   }
 
   void _ensureInitialized() {

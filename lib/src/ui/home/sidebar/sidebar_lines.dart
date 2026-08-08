@@ -85,7 +85,7 @@ extension _HomeSidebarLines on _MyHomePageState {
         : '${account.username} · ';
     final status = isDefault
         ? '$identityPrefix${l10n.sidebarDefaultDial} · ${account.transportLabel}'
-        : '$identityPrefix${account.registrationStatusText} · ${account.transportLabel}';
+        : '$identityPrefix${AccountLocalizer.status(l10n, account)} · ${account.transportLabel}';
     return GestureDetector(
       onSecondaryTapDown: (details) => _showLineActionMenu(
         uiState,

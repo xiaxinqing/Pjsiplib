@@ -293,6 +293,11 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
     final uiState = ref.watch(pjsipServiceProvider);
     final service = ref.read(pjsipServiceProvider.notifier);
     unawaited(_syncTrayMenu(uiState));
+    unawaited(
+      AppDockMenuController.instance.updateMenuLabels(
+        AppDockMenuLabels.localized(context.l10n),
+      ),
+    );
 
     return Scaffold(
       body: Stack(
@@ -386,6 +391,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
       incomingRingtoneEnabled: uiState.incomingRingtoneEnabled,
       canDisconnectAll: canDisconnectAll,
       hasActiveCalls: uiState.calls.isNotEmpty,
+      labels: AppTrayMenuLabels.localized(context.l10n),
     );
   }
 

@@ -117,6 +117,6 @@ extension _HomeContacts on _MyHomePageState {
 
   String _formatContactTime(DateTime? value) {
     if (value == null) return '--';
-    return DateFormat('MM-dd HH:mm').format(value);
+    return DateFormat.yMd(context.l10n.localeName).add_jm().format(value);
   }
 }

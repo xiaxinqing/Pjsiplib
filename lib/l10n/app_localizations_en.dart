@@ -2433,4 +2433,248 @@ class AppLocalizationsEn extends AppLocalizations {
   String accountLimitReached(int count) {
     return 'Up to $count lines are supported. Remove a line and try again';
   }
+
+  @override
+  String get runtimeNetworkUnavailable => 'No network. Try again later';
+
+  @override
+  String get runtimeLineExists => 'Line already exists';
+
+  @override
+  String get runtimeLineExistsRecreate =>
+      'Line already exists. Add it again to change the connection type';
+
+  @override
+  String get runtimeLineOnline => 'Line is already online';
+
+  @override
+  String runtimeConnectionInitFailed(String transport) {
+    return '$transport connection failed';
+  }
+
+  @override
+  String get runtimeLineAddFailed => 'Couldn\'t add line';
+
+  @override
+  String get runtimeLineBusy => 'Line is busy. Try again shortly';
+
+  @override
+  String runtimeLineActiveCallBlocked(String action) {
+    return 'Line is in a call and can\'t be $action';
+  }
+
+  @override
+  String get runtimeActionEdit => 'edited';
+
+  @override
+  String get runtimeActionDisable => 'disabled';
+
+  @override
+  String get runtimeActionRestart => 'restarted';
+
+  @override
+  String get runtimeActionDelete => 'deleted';
+
+  @override
+  String get runtimeLineSaveFailed => 'Couldn\'t save line';
+
+  @override
+  String get runtimeLineSavedReconnectFailed =>
+      'Saved, but couldn\'t reconnect';
+
+  @override
+  String get runtimeLineUpdated => 'Updated. Reconnecting…';
+
+  @override
+  String get runtimeLineSaved => 'Line saved';
+
+  @override
+  String get runtimeLineOffline => 'Line isn\'t connected yet';
+
+  @override
+  String get runtimeDefaultLineFailed => 'Couldn\'t change default dial line';
+
+  @override
+  String get runtimeDefaultLineChanged => 'Default dial line changed';
+
+  @override
+  String get runtimeLineConnecting => 'Line is connecting';
+
+  @override
+  String get runtimeLineDisabled => 'Line is disabled';
+
+  @override
+  String runtimeLineActionFailed(String action) {
+    return 'Couldn\'t $action line';
+  }
+
+  @override
+  String get runtimeActionRefresh => 'refresh';
+
+  @override
+  String get runtimeActionEnable => 'enable';
+
+  @override
+  String get runtimeLineRestarting => 'Restarting line…';
+
+  @override
+  String get runtimeLineRestartFailed => 'Couldn\'t restart line';
+
+  @override
+  String get runtimePhoneServiceRestarting => 'Phone service is restarting';
+
+  @override
+  String get runtimeEndCallsFirst => 'End the current call first';
+
+  @override
+  String get runtimeAllLinesDisconnected => 'All lines disconnected';
+
+  @override
+  String get runtimeNoLinesToDisconnect => 'No lines to disconnect';
+
+  @override
+  String get runtimeDisconnectingAllLines => 'Disconnecting all lines…';
+
+  @override
+  String get runtimeSomeLinesDisconnectFailed =>
+      'Some lines couldn\'t be disconnected';
+
+  @override
+  String get runtimePhoneServiceRestarted => 'Phone service restarted';
+
+  @override
+  String get runtimePhoneServiceRestartFailed =>
+      'Couldn\'t restart phone service';
+
+  @override
+  String get runtimeLineDeleteFailed => 'Couldn\'t delete line';
+
+  @override
+  String get runtimeLineDeleted => 'Line deleted';
+
+  @override
+  String get runtimeTransferCompleted => 'Call transferred';
+
+  @override
+  String runtimeTransferFailed(int code) {
+    return 'Transfer failed ($code)';
+  }
+
+  @override
+  String runtimeLineDisabledNamed(String name) {
+    return '$name disabled';
+  }
+
+  @override
+  String get runtimeLineConnected => 'Line connected';
+
+  @override
+  String runtimeLineConnectionFailed(String status) {
+    return 'Line connection failed: $status';
+  }
+
+  @override
+  String get runtimeDuplicateCall => 'Number is already in an active call';
+
+  @override
+  String runtimeDuplicateCallNumber(String number) {
+    return '$number is already in an active call';
+  }
+
+  @override
+  String get runtimeCallInProgress => 'Another call is in progress';
+
+  @override
+  String runtimeCallingNumber(String number) {
+    return 'Calling $number';
+  }
+
+  @override
+  String get runtimeNoTransferableCall => 'No call to transfer';
+
+  @override
+  String get runtimeSplitConferenceFirst => 'Split the conference first';
+
+  @override
+  String get runtimeEnterTransferNumber => 'Enter a transfer number';
+
+  @override
+  String get runtimeTransferRequested => 'Transferring call…';
+
+  @override
+  String get runtimeTransferRequestFailed => 'Transfer request failed';
+
+  @override
+  String runtimeCallEnded(String target) {
+    return 'Call with $target ended';
+  }
+
+  @override
+  String runtimeCallNotConnected(
+    String direction,
+    String target,
+    String status,
+  ) {
+    return '$direction $target didn\'t connect: $status';
+  }
+
+  @override
+  String runtimeNetworkRecovering(int seconds) {
+    return 'Network is recovering. Try again in ${seconds}s';
+  }
+
+  @override
+  String get runtimeRestartUnsupported =>
+      'Restart isn\'t supported on this platform';
+
+  @override
+  String get runtimeRestartFailed => 'Restart failed. Quit and reopen the app';
+
+  @override
+  String get runtimeRestartEnvironmentUnsupported =>
+      'Restart isn\'t supported in this environment';
+
+  @override
+  String trayOpenApp(String app) {
+    return 'Open $app';
+  }
+
+  @override
+  String get trayCurrentCalls => 'Current calls';
+
+  @override
+  String get trayCallHistory => 'Call history';
+
+  @override
+  String trayConnectionStatus(int connected, int total) {
+    return '$connected/$total lines connected';
+  }
+
+  @override
+  String get trayIncomingRingtone => 'Incoming ringtone';
+
+  @override
+  String get trayDisconnectAll => 'Disconnect all lines';
+
+  @override
+  String get traySettings => 'Settings';
+
+  @override
+  String trayAboutApp(String app) {
+    return 'About $app';
+  }
+
+  @override
+  String get trayRestartApp => 'Restart app…';
+
+  @override
+  String trayExitApp(String app) {
+    return 'Quit $app';
+  }
+
+  @override
+  String get contactLoadFailed => 'Couldn\'t load contacts. Try again';
+
+  @override
+  String get contactNoLongerExists => 'Contact no longer exists';
 }

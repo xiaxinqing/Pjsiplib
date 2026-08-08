@@ -101,11 +101,21 @@ class _ContactEditorDialogState extends State<_ContactEditorDialog> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_didApplyLocalizedDefaults || widget.contact != null) return;
+    if (_didApplyLocalizedDefaults) return;
     _didApplyLocalizedDefaults = true;
-    if (_phoneFields.first.labelController.text.isEmpty) {
-      _phoneFields.first.labelController.text =
-          context.l10n.contactDefaultNumber;
+    for (final phone in _phoneFields) {
+      final raw = phone.labelController.text.trim();
+      final isLegacyDefault =
+          raw.isEmpty ||
+          raw == '默认' ||
+          raw == '默认号码' ||
+          raw == '預設' ||
+          raw == '預設號碼' ||
+          raw.toLowerCase() == 'default' ||
+          raw.toLowerCase() == 'default number';
+      if (phone.isPrimary && isLegacyDefault) {
+        phone.labelController.text = context.l10n.contactDefaultNumber;
+      }
     }
   }
 

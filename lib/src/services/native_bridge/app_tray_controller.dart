@@ -7,8 +7,78 @@ import 'package:tray_manager/tray_manager.dart' as tray;
 import 'package:window_manager/window_manager.dart';
 
 import '../../app_identity.dart';
+import '../../../l10n/app_localizations.dart';
 import 'app_dock_menu_controller.dart';
 import 'app_window_controller.dart';
+
+class AppTrayMenuLabels {
+  const AppTrayMenuLabels({
+    required this.openApp,
+    required this.currentCalls,
+    required this.callHistory,
+    required this.connectionStatus,
+    required this.incomingRingtone,
+    required this.disconnectAll,
+    required this.settings,
+    required this.aboutApp,
+    required this.restartApp,
+    required this.exitApp,
+  });
+
+  factory AppTrayMenuLabels.localized(AppLocalizations l10n) {
+    return AppTrayMenuLabels(
+      openApp: l10n.trayOpenApp(appDisplayName),
+      currentCalls: l10n.trayCurrentCalls,
+      callHistory: l10n.trayCallHistory,
+      connectionStatus: l10n.trayConnectionStatus,
+      incomingRingtone: l10n.trayIncomingRingtone,
+      disconnectAll: l10n.trayDisconnectAll,
+      settings: l10n.traySettings,
+      aboutApp: l10n.trayAboutApp(appDisplayName),
+      restartApp: l10n.trayRestartApp,
+      exitApp: l10n.trayExitApp(appDisplayName),
+    );
+  }
+
+  static const simplifiedChinese = AppTrayMenuLabels(
+    openApp: '打开 VPhone',
+    currentCalls: '当前通话',
+    callHistory: '通话记录',
+    connectionStatus: _fallbackConnectionStatus,
+    incomingRingtone: '来电铃声',
+    disconnectAll: '断开全部线路',
+    settings: '设置',
+    aboutApp: '关于 VPhone',
+    restartApp: '重启应用…',
+    exitApp: '退出 VPhone',
+  );
+
+  static String _fallbackConnectionStatus(int connected, int total) =>
+      '已连接 $connected/$total 条线路';
+
+  final String openApp;
+  final String currentCalls;
+  final String callHistory;
+  final String Function(int connected, int total) connectionStatus;
+  final String incomingRingtone;
+  final String disconnectAll;
+  final String settings;
+  final String aboutApp;
+  final String restartApp;
+  final String exitApp;
+
+  String get signature => [
+    openApp,
+    currentCalls,
+    callHistory,
+    incomingRingtone,
+    disconnectAll,
+    settings,
+    aboutApp,
+    restartApp,
+    exitApp,
+  ].join('|');
+}
 
 class AppTrayController with tray.TrayListener {
   AppTrayController._();
@@ -88,6 +158,7 @@ class AppTrayController with tray.TrayListener {
         incomingRingtoneEnabled: true,
         canDisconnectAll: false,
         hasActiveCalls: false,
+        labels: AppTrayMenuLabels.simplifiedChinese,
       );
       debugPrint('Tray initialized.');
     });
@@ -105,6 +176,7 @@ class AppTrayController with tray.TrayListener {
     required bool incomingRingtoneEnabled,
     required bool canDisconnectAll,
     required bool hasActiveCalls,
+    required AppTrayMenuLabels labels,
   }) async {
     if (!AppWindowController.isDesktop || !_initialized) return;
 
@@ -114,6 +186,7 @@ class AppTrayController with tray.TrayListener {
       incomingRingtoneEnabled,
       canDisconnectAll,
       hasActiveCalls,
+      labels.signature,
     ].join('|');
     if (_menuSignature == signature) return;
     _menuSignature = signature;
@@ -122,35 +195,35 @@ class AppTrayController with tray.TrayListener {
       return tray.trayManager.setContextMenu(
         tray.Menu(
           items: [
-            tray.MenuItem(key: _showWindowKey, label: '打开 $appDisplayName'),
+            tray.MenuItem(key: _showWindowKey, label: labels.openApp),
             tray.MenuItem(
               key: _showCallsKey,
-              label: '当前通话',
+              label: labels.currentCalls,
               disabled: !hasActiveCalls,
             ),
-            tray.MenuItem(key: _showHistoryKey, label: '通话记录'),
+            tray.MenuItem(key: _showHistoryKey, label: labels.callHistory),
             tray.MenuItem.separator(),
             tray.MenuItem(
               key: _statusKey,
-              label: '当前状态：已连接 $connectedLines/$totalLines 线路',
+              label: labels.connectionStatus(connectedLines, totalLines),
               disabled: true,
             ),
             tray.MenuItem.checkbox(
               key: _incomingRingtoneKey,
-              label: '来电铃声',
+              label: labels.incomingRingtone,
               checked: incomingRingtoneEnabled,
             ),
             tray.MenuItem(
               key: _disconnectAllKey,
-              label: '断开全部线路',
+              label: labels.disconnectAll,
               disabled: !canDisconnectAll,
             ),
             tray.MenuItem.separator(),
-            tray.MenuItem(key: _settingsKey, label: '设置'),
-            tray.MenuItem(key: _aboutKey, label: '关于 $appDisplayName'),
-            tray.MenuItem(key: _restartAppKey, label: '重启应用...'),
+            tray.MenuItem(key: _settingsKey, label: labels.settings),
+            tray.MenuItem(key: _aboutKey, label: labels.aboutApp),
+            tray.MenuItem(key: _restartAppKey, label: labels.restartApp),
             tray.MenuItem.separator(),
-            tray.MenuItem(key: _exitAppKey, label: '退出 $appDisplayName'),
+            tray.MenuItem(key: _exitAppKey, label: labels.exitApp),
           ],
         ),
       );

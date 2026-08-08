@@ -6,6 +6,13 @@ final class DockMenuCommandBridge {
   static let shared = DockMenuCommandBridge()
 
   private var channel: FlutterMethodChannel?
+  private var menuLabels: [String: String] = [
+    "openApp": "打开 VPhone",
+    "settings": "设置",
+    "aboutApp": "关于 VPhone",
+    "restartApp": "重启应用…",
+    "exitApp": "退出 VPhone",
+  ]
   var isConfigured: Bool { channel != nil }
 
   private init() {}
@@ -31,6 +38,11 @@ final class DockMenuCommandBridge {
         result(nil)
         (NSApp.delegate as? AppDelegate)?
           .completeFlutterTerminationPreparation(source: "Flutter ready signal")
+      case "updateMenuLabels":
+        if let labels = call.arguments as? [String: String] {
+          self.menuLabels.merge(labels) { _, updated in updated }
+        }
+        result(nil)
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -39,6 +51,10 @@ final class DockMenuCommandBridge {
 
   func invoke(_ method: String, result: FlutterResult? = nil) {
     channel?.invokeMethod(method, arguments: nil, result: result)
+  }
+
+  func menuTitle(_ key: String) -> String {
+    menuLabels[key] ?? ""
   }
 }
 
@@ -56,28 +72,28 @@ class AppDelegate: FlutterAppDelegate {
   override func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
     let menu = NSMenu()
     menu.addItem(dockMenuItem(
-      title: "打开 VPhone",
+      title: DockMenuCommandBridge.shared.menuTitle("openApp"),
       action: #selector(showMainWindowFromDockMenu),
       keyEquivalent: ""
     ))
     menu.addItem(dockMenuItem(
-      title: "设置",
+      title: DockMenuCommandBridge.shared.menuTitle("settings"),
       action: #selector(openSettingsFromDockMenu),
       keyEquivalent: ""
     ))
     menu.addItem(dockMenuItem(
-      title: "关于 VPhone",
+      title: DockMenuCommandBridge.shared.menuTitle("aboutApp"),
       action: #selector(openAboutFromDockMenu),
       keyEquivalent: ""
     ))
     menu.addItem(dockMenuItem(
-      title: "重启应用...",
+      title: DockMenuCommandBridge.shared.menuTitle("restartApp"),
       action: #selector(restartApplicationFromDockMenu),
       keyEquivalent: ""
     ))
     menu.addItem(NSMenuItem.separator())
     menu.addItem(dockMenuItem(
-      title: "退出 VPhone",
+      title: DockMenuCommandBridge.shared.menuTitle("exitApp"),
       action: #selector(terminateFromDockMenu),
       keyEquivalent: ""
     ))

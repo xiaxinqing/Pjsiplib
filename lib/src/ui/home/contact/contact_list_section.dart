@@ -101,7 +101,7 @@ extension _ContactListSection on _MyHomePageState {
                 const SizedBox(width: 10),
                 Flexible(
                   child: Text(
-                    state.errorMessage!,
+                    context.l10n.contactLoadFailed,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: Colors.orange.shade800),
@@ -172,7 +172,7 @@ extension _ContactListSection on _MyHomePageState {
           if (state.errorMessage != null) ...[
             const SizedBox(height: 12),
             Text(
-              state.errorMessage!,
+              context.l10n.contactLoadFailed,
               style: TextStyle(color: Colors.orange.shade800),
             ),
           ],

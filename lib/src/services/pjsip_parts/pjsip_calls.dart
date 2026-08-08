@@ -69,8 +69,14 @@ extension PjsipCallOperations on PjsipService {
     if (duplicatedCall != null) {
       final duplicatedNumber = _extractPhoneNumber(duplicatedCall.remoteUri);
       final message = duplicatedNumber.isEmpty
-          ? '该号码已有通话，请先处理当前通话'
-          : '$duplicatedNumber 已在当前通话中，请先处理当前通话';
+          ? AppRuntimeLocalizer.resolve(
+              (l) => l.runtimeDuplicateCall,
+              '该号码已有通话，请先处理当前通话',
+            )
+          : AppRuntimeLocalizer.resolve(
+              (l) => l.runtimeDuplicateCallNumber(duplicatedNumber),
+              '$duplicatedNumber 已在当前通话中，请先处理当前通话',
+            );
       ToastUtil.showWarning(message);
       _addLog(
         '⚠️ 拦截重复呼叫: target=$number, '
@@ -99,8 +105,14 @@ extension PjsipCallOperations on PjsipService {
     if (pendingOutboundCall != null) {
       final pendingNumber = _extractPhoneNumber(pendingOutboundCall.remoteUri);
       final message = pendingNumber.isEmpty
-          ? '已有呼叫正在进行，请先挂断后再拨打'
-          : '正在呼叫 $pendingNumber，请先挂断后再拨打';
+          ? AppRuntimeLocalizer.resolve(
+              (l) => l.runtimeCallInProgress,
+              '已有呼叫正在进行，请先挂断后再拨打',
+            )
+          : AppRuntimeLocalizer.resolve(
+              (l) => l.runtimeCallingNumber(pendingNumber),
+              '正在呼叫 $pendingNumber，请先挂断后再拨打',
+            );
       ToastUtil.showWarning(message);
       _addLog('⚠️ $message');
       return;
@@ -504,19 +516,34 @@ extension PjsipCallOperations on PjsipService {
     final call = _uiState.calls[callId];
     if (call == null || !call.isConnected) {
       _addLog('⚠️ 当前没有可转接的已接通通话');
-      ToastUtil.showWarning('当前没有可转接的通话');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeNoTransferableCall,
+          '当前没有可转接的通话',
+        ),
+      );
       return false;
     }
     if (_uiState.isInConference(callId)) {
       _addLog('⚠️ 会议成员暂不支持盲转，请先拆分三方通话');
-      ToastUtil.showWarning('请先拆分三方通话，再执行转接');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeSplitConferenceFirst,
+          '请先拆分三方通话，再执行转接',
+        ),
+      );
       return false;
     }
 
     final targetUri = _transferTargetUri(call, destination);
     if (targetUri == null) {
       _addLog('⚠️ 盲转目标为空');
-      ToastUtil.showWarning('请输入转接号码');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeEnterTransferNumber,
+          '请输入转接号码',
+        ),
+      );
       return false;
     }
 
@@ -535,7 +562,12 @@ extension PjsipCallOperations on PjsipService {
           _blindTransferTargets.remove(callId);
         }),
       );
-      ToastUtil.showSuccess('已发送转接请求，正在结束本机通话');
+      ToastUtil.showSuccess(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeTransferRequested,
+          '已发送转接请求，正在结束本机通话',
+        ),
+      );
       // 盲转在产品语义上是“把通话甩出去”。REFER 成功发出后，是否最终接通
       // 由对端/PBX 后续 NOTIFY 决定，本机不继续占着原通话；否则用户会看到
       // 已转出但本机仍在通话中。120ms 只留给 REFER 进入底层发送队列。
@@ -551,7 +583,12 @@ extension PjsipCallOperations on PjsipService {
       return true;
     } else {
       _addLog('❌ 盲转失败: call=$callId, target=$targetUri, pj_status=$status');
-      ToastUtil.showError('转接请求发送失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeTransferRequestFailed,
+          '转接请求发送失败',
+        ),
+      );
       return false;
     }
   }
@@ -1164,8 +1201,11 @@ extension PjsipCallOperations on PjsipService {
     // 本机主动挂断已经由按钮反馈和挂断提示音表达；这里只提示非本机结束。
     if (wasEndedLocally) return;
 
-    final targetLabel = phoneNumber.isEmpty ? '' : '：$phoneNumber';
-    ToastUtil.showInfo('通话$targetLabel 已结束');
+    final l10n = AppRuntimeLocalizer.current;
+    final target = phoneNumber.isEmpty
+        ? l10n?.activeCallUnknownNumber ?? '未知号码'
+        : phoneNumber;
+    ToastUtil.showInfo(l10n?.runtimeCallEnded(target) ?? '通话：$target 已结束');
   }
 
   void _notifyUnansweredCallEnded(
@@ -1194,8 +1234,29 @@ extension PjsipCallOperations on PjsipService {
     // 本机主动取消外呼或拒接来电时，按钮本身已经给了明确反馈，不再弹 Toast。
     if (wasEndedLocally) return;
 
-    final targetLabel = phoneNumber.isEmpty ? '' : '：$phoneNumber';
-    ToastUtil.showWarning('$directionLabel$targetLabel 未接通，$statusLabel');
+    final l10n = AppRuntimeLocalizer.current;
+    final direction = l10n == null
+        ? directionLabel
+        : call.direction == PjsipCallDirection.inbound
+        ? l10n.callDirectionInbound
+        : l10n.callDirectionOutbound;
+    final target = phoneNumber.isEmpty
+        ? l10n?.activeCallUnknownNumber ?? ''
+        : phoneNumber;
+    final reason = l10n == null
+        ? statusLabel
+        : CallHistoryLocalizer.shortReason(
+            l10n,
+            SipCallEndReasonMapper.shortReason(
+              statusCode: sipStatusCode,
+              fallbackReason: hangupReason,
+              reachedRinging: _wasOutboundRinging(call),
+            ),
+          );
+    ToastUtil.showWarning(
+      l10n?.runtimeCallNotConnected(direction, target, reason) ??
+          '$directionLabel${phoneNumber.isEmpty ? '' : '：$phoneNumber'} 未接通，$statusLabel',
+    );
   }
 
   String _formatUnansweredCallEndStatus(CallInfo call, {int? sipStatusCode}) {

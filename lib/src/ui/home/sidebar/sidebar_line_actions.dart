@@ -28,10 +28,10 @@ extension _HomeSidebarLineActions on _MyHomePageState {
         : l10n.sidebarSetDefaultDial;
     final status = isDefault
         ? l10n.sidebarDefaultDialStatus(
-            account.registrationStatusText,
+            AccountLocalizer.status(l10n, account),
             account.transportLabel,
           )
-        : '${account.registrationStatusText} · ${account.transportLabel}';
+        : '${AccountLocalizer.status(l10n, account)} · ${account.transportLabel}';
     final action = await showMenu<String>(
       context: context,
       position: _popupMenuPosition(position),
@@ -259,7 +259,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '${account.registrationStatusText} · ${account.transportLabel}',
+                          '${AccountLocalizer.status(l10n, account)} · ${account.transportLabel}',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: _textSecondary,
@@ -374,7 +374,7 @@ extension _HomeSidebarLineActions on _MyHomePageState {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '${account.registrationStatusText} · ${account.transportLabel}',
+                                '${AccountLocalizer.status(l10n, account)} · ${account.transportLabel}',
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: _textSecondary,

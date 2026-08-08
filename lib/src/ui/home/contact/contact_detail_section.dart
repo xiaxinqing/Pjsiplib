@@ -279,9 +279,7 @@ extension _ContactDetailSection on _MyHomePageState {
           SizedBox(
             width: 88,
             child: Text(
-              phone.isPrimary
-                  ? '${phone.label} · ${context.l10n.contactDefaultNumber}'
-                  : phone.label,
+              _contactPhoneLabel(phone),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(

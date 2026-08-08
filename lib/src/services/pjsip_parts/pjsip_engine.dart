@@ -245,7 +245,12 @@ extension PjsipEngineOperations on PjsipService {
   }) async {
     if (!_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，暂不发起 SIP 注册');
-      ToastUtil.showWarning('当前网络不可用，暂不发起注册');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeNetworkUnavailable,
+          '当前网络不可用，暂不发起注册',
+        ),
+      );
       return;
     }
     final normalizedLineName = lineName.trim();
@@ -281,12 +286,22 @@ extension PjsipEngineOperations on PjsipService {
           '⚠️ 线路已存在，不能直接切换传输协议: ${account.lineLabel} '
           '${account.transport.label} -> ${transport.label}',
         );
-        ToastUtil.showWarning('线路已存在，如需切换协议请先删除后重新添加');
+        ToastUtil.showWarning(
+          AppRuntimeLocalizer.resolve(
+            (l10n) => l10n.runtimeLineExistsRecreate,
+            '线路已存在，如需切换协议请先删除后重新添加',
+          ),
+        );
         return;
       }
       if (account.isRegistered) {
         _addLog('⚠️ 线路已在线，跳过重复添加: ${account.lineLabel}');
-        ToastUtil.showWarning('线路已在线');
+        ToastUtil.showWarning(
+          AppRuntimeLocalizer.resolve(
+            (l10n) => l10n.runtimeLineOnline,
+            '线路已在线',
+          ),
+        );
         return;
       }
       _addLog('🌐 线路已存在但未在线，重新发起注册: ${account.lineLabel}');
@@ -297,7 +312,12 @@ extension PjsipEngineOperations on PjsipService {
     }
     if (_uiState.accounts.length >= PjsipService.maxAccountCount) {
       _addLog('⚠️ 已达到线路数量上限: ${PjsipService.maxAccountCount}');
-      ToastUtil.showWarning(PjsipService.accountLimitMessage);
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.accountLimitReached(PjsipService.maxAccountCount),
+          PjsipService.accountLimitMessage,
+        ),
+      );
       return;
     }
     if (!_uiState.isInitialized) await init();
@@ -312,7 +332,12 @@ extension PjsipEngineOperations on PjsipService {
     _logUdpIceRiskIfNeeded(transport, effectiveIceConfig);
     final transportId = _ensureSipTransport(transport);
     if (transportId == null) {
-      ToastUtil.showError('${transport.label} 传输初始化失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeConnectionInitFailed(transport.label),
+          '${transport.label} 传输初始化失败',
+        ),
+      );
       return;
     }
     using((Arena arena) {
@@ -385,7 +410,12 @@ extension PjsipEngineOperations on PjsipService {
       final status = _bindings.pjsua_acc_add(accCfg, isDefault, pAccId);
       if (status != 0) {
         _addLog('❌ 添加 SIP 账号失败: pj_status=$status');
-        ToastUtil.showError('添加线路失败');
+        ToastUtil.showError(
+          AppRuntimeLocalizer.resolve(
+            (l10n) => l10n.runtimeLineAddFailed,
+            '添加线路失败',
+          ),
+        );
         return;
       }
       final account = SipAccountInfo(
@@ -466,7 +496,12 @@ extension PjsipEngineOperations on PjsipService {
     if (original == null || original.isRestoringPlaceholder) return;
     if (original.registrationActionInProgress) {
       _addLog('⚠️ 线路注册操作处理中，暂不能编辑: ${original.lineLabel}');
-      ToastUtil.showWarning('线路操作处理中，请稍后');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeLineBusy,
+          '线路操作处理中，请稍后',
+        ),
+      );
       return;
     }
     final hasActiveCalls = _uiState.calls.values.any(
@@ -474,12 +509,22 @@ extension PjsipEngineOperations on PjsipService {
     );
     if (hasActiveCalls) {
       _addLog('⚠️ 线路仍有通话，不能编辑: ${original.lineLabel}');
-      ToastUtil.showWarning('线路仍有通话，不能编辑');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeLineActiveCallBlocked(l10n.runtimeActionEdit),
+          '线路仍有通话，不能编辑',
+        ),
+      );
       return;
     }
     if (original.registrationEnabled && !_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，暂不能编辑在线线路: ${original.lineLabel}');
-      ToastUtil.showWarning('当前网络不可用，暂不能编辑在线线路');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeNetworkUnavailable,
+          '当前网络不可用，暂不能编辑在线线路',
+        ),
+      );
       return;
     }
 
@@ -501,7 +546,12 @@ extension PjsipEngineOperations on PjsipService {
     );
     if (duplicate) {
       _addLog('⚠️ 已存在相同账号和服务器的线路，不能保存编辑: $normalizedUsername@$normalizedHost');
-      ToastUtil.showWarning('已存在相同账号和服务器的线路');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeLineExists,
+          '已存在相同账号和服务器的线路',
+        ),
+      );
       return;
     }
 
@@ -513,7 +563,12 @@ extension PjsipEngineOperations on PjsipService {
     _logUdpIceRiskIfNeeded(transport, effectiveIceConfig);
     final transportId = _ensureSipTransport(transport);
     if (transportId == null) {
-      ToastUtil.showError('${transport.label} 传输初始化失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeConnectionInitFailed(transport.label),
+          '${transport.label} 传输初始化失败',
+        ),
+      );
       return;
     }
 
@@ -574,7 +629,12 @@ extension PjsipEngineOperations on PjsipService {
     });
     if (modifyStatus != 0) {
       _addLog('❌ 编辑线路失败: ${original.lineLabel}, pj_status=$modifyStatus');
-      ToastUtil.showError('编辑线路失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeLineSaveFailed,
+          '编辑线路失败',
+        ),
+      );
       return;
     }
 
@@ -629,7 +689,12 @@ extension PjsipEngineOperations on PjsipService {
         _uiState = _uiState.copyWith(accounts: failedAccounts);
         unawaited(_persistSeatEnvironment());
         _addLog('❌ 编辑后重新注册失败: ${updated.lineLabel}, pj_status=$regStatus');
-        ToastUtil.showError('编辑已保存，但重新注册失败');
+        ToastUtil.showError(
+          AppRuntimeLocalizer.resolve(
+            (l10n) => l10n.runtimeLineSavedReconnectFailed,
+            '编辑已保存，但重新注册失败',
+          ),
+        );
         return;
       }
     }
@@ -639,7 +704,13 @@ extension PjsipEngineOperations on PjsipService {
           ? '✏️ 线路已更新，正在重新注册: ${updated.lineLabel} (${transport.label})'
           : '✏️ 已保存停用线路: ${updated.lineLabel} (${transport.label})',
     );
-    ToastUtil.showSuccess(shouldRegister ? '线路已更新，正在重新注册' : '线路已保存');
+    ToastUtil.showSuccess(
+      AppRuntimeLocalizer.resolve(
+        (l10n) =>
+            shouldRegister ? l10n.runtimeLineUpdated : l10n.runtimeLineSaved,
+        shouldRegister ? '线路已更新，正在重新注册' : '线路已保存',
+      ),
+    );
   }
 
   MediaSecurityConfig _defaultMediaSecurityForTransport(
@@ -1053,13 +1124,23 @@ extension PjsipEngineOperations on PjsipService {
     if (account == null) return;
     if (!account.isRegistered) {
       _addLog('⚠️ 线路尚未注册成功，不能设为默认外呼: ${account.lineLabel}');
-      ToastUtil.showWarning('线路尚未注册成功');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeLineOffline,
+          '线路尚未注册成功',
+        ),
+      );
       return;
     }
     final status = _bindings.pjsua_acc_set_default(accId);
     if (status != 0) {
       _addLog('❌ 设置默认外呼线路失败: acc=$accId, pj_status=$status');
-      ToastUtil.showError('默认外呼线路切换失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l10n) => l10n.runtimeDefaultLineFailed,
+          '默认外呼线路切换失败',
+        ),
+      );
       return;
     }
     _uiState = _uiState.copyWith(
@@ -1071,7 +1152,12 @@ extension PjsipEngineOperations on PjsipService {
     _preferredDefaultLineKey = _lineKey(account.username, account.host);
     unawaited(_persistSeatEnvironment());
     _addLog('✅ 默认外呼线路已切换: ${account.lineLabel}');
-    ToastUtil.showSuccess('默认外呼线路已切换');
+    ToastUtil.showSuccess(
+      AppRuntimeLocalizer.resolve(
+        (l10n) => l10n.runtimeDefaultLineChanged,
+        '默认外呼线路已切换',
+      ),
+    );
   }
 
   /// 按用户在设置页调整后的顺序存储线路。
@@ -1120,25 +1206,36 @@ extension PjsipEngineOperations on PjsipService {
     if (account == null || !_uiState.isInitialized) return;
     if (account.registrationActionInProgress) {
       _addLog('⚠️ 线路注册操作处理中，请稍后再试: ${account.lineLabel}');
-      ToastUtil.showWarning('线路操作处理中，请稍后');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve((l) => l.runtimeLineBusy, '线路操作处理中，请稍后'),
+      );
       return;
     }
     if (enabled &&
         account.registrationEnabled &&
         account.registrationStatus == null) {
       _addLog('⚠️ 线路正在注册中，请等待结果: ${account.lineLabel}');
-      ToastUtil.showWarning('线路正在注册中');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve((l) => l.runtimeLineConnecting, '线路正在注册中'),
+      );
       return;
     }
     if (!enabled && !account.registrationEnabled) {
       _addLog('⚠️ 线路已停用: ${account.lineLabel}');
-      ToastUtil.showWarning('线路已停用');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve((l) => l.runtimeLineDisabled, '线路已停用'),
+      );
       return;
     }
     if (!enabled &&
         _uiState.calls.values.any((call) => call.accountId == accId)) {
       _addLog('⚠️ 线路仍有通话，不能停用: ${account.lineLabel}');
-      ToastUtil.showWarning('线路仍有通话，不能停用');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeLineActiveCallBlocked(l.runtimeActionDisable),
+          '线路仍有通话，不能停用',
+        ),
+      );
       return;
     }
     final actionLabel = enabled
@@ -1168,7 +1265,18 @@ extension PjsipEngineOperations on PjsipService {
       _uiState = _uiState.copyWith(accounts: rollbackAccounts);
       unawaited(_persistSeatEnvironment());
       _addLog('❌ $actionLabel线路失败: ${account.lineLabel}, pj_status=$status');
-      ToastUtil.showError('$actionLabel线路失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeLineActionFailed(
+            enabled
+                ? account.registrationEnabled
+                      ? l.runtimeActionRefresh
+                      : l.runtimeActionEnable
+                : l.runtimeActionDisable,
+          ),
+          '$actionLabel线路失败',
+        ),
+      );
       return;
     }
     if (!enabled) {
@@ -1182,17 +1290,29 @@ extension PjsipEngineOperations on PjsipService {
     if (account == null || !_uiState.isInitialized) return;
     if (account.registrationActionInProgress) {
       _addLog('⚠️ 线路注册操作处理中，请稍后再试: ${account.lineLabel}');
-      ToastUtil.showWarning('线路操作处理中，请稍后');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve((l) => l.runtimeLineBusy, '线路操作处理中，请稍后'),
+      );
       return;
     }
     if (_uiState.calls.values.any((call) => call.accountId == accId)) {
       _addLog('⚠️ 线路仍有通话，不能重启线路: ${account.lineLabel}');
-      ToastUtil.showWarning('线路仍有通话，不能重启');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeLineActiveCallBlocked(l.runtimeActionRestart),
+          '线路仍有通话，不能重启',
+        ),
+      );
       return;
     }
     if (!_uiState.isNetworkAvailable) {
       _addLog('⚠️ 当前网络不可用，暂不能重启线路: ${account.lineLabel}');
-      ToastUtil.showWarning('当前网络不可用');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeNetworkUnavailable,
+          '当前网络不可用',
+        ),
+      );
       return;
     }
     _hangupNativeCallsIfUiIdle('重启线路前');
@@ -1260,7 +1380,9 @@ extension PjsipEngineOperations on PjsipService {
         unregisterBeforeRegister: shouldUnregister && networkRecoveryRequested,
       ),
     );
-    ToastUtil.showSuccess('已开始重启线路');
+    ToastUtil.showSuccess(
+      AppRuntimeLocalizer.resolve((l) => l.runtimeLineRestarting, '已开始重启线路'),
+    );
   }
 
   Future<void> _completeForceReconnectAccount(
@@ -1325,7 +1447,12 @@ extension PjsipEngineOperations on PjsipService {
         unawaited(_persistSeatEnvironment());
       }
       _addLog('❌ 重启线路失败: ${account.lineLabel}, pj_status=$status');
-      ToastUtil.showError('重启线路失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeLineRestartFailed,
+          '重启线路失败',
+        ),
+      );
       return;
     }
 
@@ -1335,12 +1462,22 @@ extension PjsipEngineOperations on PjsipService {
   void disconnectAllAccounts() {
     if (!_uiState.isInitialized || _uiState.accounts.isEmpty) return;
     if (_uiState.isPhoneServiceRestarting) {
-      ToastUtil.showWarning('电话服务正在重启');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimePhoneServiceRestarting,
+          '电话服务正在重启',
+        ),
+      );
       return;
     }
     if (_uiState.calls.isNotEmpty) {
       _addLog('⚠️ 当前仍有通话，不能断开全部线路');
-      ToastUtil.showWarning('请先结束当前通话，再断开全部线路');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeEndCallsFirst,
+          '请先结束当前通话，再断开全部线路',
+        ),
+      );
       return;
     }
 
@@ -1380,7 +1517,14 @@ extension PjsipEngineOperations on PjsipService {
     }
 
     if (pendingAccounts.isEmpty && locallyPaused == 0) {
-      ToastUtil.showWarning(alreadyDisconnected > 0 ? '线路已断开' : '没有可断开的线路');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => alreadyDisconnected > 0
+              ? l.runtimeAllLinesDisconnected
+              : l.runtimeNoLinesToDisconnect,
+          alreadyDisconnected > 0 ? '线路已断开' : '没有可断开的线路',
+        ),
+      );
       return;
     }
 
@@ -1414,9 +1558,21 @@ extension PjsipEngineOperations on PjsipService {
     }
 
     if (failed == 0) {
-      ToastUtil.showSuccess(sent > 0 ? '已发送全部线路断开请求' : '已断开全部线路');
+      ToastUtil.showSuccess(
+        AppRuntimeLocalizer.resolve(
+          (l) => sent > 0
+              ? l.runtimeDisconnectingAllLines
+              : l.runtimeAllLinesDisconnected,
+          sent > 0 ? '已发送全部线路断开请求' : '已断开全部线路',
+        ),
+      );
     } else {
-      ToastUtil.showError('部分线路断开失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeSomeLinesDisconnectFailed,
+          '部分线路断开失败',
+        ),
+      );
     }
     _addLog(
       '⏱ 断开全部线路请求耗时: ${stopWatch.elapsedMilliseconds}ms, '
@@ -1426,24 +1582,41 @@ extension PjsipEngineOperations on PjsipService {
 
   Future<void> restartPhoneService() async {
     if (_uiState.isPhoneServiceRestarting) {
-      ToastUtil.showWarning('电话服务正在重启');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimePhoneServiceRestarting,
+          '电话服务正在重启',
+        ),
+      );
       return;
     }
     if (_uiState.calls.isNotEmpty) {
       _addLog('⚠️ 当前仍有通话，不能重启电话服务');
-      ToastUtil.showWarning('请先结束当前通话，再重启电话服务');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeEndCallsFirst,
+          '请先结束当前通话，再重启电话服务',
+        ),
+      );
       return;
     }
     if (_uiState.accounts.values.any(
       (account) => account.registrationActionInProgress,
     )) {
       _addLog('⚠️ 线路仍有注册操作处理中，不能重启电话服务');
-      ToastUtil.showWarning('线路操作处理中，请稍后');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve((l) => l.runtimeLineBusy, '线路操作处理中，请稍后'),
+      );
       return;
     }
     if (!_uiState.isNetworkAvailable) {
       _addLog('⚠️ 当前网络不可用，暂不能重启电话服务');
-      ToastUtil.showWarning('当前网络不可用');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeNetworkUnavailable,
+          '当前网络不可用',
+        ),
+      );
       return;
     }
 
@@ -1482,12 +1655,22 @@ extension PjsipEngineOperations on PjsipService {
 
       _uiState = _uiState.copyWith(isPhoneServiceRestarting: false);
       _addLog('✅ 电话服务重启完成: ${stopWatch.elapsedMilliseconds}ms');
-      ToastUtil.showSuccess('电话服务已重启');
+      ToastUtil.showSuccess(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimePhoneServiceRestarted,
+          '电话服务已重启',
+        ),
+      );
     } catch (error) {
       if (_isDisposed) return;
       _uiState = _uiState.copyWith(isPhoneServiceRestarting: false);
       _addLog('❌ 电话服务重启失败: $error');
-      ToastUtil.showError('电话服务重启失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimePhoneServiceRestartFailed,
+          '电话服务重启失败',
+        ),
+      );
     }
   }
 
@@ -1549,7 +1732,12 @@ extension PjsipEngineOperations on PjsipService {
     );
     if (hasActiveCalls) {
       _addLog('⚠️ 线路仍有通话，不能删除: ${account.lineLabel}');
-      ToastUtil.showWarning('线路仍有通话，不能删除');
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeLineActiveCallBlocked(l.runtimeActionDelete),
+          '线路仍有通话，不能删除',
+        ),
+      );
       return;
     }
 
@@ -1561,7 +1749,9 @@ extension PjsipEngineOperations on PjsipService {
     });
     if (status != 0) {
       _addLog('❌ 删除线路失败: ${account.lineLabel}, pj_status=$status（请先结束该线路通话）');
-      ToastUtil.showError('删除线路失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve((l) => l.runtimeLineDeleteFailed, '删除线路失败'),
+      );
       return;
     }
 
@@ -1600,7 +1790,9 @@ extension PjsipEngineOperations on PjsipService {
     }
     unawaited(_persistSeatEnvironment());
     _addLog('🗑 已删除线路: ${account.lineLabel}');
-    ToastUtil.showSuccess('线路已删除');
+    ToastUtil.showSuccess(
+      AppRuntimeLocalizer.resolve((l) => l.runtimeLineDeleted, '线路已删除'),
+    );
   }
 
   int? _firstRegisteredAccountId(Map<int, SipAccountInfo> accounts) {
@@ -1697,7 +1889,12 @@ extension PjsipEngineOperations on PjsipService {
     final status = _bindings.pjsua_acc_set_default(accId);
     if (status != 0) {
       _addLog('❌ 自动切换默认外呼线路失败: ${account.lineLabel}, pj_status=$status');
-      ToastUtil.showError('默认外呼线路自动切换失败');
+      ToastUtil.showError(
+        AppRuntimeLocalizer.resolve(
+          (l) => l.runtimeDefaultLineFailed,
+          '默认外呼线路自动切换失败',
+        ),
+      );
       return;
     }
     _uiState = _uiState.copyWith(
