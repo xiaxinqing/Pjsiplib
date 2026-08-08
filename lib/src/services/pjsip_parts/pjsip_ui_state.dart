@@ -82,6 +82,12 @@ class PjsipUIState {
   /// 当前 PJSIP 使用的输出设备 ID。
   final int? selectedPlaybackDeviceId;
 
+  /// 操作系统当前实际路由到的输入、输出端点。
+  ///
+  /// 它和 PJSIP 的 selected* ID 分开保存：selected* 表示应用请求，
+  /// systemAudioRoute 表示系统最终选择，用于 UI 展示。
+  final SystemAudioRoute? systemAudioRoute;
+
   /// 本地麦克风静音状态。
   final bool isMicrophoneMuted;
 
@@ -179,6 +185,7 @@ class PjsipUIState {
     this.playbackDevices = const [],
     this.selectedCaptureDeviceId,
     this.selectedPlaybackDeviceId,
+    this.systemAudioRoute,
     this.isMicrophoneMuted = false,
     this.microphoneMutedCallIds = const {},
     this.isSpeakerMuted = false,
@@ -224,6 +231,7 @@ class PjsipUIState {
     List<PjsipAudioDevice>? playbackDevices,
     Object? selectedCaptureDeviceId = _unset,
     Object? selectedPlaybackDeviceId = _unset,
+    Object? systemAudioRoute = _unset,
     bool? isMicrophoneMuted,
     Set<int>? microphoneMutedCallIds,
     bool? isSpeakerMuted,
@@ -280,6 +288,9 @@ class PjsipUIState {
       selectedPlaybackDeviceId: identical(selectedPlaybackDeviceId, _unset)
           ? this.selectedPlaybackDeviceId
           : selectedPlaybackDeviceId as int?,
+      systemAudioRoute: identical(systemAudioRoute, _unset)
+          ? this.systemAudioRoute
+          : systemAudioRoute as SystemAudioRoute?,
       isMicrophoneMuted: isMicrophoneMuted ?? this.isMicrophoneMuted,
       microphoneMutedCallIds:
           microphoneMutedCallIds ?? this.microphoneMutedCallIds,

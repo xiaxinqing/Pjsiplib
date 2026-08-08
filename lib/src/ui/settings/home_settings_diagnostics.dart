@@ -2,20 +2,21 @@ part of '../../../main.dart';
 
 extension _HomeSettingsDiagnosticsTab on _MyHomePageState {
   Widget _buildDiagnosticsTab(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       child: Column(
         children: [
           _buildSettingsSection(
-            title: '诊断',
+            title: l10n.settingsDiagnostics,
             icon: AppIcons.diagnostics,
             children: [
               SwitchListTile(
                 value: _showDiagnosticLogs,
                 onChanged: (value) => _setDiagnosticLogsVisible(value),
                 secondary: const Icon(AppIcons.receipt),
-                title: const Text('显示日志'),
-                subtitle: const Text('设备、注册、通话事件'),
+                title: Text(l10n.diagnosticsShowLogs),
+                subtitle: Text(l10n.diagnosticsEventTypes),
                 contentPadding: EdgeInsets.zero,
               ),
             ],
@@ -28,16 +29,9 @@ extension _HomeSettingsDiagnosticsTab on _MyHomePageState {
               runSpacing: 8,
               children: [
                 OutlinedButton.icon(
-                  onPressed: uiState.isInitialized
-                      ? service.refreshAudioDevices
-                      : null,
-                  icon: const Icon(AppIcons.refresh),
-                  label: const Text('刷新设备'),
-                ),
-                OutlinedButton.icon(
                   onPressed: uiState.logs.isEmpty ? null : service.clearLogs,
                   icon: const Icon(AppIcons.clean),
-                  label: const Text('清空日志'),
+                  label: Text(l10n.diagnosticsClearLogs),
                 ),
                 OutlinedButton.icon(
                   onPressed: _exportingDiagnosticLogs
@@ -49,24 +43,28 @@ extension _HomeSettingsDiagnosticsTab on _MyHomePageState {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Icon(AppIcons.export),
-                  label: Text(_exportingDiagnosticLogs ? '正在导出' : '导出日志'),
+                  label: Text(
+                    _exportingDiagnosticLogs
+                        ? l10n.diagnosticsExporting
+                        : l10n.diagnosticsExportLogs,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 8),
-          const Align(
+          Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              '日志可能包含电话号码、服务器地址和网络信息，请仅发送给可信人员。',
-              style: TextStyle(color: _textSecondary, fontSize: 12),
+              l10n.diagnosticsPrivacyNotice,
+              style: const TextStyle(color: _textSecondary, fontSize: 12),
             ),
           ),
           const SizedBox(height: 12),
           Expanded(
             child: _showDiagnosticLogs
                 ? _buildLogList(uiState)
-                : const Center(child: Text('日志已隐藏')),
+                : Center(child: Text(l10n.diagnosticsLogsHidden)),
           ),
         ],
       ),
@@ -76,15 +74,17 @@ extension _HomeSettingsDiagnosticsTab on _MyHomePageState {
   /// 调起系统保存窗口并导出完整诊断日志。
   Future<void> _exportDiagnosticLogs(PjsipService service) async {
     if (_exportingDiagnosticLogs) return;
+    final exportedMessage = context.l10n.diagnosticsExported;
+    final failedMessage = context.l10n.diagnosticsExportFailed;
     _update(() => _exportingDiagnosticLogs = true);
     try {
       final path = await service.exportDiagnosticLogs();
       if (path != null) {
-        ToastUtil.showSuccess('诊断日志已导出');
+        ToastUtil.showSuccess(exportedMessage);
       }
     } catch (error, stackTrace) {
       debugPrint('导出诊断日志失败: $error\n$stackTrace');
-      ToastUtil.showError('导出日志失败，请稍后重试', longTime: true);
+      ToastUtil.showError(failedMessage, longTime: true);
     } finally {
       if (mounted) {
         _update(() => _exportingDiagnosticLogs = false);

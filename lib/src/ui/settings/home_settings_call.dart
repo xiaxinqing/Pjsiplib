@@ -2,22 +2,23 @@ part of '../../../main.dart';
 
 extension _HomeSettingsCallTab on _MyHomePageState {
   Widget _buildCallSettingsTab(PjsipUIState uiState, PjsipService service) {
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       children: [
         _buildSettingsSection(
-          title: '通话控制',
+          title: l10n.callSettingsControls,
           icon: AppIcons.call,
           children: [
             _buildSettingTile(
               icon: AppIcons.contacts,
-              title: '最大同时通话',
-              trailing: const Text('4 路'),
+              title: l10n.callSettingsMaxCalls,
+              trailing: Text(l10n.callSettingsMaxCallsValue(4)),
             ),
             _buildSettingDivider(),
             _buildSettingTile(
               icon: AppIcons.dialpad,
-              title: 'DTMF 方式',
+              title: l10n.callSettingsDtmfMethod,
               trailing: const Text('RFC2833'),
             ),
             _buildSettingDivider(),
@@ -26,26 +27,30 @@ extension _HomeSettingsCallTab on _MyHomePageState {
               value: uiState.autoHoldOtherCalls,
               onChanged: service.setAutoHoldOtherCalls,
               secondary: const Icon(AppIcons.pause),
-              title: const Text('通话自动暂停'),
-              subtitle: Text('接听、外呼或恢复通话时，自动暂停其他通话'),
+              title: Text(l10n.callSettingsAutoHold),
+              subtitle: Text(l10n.callSettingsAutoHoldDescription),
             ),
           ],
         ),
         const SizedBox(height: 18),
         _buildSettingsSection(
-          title: '快捷操作',
+          title: l10n.callSettingsShortcuts,
           icon: AppIcons.bolt,
           children: [
             _buildSettingTile(
               icon: AppIcons.microphoneOff,
-              title: '默认静音状态',
-              trailing: const Text('关闭'),
+              title: l10n.callSettingsDefaultMute,
+              trailing: Text(l10n.callSettingsOff),
             ),
             _buildSettingDivider(),
             _buildSettingTile(
               icon: AppIcons.merge,
-              title: '会议通话',
-              trailing: Text(uiState.hasConference ? '进行中' : '可用'),
+              title: l10n.callSettingsConference,
+              trailing: Text(
+                uiState.hasConference
+                    ? l10n.callSettingsActive
+                    : l10n.commonAvailable,
+              ),
             ),
           ],
         ),

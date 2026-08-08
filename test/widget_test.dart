@@ -1,8 +1,10 @@
 import 'dart:ui';
 
 import 'package:drift/native.dart';
+import 'package:flutter/material.dart' show Dialog, FilledButton;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:veserve_vphone/l10n/app_localizations.dart';
 import 'package:veserve_vphone/main.dart';
 import 'package:veserve_vphone/src/services/call_history_database.dart';
 import 'package:veserve_vphone/src/services/contact_service.dart';
@@ -411,6 +413,81 @@ void main() {
     expect(find.text('拨号'), findsWidgets);
     expect(find.byIcon(AppIcons.settings), findsOneWidget);
   });
+
+  for (final locale in const [
+    Locale('zh'),
+    Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+    Locale('en'),
+  ]) {
+    testWidgets('设置页使用 ${locale.toLanguageTag()} 文案且布局正常', (
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 800);
+      tester.view.devicePixelRatio = 1;
+      tester.binding.platformDispatcher.localesTestValue = [locale];
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+      final l10n = await AppLocalizations.delegate.load(locale);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [pjsipServiceProvider.overrideWith(FakePjsipService.new)],
+          child: const MyApp(),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.byIcon(AppIcons.settings));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+
+      expect(find.text(l10n.accountSettingsEmpty), findsOneWidget);
+      await tester.tap(
+        find.widgetWithText(FilledButton, l10n.accountSettingsAddLine).last,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text(l10n.accountDialogUsername), findsOneWidget);
+      expect(find.text(l10n.accountDialogServer), findsOneWidget);
+      await tester.tap(find.text(l10n.commonCancel).last);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+
+      final settingsDialog = find.byType(Dialog);
+      final callsNavigation = find.descendant(
+        of: settingsDialog,
+        matching: find.text(l10n.settingsCalls),
+      );
+      await tester.tap(callsNavigation);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump();
+      expect(find.text(l10n.callSettingsControls), findsOneWidget);
+      expect(find.text(l10n.callSettingsAutoHold), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: settingsDialog,
+          matching: find.text(l10n.settingsDiagnostics),
+        ),
+      );
+      await tester.pump();
+      expect(find.text(l10n.diagnosticsShowLogs), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: settingsDialog,
+          matching: find.text(l10n.settingsAbout),
+        ),
+      );
+      await tester.pump();
+      expect(find.text(l10n.aboutTagline), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('VoIP 主界面在矮窗口下可以滚动布局', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(900, 620);

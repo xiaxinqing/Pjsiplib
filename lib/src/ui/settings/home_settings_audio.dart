@@ -59,53 +59,11 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
           title: l10n.audioRouting,
           icon: AppIcons.automatic,
           children: [
-            SegmentedButton<PjsipAudioDeviceMode>(
-              style: ButtonStyle(
-                side: const WidgetStatePropertyAll(
-                  BorderSide(color: _softBorder),
-                ),
-                shape: WidgetStatePropertyAll(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(_radiusSm),
-                  ),
-                ),
-              ),
-              segments: [
-                ButtonSegment(
-                  value: PjsipAudioDeviceMode.automatic,
-                  icon: const Icon(AppIcons.automatic),
-                  label: Text(l10n.audioFollowSystem),
-                ),
-                ButtonSegment(
-                  value: PjsipAudioDeviceMode.manual,
-                  icon: const Icon(AppIcons.tune),
-                  label: Text(l10n.audioChooseDevices),
-                ),
-              ],
-              selected: {uiState.audioDeviceMode},
-              onSelectionChanged: (values) {
-                service.setAutomaticAudioDeviceSelection(
-                  values.first == PjsipAudioDeviceMode.automatic,
-                );
-              },
-            ),
-            const SizedBox(height: 10),
-            Text(
-              uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic
-                  ? l10n.audioFollowSystemDescription
-                  : l10n.audioChooseDevicesDescription,
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: _textSecondary),
-            ),
-            const SizedBox(height: 10),
-            SwitchListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
-              value: uiState.allowInCallAudioDeviceSwitch,
-              onChanged: service.setAllowInCallAudioDeviceSwitch,
-              secondary: const Icon(AppIcons.refresh),
-              title: Text(l10n.audioAutoSwitch),
-              subtitle: Text(l10n.audioAutoSwitchDescription),
+              leading: const Icon(AppIcons.automatic),
+              title: Text(l10n.audioFollowSystem),
+              subtitle: Text(l10n.audioFollowSystemDescription),
             ),
           ],
         ),
@@ -150,19 +108,12 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     muted: uiState.isMicrophoneMuted,
                     testing: uiState.isMicrophoneTesting,
                     onVolumeChanged: service.setMicrophoneVolume,
-                    dropdown: _buildAudioDeviceDropdown(
+                    dropdown: _buildSystemAudioDeviceField(
                       label: l10n.audioMicrophone,
                       icon: AppIcons.microphone,
-                      value: _selectedCaptureDeviceValue(uiState),
-                      devices: uiState.captureDevices,
-                      automaticMode:
-                          uiState.audioDeviceMode ==
-                          PjsipAudioDeviceMode.automatic,
-                      onChanged: (value) {
-                        if (value != null) {
-                          service.setAudioDevices(captureDeviceId: value);
-                        }
-                      },
+                      value:
+                          uiState.systemAudioRoute?.input?.name ??
+                          l10n.audioFollowSystem,
                     ),
                     primaryAction: FilledButton.tonalIcon(
                       onPressed: () => service.setMicrophoneTesting(
@@ -198,19 +149,12 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
                     muted: uiState.isSpeakerMuted,
                     testing: uiState.isSpeakerTesting,
                     onVolumeChanged: service.setSpeakerVolume,
-                    dropdown: _buildAudioDeviceDropdown(
+                    dropdown: _buildSystemAudioDeviceField(
                       label: l10n.audioSpeaker,
                       icon: AppIcons.speaker,
-                      value: _selectedPlaybackDeviceValue(uiState),
-                      devices: uiState.playbackDevices,
-                      automaticMode:
-                          uiState.audioDeviceMode ==
-                          PjsipAudioDeviceMode.automatic,
-                      onChanged: (value) {
-                        if (value != null) {
-                          service.setAudioDevices(playbackDeviceId: value);
-                        }
-                      },
+                      value:
+                          uiState.systemAudioRoute?.output?.name ??
+                          l10n.audioFollowSystem,
                     ),
                     primaryAction: FilledButton.tonalIcon(
                       onPressed: uiState.isSpeakerTesting
@@ -409,6 +353,26 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
       if (Platform.isWindows) {
         await Process.run('cmd', ['/c', 'start', 'ms-settings:sound']);
         return;
+      }
+      if (Platform.isLinux) {
+        const settingsCommands = <(String, List<String>)>[
+          ('gnome-control-center', ['sound']),
+          ('systemsettings6', ['kcm_pulseaudio']),
+          ('systemsettings5', ['kcm_pulseaudio']),
+          ('pavucontrol', []),
+        ];
+        for (final command in settingsCommands) {
+          try {
+            await Process.start(
+              command.$1,
+              command.$2,
+              mode: ProcessStartMode.detached,
+            );
+            return;
+          } catch (_) {
+            // 不同桌面环境安装的声音设置程序不同，继续尝试下一项。
+          }
+        }
       }
     } catch (_) {
       // 下面统一提示即可，避免系统设置 URI 差异影响主流程。
@@ -707,65 +671,24 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
     );
   }
 
-  Widget _buildAudioDeviceDropdown({
+  Widget _buildSystemAudioDeviceField({
     required String label,
     required IconData icon,
-    required int? value,
-    required List<PjsipAudioDevice> devices,
-    required ValueChanged<int?> onChanged,
-    required bool automaticMode,
+    required String value,
   }) {
-    final dropdown = DropdownButtonFormField<int>(
-      isExpanded: true,
-      initialValue: value,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        helperText: automaticMode
-            ? context.l10n.audioFollowSystemDeviceHint
-            : context.l10n.audioSelectedDeviceHint,
-      ),
-      items: devices
-          .map(
-            (device) => DropdownMenuItem<int>(
-              value: device.id,
-              child: Text(
-                AudioSettingsLocalizer.deviceName(
-                  context.l10n,
-                  id: device.id,
-                  name: device.name,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          )
-          .toList(),
-      onChanged: automaticMode ? null : onChanged,
-    );
-    if (!automaticMode) return dropdown;
-
     return InkWell(
       borderRadius: BorderRadius.circular(8),
       onTap: () =>
           ToastUtil.showInfo(context.l10n.audioChangeDevicesInSystemHint),
-      child: IgnorePointer(child: dropdown),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          helperText: context.l10n.audioFollowSystemDeviceHint,
+        ),
+        child: Text(value, overflow: TextOverflow.ellipsis),
+      ),
     );
-  }
-
-  int? _selectedCaptureDeviceValue(PjsipUIState uiState) {
-    return uiState.captureDevices.any(
-          (device) => device.id == uiState.selectedCaptureDeviceId,
-        )
-        ? uiState.selectedCaptureDeviceId
-        : null;
-  }
-
-  int? _selectedPlaybackDeviceValue(PjsipUIState uiState) {
-    return uiState.playbackDevices.any(
-          (device) => device.id == uiState.selectedPlaybackDeviceId,
-        )
-        ? uiState.selectedPlaybackDeviceId
-        : null;
   }
 
   double _audioSettingsLevel(int value) {

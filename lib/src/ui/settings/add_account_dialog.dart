@@ -135,6 +135,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       backgroundColor: _panelBackground,
@@ -166,7 +167,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _isEditing ? '编辑线路' : '添加线路',
+                        _isEditing
+                            ? l10n.accountDialogEditTitle
+                            : l10n.accountDialogAddTitle,
                         style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
@@ -175,7 +178,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                       ),
                     ),
                     IconButton(
-                      tooltip: '关闭',
+                      tooltip: l10n.commonClose,
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(AppIcons.close, size: 20),
                       style: IconButton.styleFrom(
@@ -194,24 +197,27 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      _buildSectionLabel(AppIcons.account, '账号信息'),
+                      _buildSectionLabel(
+                        AppIcons.account,
+                        l10n.accountDialogAccountInfo,
+                      ),
                       const SizedBox(height: 10),
                       TextFormField(
                         controller: _lineNameController,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: '线路名称（可选）',
-                          helperText: '仅用于本地显示，例如“客服一线”或“售后专线”',
-                          prefixIcon: Icon(AppIcons.line),
+                        decoration: InputDecoration(
+                          labelText: l10n.accountDialogLineName,
+                          helperText: l10n.accountDialogLineNameHint,
+                          prefixIcon: const Icon(AppIcons.line),
                         ),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
                         controller: _usernameController,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: '线路账号',
-                          prefixIcon: Icon(AppIcons.person),
+                        decoration: InputDecoration(
+                          labelText: l10n.accountDialogUsername,
+                          prefixIcon: const Icon(AppIcons.person),
                         ),
                         validator: _requiredValidator,
                       ),
@@ -221,10 +227,12 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                         obscureText: _hidePassword,
                         textInputAction: TextInputAction.next,
                         decoration: InputDecoration(
-                          labelText: '密码',
+                          labelText: l10n.accountDialogPassword,
                           prefixIcon: const Icon(AppIcons.lock),
                           suffixIcon: IconButton(
-                            tooltip: _hidePassword ? '显示密码' : '隐藏密码',
+                            tooltip: _hidePassword
+                                ? l10n.accountDialogShowPassword
+                                : l10n.accountDialogHidePassword,
                             onPressed: () =>
                                 setState(() => _hidePassword = !_hidePassword),
                             icon: Icon(
@@ -243,9 +251,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                             child: TextFormField(
                               controller: _hostController,
                               textInputAction: TextInputAction.next,
-                              decoration: const InputDecoration(
-                                labelText: '服务器地址',
-                                prefixIcon: Icon(AppIcons.host),
+                              decoration: InputDecoration(
+                                labelText: l10n.accountDialogServer,
+                                prefixIcon: const Icon(AppIcons.host),
                               ),
                               validator: _requiredValidator,
                             ),
@@ -262,7 +270,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _submit(),
                               decoration: InputDecoration(
-                                labelText: '端口',
+                                labelText: l10n.accountDialogPort,
                                 hintText: '${_selectedTransport.defaultPort}',
                               ),
                               validator: _portValidator,
@@ -272,13 +280,19 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '端口可不填，当前 ${_selectedTransport.label} 默认 ${_selectedTransport.defaultPort}',
+                        l10n.accountDialogDefaultPortHint(
+                          _selectedTransport.label,
+                          _selectedTransport.defaultPort,
+                        ),
                         style: Theme.of(
                           context,
                         ).textTheme.bodySmall?.copyWith(color: _textSecondary),
                       ),
                       const SizedBox(height: 18),
-                      _buildSectionLabel(AppIcons.network, '连接方式'),
+                      _buildSectionLabel(
+                        AppIcons.network,
+                        l10n.accountDialogConnection,
+                      ),
                       const SizedBox(height: 10),
                       _buildTransportSelector(context),
                       const SizedBox(height: 12),
@@ -288,7 +302,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                       if (!widget.isNetworkAvailable) ...[
                         const SizedBox(height: 12),
                         Text(
-                          '当前网络不可用，暂不能添加线路',
+                          l10n.accountDialogNetworkUnavailable,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: Theme.of(context).colorScheme.error,
@@ -310,13 +324,17 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                   children: [
                     OutlinedButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      child: const Text('取消'),
+                      child: Text(l10n.commonCancel),
                     ),
                     const SizedBox(width: 10),
                     FilledButton.icon(
                       onPressed: widget.isNetworkAvailable ? _submit : null,
                       icon: Icon(_isEditing ? AppIcons.save : AppIcons.add),
-                      label: Text(_isEditing ? '保存修改' : '添加并注册'),
+                      label: Text(
+                        _isEditing
+                            ? l10n.accountDialogSave
+                            : l10n.accountDialogAddAndRegister,
+                      ),
                     ),
                   ],
                 ),
@@ -350,14 +368,16 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   }
 
   Widget _buildTransportSelector(BuildContext context) {
+    final l10n = context.l10n;
     return _buildSelectMenu<SipTransport>(
-      label: '传输协议',
+      label: l10n.accountDialogTransport,
       icon: AppIcons.transport,
       value: _selectedTransport,
       values: SipTransport.values,
       titleBuilder: (transport) =>
-          '${transport.label} · ${transport.description}',
-      subtitleBuilder: (transport) => '默认端口 ${transport.defaultPort}',
+          '${transport.label} · ${_accountDialogTransportDescription(l10n, transport)}',
+      subtitleBuilder: (transport) =>
+          l10n.accountDialogDefaultPort(transport.defaultPort),
       onChanged: (transport) {
         setState(() {
           _selectedTransport = transport;
@@ -374,24 +394,25 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   }
 
   Widget _buildMediaEncryptionSelector(BuildContext context) {
+    final l10n = context.l10n;
     final showWarning =
         _selectedMediaEncryption.usesSrtp && !_selectedTransport.isSecure;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildSelectMenu<MediaEncryptionMode>(
-          label: '媒体加密',
+          label: l10n.accountDialogMediaEncryption,
           icon: AppIcons.security,
           value: _selectedMediaEncryption,
           values: MediaEncryptionMode.values,
-          titleBuilder: (mode) => mode.label,
+          titleBuilder: (mode) => _accountDialogMediaLabel(l10n, mode),
           subtitleBuilder: _mediaEncryptionDescription,
           onChanged: (mode) => setState(() => _selectedMediaEncryption = mode),
         ),
         if (showWarning) ...[
           const SizedBox(height: 8),
           Text(
-            '当前不是 TLS 信令，SRTP 会关闭“安全信令要求”。SDES 会把密钥放进 SDP，建议配合 TLS 使用。',
+            l10n.accountDialogSrtpWithoutTlsWarning,
             style: Theme.of(
               context,
             ).textTheme.bodySmall?.copyWith(color: Colors.orange.shade800),
@@ -591,22 +612,28 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   }
 
   Widget _buildAdvancedSettingsSection(BuildContext context) {
+    final l10n = context.l10n;
     final stunServer = _stunServerController.text.trim();
     final accountHints = [
-      if (_authUsernameController.text.trim().isNotEmpty) '认证用户名',
-      if (_sipDisplayNameController.text.trim().isNotEmpty) 'SIP 显示名',
-      if (_outboundProxyController.text.trim().isNotEmpty) '出站代理',
+      if (_authUsernameController.text.trim().isNotEmpty)
+        l10n.accountDialogAdvancedAuth,
+      if (_sipDisplayNameController.text.trim().isNotEmpty)
+        l10n.accountDialogAdvancedDisplayName,
+      if (_outboundProxyController.text.trim().isNotEmpty)
+        l10n.accountDialogAdvancedProxy,
     ];
     final summary = [
-      accountHints.isEmpty ? '账号默认' : accountHints.join('、'),
-      _iceEnabled ? 'ICE' : '无 ICE',
+      accountHints.isEmpty
+          ? l10n.accountDialogAdvancedDefaults
+          : accountHints.join(' · '),
+      _iceEnabled ? 'ICE' : l10n.accountDialogIceOff,
       if (!_stunEnabled)
-        '无 STUN'
+        l10n.accountDialogStunOff
       else if (stunServer.isEmpty || stunServer == _defaultStunServer)
-        '默认 STUN'
+        l10n.accountDialogStunDefault
       else
-        '自定义 STUN',
-      _ipv6Enabled ? 'IPv6' : '仅 IPv4',
+        l10n.accountDialogStunCustom,
+      _ipv6Enabled ? 'IPv6' : l10n.accountDialogIpv4Only,
       if (_turnEnabled) 'TURN',
     ].join(' · ');
 
@@ -631,9 +658,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
           tilePadding: const EdgeInsets.fromLTRB(12, 4, 10, 4),
           childrenPadding: EdgeInsets.zero,
           leading: const Icon(AppIcons.tune, size: 19, color: _textSecondary),
-          title: const Text(
-            '高级设置',
-            style: TextStyle(
+          title: Text(
+            l10n.accountDialogAdvanced,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: _textPrimary,
@@ -658,15 +685,15 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                   _buildAdvancedGroup(
                     context,
                     icon: AppIcons.account,
-                    title: '高级账号',
+                    title: l10n.accountDialogAdvancedAccount,
                     children: [
                       TextFormField(
                         controller: _authUsernameController,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: '认证用户名（可选）',
-                          helperText: '不填则使用线路账号，仅用于 SIP 注册鉴权',
-                          prefixIcon: Icon(AppIcons.key),
+                        decoration: InputDecoration(
+                          labelText: l10n.accountDialogAuthUsername,
+                          helperText: l10n.accountDialogAuthUsernameHint,
+                          prefixIcon: const Icon(AppIcons.key),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -674,10 +701,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                       TextFormField(
                         controller: _sipDisplayNameController,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'SIP 显示名称（可选）',
-                          helperText: '可能显示给对端或服务端；仅本地改名请使用线路名称',
-                          prefixIcon: Icon(AppIcons.person),
+                        decoration: InputDecoration(
+                          labelText: l10n.accountDialogSipDisplayName,
+                          helperText: l10n.accountDialogSipDisplayNameHint,
+                          prefixIcon: const Icon(AppIcons.person),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -687,15 +714,15 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                   _buildAdvancedGroup(
                     context,
                     icon: AppIcons.network,
-                    title: '高级网络',
+                    title: l10n.accountDialogAdvancedNetwork,
                     children: [
                       TextFormField(
                         controller: _outboundProxyController,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'SIP 出站代理（可选）',
-                          helperText: '例如 sip:proxy.example.com:5060；不填则直连服务器',
-                          prefixIcon: Icon(AppIcons.route),
+                        decoration: InputDecoration(
+                          labelText: l10n.accountDialogOutboundProxy,
+                          helperText: l10n.accountDialogOutboundProxyHint,
+                          prefixIcon: const Icon(AppIcons.route),
                         ),
                         onChanged: (_) => setState(() {}),
                       ),
@@ -711,8 +738,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           horizontal: 12,
                         ),
                         secondary: const Icon(AppIcons.public),
-                        title: const Text('启用 IPv6'),
-                        subtitle: const Text('默认关闭，减少 SIP/媒体候选和报文体积'),
+                        title: Text(l10n.accountDialogEnableIpv6),
+                        subtitle: Text(l10n.accountDialogEnableIpv6Hint),
                       ),
                       const Divider(height: 1),
                       SwitchListTile.adaptive(
@@ -726,8 +753,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           horizontal: 12,
                         ),
                         secondary: const Icon(AppIcons.hub),
-                        title: const Text('启用 ICE'),
-                        subtitle: const Text('用于复杂 NAT 网络下协商媒体地址'),
+                        title: Text(l10n.accountDialogEnableIce),
+                        subtitle: Text(l10n.accountDialogEnableIceHint),
                       ),
                       if (_usesUdpWithIce)
                         Padding(
@@ -744,8 +771,8 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           horizontal: 12,
                         ),
                         secondary: const Icon(AppIcons.public),
-                        title: const Text('启用 STUN'),
-                        subtitle: const Text('发现公网映射地址，用于 SIP 和媒体 NAT 穿透'),
+                        title: Text(l10n.accountDialogEnableStun),
+                        subtitle: Text(l10n.accountDialogEnableStunHint),
                       ),
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 160),
@@ -764,11 +791,12 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                                     child: TextFormField(
                                       controller: _stunServerController,
                                       textInputAction: TextInputAction.next,
-                                      decoration: const InputDecoration(
-                                        labelText: 'STUN 服务器',
-                                        helperText: '清空则使用默认 STUN，多个可用逗号或空格分隔',
+                                      decoration: InputDecoration(
+                                        labelText: l10n.accountDialogStunServer,
+                                        helperText:
+                                            l10n.accountDialogStunServerHint,
                                         hintText: _defaultStunServer,
-                                        prefixIcon: Icon(AppIcons.public),
+                                        prefixIcon: const Icon(AppIcons.public),
                                       ),
                                       onChanged: (_) => setState(() {}),
                                     ),
@@ -795,9 +823,11 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                           horizontal: 12,
                         ),
                         secondary: const Icon(AppIcons.swap),
-                        title: const Text('启用 TURN'),
+                        title: Text(l10n.accountDialogEnableTurn),
                         subtitle: Text(
-                          _iceEnabled ? '无法直连媒体时使用中继服务器' : '需要先启用 ICE',
+                          _iceEnabled
+                              ? l10n.accountDialogTurnHint
+                              : l10n.accountDialogTurnNeedsIce,
                         ),
                       ),
                       AnimatedSwitcher(
@@ -817,10 +847,10 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                                     TextFormField(
                                       controller: _turnServerController,
                                       textInputAction: TextInputAction.next,
-                                      decoration: const InputDecoration(
-                                        labelText: 'TURN 服务器',
+                                      decoration: InputDecoration(
+                                        labelText: l10n.accountDialogTurnServer,
                                         hintText: 'turn.example.com:3478',
-                                        prefixIcon: Icon(AppIcons.cloud),
+                                        prefixIcon: const Icon(AppIcons.cloud),
                                       ),
                                       validator: (value) {
                                         if (!_turnEnabled) return null;
@@ -835,16 +865,20 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                                             controller: _turnUsernameController,
                                             textInputAction:
                                                 TextInputAction.next,
-                                            decoration: const InputDecoration(
-                                              labelText: 'TURN 用户名',
-                                              prefixIcon: Icon(AppIcons.person),
+                                            decoration: InputDecoration(
+                                              labelText: l10n
+                                                  .accountDialogTurnUsername,
+                                              prefixIcon: const Icon(
+                                                AppIcons.person,
+                                              ),
                                             ),
                                           ),
                                         ),
                                         const SizedBox(width: 10),
                                         Expanded(
                                           child: _buildSelectMenu<TurnTransport>(
-                                            label: 'TURN 协议',
+                                            label:
+                                                l10n.accountDialogTurnTransport,
                                             icon: AppIcons.transport,
                                             value: _selectedTurnTransport,
                                             values: TurnTransport.values,
@@ -867,12 +901,13 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
                                       textInputAction: TextInputAction.done,
                                       onFieldSubmitted: (_) => _submit(),
                                       decoration: InputDecoration(
-                                        labelText: 'TURN 密码',
+                                        labelText:
+                                            l10n.accountDialogTurnPassword,
                                         prefixIcon: const Icon(AppIcons.key),
                                         suffixIcon: IconButton(
                                           tooltip: _hideTurnPassword
-                                              ? '显示密码'
-                                              : '隐藏密码',
+                                              ? l10n.accountDialogShowPassword
+                                              : l10n.accountDialogHidePassword,
                                           onPressed: () => setState(
                                             () => _hideTurnPassword =
                                                 !_hideTurnPassword,
@@ -986,7 +1021,7 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'UDP 开启 ICE 会让 INVITE 报文变大，部分网络会丢弃 UDP 分片，可能出现服务端收不到呼叫。建议改用 TCP/TLS，或关闭 ICE。',
+                context.l10n.accountDialogUdpIceWarning,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: warningColor,
                   height: 1.35,
@@ -1007,25 +1042,31 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   }
 
   String _mediaEncryptionDescription(MediaEncryptionMode mode) {
+    final l10n = context.l10n;
     return switch (mode) {
-      MediaEncryptionMode.none => '兼容性最好',
-      MediaEncryptionMode.sdesSrtp => '建议配合 TLS',
-      MediaEncryptionMode.dtlsSrtp => 'Asterisk DTLS 常用',
-      MediaEncryptionMode.optionalDtlsFirst => '兼容加密与非加密',
-      MediaEncryptionMode.optionalSdesFirst => '兼容旧 SRTP 配置',
+      MediaEncryptionMode.none => l10n.accountDialogMediaBestCompatibility,
+      MediaEncryptionMode.sdesSrtp => l10n.accountDialogMediaUseTls,
+      MediaEncryptionMode.dtlsSrtp => l10n.accountDialogMediaAsteriskDtls,
+      MediaEncryptionMode.optionalDtlsFirst =>
+        l10n.accountDialogMediaAllowsFallback,
+      MediaEncryptionMode.optionalSdesFirst =>
+        l10n.accountDialogMediaLegacySrtp,
     };
   }
 
   String _turnTransportDescription(TurnTransport transport) {
+    final l10n = context.l10n;
     return switch (transport) {
-      TurnTransport.udp => '默认中继传输',
-      TurnTransport.tcp => '网络限制时更稳',
-      TurnTransport.tls => '企业网络穿透更友好',
+      TurnTransport.udp => l10n.accountDialogTurnUdp,
+      TurnTransport.tcp => l10n.accountDialogTurnTcp,
+      TurnTransport.tls => l10n.accountDialogTurnTls,
     };
   }
 
   String? _requiredValidator(String? value) {
-    if (value == null || value.trim().isEmpty) return '不能为空';
+    if (value == null || value.trim().isEmpty) {
+      return context.l10n.accountDialogRequired;
+    }
     return null;
   }
 
@@ -1033,7 +1074,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     final portText = value?.trim() ?? '';
     if (portText.isEmpty) return null;
     final port = int.tryParse(portText);
-    if (port == null || port < 1 || port > 65535) return '端口无效';
+    if (port == null || port < 1 || port > 65535) {
+      return context.l10n.accountDialogInvalidPort;
+    }
     return null;
   }
 
@@ -1081,7 +1124,9 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   Future<void> _submit() async {
     if (!widget.isNetworkAvailable) return;
     if (!_isEditing && widget.service.hasReachedAccountLimit) {
-      ToastUtil.showWarning(PjsipService.accountLimitMessage);
+      ToastUtil.showWarning(
+        context.l10n.accountLimitReached(PjsipService.maxAccountCount),
+      );
       return;
     }
     if (_turnEnabled && _turnServerController.text.trim().isEmpty) {
@@ -1143,21 +1188,20 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
   }
 
   Future<bool> _confirmUdpIceRisk() async {
+    final l10n = context.l10n;
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('确认启用 UDP + ICE'),
-        content: const Text(
-          'UDP 开启 ICE 可能导致 SIP 报文过大，在部分网络下外呼无响应。更推荐使用 TCP/TLS，或关闭 ICE。\n\n仍然保存这个配置吗？',
-        ),
+        title: Text(l10n.accountDialogConfirmUdpIce),
+        content: Text(l10n.accountDialogConfirmUdpIceBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('返回修改'),
+            child: Text(l10n.accountDialogReview),
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('仍然保存'),
+            child: Text(l10n.accountDialogSaveAnyway),
           ),
         ],
       ),
@@ -1165,3 +1209,23 @@ class _AddAccountDialogState extends State<AddAccountDialog> {
     return result ?? false;
   }
 }
+
+String _accountDialogTransportDescription(
+  AppLocalizations l10n,
+  SipTransport transport,
+) => switch (transport) {
+  SipTransport.udp => l10n.accountDialogTransportStandard,
+  SipTransport.tcp => l10n.accountDialogTransportCompatible,
+  SipTransport.tls => l10n.accountDialogTransportSecure,
+};
+
+String _accountDialogMediaLabel(
+  AppLocalizations l10n,
+  MediaEncryptionMode mode,
+) => switch (mode) {
+  MediaEncryptionMode.none => l10n.accountDialogMediaNone,
+  MediaEncryptionMode.sdesSrtp => l10n.accountDialogMediaSdes,
+  MediaEncryptionMode.dtlsSrtp => l10n.accountDialogMediaDtls,
+  MediaEncryptionMode.optionalDtlsFirst => l10n.accountDialogMediaOptionalDtls,
+  MediaEncryptionMode.optionalSdesFirst => l10n.accountDialogMediaOptionalSdes,
+};

@@ -24,20 +24,6 @@ extension _HomeHelpers on _MyHomePageState {
     return calls.isEmpty ? null : calls.first;
   }
 
-  String _deviceLabelById(List<PjsipAudioDevice> devices, int? id) {
-    if (id == null) return context.l10n.audioDeviceNotSelected;
-    for (final device in devices) {
-      if (device.id == id) {
-        return AudioSettingsLocalizer.deviceName(
-          context.l10n,
-          id: device.id,
-          name: device.name,
-        );
-      }
-    }
-    return context.l10n.audioDeviceUnavailable;
-  }
-
   String _displayRemote(String remoteUri) {
     final sipIndex = remoteUri.indexOf('sip:');
     var value = sipIndex >= 0 ? remoteUri.substring(sipIndex + 4) : remoteUri;

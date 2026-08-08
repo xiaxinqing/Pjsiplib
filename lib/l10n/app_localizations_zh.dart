@@ -1881,6 +1881,419 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get audioIssueSpeakerOnly => '麦克风暂不可用，当前仅使用扬声器，请检查输入设备';
+
+  @override
+  String get aboutLoading => '读取中';
+
+  @override
+  String get aboutTagline => 'VeServe 桌面软电话';
+
+  @override
+  String get aboutVersion => '版本';
+
+  @override
+  String get aboutRuntime => '运行环境';
+
+  @override
+  String get aboutAppId => '应用标识';
+
+  @override
+  String get aboutCompany => '公司';
+
+  @override
+  String get aboutContact => '联系我们';
+
+  @override
+  String get aboutPhoneService => '电话服务';
+
+  @override
+  String get aboutServiceRunning => '已启动';
+
+  @override
+  String get aboutServiceStopped => '未启动';
+
+  @override
+  String get aboutEmailCopied => '邮箱已复制';
+
+  @override
+  String get diagnosticsShowLogs => '显示日志';
+
+  @override
+  String get diagnosticsEventTypes => '设备、注册与通话事件';
+
+  @override
+  String get diagnosticsClearLogs => '清空日志';
+
+  @override
+  String get diagnosticsExporting => '导出中';
+
+  @override
+  String get diagnosticsExportLogs => '导出日志';
+
+  @override
+  String get diagnosticsPrivacyNotice => '日志可能包含电话号码、服务器地址和网络信息，请仅发送给可信人员。';
+
+  @override
+  String get diagnosticsLogsHidden => '日志已隐藏';
+
+  @override
+  String get diagnosticsExported => '诊断日志已导出';
+
+  @override
+  String get diagnosticsExportFailed => '导出失败，请稍后重试';
+
+  @override
+  String get callSettingsControls => '通话控制';
+
+  @override
+  String get callSettingsMaxCalls => '最大同时通话';
+
+  @override
+  String callSettingsMaxCallsValue(int count) {
+    return '$count 路';
+  }
+
+  @override
+  String get callSettingsDtmfMethod => 'DTMF 方式';
+
+  @override
+  String get callSettingsAutoHold => '自动保持其他通话';
+
+  @override
+  String get callSettingsAutoHoldDescription => '接听、外呼或恢复通话时，自动保持其他通话';
+
+  @override
+  String get callSettingsShortcuts => '快捷操作';
+
+  @override
+  String get callSettingsDefaultMute => '默认静音';
+
+  @override
+  String get callSettingsOff => '关闭';
+
+  @override
+  String get callSettingsConference => '会议通话';
+
+  @override
+  String get callSettingsActive => '进行中';
+
+  @override
+  String accountSettingsSummary(int total, int online) {
+    return '$total 条线路 · $online 条在线';
+  }
+
+  @override
+  String get accountSettingsDisconnectAll => '断开全部';
+
+  @override
+  String get accountSettingsRestarting => '重启中';
+
+  @override
+  String get accountSettingsRestartApp => '重启应用';
+
+  @override
+  String get accountSettingsAddLine => '添加线路';
+
+  @override
+  String get accountSettingsEmpty => '尚未接入线路';
+
+  @override
+  String get accountSettingsEmptyHint => '添加线路后即可开始使用';
+
+  @override
+  String get accountSettingsDefaultPinned => '默认外呼线路固定置顶';
+
+  @override
+  String get accountSettingsDragToReorder => '拖动调整线路顺序';
+
+  @override
+  String get accountSettingsReorderUnavailable => '当前无法调整顺序';
+
+  @override
+  String get accountSettingsDefaultOutgoing => '默认外呼';
+
+  @override
+  String get accountSettingsSetDefault => '设为默认';
+
+  @override
+  String get accountSettingsRestartDescription => '应用将关闭后自动重新打开，账号配置不会删除。';
+
+  @override
+  String get accountSettingsRestartStepSave => '保存本地配置和通话记录';
+
+  @override
+  String get accountSettingsRestartStepClose => '关闭并重新打开应用';
+
+  @override
+  String get accountSettingsRestartStepRestore => '恢复已保存线路';
+
+  @override
+  String get accountSettingsRestartRecommended => '适用于休眠、网络切换或线路状态异常后的恢复。';
+
+  @override
+  String get accountSettingsRestartCallWarning => '当前仍有通话，重启会中断通话和线路连接。';
+
+  @override
+  String get accountStatusOnline => '在线';
+
+  @override
+  String get accountStatusConnecting => '连接中';
+
+  @override
+  String get accountStatusUpdating => '处理中';
+
+  @override
+  String get accountStatusDisabled => '已停用';
+
+  @override
+  String get accountStatusFailed => '连接失败';
+
+  @override
+  String get accountStatusOffline => '离线';
+
+  @override
+  String get accountStatusRestoring => '恢复中';
+
+  @override
+  String get accountDialogAddTitle => '添加线路';
+
+  @override
+  String get accountDialogEditTitle => '编辑线路';
+
+  @override
+  String get accountDialogAccountInfo => '账号信息';
+
+  @override
+  String get accountDialogLineName => '线路名称（可选）';
+
+  @override
+  String get accountDialogLineNameHint => '仅用于本地显示，例如“客服一线”';
+
+  @override
+  String get accountDialogUsername => '线路账号';
+
+  @override
+  String get accountDialogPassword => '密码';
+
+  @override
+  String get accountDialogShowPassword => '显示密码';
+
+  @override
+  String get accountDialogHidePassword => '隐藏密码';
+
+  @override
+  String get accountDialogServer => '服务器地址';
+
+  @override
+  String get accountDialogPort => '端口';
+
+  @override
+  String accountDialogDefaultPortHint(String transport, int port) {
+    return '可留空 · $transport 默认端口 $port';
+  }
+
+  @override
+  String get accountDialogConnection => '连接方式';
+
+  @override
+  String get accountDialogNetworkUnavailable => '网络不可用，暂时无法添加线路';
+
+  @override
+  String get accountDialogSave => '保存';
+
+  @override
+  String get accountDialogAddAndRegister => '添加并注册';
+
+  @override
+  String get accountDialogTransport => '传输协议';
+
+  @override
+  String accountDialogDefaultPort(int port) {
+    return '默认端口 $port';
+  }
+
+  @override
+  String get accountDialogTransportStandard => '标准';
+
+  @override
+  String get accountDialogTransportCompatible => '兼容';
+
+  @override
+  String get accountDialogTransportSecure => '安全';
+
+  @override
+  String get accountDialogMediaEncryption => '媒体加密';
+
+  @override
+  String get accountDialogSrtpWithoutTlsWarning =>
+      '当前未使用 TLS。SRTP 将关闭安全信令要求；SDES 密钥会写入 SDP，建议配合 TLS。';
+
+  @override
+  String get accountDialogMediaNone => 'RTP 不加密';
+
+  @override
+  String get accountDialogMediaSdes => 'SDES-SRTP';
+
+  @override
+  String get accountDialogMediaDtls => 'DTLS-SRTP';
+
+  @override
+  String get accountDialogMediaOptionalDtls => '可选 SRTP（优先 DTLS）';
+
+  @override
+  String get accountDialogMediaOptionalSdes => '可选 SRTP（优先 SDES）';
+
+  @override
+  String get accountDialogMediaBestCompatibility => '兼容性最好';
+
+  @override
+  String get accountDialogMediaUseTls => '建议配合 TLS';
+
+  @override
+  String get accountDialogMediaAsteriskDtls => '适用于 Asterisk DTLS';
+
+  @override
+  String get accountDialogMediaAllowsFallback => '允许非加密回退';
+
+  @override
+  String get accountDialogMediaLegacySrtp => '兼容旧版 SRTP';
+
+  @override
+  String get accountDialogAdvanced => '高级设置';
+
+  @override
+  String get accountDialogAdvancedAccount => '高级账号';
+
+  @override
+  String get accountDialogAuthUsername => '认证用户名（可选）';
+
+  @override
+  String get accountDialogAuthUsernameHint => '留空时使用线路账号，仅用于 SIP 鉴权';
+
+  @override
+  String get accountDialogSipDisplayName => 'SIP 显示名称（可选）';
+
+  @override
+  String get accountDialogSipDisplayNameHint => '可能显示给对端；本地名称请填写线路名称';
+
+  @override
+  String get accountDialogAdvancedNetwork => '高级网络';
+
+  @override
+  String get accountDialogOutboundProxy => 'SIP 出站代理（可选）';
+
+  @override
+  String get accountDialogOutboundProxyHint =>
+      '例如 sip:proxy.example.com:5060；留空时直连服务器';
+
+  @override
+  String get accountDialogEnableIpv6 => '启用 IPv6';
+
+  @override
+  String get accountDialogEnableIpv6Hint => '默认关闭，以减少 SIP 和媒体候选';
+
+  @override
+  String get accountDialogEnableIce => '启用 ICE';
+
+  @override
+  String get accountDialogEnableIceHint => '用于复杂 NAT 网络下的媒体协商';
+
+  @override
+  String get accountDialogEnableStun => '启用 STUN';
+
+  @override
+  String get accountDialogEnableStunHint => '发现公网映射地址，用于 NAT 穿透';
+
+  @override
+  String get accountDialogStunServer => 'STUN 服务器';
+
+  @override
+  String get accountDialogStunServerHint => '留空时使用默认 STUN；多个地址用逗号或空格分隔';
+
+  @override
+  String get accountDialogEnableTurn => '启用 TURN';
+
+  @override
+  String get accountDialogTurnHint => '直连失败时使用中继服务器';
+
+  @override
+  String get accountDialogTurnNeedsIce => '请先启用 ICE';
+
+  @override
+  String get accountDialogTurnServer => 'TURN 服务器';
+
+  @override
+  String get accountDialogTurnUsername => 'TURN 用户名';
+
+  @override
+  String get accountDialogTurnTransport => 'TURN 协议';
+
+  @override
+  String get accountDialogTurnPassword => 'TURN 密码';
+
+  @override
+  String get accountDialogTurnUdp => '默认中继';
+
+  @override
+  String get accountDialogTurnTcp => '受限网络更稳定';
+
+  @override
+  String get accountDialogTurnTls => '适合企业网络';
+
+  @override
+  String get accountDialogAdvancedAuth => '认证用户名';
+
+  @override
+  String get accountDialogAdvancedDisplayName => 'SIP 显示名';
+
+  @override
+  String get accountDialogAdvancedProxy => '出站代理';
+
+  @override
+  String get accountDialogAdvancedDefaults => '账号默认';
+
+  @override
+  String get accountDialogIceOff => 'ICE 关闭';
+
+  @override
+  String get accountDialogStunOff => 'STUN 关闭';
+
+  @override
+  String get accountDialogStunDefault => '默认 STUN';
+
+  @override
+  String get accountDialogStunCustom => '自定义 STUN';
+
+  @override
+  String get accountDialogIpv4Only => '仅 IPv4';
+
+  @override
+  String get accountDialogUdpIceWarning =>
+      'UDP + ICE 可能增大 SIP 报文，部分网络会丢弃分片。建议使用 TCP/TLS，或关闭 ICE。';
+
+  @override
+  String get accountDialogRequired => '必填';
+
+  @override
+  String get accountDialogInvalidPort => '请输入 1–65535 之间的端口';
+
+  @override
+  String get accountDialogConfirmUdpIce => '确认使用 UDP + ICE？';
+
+  @override
+  String get accountDialogConfirmUdpIceBody =>
+      'UDP + ICE 可能导致部分网络无法外呼。建议使用 TCP/TLS，或关闭 ICE。';
+
+  @override
+  String get accountDialogReview => '返回检查';
+
+  @override
+  String get accountDialogSaveAnyway => '仍然保存';
+
+  @override
+  String accountLimitReached(int count) {
+    return '最多支持 $count 条线路，请删除不再使用的线路后重试';
+  }
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -3760,4 +4173,417 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get audioIssueSpeakerOnly => '麥克風暫時不可用，目前僅使用揚聲器，請檢查輸入裝置';
+
+  @override
+  String get aboutLoading => '讀取中';
+
+  @override
+  String get aboutTagline => 'VeServe 桌面軟電話';
+
+  @override
+  String get aboutVersion => '版本';
+
+  @override
+  String get aboutRuntime => '執行環境';
+
+  @override
+  String get aboutAppId => '應用程式識別碼';
+
+  @override
+  String get aboutCompany => '公司';
+
+  @override
+  String get aboutContact => '聯絡我們';
+
+  @override
+  String get aboutPhoneService => '電話服務';
+
+  @override
+  String get aboutServiceRunning => '已啟動';
+
+  @override
+  String get aboutServiceStopped => '未啟動';
+
+  @override
+  String get aboutEmailCopied => '電郵地址已複製';
+
+  @override
+  String get diagnosticsShowLogs => '顯示日誌';
+
+  @override
+  String get diagnosticsEventTypes => '裝置、註冊及通話事件';
+
+  @override
+  String get diagnosticsClearLogs => '清除日誌';
+
+  @override
+  String get diagnosticsExporting => '匯出中';
+
+  @override
+  String get diagnosticsExportLogs => '匯出日誌';
+
+  @override
+  String get diagnosticsPrivacyNotice => '日誌可能包含電話號碼、伺服器地址及網絡資料，請只傳送給可信任的人員。';
+
+  @override
+  String get diagnosticsLogsHidden => '日誌已隱藏';
+
+  @override
+  String get diagnosticsExported => '診斷日誌已匯出';
+
+  @override
+  String get diagnosticsExportFailed => '匯出失敗，請稍後再試';
+
+  @override
+  String get callSettingsControls => '通話控制';
+
+  @override
+  String get callSettingsMaxCalls => '同時通話上限';
+
+  @override
+  String callSettingsMaxCallsValue(int count) {
+    return '$count 路';
+  }
+
+  @override
+  String get callSettingsDtmfMethod => 'DTMF 方式';
+
+  @override
+  String get callSettingsAutoHold => '自動保留其他通話';
+
+  @override
+  String get callSettingsAutoHoldDescription => '接聽、外撥或恢復通話時，自動保留其他通話';
+
+  @override
+  String get callSettingsShortcuts => '快捷設定';
+
+  @override
+  String get callSettingsDefaultMute => '預設靜音';
+
+  @override
+  String get callSettingsOff => '關閉';
+
+  @override
+  String get callSettingsConference => '會議通話';
+
+  @override
+  String get callSettingsActive => '進行中';
+
+  @override
+  String accountSettingsSummary(int total, int online) {
+    return '$total 條線路 · $online 條在線';
+  }
+
+  @override
+  String get accountSettingsDisconnectAll => '全部斷線';
+
+  @override
+  String get accountSettingsRestarting => '重新啟動中';
+
+  @override
+  String get accountSettingsRestartApp => '重新啟動應用程式';
+
+  @override
+  String get accountSettingsAddLine => '新增線路';
+
+  @override
+  String get accountSettingsEmpty => '尚未加入線路';
+
+  @override
+  String get accountSettingsEmptyHint => '新增線路後即可開始使用';
+
+  @override
+  String get accountSettingsDefaultPinned => '預設外撥線路固定置頂';
+
+  @override
+  String get accountSettingsDragToReorder => '拖動以調整線路次序';
+
+  @override
+  String get accountSettingsReorderUnavailable => '目前無法調整次序';
+
+  @override
+  String get accountSettingsDefaultOutgoing => '預設外撥';
+
+  @override
+  String get accountSettingsSetDefault => '設為預設';
+
+  @override
+  String get accountSettingsRestartDescription => '應用程式將關閉後自動重新開啟，帳戶設定不會刪除。';
+
+  @override
+  String get accountSettingsRestartStepSave => '儲存本機設定及通話記錄';
+
+  @override
+  String get accountSettingsRestartStepClose => '關閉並重新開啟應用程式';
+
+  @override
+  String get accountSettingsRestartStepRestore => '恢復已儲存的線路';
+
+  @override
+  String get accountSettingsRestartRecommended => '適用於睡眠、網絡切換或線路狀態異常後的恢復。';
+
+  @override
+  String get accountSettingsRestartCallWarning => '目前仍有通話，重新啟動會中斷通話及線路連線。';
+
+  @override
+  String get accountStatusOnline => '在線';
+
+  @override
+  String get accountStatusConnecting => '連線中';
+
+  @override
+  String get accountStatusUpdating => '處理中';
+
+  @override
+  String get accountStatusDisabled => '已停用';
+
+  @override
+  String get accountStatusFailed => '連線失敗';
+
+  @override
+  String get accountStatusOffline => '離線';
+
+  @override
+  String get accountStatusRestoring => '恢復中';
+
+  @override
+  String get accountDialogAddTitle => '新增線路';
+
+  @override
+  String get accountDialogEditTitle => '編輯線路';
+
+  @override
+  String get accountDialogAccountInfo => '帳戶資料';
+
+  @override
+  String get accountDialogLineName => '線路名稱（選填）';
+
+  @override
+  String get accountDialogLineNameHint => '只在本機顯示，例如「客服一線」';
+
+  @override
+  String get accountDialogUsername => '線路帳戶';
+
+  @override
+  String get accountDialogPassword => '密碼';
+
+  @override
+  String get accountDialogShowPassword => '顯示密碼';
+
+  @override
+  String get accountDialogHidePassword => '隱藏密碼';
+
+  @override
+  String get accountDialogServer => '伺服器地址';
+
+  @override
+  String get accountDialogPort => '連接埠';
+
+  @override
+  String accountDialogDefaultPortHint(String transport, int port) {
+    return '可留空 · $transport 預設連接埠 $port';
+  }
+
+  @override
+  String get accountDialogConnection => '連線方式';
+
+  @override
+  String get accountDialogNetworkUnavailable => '網絡不可用，暫時無法新增線路';
+
+  @override
+  String get accountDialogSave => '儲存';
+
+  @override
+  String get accountDialogAddAndRegister => '新增並註冊';
+
+  @override
+  String get accountDialogTransport => '傳輸協定';
+
+  @override
+  String accountDialogDefaultPort(int port) {
+    return '預設連接埠 $port';
+  }
+
+  @override
+  String get accountDialogTransportStandard => '標準';
+
+  @override
+  String get accountDialogTransportCompatible => '兼容';
+
+  @override
+  String get accountDialogTransportSecure => '安全';
+
+  @override
+  String get accountDialogMediaEncryption => '媒體加密';
+
+  @override
+  String get accountDialogSrtpWithoutTlsWarning =>
+      '目前未使用 TLS。SRTP 將關閉安全信令要求；SDES 密鑰會寫入 SDP，建議配合 TLS。';
+
+  @override
+  String get accountDialogMediaNone => 'RTP 不加密';
+
+  @override
+  String get accountDialogMediaSdes => 'SDES-SRTP';
+
+  @override
+  String get accountDialogMediaDtls => 'DTLS-SRTP';
+
+  @override
+  String get accountDialogMediaOptionalDtls => '可選 SRTP（優先 DTLS）';
+
+  @override
+  String get accountDialogMediaOptionalSdes => '可選 SRTP（優先 SDES）';
+
+  @override
+  String get accountDialogMediaBestCompatibility => '兼容性最佳';
+
+  @override
+  String get accountDialogMediaUseTls => '建議配合 TLS';
+
+  @override
+  String get accountDialogMediaAsteriskDtls => '適用於 Asterisk DTLS';
+
+  @override
+  String get accountDialogMediaAllowsFallback => '允許非加密回退';
+
+  @override
+  String get accountDialogMediaLegacySrtp => '兼容舊版 SRTP';
+
+  @override
+  String get accountDialogAdvanced => '進階設定';
+
+  @override
+  String get accountDialogAdvancedAccount => '進階帳戶';
+
+  @override
+  String get accountDialogAuthUsername => '認證用戶名稱（選填）';
+
+  @override
+  String get accountDialogAuthUsernameHint => '留空時使用線路帳戶，只用於 SIP 認證';
+
+  @override
+  String get accountDialogSipDisplayName => 'SIP 顯示名稱（選填）';
+
+  @override
+  String get accountDialogSipDisplayNameHint => '可能顯示給對方；本機名稱請填寫線路名稱';
+
+  @override
+  String get accountDialogAdvancedNetwork => '進階網絡';
+
+  @override
+  String get accountDialogOutboundProxy => 'SIP 外送代理（選填）';
+
+  @override
+  String get accountDialogOutboundProxyHint =>
+      '例如 sip:proxy.example.com:5060；留空時直接連接伺服器';
+
+  @override
+  String get accountDialogEnableIpv6 => '啟用 IPv6';
+
+  @override
+  String get accountDialogEnableIpv6Hint => '預設關閉，以減少 SIP 及媒體候選';
+
+  @override
+  String get accountDialogEnableIce => '啟用 ICE';
+
+  @override
+  String get accountDialogEnableIceHint => '用於複雜 NAT 網絡下的媒體協商';
+
+  @override
+  String get accountDialogEnableStun => '啟用 STUN';
+
+  @override
+  String get accountDialogEnableStunHint => '找出公網映射地址，用於 NAT 穿透';
+
+  @override
+  String get accountDialogStunServer => 'STUN 伺服器';
+
+  @override
+  String get accountDialogStunServerHint => '留空時使用預設 STUN；多個地址以逗號或空格分隔';
+
+  @override
+  String get accountDialogEnableTurn => '啟用 TURN';
+
+  @override
+  String get accountDialogTurnHint => '直接連線失敗時使用中繼伺服器';
+
+  @override
+  String get accountDialogTurnNeedsIce => '請先啟用 ICE';
+
+  @override
+  String get accountDialogTurnServer => 'TURN 伺服器';
+
+  @override
+  String get accountDialogTurnUsername => 'TURN 用戶名稱';
+
+  @override
+  String get accountDialogTurnTransport => 'TURN 傳輸協定';
+
+  @override
+  String get accountDialogTurnPassword => 'TURN 密碼';
+
+  @override
+  String get accountDialogTurnUdp => '預設中繼';
+
+  @override
+  String get accountDialogTurnTcp => '受限網絡較穩定';
+
+  @override
+  String get accountDialogTurnTls => '適合企業網絡';
+
+  @override
+  String get accountDialogAdvancedAuth => '認證用戶名稱';
+
+  @override
+  String get accountDialogAdvancedDisplayName => 'SIP 顯示名稱';
+
+  @override
+  String get accountDialogAdvancedProxy => '外送代理';
+
+  @override
+  String get accountDialogAdvancedDefaults => '帳戶預設';
+
+  @override
+  String get accountDialogIceOff => 'ICE 已關閉';
+
+  @override
+  String get accountDialogStunOff => 'STUN 已關閉';
+
+  @override
+  String get accountDialogStunDefault => '預設 STUN';
+
+  @override
+  String get accountDialogStunCustom => '自訂 STUN';
+
+  @override
+  String get accountDialogIpv4Only => '只使用 IPv4';
+
+  @override
+  String get accountDialogUdpIceWarning =>
+      'UDP + ICE 可能增大 SIP 訊息，部分網絡會丟棄分片。建議使用 TCP/TLS，或關閉 ICE。';
+
+  @override
+  String get accountDialogRequired => '必填';
+
+  @override
+  String get accountDialogInvalidPort => '請輸入 1–65535 之間的連接埠';
+
+  @override
+  String get accountDialogConfirmUdpIce => '確認使用 UDP + ICE？';
+
+  @override
+  String get accountDialogConfirmUdpIceBody =>
+      'UDP + ICE 可能導致部分網絡無法外撥。建議使用 TCP/TLS，或關閉 ICE。';
+
+  @override
+  String get accountDialogReview => '返回檢查';
+
+  @override
+  String get accountDialogSaveAnyway => '仍然儲存';
+
+  @override
+  String accountLimitReached(int count) {
+    return '最多支援 $count 條線路，請刪除不再使用的線路後再試';
+  }
 }

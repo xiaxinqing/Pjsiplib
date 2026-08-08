@@ -144,6 +144,42 @@ void FlutterWindow::ConfigureAudioDeviceChangeChannel() {
           return;
         }
 
+        if (call.method_name() == "getCurrentAudioRoute") {
+          if (audio_device_change_monitor_ == nullptr) {
+            audio_device_change_monitor_ = new AudioDeviceChangeMonitor();
+          }
+          // The initial registration can fail while the Windows audio service
+          // is still starting. A route query doubles as a safe retry.
+          audio_device_change_monitor_->Start(GetHandle());
+          SystemAudioRouteInfo route;
+          if (!audio_device_change_monitor_->GetCurrentAudioRoute(&route)) {
+            result->Success(flutter::EncodableMap{});
+            return;
+          }
+
+          flutter::EncodableMap route_value;
+          if (route.input.available) {
+            route_value[flutter::EncodableValue("input")] =
+                flutter::EncodableMap{
+                    {flutter::EncodableValue("id"),
+                     flutter::EncodableValue(route.input.id)},
+                    {flutter::EncodableValue("name"),
+                     flutter::EncodableValue(route.input.name)},
+                };
+          }
+          if (route.output.available) {
+            route_value[flutter::EncodableValue("output")] =
+                flutter::EncodableMap{
+                    {flutter::EncodableValue("id"),
+                     flutter::EncodableValue(route.output.id)},
+                    {flutter::EncodableValue("name"),
+                     flutter::EncodableValue(route.output.name)},
+                };
+          }
+          result->Success(flutter::EncodableValue(route_value));
+          return;
+        }
+
         result->NotImplemented();
       });
 

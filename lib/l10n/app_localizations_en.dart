@@ -2005,4 +2005,432 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get audioIssueSpeakerOnly =>
       'The microphone is temporarily unavailable. Speaker-only audio is active; check the input device';
+
+  @override
+  String get aboutLoading => 'Loading';
+
+  @override
+  String get aboutTagline => 'VeServe desktop softphone';
+
+  @override
+  String get aboutVersion => 'Version';
+
+  @override
+  String get aboutRuntime => 'Runtime';
+
+  @override
+  String get aboutAppId => 'App ID';
+
+  @override
+  String get aboutCompany => 'Company';
+
+  @override
+  String get aboutContact => 'Contact';
+
+  @override
+  String get aboutPhoneService => 'Phone service';
+
+  @override
+  String get aboutServiceRunning => 'Running';
+
+  @override
+  String get aboutServiceStopped => 'Stopped';
+
+  @override
+  String get aboutEmailCopied => 'Email copied';
+
+  @override
+  String get diagnosticsShowLogs => 'Show logs';
+
+  @override
+  String get diagnosticsEventTypes => 'Device, registration, and call events';
+
+  @override
+  String get diagnosticsClearLogs => 'Clear logs';
+
+  @override
+  String get diagnosticsExporting => 'Exporting';
+
+  @override
+  String get diagnosticsExportLogs => 'Export logs';
+
+  @override
+  String get diagnosticsPrivacyNotice =>
+      'Logs may contain phone numbers, server addresses, and network details. Share only with trusted recipients.';
+
+  @override
+  String get diagnosticsLogsHidden => 'Logs hidden';
+
+  @override
+  String get diagnosticsExported => 'Diagnostic logs exported';
+
+  @override
+  String get diagnosticsExportFailed => 'Export failed. Try again';
+
+  @override
+  String get callSettingsControls => 'Call controls';
+
+  @override
+  String get callSettingsMaxCalls => 'Concurrent calls';
+
+  @override
+  String callSettingsMaxCallsValue(int count) {
+    return '$count';
+  }
+
+  @override
+  String get callSettingsDtmfMethod => 'DTMF mode';
+
+  @override
+  String get callSettingsAutoHold => 'Auto-hold other calls';
+
+  @override
+  String get callSettingsAutoHoldDescription =>
+      'Hold other calls when answering, calling, or resuming';
+
+  @override
+  String get callSettingsShortcuts => 'Quick settings';
+
+  @override
+  String get callSettingsDefaultMute => 'Mute by default';
+
+  @override
+  String get callSettingsOff => 'Off';
+
+  @override
+  String get callSettingsConference => 'Conference';
+
+  @override
+  String get callSettingsActive => 'Active';
+
+  @override
+  String accountSettingsSummary(int total, int online) {
+    return '$total lines · $online online';
+  }
+
+  @override
+  String get accountSettingsDisconnectAll => 'Disconnect';
+
+  @override
+  String get accountSettingsRestarting => 'Restarting';
+
+  @override
+  String get accountSettingsRestartApp => 'Restart';
+
+  @override
+  String get accountSettingsAddLine => 'Add line';
+
+  @override
+  String get accountSettingsEmpty => 'No lines yet';
+
+  @override
+  String get accountSettingsEmptyHint => 'Add a line to get started';
+
+  @override
+  String get accountSettingsDefaultPinned =>
+      'The default line stays at the top';
+
+  @override
+  String get accountSettingsDragToReorder => 'Drag to reorder';
+
+  @override
+  String get accountSettingsReorderUnavailable => 'Reordering unavailable';
+
+  @override
+  String get accountSettingsDefaultOutgoing => 'Default';
+
+  @override
+  String get accountSettingsSetDefault => 'Set default';
+
+  @override
+  String get accountSettingsRestartDescription =>
+      'The app will close and reopen. Account settings are kept.';
+
+  @override
+  String get accountSettingsRestartStepSave =>
+      'Save local settings and call history';
+
+  @override
+  String get accountSettingsRestartStepClose => 'Close and reopen the app';
+
+  @override
+  String get accountSettingsRestartStepRestore => 'Restore saved lines';
+
+  @override
+  String get accountSettingsRestartRecommended =>
+      'Use after sleep, a network change, or an abnormal line state.';
+
+  @override
+  String get accountSettingsRestartCallWarning =>
+      'Active calls will end and all lines will disconnect.';
+
+  @override
+  String get accountStatusOnline => 'Online';
+
+  @override
+  String get accountStatusConnecting => 'Connecting';
+
+  @override
+  String get accountStatusUpdating => 'Updating';
+
+  @override
+  String get accountStatusDisabled => 'Disabled';
+
+  @override
+  String get accountStatusFailed => 'Failed';
+
+  @override
+  String get accountStatusOffline => 'Offline';
+
+  @override
+  String get accountStatusRestoring => 'Restoring';
+
+  @override
+  String get accountDialogAddTitle => 'Add line';
+
+  @override
+  String get accountDialogEditTitle => 'Edit line';
+
+  @override
+  String get accountDialogAccountInfo => 'Account';
+
+  @override
+  String get accountDialogLineName => 'Line name (optional)';
+
+  @override
+  String get accountDialogLineNameHint => 'Shown only in VPhone, e.g. Support';
+
+  @override
+  String get accountDialogUsername => 'Line account';
+
+  @override
+  String get accountDialogPassword => 'Password';
+
+  @override
+  String get accountDialogShowPassword => 'Show password';
+
+  @override
+  String get accountDialogHidePassword => 'Hide password';
+
+  @override
+  String get accountDialogServer => 'Server';
+
+  @override
+  String get accountDialogPort => 'Port';
+
+  @override
+  String accountDialogDefaultPortHint(String transport, int port) {
+    return 'Optional · $transport defaults to $port';
+  }
+
+  @override
+  String get accountDialogConnection => 'Connection';
+
+  @override
+  String get accountDialogNetworkUnavailable =>
+      'No network. A line cannot be added now';
+
+  @override
+  String get accountDialogSave => 'Save';
+
+  @override
+  String get accountDialogAddAndRegister => 'Add & register';
+
+  @override
+  String get accountDialogTransport => 'Transport';
+
+  @override
+  String accountDialogDefaultPort(int port) {
+    return 'Default port $port';
+  }
+
+  @override
+  String get accountDialogTransportStandard => 'Standard';
+
+  @override
+  String get accountDialogTransportCompatible => 'Compatible';
+
+  @override
+  String get accountDialogTransportSecure => 'Secure';
+
+  @override
+  String get accountDialogMediaEncryption => 'Media encryption';
+
+  @override
+  String get accountDialogSrtpWithoutTlsWarning =>
+      'TLS is off. SRTP will not require secure signaling; SDES keys are sent in SDP. TLS is recommended.';
+
+  @override
+  String get accountDialogMediaNone => 'Unencrypted RTP';
+
+  @override
+  String get accountDialogMediaSdes => 'SDES-SRTP';
+
+  @override
+  String get accountDialogMediaDtls => 'DTLS-SRTP';
+
+  @override
+  String get accountDialogMediaOptionalDtls => 'Optional SRTP (DTLS)';
+
+  @override
+  String get accountDialogMediaOptionalSdes => 'Optional SRTP (SDES)';
+
+  @override
+  String get accountDialogMediaBestCompatibility => 'Best compatibility';
+
+  @override
+  String get accountDialogMediaUseTls => 'Use with TLS';
+
+  @override
+  String get accountDialogMediaAsteriskDtls => 'For Asterisk DTLS';
+
+  @override
+  String get accountDialogMediaAllowsFallback => 'Allows RTP fallback';
+
+  @override
+  String get accountDialogMediaLegacySrtp => 'For legacy SRTP';
+
+  @override
+  String get accountDialogAdvanced => 'Advanced';
+
+  @override
+  String get accountDialogAdvancedAccount => 'Account';
+
+  @override
+  String get accountDialogAuthUsername => 'Auth username (optional)';
+
+  @override
+  String get accountDialogAuthUsernameHint =>
+      'Uses the line account when empty; SIP auth only';
+
+  @override
+  String get accountDialogSipDisplayName => 'SIP display name (optional)';
+
+  @override
+  String get accountDialogSipDisplayNameHint =>
+      'May be shown to peers; use Line name for local display';
+
+  @override
+  String get accountDialogAdvancedNetwork => 'Network';
+
+  @override
+  String get accountDialogOutboundProxy => 'Outbound proxy (optional)';
+
+  @override
+  String get accountDialogOutboundProxyHint =>
+      'Example: sip:proxy.example.com:5060; empty connects directly';
+
+  @override
+  String get accountDialogEnableIpv6 => 'Enable IPv6';
+
+  @override
+  String get accountDialogEnableIpv6Hint =>
+      'Off by default to reduce SIP and media candidates';
+
+  @override
+  String get accountDialogEnableIce => 'Enable ICE';
+
+  @override
+  String get accountDialogEnableIceHint =>
+      'Negotiates media across complex NAT';
+
+  @override
+  String get accountDialogEnableStun => 'Enable STUN';
+
+  @override
+  String get accountDialogEnableStunHint =>
+      'Discovers public mappings for NAT traversal';
+
+  @override
+  String get accountDialogStunServer => 'STUN server';
+
+  @override
+  String get accountDialogStunServerHint =>
+      'Empty uses the default; separate multiple servers with commas or spaces';
+
+  @override
+  String get accountDialogEnableTurn => 'Enable TURN';
+
+  @override
+  String get accountDialogTurnHint =>
+      'Relays media when direct connection fails';
+
+  @override
+  String get accountDialogTurnNeedsIce => 'Enable ICE first';
+
+  @override
+  String get accountDialogTurnServer => 'TURN server';
+
+  @override
+  String get accountDialogTurnUsername => 'TURN username';
+
+  @override
+  String get accountDialogTurnTransport => 'TURN transport';
+
+  @override
+  String get accountDialogTurnPassword => 'TURN password';
+
+  @override
+  String get accountDialogTurnUdp => 'Default relay';
+
+  @override
+  String get accountDialogTurnTcp => 'Stable on restricted networks';
+
+  @override
+  String get accountDialogTurnTls => 'Good for enterprise networks';
+
+  @override
+  String get accountDialogAdvancedAuth => 'Auth username';
+
+  @override
+  String get accountDialogAdvancedDisplayName => 'SIP display name';
+
+  @override
+  String get accountDialogAdvancedProxy => 'Outbound proxy';
+
+  @override
+  String get accountDialogAdvancedDefaults => 'Account defaults';
+
+  @override
+  String get accountDialogIceOff => 'ICE off';
+
+  @override
+  String get accountDialogStunOff => 'STUN off';
+
+  @override
+  String get accountDialogStunDefault => 'Default STUN';
+
+  @override
+  String get accountDialogStunCustom => 'Custom STUN';
+
+  @override
+  String get accountDialogIpv4Only => 'IPv4 only';
+
+  @override
+  String get accountDialogUdpIceWarning =>
+      'UDP + ICE can enlarge SIP messages. Some networks drop fragments. Use TCP/TLS or disable ICE.';
+
+  @override
+  String get accountDialogRequired => 'Required';
+
+  @override
+  String get accountDialogInvalidPort => 'Enter a port from 1 to 65535';
+
+  @override
+  String get accountDialogConfirmUdpIce => 'Use UDP + ICE?';
+
+  @override
+  String get accountDialogConfirmUdpIceBody =>
+      'UDP + ICE may block outbound calls on some networks. Use TCP/TLS or disable ICE.';
+
+  @override
+  String get accountDialogReview => 'Review';
+
+  @override
+  String get accountDialogSaveAnyway => 'Save anyway';
+
+  @override
+  String accountLimitReached(int count) {
+    return 'Up to $count lines are supported. Remove a line and try again';
+  }
 }

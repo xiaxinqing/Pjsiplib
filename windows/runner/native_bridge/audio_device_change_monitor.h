@@ -5,10 +5,22 @@
 
 #include <atomic>
 #include <mmdeviceapi.h>
+#include <string>
 
 // IMMNotificationClient 回调可能运行在 COM 工作线程。这里通过窗口私有消息转发，
 // 确保 Flutter MethodChannel 始终在窗口线程中调用。
 constexpr UINT kAudioDeviceChangedMessage = WM_APP + 42;
+
+struct AudioEndpointInfo {
+  bool available = false;
+  std::string id;
+  std::string name;
+};
+
+struct SystemAudioRouteInfo {
+  AudioEndpointInfo input;
+  AudioEndpointInfo output;
+};
 
 /// 监听 Windows Core Audio 端点变化，不直接操作 PJSIP。
 ///
@@ -20,6 +32,7 @@ class AudioDeviceChangeMonitor final : public IMMNotificationClient {
 
   bool Start(HWND window);
   void Stop();
+  bool GetCurrentAudioRoute(SystemAudioRouteInfo* route) const;
 
   // IUnknown 接口实现。
   ULONG STDMETHODCALLTYPE AddRef() override;
@@ -41,6 +54,7 @@ class AudioDeviceChangeMonitor final : public IMMNotificationClient {
   ~AudioDeviceChangeMonitor();
 
   void NotifyDevicesChanged();
+  bool ReadDefaultEndpoint(EDataFlow flow, AudioEndpointInfo* endpoint) const;
 
   std::atomic<ULONG> reference_count_{1};
   IMMDeviceEnumerator* enumerator_ = nullptr;

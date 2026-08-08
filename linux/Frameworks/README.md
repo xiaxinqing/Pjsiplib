@@ -1,5 +1,10 @@
 Place Linux PJSIP runtime libraries here before building the Linux app.
 
+The Linux runner also queries and monitors the system audio route through
+PulseAudio. Install the development package before building (for example,
+`sudo apt install libpulse-dev` on Debian/Ubuntu). This also works on PipeWire
+desktops that provide the standard PulseAudio compatibility service.
+
 Expected files from the `pjsip-linux-x64` GitHub Actions artifact:
 
 - `libpjsip.so`

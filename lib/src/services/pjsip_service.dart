@@ -294,6 +294,8 @@ class PjsipService extends Notifier<PjsipUIState> {
         '音频异常': snapshot.audioDeviceIssueMessage ?? '无',
         '输入设备 ID': '${snapshot.selectedCaptureDeviceId ?? '未选择'}',
         '输出设备 ID': '${snapshot.selectedPlaybackDeviceId ?? '未选择'}',
+        '系统输入设备': snapshot.systemAudioRoute?.input?.name ?? '未知',
+        '系统输出设备': snapshot.systemAudioRoute?.output?.name ?? '未知',
       },
     );
   }
@@ -393,6 +395,7 @@ class PjsipService extends Notifier<PjsipUIState> {
       playbackDevices: const [],
       selectedCaptureDeviceId: null,
       selectedPlaybackDeviceId: null,
+      systemAudioRoute: null,
       isMicrophoneMuted: false,
       microphoneMutedCallIds: const {},
       isSpeakerMuted: false,

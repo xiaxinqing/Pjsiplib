@@ -5,14 +5,9 @@ extension _HomeSidebarAudio on _MyHomePageState {
   /// 构建音频迷你状态卡，显示当前麦克风和扬声器。
   Widget _buildAudioMiniStatus(PjsipUIState uiState, PjsipService service) {
     final l10n = context.l10n;
-    final mic = _deviceLabelById(
-      uiState.captureDevices,
-      uiState.selectedCaptureDeviceId,
-    );
-    final speaker = _deviceLabelById(
-      uiState.playbackDevices,
-      uiState.selectedPlaybackDeviceId,
-    );
+    final mic = uiState.systemAudioRoute?.input?.name ?? l10n.audioFollowSystem;
+    final speaker =
+        uiState.systemAudioRoute?.output?.name ?? l10n.audioFollowSystem;
     final hasIssue = uiState.hasAudioDeviceIssue;
     final issueColor = Colors.orange.shade700;
     return GestureDetector(
@@ -90,24 +85,17 @@ extension _HomeSidebarAudio on _MyHomePageState {
     );
   }
 
-  /// 打开音频设备菜单，支持切换自动/手动、刷新设备和进入音频设置。
+  /// 打开音频设备菜单，显示系统路由并提供刷新和设置入口。
   Future<void> _showAudioStatusMenu(
     PjsipUIState uiState,
     PjsipService service,
     Offset position,
   ) async {
     final l10n = context.l10n;
-    final mic = _deviceLabelById(
-      uiState.captureDevices,
-      uiState.selectedCaptureDeviceId,
-    );
-    final speaker = _deviceLabelById(
-      uiState.playbackDevices,
-      uiState.selectedPlaybackDeviceId,
-    );
+    final mic = uiState.systemAudioRoute?.input?.name ?? l10n.audioFollowSystem;
+    final speaker =
+        uiState.systemAudioRoute?.output?.name ?? l10n.audioFollowSystem;
     final issueMessage = uiState.audioDeviceIssueMessage;
-    final isAutomatic =
-        uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
     final action = await showMenu<String>(
       context: context,
       position: _popupMenuPosition(position),
@@ -146,9 +134,7 @@ extension _HomeSidebarAudio on _MyHomePageState {
               _buildStatusSummaryRow(
                 icon: AppIcons.automatic,
                 label: l10n.sidebarAudioMode,
-                value: isAutomatic
-                    ? l10n.sidebarAudioAutomatic
-                    : l10n.sidebarAudioManual,
+                value: l10n.sidebarAudioAutomatic,
               ),
               _buildStatusSummaryRow(
                 icon: AppIcons.info,
@@ -159,16 +145,6 @@ extension _HomeSidebarAudio on _MyHomePageState {
           ),
         ),
         const PopupMenuDivider(height: 1),
-        PopupMenuItem<String>(
-          value: 'toggle_auto',
-          enabled: uiState.isInitialized,
-          child: _buildPopupActionRow(
-            isAutomatic ? AppIcons.tune : AppIcons.automatic,
-            isAutomatic
-                ? l10n.sidebarAudioSwitchToManual
-                : l10n.sidebarAudioSwitchToAutomatic,
-          ),
-        ),
         PopupMenuItem<String>(
           value: 'refresh',
           enabled: uiState.isInitialized,
@@ -189,8 +165,6 @@ extension _HomeSidebarAudio on _MyHomePageState {
 
     if (!mounted || action == null) return;
     switch (action) {
-      case 'toggle_auto':
-        unawaited(service.setAutomaticAudioDeviceSelection(!isAutomatic));
       case 'refresh':
         unawaited(service.refreshAudioDevices());
       case 'open_settings':

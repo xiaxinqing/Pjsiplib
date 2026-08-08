@@ -27,7 +27,9 @@ extension _HomeDialogs on _MyHomePageState {
   }) {
     if (account == null &&
         uiState.accounts.length >= PjsipService.maxAccountCount) {
-      ToastUtil.showWarning(PjsipService.accountLimitMessage);
+      ToastUtil.showWarning(
+        context.l10n.accountLimitReached(PjsipService.maxAccountCount),
+      );
       return Future<void>.value();
     }
     return showDialog<void>(

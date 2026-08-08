@@ -90,8 +90,9 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     required VoidCallback onAddAccount,
     required VoidCallback onDisconnectAll,
   }) {
+    final l10n = context.l10n;
     final summary = Text(
-      '$accountCount 条线路 · $onlineCount 条在线',
+      l10n.accountSettingsSummary(accountCount, onlineCount),
       style: TextStyle(color: _textSecondary, fontWeight: FontWeight.w500),
     );
     final actions = Wrap(
@@ -102,7 +103,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         OutlinedButton.icon(
           onPressed: canDisconnectAll ? onDisconnectAll : null,
           icon: const Icon(AppIcons.power),
-          label: const Text('断开全部'),
+          label: Text(l10n.accountSettingsDisconnectAll),
         ),
         OutlinedButton.icon(
           onPressed: restartingApplication
@@ -115,12 +116,16 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(AppIcons.refresh),
-          label: Text(restartingApplication ? '正在重启' : '重启应用'),
+          label: Text(
+            restartingApplication
+                ? l10n.accountSettingsRestarting
+                : l10n.accountSettingsRestartApp,
+          ),
         ),
         FilledButton.icon(
           onPressed: canAddAccount ? onAddAccount : null,
           icon: const Icon(AppIcons.add),
-          label: const Text('添加线路'),
+          label: Text(l10n.accountSettingsAddLine),
           style: FilledButton.styleFrom(backgroundColor: _textPrimary),
         ),
       ],
@@ -138,13 +143,22 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
             ],
           );
         }
-        return Row(children: [summary, const Spacer(), actions]);
+        return Row(
+          children: [
+            summary,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Align(alignment: Alignment.centerRight, child: actions),
+            ),
+          ],
+        );
       },
     );
   }
 
   /// 账号列表为空时给出简洁引导，不再重复展示连接状态。
   Widget _buildEmptyAccountList() {
+    final l10n = context.l10n;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -156,13 +170,16 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
           ),
           const SizedBox(height: 12),
           Text(
-            '尚未接入线路',
+            l10n.accountSettingsEmpty,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
-          Text('点击右上角添加线路', style: TextStyle(color: _textSecondary)),
+          Text(
+            l10n.accountSettingsEmptyHint,
+            style: TextStyle(color: _textSecondary),
+          ),
         ],
       ),
     );
@@ -200,11 +217,12 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     required bool isDefault,
     required bool enabled,
   }) {
+    final l10n = context.l10n;
     final tooltip = isDefault
-        ? '默认外呼线路固定置顶'
+        ? l10n.accountSettingsDefaultPinned
         : enabled
-        ? '拖动调整线路顺序'
-        : '当前无法调整顺序';
+        ? l10n.accountSettingsDragToReorder
+        : l10n.accountSettingsReorderUnavailable;
     final handle = Tooltip(
       message: tooltip,
       child: MouseRegion(
@@ -230,6 +248,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     SipAccountInfo account, {
     required Widget reorderHandle,
   }) {
+    final l10n = context.l10n;
     final isDefault = uiState.defaultAccountId == account.accId;
     final color = !account.registrationEnabled
         ? _textSecondary
@@ -245,11 +264,11 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         : account.lineLabel;
     final detail =
         '$identity · ${account.transportLabel}'
-        '${account.mediaSecurity.usesSrtp ? ' · ${account.mediaSecurity.mode.label}' : ''}'
+        '${account.mediaSecurity.usesSrtp ? ' · ${_accountDialogMediaLabel(l10n, account.mediaSecurity.mode)}' : ''}'
         ' · STUN'
         '${account.iceConfig.enabled ? ' · ICE' : ''}'
         '${account.turnConfig.isUsable ? ' · TURN' : ''}'
-        ' · ${account.registrationStatusText}';
+        ' · ${_accountSettingsStatus(l10n, account)}';
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -305,7 +324,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                       : () =>
                             service.setAccountRegistration(account.accId, true),
                   icon: const Icon(AppIcons.refresh),
-                  label: const Text('刷新'),
+                  label: Text(l10n.sidebarRefreshLine),
                 ),
                 TextButton.icon(
                   onPressed:
@@ -322,7 +341,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                           service.forceReconnectAccount(account.accId);
                         },
                   icon: const Icon(AppIcons.power),
-                  label: const Text('重启'),
+                  label: Text(l10n.sidebarRestartLine),
                 ),
                 TextButton.icon(
                   onPressed:
@@ -335,7 +354,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                           false,
                         ),
                   icon: const Icon(AppIcons.pause),
-                  label: const Text('停用'),
+                  label: Text(l10n.sidebarDisableLine),
                 ),
               ] else
                 TextButton.icon(
@@ -347,7 +366,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                       : () =>
                             service.setAccountRegistration(account.accId, true),
                   icon: const Icon(AppIcons.play),
-                  label: const Text('启用'),
+                  label: Text(l10n.sidebarEnableLine),
                   style: TextButton.styleFrom(foregroundColor: _brandGreen),
                 ),
               TextButton.icon(
@@ -358,7 +377,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     ? null
                     : () => _showEditAccountDialog(uiState, service, account),
                 icon: const Icon(AppIcons.edit),
-                label: const Text('编辑'),
+                label: Text(l10n.sidebarEditLine),
               ),
               TextButton.icon(
                 onPressed:
@@ -372,7 +391,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                         service.removeAccount(account.accId);
                       },
                 icon: const Icon(AppIcons.delete),
-                label: const Text('删除'),
+                label: Text(l10n.sidebarDeleteLine),
                 style: TextButton.styleFrom(foregroundColor: _dangerRed),
               ),
             ],
@@ -394,6 +413,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     required bool isRestarting,
     required VoidCallback onSetDefault,
   }) {
+    final l10n = context.l10n;
     final canSetDefault = account.isRegistered && !isDefault && !isRestarting;
     final foregroundColor = isDefault
         ? _brandGreen
@@ -414,7 +434,11 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     return OutlinedButton.icon(
       onPressed: canSetDefault ? onSetDefault : null,
       icon: Icon(isDefault ? AppIcons.check : AppIcons.outgoing, size: _iconSm),
-      label: Text(isDefault ? '默认外呼' : '设为默认外呼'),
+      label: Text(
+        isDefault
+            ? l10n.accountSettingsDefaultOutgoing
+            : l10n.accountSettingsSetDefault,
+      ),
       style: OutlinedButton.styleFrom(
         foregroundColor: foregroundColor,
         disabledForegroundColor: foregroundColor,
@@ -428,6 +452,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
   }
 
   Future<bool?> _confirmRestartApplication(PjsipUIState uiState) {
+    final l10n = context.l10n;
     return showDialog<bool>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),
@@ -461,16 +486,16 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          '重启应用',
-                          style: TextStyle(
+                        Text(
+                          l10n.accountSettingsRestartApp,
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '会关闭当前应用进程并自动重新打开，不会删除账号配置。',
+                          l10n.accountSettingsRestartDescription,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(color: _textSecondary),
                         ),
@@ -491,11 +516,11 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildRestartStep('保存当前本地配置和通话记录'),
+                      _buildRestartStep(l10n.accountSettingsRestartStepSave),
                       const SizedBox(height: 8),
-                      _buildRestartStep('关闭当前应用进程并自动重新打开'),
+                      _buildRestartStep(l10n.accountSettingsRestartStepClose),
                       const SizedBox(height: 8),
-                      _buildRestartStep('重新打开后恢复已保存线路'),
+                      _buildRestartStep(l10n.accountSettingsRestartStepRestore),
                     ],
                   ),
                 ),
@@ -503,8 +528,8 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
               const SizedBox(height: 12),
               Text(
                 uiState.calls.isEmpty
-                    ? '适合休眠唤醒、网络切换后只能接听不能外呼，或线路状态明显异常的情况。'
-                    : '当前仍有通话，重启应用会直接中断通话和线路连接。',
+                    ? l10n.accountSettingsRestartRecommended
+                    : l10n.accountSettingsRestartCallWarning,
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -515,12 +540,12 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
+            child: Text(l10n.commonCancel),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pop(true),
             icon: const Icon(AppIcons.refresh),
-            label: const Text('重启应用'),
+            label: Text(l10n.accountSettingsRestartApp),
           ),
         ],
       ),
@@ -543,5 +568,18 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         ),
       ],
     );
+  }
+
+  String _accountSettingsStatus(AppLocalizations l10n, SipAccountInfo account) {
+    if (account.isRestoringPlaceholder) return l10n.accountStatusRestoring;
+    if (!account.registrationEnabled) return l10n.accountStatusDisabled;
+    if (account.registrationActionInProgress) {
+      return l10n.accountStatusUpdating;
+    }
+    if (account.isRegistered) return l10n.accountStatusOnline;
+    final status = account.registrationStatus;
+    if (status == null || status < 200) return l10n.accountStatusConnecting;
+    if (status >= 300) return l10n.accountStatusFailed;
+    return l10n.accountStatusOffline;
   }
 }

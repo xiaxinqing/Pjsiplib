@@ -5,7 +5,50 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include "audio_device_change_monitor.h"
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+constexpr char kAudioDeviceChannelName[] =
+    "voip_desk/audio_device_changes";
+
+struct AudioDeviceNotification {
+  FlMethodChannel* channel;
+};
+
+gboolean invoke_audio_devices_changed(gpointer user_data) {
+  auto* notification = static_cast<AudioDeviceNotification*>(user_data);
+  fl_method_channel_invoke_method(notification->channel, "audioDevicesChanged",
+                                  nullptr, nullptr, nullptr, nullptr);
+  g_object_unref(notification->channel);
+  delete notification;
+  return G_SOURCE_REMOVE;
+}
+
+void notify_audio_devices_changed(FlMethodChannel* channel) {
+  if (channel == nullptr) {
+    return;
+  }
+  auto* notification = new AudioDeviceNotification{
+      FL_METHOD_CHANNEL(g_object_ref(channel)),
+  };
+  g_main_context_invoke(nullptr, invoke_audio_devices_changed, notification);
+}
+
+FlValue* audio_endpoint_value(const LinuxAudioEndpointInfo& endpoint) {
+  if (!endpoint.available) {
+    return fl_value_new_null();
+  }
+  FlValue* value = fl_value_new_map();
+  fl_value_set_string_take(value, "id",
+                           fl_value_new_string(endpoint.id.c_str()));
+  fl_value_set_string_take(value, "name",
+                           fl_value_new_string(endpoint.name.c_str()));
+  return value;
+}
+
+}  // namespace
 
 static gchar* app_icon_path() {
   g_autofree gchar* executable_path = g_file_read_link("/proc/self/exe", nullptr);
@@ -43,6 +86,8 @@ struct _MyApplication {
   GtkApplication parent_instance;
   char** dart_entrypoint_arguments;
   FlMethodChannel* attention_channel;
+  FlMethodChannel* audio_device_channel;
+  LinuxAudioDeviceChangeMonitor* audio_device_monitor;
   GtkWindow* main_window;
 };
 
@@ -75,6 +120,61 @@ static void window_attention_method_call_cb(FlMethodChannel* channel,
     gtk_window_set_urgency_hint(self->main_window, FALSE);
     g_autoptr(FlMethodResponse) response =
         FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  g_autoptr(FlMethodResponse) response =
+      FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  fl_method_call_respond(method_call, response, nullptr);
+}
+
+static void audio_device_method_call_cb(FlMethodChannel*,
+                                        FlMethodCall* method_call,
+                                        gpointer user_data) {
+  MyApplication* self = MY_APPLICATION(user_data);
+  const gchar* method = fl_method_call_get_name(method_call);
+
+  if (self->audio_device_monitor == nullptr) {
+    self->audio_device_monitor = new LinuxAudioDeviceChangeMonitor([self]() {
+      notify_audio_devices_changed(self->audio_device_channel);
+    });
+  }
+
+  if (g_strcmp0(method, "startMonitoring") == 0) {
+    const bool started = self->audio_device_monitor->Start();
+    g_autoptr(FlValue) result = fl_value_new_bool(started);
+    g_autoptr(FlMethodResponse) response =
+        FL_METHOD_RESPONSE(fl_method_success_response_new(result));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  if (g_strcmp0(method, "stopMonitoring") == 0) {
+    self->audio_device_monitor->Stop();
+    g_autoptr(FlMethodResponse) response =
+        FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    fl_method_call_respond(method_call, response, nullptr);
+    return;
+  }
+
+  if (g_strcmp0(method, "getCurrentAudioRoute") == 0) {
+    LinuxSystemAudioRouteInfo route;
+    if (!self->audio_device_monitor->Start() ||
+        !self->audio_device_monitor->GetCurrentAudioRoute(&route)) {
+      g_autoptr(FlMethodResponse) response =
+          FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+      fl_method_call_respond(method_call, response, nullptr);
+      return;
+    }
+
+    g_autoptr(FlValue) result = fl_value_new_map();
+    fl_value_set_string_take(result, "input",
+                             audio_endpoint_value(route.input));
+    fl_value_set_string_take(result, "output",
+                             audio_endpoint_value(route.output));
+    g_autoptr(FlMethodResponse) response =
+        FL_METHOD_RESPONSE(fl_method_success_response_new(result));
     fl_method_call_respond(method_call, response, nullptr);
     return;
   }
@@ -159,6 +259,18 @@ static void my_application_activate(GApplication* application) {
       self->attention_channel, window_attention_method_call_cb,
       g_object_ref(self), g_object_unref);
 
+  FlPluginRegistrar* audio_device_registrar =
+      fl_plugin_registry_get_registrar_for_plugin(
+          FL_PLUGIN_REGISTRY(view), "VoipDeskAudioDeviceChanges");
+  g_autoptr(FlStandardMethodCodec) audio_device_codec =
+      fl_standard_method_codec_new();
+  self->audio_device_channel = fl_method_channel_new(
+      fl_plugin_registrar_get_messenger(audio_device_registrar),
+      kAudioDeviceChannelName, FL_METHOD_CODEC(audio_device_codec));
+  fl_method_channel_set_method_call_handler(
+      self->audio_device_channel, audio_device_method_call_cb,
+      g_object_ref(self), g_object_unref);
+
   gtk_widget_grab_focus(GTK_WIDGET(view));
 }
 
@@ -205,6 +317,12 @@ static void my_application_shutdown(GApplication* application) {
 static void my_application_dispose(GObject* object) {
   MyApplication* self = MY_APPLICATION(object);
   g_clear_pointer(&self->dart_entrypoint_arguments, g_strfreev);
+  if (self->audio_device_monitor != nullptr) {
+    self->audio_device_monitor->Stop();
+    delete self->audio_device_monitor;
+    self->audio_device_monitor = nullptr;
+  }
+  g_clear_object(&self->audio_device_channel);
   g_clear_object(&self->attention_channel);
   self->main_window = nullptr;
   G_OBJECT_CLASS(my_application_parent_class)->dispose(object);

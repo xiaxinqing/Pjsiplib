@@ -3595,6 +3595,804 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'麦克风暂不可用，当前仅使用扬声器，请检查输入设备'**
   String get audioIssueSpeakerOnly;
+
+  /// No description provided for @aboutLoading.
+  ///
+  /// In zh, this message translates to:
+  /// **'读取中'**
+  String get aboutLoading;
+
+  /// No description provided for @aboutTagline.
+  ///
+  /// In zh, this message translates to:
+  /// **'VeServe 桌面软电话'**
+  String get aboutTagline;
+
+  /// No description provided for @aboutVersion.
+  ///
+  /// In zh, this message translates to:
+  /// **'版本'**
+  String get aboutVersion;
+
+  /// No description provided for @aboutRuntime.
+  ///
+  /// In zh, this message translates to:
+  /// **'运行环境'**
+  String get aboutRuntime;
+
+  /// No description provided for @aboutAppId.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用标识'**
+  String get aboutAppId;
+
+  /// No description provided for @aboutCompany.
+  ///
+  /// In zh, this message translates to:
+  /// **'公司'**
+  String get aboutCompany;
+
+  /// No description provided for @aboutContact.
+  ///
+  /// In zh, this message translates to:
+  /// **'联系我们'**
+  String get aboutContact;
+
+  /// No description provided for @aboutPhoneService.
+  ///
+  /// In zh, this message translates to:
+  /// **'电话服务'**
+  String get aboutPhoneService;
+
+  /// No description provided for @aboutServiceRunning.
+  ///
+  /// In zh, this message translates to:
+  /// **'已启动'**
+  String get aboutServiceRunning;
+
+  /// No description provided for @aboutServiceStopped.
+  ///
+  /// In zh, this message translates to:
+  /// **'未启动'**
+  String get aboutServiceStopped;
+
+  /// No description provided for @aboutEmailCopied.
+  ///
+  /// In zh, this message translates to:
+  /// **'邮箱已复制'**
+  String get aboutEmailCopied;
+
+  /// No description provided for @diagnosticsShowLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示日志'**
+  String get diagnosticsShowLogs;
+
+  /// No description provided for @diagnosticsEventTypes.
+  ///
+  /// In zh, this message translates to:
+  /// **'设备、注册与通话事件'**
+  String get diagnosticsEventTypes;
+
+  /// No description provided for @diagnosticsClearLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'清空日志'**
+  String get diagnosticsClearLogs;
+
+  /// No description provided for @diagnosticsExporting.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出中'**
+  String get diagnosticsExporting;
+
+  /// No description provided for @diagnosticsExportLogs.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出日志'**
+  String get diagnosticsExportLogs;
+
+  /// No description provided for @diagnosticsPrivacyNotice.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志可能包含电话号码、服务器地址和网络信息，请仅发送给可信人员。'**
+  String get diagnosticsPrivacyNotice;
+
+  /// No description provided for @diagnosticsLogsHidden.
+  ///
+  /// In zh, this message translates to:
+  /// **'日志已隐藏'**
+  String get diagnosticsLogsHidden;
+
+  /// No description provided for @diagnosticsExported.
+  ///
+  /// In zh, this message translates to:
+  /// **'诊断日志已导出'**
+  String get diagnosticsExported;
+
+  /// No description provided for @diagnosticsExportFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出失败，请稍后重试'**
+  String get diagnosticsExportFailed;
+
+  /// No description provided for @callSettingsControls.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话控制'**
+  String get callSettingsControls;
+
+  /// No description provided for @callSettingsMaxCalls.
+  ///
+  /// In zh, this message translates to:
+  /// **'最大同时通话'**
+  String get callSettingsMaxCalls;
+
+  /// No description provided for @callSettingsMaxCallsValue.
+  ///
+  /// In zh, this message translates to:
+  /// **'{count} 路'**
+  String callSettingsMaxCallsValue(int count);
+
+  /// No description provided for @callSettingsDtmfMethod.
+  ///
+  /// In zh, this message translates to:
+  /// **'DTMF 方式'**
+  String get callSettingsDtmfMethod;
+
+  /// No description provided for @callSettingsAutoHold.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动保持其他通话'**
+  String get callSettingsAutoHold;
+
+  /// No description provided for @callSettingsAutoHoldDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'接听、外呼或恢复通话时，自动保持其他通话'**
+  String get callSettingsAutoHoldDescription;
+
+  /// No description provided for @callSettingsShortcuts.
+  ///
+  /// In zh, this message translates to:
+  /// **'快捷操作'**
+  String get callSettingsShortcuts;
+
+  /// No description provided for @callSettingsDefaultMute.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认静音'**
+  String get callSettingsDefaultMute;
+
+  /// No description provided for @callSettingsOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭'**
+  String get callSettingsOff;
+
+  /// No description provided for @callSettingsConference.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议通话'**
+  String get callSettingsConference;
+
+  /// No description provided for @callSettingsActive.
+  ///
+  /// In zh, this message translates to:
+  /// **'进行中'**
+  String get callSettingsActive;
+
+  /// No description provided for @accountSettingsSummary.
+  ///
+  /// In zh, this message translates to:
+  /// **'{total} 条线路 · {online} 条在线'**
+  String accountSettingsSummary(int total, int online);
+
+  /// No description provided for @accountSettingsDisconnectAll.
+  ///
+  /// In zh, this message translates to:
+  /// **'断开全部'**
+  String get accountSettingsDisconnectAll;
+
+  /// No description provided for @accountSettingsRestarting.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启中'**
+  String get accountSettingsRestarting;
+
+  /// No description provided for @accountSettingsRestartApp.
+  ///
+  /// In zh, this message translates to:
+  /// **'重启应用'**
+  String get accountSettingsRestartApp;
+
+  /// No description provided for @accountSettingsAddLine.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加线路'**
+  String get accountSettingsAddLine;
+
+  /// No description provided for @accountSettingsEmpty.
+  ///
+  /// In zh, this message translates to:
+  /// **'尚未接入线路'**
+  String get accountSettingsEmpty;
+
+  /// No description provided for @accountSettingsEmptyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加线路后即可开始使用'**
+  String get accountSettingsEmptyHint;
+
+  /// No description provided for @accountSettingsDefaultPinned.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认外呼线路固定置顶'**
+  String get accountSettingsDefaultPinned;
+
+  /// No description provided for @accountSettingsDragToReorder.
+  ///
+  /// In zh, this message translates to:
+  /// **'拖动调整线路顺序'**
+  String get accountSettingsDragToReorder;
+
+  /// No description provided for @accountSettingsReorderUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前无法调整顺序'**
+  String get accountSettingsReorderUnavailable;
+
+  /// No description provided for @accountSettingsDefaultOutgoing.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认外呼'**
+  String get accountSettingsDefaultOutgoing;
+
+  /// No description provided for @accountSettingsSetDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'设为默认'**
+  String get accountSettingsSetDefault;
+
+  /// No description provided for @accountSettingsRestartDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'应用将关闭后自动重新打开，账号配置不会删除。'**
+  String get accountSettingsRestartDescription;
+
+  /// No description provided for @accountSettingsRestartStepSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存本地配置和通话记录'**
+  String get accountSettingsRestartStepSave;
+
+  /// No description provided for @accountSettingsRestartStepClose.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭并重新打开应用'**
+  String get accountSettingsRestartStepClose;
+
+  /// No description provided for @accountSettingsRestartStepRestore.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复已保存线路'**
+  String get accountSettingsRestartStepRestore;
+
+  /// No description provided for @accountSettingsRestartRecommended.
+  ///
+  /// In zh, this message translates to:
+  /// **'适用于休眠、网络切换或线路状态异常后的恢复。'**
+  String get accountSettingsRestartRecommended;
+
+  /// No description provided for @accountSettingsRestartCallWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前仍有通话，重启会中断通话和线路连接。'**
+  String get accountSettingsRestartCallWarning;
+
+  /// No description provided for @accountStatusOnline.
+  ///
+  /// In zh, this message translates to:
+  /// **'在线'**
+  String get accountStatusOnline;
+
+  /// No description provided for @accountStatusConnecting.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接中'**
+  String get accountStatusConnecting;
+
+  /// No description provided for @accountStatusUpdating.
+  ///
+  /// In zh, this message translates to:
+  /// **'处理中'**
+  String get accountStatusUpdating;
+
+  /// No description provided for @accountStatusDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'已停用'**
+  String get accountStatusDisabled;
+
+  /// No description provided for @accountStatusFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接失败'**
+  String get accountStatusFailed;
+
+  /// No description provided for @accountStatusOffline.
+  ///
+  /// In zh, this message translates to:
+  /// **'离线'**
+  String get accountStatusOffline;
+
+  /// No description provided for @accountStatusRestoring.
+  ///
+  /// In zh, this message translates to:
+  /// **'恢复中'**
+  String get accountStatusRestoring;
+
+  /// No description provided for @accountDialogAddTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加线路'**
+  String get accountDialogAddTitle;
+
+  /// No description provided for @accountDialogEditTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'编辑线路'**
+  String get accountDialogEditTitle;
+
+  /// No description provided for @accountDialogAccountInfo.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号信息'**
+  String get accountDialogAccountInfo;
+
+  /// No description provided for @accountDialogLineName.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路名称（可选）'**
+  String get accountDialogLineName;
+
+  /// No description provided for @accountDialogLineNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅用于本地显示，例如“客服一线”'**
+  String get accountDialogLineNameHint;
+
+  /// No description provided for @accountDialogUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'线路账号'**
+  String get accountDialogUsername;
+
+  /// No description provided for @accountDialogPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'密码'**
+  String get accountDialogPassword;
+
+  /// No description provided for @accountDialogShowPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'显示密码'**
+  String get accountDialogShowPassword;
+
+  /// No description provided for @accountDialogHidePassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'隐藏密码'**
+  String get accountDialogHidePassword;
+
+  /// No description provided for @accountDialogServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'服务器地址'**
+  String get accountDialogServer;
+
+  /// No description provided for @accountDialogPort.
+  ///
+  /// In zh, this message translates to:
+  /// **'端口'**
+  String get accountDialogPort;
+
+  /// No description provided for @accountDialogDefaultPortHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可留空 · {transport} 默认端口 {port}'**
+  String accountDialogDefaultPortHint(String transport, int port);
+
+  /// No description provided for @accountDialogConnection.
+  ///
+  /// In zh, this message translates to:
+  /// **'连接方式'**
+  String get accountDialogConnection;
+
+  /// No description provided for @accountDialogNetworkUnavailable.
+  ///
+  /// In zh, this message translates to:
+  /// **'网络不可用，暂时无法添加线路'**
+  String get accountDialogNetworkUnavailable;
+
+  /// No description provided for @accountDialogSave.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存'**
+  String get accountDialogSave;
+
+  /// No description provided for @accountDialogAddAndRegister.
+  ///
+  /// In zh, this message translates to:
+  /// **'添加并注册'**
+  String get accountDialogAddAndRegister;
+
+  /// No description provided for @accountDialogTransport.
+  ///
+  /// In zh, this message translates to:
+  /// **'传输协议'**
+  String get accountDialogTransport;
+
+  /// No description provided for @accountDialogDefaultPort.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认端口 {port}'**
+  String accountDialogDefaultPort(int port);
+
+  /// No description provided for @accountDialogTransportStandard.
+  ///
+  /// In zh, this message translates to:
+  /// **'标准'**
+  String get accountDialogTransportStandard;
+
+  /// No description provided for @accountDialogTransportCompatible.
+  ///
+  /// In zh, this message translates to:
+  /// **'兼容'**
+  String get accountDialogTransportCompatible;
+
+  /// No description provided for @accountDialogTransportSecure.
+  ///
+  /// In zh, this message translates to:
+  /// **'安全'**
+  String get accountDialogTransportSecure;
+
+  /// No description provided for @accountDialogMediaEncryption.
+  ///
+  /// In zh, this message translates to:
+  /// **'媒体加密'**
+  String get accountDialogMediaEncryption;
+
+  /// No description provided for @accountDialogSrtpWithoutTlsWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前未使用 TLS。SRTP 将关闭安全信令要求；SDES 密钥会写入 SDP，建议配合 TLS。'**
+  String get accountDialogSrtpWithoutTlsWarning;
+
+  /// No description provided for @accountDialogMediaNone.
+  ///
+  /// In zh, this message translates to:
+  /// **'RTP 不加密'**
+  String get accountDialogMediaNone;
+
+  /// No description provided for @accountDialogMediaSdes.
+  ///
+  /// In zh, this message translates to:
+  /// **'SDES-SRTP'**
+  String get accountDialogMediaSdes;
+
+  /// No description provided for @accountDialogMediaDtls.
+  ///
+  /// In zh, this message translates to:
+  /// **'DTLS-SRTP'**
+  String get accountDialogMediaDtls;
+
+  /// No description provided for @accountDialogMediaOptionalDtls.
+  ///
+  /// In zh, this message translates to:
+  /// **'可选 SRTP（优先 DTLS）'**
+  String get accountDialogMediaOptionalDtls;
+
+  /// No description provided for @accountDialogMediaOptionalSdes.
+  ///
+  /// In zh, this message translates to:
+  /// **'可选 SRTP（优先 SDES）'**
+  String get accountDialogMediaOptionalSdes;
+
+  /// No description provided for @accountDialogMediaBestCompatibility.
+  ///
+  /// In zh, this message translates to:
+  /// **'兼容性最好'**
+  String get accountDialogMediaBestCompatibility;
+
+  /// No description provided for @accountDialogMediaUseTls.
+  ///
+  /// In zh, this message translates to:
+  /// **'建议配合 TLS'**
+  String get accountDialogMediaUseTls;
+
+  /// No description provided for @accountDialogMediaAsteriskDtls.
+  ///
+  /// In zh, this message translates to:
+  /// **'适用于 Asterisk DTLS'**
+  String get accountDialogMediaAsteriskDtls;
+
+  /// No description provided for @accountDialogMediaAllowsFallback.
+  ///
+  /// In zh, this message translates to:
+  /// **'允许非加密回退'**
+  String get accountDialogMediaAllowsFallback;
+
+  /// No description provided for @accountDialogMediaLegacySrtp.
+  ///
+  /// In zh, this message translates to:
+  /// **'兼容旧版 SRTP'**
+  String get accountDialogMediaLegacySrtp;
+
+  /// No description provided for @accountDialogAdvanced.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级设置'**
+  String get accountDialogAdvanced;
+
+  /// No description provided for @accountDialogAdvancedAccount.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级账号'**
+  String get accountDialogAdvancedAccount;
+
+  /// No description provided for @accountDialogAuthUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'认证用户名（可选）'**
+  String get accountDialogAuthUsername;
+
+  /// No description provided for @accountDialogAuthUsernameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空时使用线路账号，仅用于 SIP 鉴权'**
+  String get accountDialogAuthUsernameHint;
+
+  /// No description provided for @accountDialogSipDisplayName.
+  ///
+  /// In zh, this message translates to:
+  /// **'SIP 显示名称（可选）'**
+  String get accountDialogSipDisplayName;
+
+  /// No description provided for @accountDialogSipDisplayNameHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'可能显示给对端；本地名称请填写线路名称'**
+  String get accountDialogSipDisplayNameHint;
+
+  /// No description provided for @accountDialogAdvancedNetwork.
+  ///
+  /// In zh, this message translates to:
+  /// **'高级网络'**
+  String get accountDialogAdvancedNetwork;
+
+  /// No description provided for @accountDialogOutboundProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'SIP 出站代理（可选）'**
+  String get accountDialogOutboundProxy;
+
+  /// No description provided for @accountDialogOutboundProxyHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'例如 sip:proxy.example.com:5060；留空时直连服务器'**
+  String get accountDialogOutboundProxyHint;
+
+  /// No description provided for @accountDialogEnableIpv6.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 IPv6'**
+  String get accountDialogEnableIpv6;
+
+  /// No description provided for @accountDialogEnableIpv6Hint.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认关闭，以减少 SIP 和媒体候选'**
+  String get accountDialogEnableIpv6Hint;
+
+  /// No description provided for @accountDialogEnableIce.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 ICE'**
+  String get accountDialogEnableIce;
+
+  /// No description provided for @accountDialogEnableIceHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'用于复杂 NAT 网络下的媒体协商'**
+  String get accountDialogEnableIceHint;
+
+  /// No description provided for @accountDialogEnableStun.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 STUN'**
+  String get accountDialogEnableStun;
+
+  /// No description provided for @accountDialogEnableStunHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'发现公网映射地址，用于 NAT 穿透'**
+  String get accountDialogEnableStunHint;
+
+  /// No description provided for @accountDialogStunServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'STUN 服务器'**
+  String get accountDialogStunServer;
+
+  /// No description provided for @accountDialogStunServerHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'留空时使用默认 STUN；多个地址用逗号或空格分隔'**
+  String get accountDialogStunServerHint;
+
+  /// No description provided for @accountDialogEnableTurn.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用 TURN'**
+  String get accountDialogEnableTurn;
+
+  /// No description provided for @accountDialogTurnHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'直连失败时使用中继服务器'**
+  String get accountDialogTurnHint;
+
+  /// No description provided for @accountDialogTurnNeedsIce.
+  ///
+  /// In zh, this message translates to:
+  /// **'请先启用 ICE'**
+  String get accountDialogTurnNeedsIce;
+
+  /// No description provided for @accountDialogTurnServer.
+  ///
+  /// In zh, this message translates to:
+  /// **'TURN 服务器'**
+  String get accountDialogTurnServer;
+
+  /// No description provided for @accountDialogTurnUsername.
+  ///
+  /// In zh, this message translates to:
+  /// **'TURN 用户名'**
+  String get accountDialogTurnUsername;
+
+  /// No description provided for @accountDialogTurnTransport.
+  ///
+  /// In zh, this message translates to:
+  /// **'TURN 协议'**
+  String get accountDialogTurnTransport;
+
+  /// No description provided for @accountDialogTurnPassword.
+  ///
+  /// In zh, this message translates to:
+  /// **'TURN 密码'**
+  String get accountDialogTurnPassword;
+
+  /// No description provided for @accountDialogTurnUdp.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认中继'**
+  String get accountDialogTurnUdp;
+
+  /// No description provided for @accountDialogTurnTcp.
+  ///
+  /// In zh, this message translates to:
+  /// **'受限网络更稳定'**
+  String get accountDialogTurnTcp;
+
+  /// No description provided for @accountDialogTurnTls.
+  ///
+  /// In zh, this message translates to:
+  /// **'适合企业网络'**
+  String get accountDialogTurnTls;
+
+  /// No description provided for @accountDialogAdvancedAuth.
+  ///
+  /// In zh, this message translates to:
+  /// **'认证用户名'**
+  String get accountDialogAdvancedAuth;
+
+  /// No description provided for @accountDialogAdvancedDisplayName.
+  ///
+  /// In zh, this message translates to:
+  /// **'SIP 显示名'**
+  String get accountDialogAdvancedDisplayName;
+
+  /// No description provided for @accountDialogAdvancedProxy.
+  ///
+  /// In zh, this message translates to:
+  /// **'出站代理'**
+  String get accountDialogAdvancedProxy;
+
+  /// No description provided for @accountDialogAdvancedDefaults.
+  ///
+  /// In zh, this message translates to:
+  /// **'账号默认'**
+  String get accountDialogAdvancedDefaults;
+
+  /// No description provided for @accountDialogIceOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'ICE 关闭'**
+  String get accountDialogIceOff;
+
+  /// No description provided for @accountDialogStunOff.
+  ///
+  /// In zh, this message translates to:
+  /// **'STUN 关闭'**
+  String get accountDialogStunOff;
+
+  /// No description provided for @accountDialogStunDefault.
+  ///
+  /// In zh, this message translates to:
+  /// **'默认 STUN'**
+  String get accountDialogStunDefault;
+
+  /// No description provided for @accountDialogStunCustom.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义 STUN'**
+  String get accountDialogStunCustom;
+
+  /// No description provided for @accountDialogIpv4Only.
+  ///
+  /// In zh, this message translates to:
+  /// **'仅 IPv4'**
+  String get accountDialogIpv4Only;
+
+  /// No description provided for @accountDialogUdpIceWarning.
+  ///
+  /// In zh, this message translates to:
+  /// **'UDP + ICE 可能增大 SIP 报文，部分网络会丢弃分片。建议使用 TCP/TLS，或关闭 ICE。'**
+  String get accountDialogUdpIceWarning;
+
+  /// No description provided for @accountDialogRequired.
+  ///
+  /// In zh, this message translates to:
+  /// **'必填'**
+  String get accountDialogRequired;
+
+  /// No description provided for @accountDialogInvalidPort.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 1–65535 之间的端口'**
+  String get accountDialogInvalidPort;
+
+  /// No description provided for @accountDialogConfirmUdpIce.
+  ///
+  /// In zh, this message translates to:
+  /// **'确认使用 UDP + ICE？'**
+  String get accountDialogConfirmUdpIce;
+
+  /// No description provided for @accountDialogConfirmUdpIceBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'UDP + ICE 可能导致部分网络无法外呼。建议使用 TCP/TLS，或关闭 ICE。'**
+  String get accountDialogConfirmUdpIceBody;
+
+  /// No description provided for @accountDialogReview.
+  ///
+  /// In zh, this message translates to:
+  /// **'返回检查'**
+  String get accountDialogReview;
+
+  /// No description provided for @accountDialogSaveAnyway.
+  ///
+  /// In zh, this message translates to:
+  /// **'仍然保存'**
+  String get accountDialogSaveAnyway;
+
+  /// No description provided for @accountLimitReached.
+  ///
+  /// In zh, this message translates to:
+  /// **'最多支持 {count} 条线路，请删除不再使用的线路后重试'**
+  String accountLimitReached(int count);
 }
 
 class _AppLocalizationsDelegate

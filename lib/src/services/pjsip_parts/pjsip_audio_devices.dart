@@ -87,13 +87,13 @@ class _PjsipAudioRuntime {
   /// 上生成的 64 字节 FFI 结构，因此需要单独 lookup 并按 Windows ABI 调用。
   _PjsuaEnumWindowsAudioDevicesDart? pjsuaEnumWindowsAudioDevices;
 
-  /// Linux 或原生监听不可用时，没有通话的设备轮询间隔。
+  /// 原生监听不可用时，没有通话的设备轮询间隔。
   Duration idlePollInterval = const Duration(seconds: 2);
 
-  /// Linux 或原生监听不可用时，通话中的设备轮询间隔。
+  /// 原生监听不可用时，通话中的设备轮询间隔。
   Duration inCallPollInterval = const Duration(seconds: 2);
 
-  /// macOS/Windows 原生事件监听启用后的低频兜底检查。
+  /// 桌面平台原生事件监听启用后的低频兜底检查。
   ///
   /// 系统事件是主要路径；这个检查只覆盖驱动漏报、睡眠恢复等少数边界情况。
   Duration nativeFallbackPollInterval = const Duration(seconds: 30);
@@ -129,6 +129,9 @@ class _PjsipAudioRuntime {
 
   /// 上一次“可用设备列表”的快照签名，用于判断设备是否真的发生变化。
   String? lastDeviceSnapshot;
+  SystemAudioRoute? lastSystemAudioRoute;
+  bool systemRouteChangeHandling = false;
+  bool systemRouteChangePending = false;
   int? speakerTestPlayerId;
   int? speakerTestPlayerPort;
   int? ringtonePlayerId;
@@ -210,7 +213,7 @@ class _PjsipAudioRuntime {
 /// 1. 从 PJSIP 枚举麦克风/扬声器设备。
 /// 2. 过滤掉不适合通话的虚拟设备、聚合设备、方向错误设备。
 /// 3. 根据自动/手动策略调用 `pjsua_set_snd_dev` 切换设备。
-/// 4. macOS/Windows 使用系统事件监听设备变化，Linux 使用轻量轮询。
+/// 4. 桌面平台使用系统事件监听设备变化，并保留低频兜底检查。
 /// 5. 通话中切换设备后，重新连接 PJSIP conference bridge，恢复声音路径。
 ///
 /// 这里刻意把“原始设备列表”和“通话可用设备列表”分开：
@@ -341,15 +344,23 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
   }
 
-  Future<void> refreshAudioDevices() => _refreshAudioDevices(
-    reason: '手动刷新',
-    logResult: true,
-    allowAutomaticSwitch: true,
-  );
+  Future<void> refreshAudioDevices() async {
+    final routeChanged = await _syncSystemAudioRoute(reason: '手动刷新');
+    if (routeChanged &&
+        _uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic &&
+        _shouldKeepSoundDeviceOpen) {
+      _reopenSystemSoundDevice('手动刷新');
+    }
+    await _refreshAudioDevices(
+      reason: '手动刷新',
+      logResult: true,
+      allowAutomaticSwitch: true,
+    );
+  }
 
   /// 开启或关闭“自动选择音频设备”。
   ///
-  /// 自动模式下，策略会优先选择耳机/蓝牙设备，其次选择系统默认设备。
+  /// 自动模式固定使用 PJSIP 默认输入/输出，由操作系统负责路由。
   /// 手动模式下，会记住用户当前选中的设备签名；之后热插拔导致 ID 变化时，会尽量
   /// 根据签名找回同一台设备。
   ///
@@ -358,12 +369,12 @@ extension PjsipAudioDeviceOperations on PjsipService {
     if (!_uiState.isInitialized) return;
 
     if (enabled) {
-      // 回到跟随系统模式时清空手动偏好，让策略重新按“耳机优先、系统默认兜底”选择。
+      // 回到跟随系统模式时清空手动偏好，不再根据设备名称猜测目标端点。
       _audio.preferredCaptureDeviceSignature = null;
       _audio.preferredPlaybackDeviceSignature = null;
       _uiState = _uiState.copyWith(
         audioDeviceMode: PjsipAudioDeviceMode.automatic,
-        audioDeviceStatus: '跟随系统设备：优先耳机，其次系统默认',
+        audioDeviceStatus: '跟随系统输入/输出',
       );
       await _refreshAudioDevices(
         reason: '启用自动选择',
@@ -1270,13 +1281,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
       final didReapplyMapping = didScheduleSwitch
           ? false
           : _reapplyAudioDevicesIfIdMappingChanged(snapshot, reason);
-      if (!didScheduleSwitch &&
-          !didReapplyMapping &&
-          _uiState.calls.values.any((call) => call.isConnected)) {
-        // 有时设备列表变化但当前选择仍可用，例如蓝牙 profile 内部变化。通话中仍补一次
-        // conference bridge 重连，让媒体路径跟上底层声卡变化。
-        _scheduleAudioBridgeReconnectAfterDeviceSwitch('设备列表刷新兜底: $reason');
-      }
+      // 设备列表变化不代表系统路由变化。VPIO 创建临时聚合设备时也会走到这里，
+      // 因此不能仅凭枚举结果重开声卡或重连通话桥。
+      if (!didScheduleSwitch && !didReapplyMapping) return;
     });
   }
 
@@ -1577,8 +1584,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
   /// 启动音频设备热插拔监控。
   ///
-  /// macOS/Windows 优先注册系统事件监听；成功后仅保留 30 秒低频兜底检查。
-  /// Linux 或原生桥不可用时，继续使用原来的 2 秒快照轮询。
+  /// 桌面平台优先注册系统事件监听；成功后仅保留 30 秒低频兜底检查。
+  /// 原生桥不可用时，继续使用原来的 2 秒快照轮询。
   void _startAudioDeviceMonitoring() {
     if (_audio.nativeDeviceEventsActive ||
         _audio.nativeDeviceEventsStarting ||
@@ -1618,6 +1625,14 @@ extension PjsipAudioDeviceOperations on PjsipService {
     }
 
     _audio.nativeDeviceEventsActive = started;
+    if (started) {
+      await _syncSystemAudioRoute(reason: '设备监听初始化');
+    }
+    if (session != _audio.deviceMonitorSession ||
+        !_uiState.isInitialized ||
+        _isDisposed) {
+      return;
+    }
     _addLog(started ? '🎧 已启用系统音频设备变化监听，30 秒低频兜底' : '⚠️ 系统音频设备监听不可用，已回退到轮询');
     _scheduleNextAudioDevicePoll();
   }
@@ -1629,7 +1644,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _audio.deviceChangeDebounceTimer?.cancel();
     _audio.deviceChangeDebounceTimer = Timer(
       audioDeviceChangeDebounceInterval,
-      () => _handleAudioDeviceChanged(reason: '系统设备事件'),
+      () => unawaited(_handleAudioDeviceChanged(reason: '系统设备事件')),
     );
   }
 
@@ -1660,6 +1675,25 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _audio.devicePollTimer = null;
     if (!_uiState.isInitialized || _isDisposed) return;
 
+    // 通话中不触碰 PJSIP 的设备枚举，只校准真实系统路由。监听首次启动失败时，
+    // 路由查询也会顺便重试连接原生音频服务。
+    if (_shouldKeepSoundDeviceOpen) {
+      if (_audioDeviceChangeController.isSupported) {
+        unawaited(_handleAudioDeviceChanged(reason: '系统路由兜底检查'));
+      }
+      _scheduleNextAudioDevicePoll();
+      return;
+    }
+
+    // 原生监听启动失败时保留 2 秒轮询：每轮先重试系统路由，再由统一处理入口
+    // 刷新空闲状态下的 PJSIP 设备列表。这样音频服务晚于应用启动也能自行恢复。
+    if (!_audio.nativeDeviceEventsActive &&
+        _audioDeviceChangeController.isSupported) {
+      unawaited(_handleAudioDeviceChanged(reason: '系统路由恢复检查'));
+      _scheduleNextAudioDevicePoll();
+      return;
+    }
+
     final pollReason = _audio.nativeDeviceEventsActive ? '设备兜底检查' : '设备轮询';
     _refreshAudioDriverListIfSafe(reason: pollReason, logResult: false);
     final snapshot = using(_readAudioDeviceSnapshot);
@@ -1685,7 +1719,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       // 再出现稳定的输入/输出端点。
       _audio.deviceChangeDebounceTimer = Timer(
         audioDeviceChangeDebounceInterval,
-        () => _handleAudioDeviceChanged(reason: pollReason),
+        () => unawaited(_handleAudioDeviceChanged(reason: pollReason)),
       );
     }
 
@@ -1694,17 +1728,91 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
   /// 防抖结束后真正处理设备变化。
   ///
-  /// 这里会刷新设备列表、打印日志，并允许自动策略切换设备。
-  /// 例如耳机拔掉后，它会重新枚举设备，然后策略通常会回退到系统默认 -1/-2。
-  void _handleAudioDeviceChanged({String reason = '设备变化'}) {
+  /// 设备列表和系统路由分别处理：列表只用于诊断和可用性检查；只有系统端点 ID
+  /// 真实变化时，通话中的默认声卡才会受控重开。
+  Future<void> _handleAudioDeviceChanged({String reason = '设备变化'}) async {
     if (!_uiState.isInitialized || _isDisposed) return;
-    unawaited(
-      _refreshAudioDevices(
-        reason: reason,
-        logResult: true,
-        allowAutomaticSwitch: true,
-      ),
+    if (_audio.systemRouteChangeHandling) {
+      _audio.systemRouteChangePending = true;
+      return;
+    }
+    _audio.systemRouteChangeHandling = true;
+    try {
+      do {
+        _audio.systemRouteChangePending = false;
+        final routeChanged = await _syncSystemAudioRoute(reason: reason);
+        if (!_uiState.isInitialized || _isDisposed) return;
+
+        // 通话中不刷新 PJSIP 的枚举列表。部分后端会在声卡打开时暴露临时设备，
+        // 这些条目不代表操作系统真实路由。
+        if (!_shouldKeepSoundDeviceOpen) {
+          await _refreshAudioDevices(
+            reason: reason,
+            logResult: true,
+            allowAutomaticSwitch: false,
+          );
+          if (!_uiState.isInitialized || _isDisposed) return;
+        }
+        if (routeChanged &&
+            _uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic &&
+            _shouldKeepSoundDeviceOpen) {
+          _reopenSystemSoundDevice(reason);
+        }
+      } while (_audio.systemRouteChangePending);
+    } finally {
+      _audio.systemRouteChangeHandling = false;
+    }
+  }
+
+  Future<bool> _syncSystemAudioRoute({required String reason}) async {
+    final route = await _audioDeviceChangeController.getCurrentAudioRoute();
+    if (route == null) return false;
+
+    final previous = _audio.lastSystemAudioRoute;
+    final changed = previous != null && previous.signature != route.signature;
+    _audio.lastSystemAudioRoute = route;
+    _uiState = _uiState.copyWith(systemAudioRoute: route);
+
+    if (previous == null || changed) {
+      _addLog(
+        '🎧 系统音频路由${previous == null ? '已读取' : '已变化'}: '
+        'input=${route.input?.name ?? '无'}, output=${route.output?.name ?? '无'} '
+        '($reason)',
+      );
+    }
+    return changed;
+  }
+
+  void _reopenSystemSoundDevice(String reason) {
+    if (!_uiState.isInitialized || !_shouldKeepSoundDeviceOpen) return;
+
+    final defaultCapture = pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value;
+    final defaultPlayback =
+        pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
+    _cancelScheduledSoundDeviceRelease();
+    _cancelPendingAudioBridgeReconnects();
+
+    // 重复设置 -1/-2 会被 PJSUA 当成“没有变化”，所以先关闭声卡，再按系统
+    // 默认重新打开。这里不枚举或猜测任何具体设备 ID。
+    _bindings.pjsua_set_no_snd_dev();
+    final result = _setSoundDevicesWithIssueHandling(
+      captureId: defaultCapture,
+      playbackId: defaultPlayback,
+      action: '跟随系统重开音频设备',
     );
+    if (!result.success) return;
+
+    _uiState = _uiState.copyWith(
+      selectedCaptureDeviceId: defaultCapture,
+      selectedPlaybackDeviceId: defaultPlayback,
+      audioDeviceMode: PjsipAudioDeviceMode.automatic,
+      audioDeviceStatus: '已跟随系统音频路由',
+    );
+    _audio.soundDeviceReleasedForIdle = false;
+    _rememberActiveAudioDevices(defaultCapture, defaultPlayback);
+    _startAudioLevelTimer();
+    _scheduleAudioBridgeReconnectAfterDeviceSwitch('系统路由变化: $reason');
+    _addLog('🎧 已按系统默认重开音频设备: capture=-1, playback=-2 ($reason)');
   }
 
   /// 停止设备热插拔监控。
@@ -1720,6 +1828,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _audio.nativeDeviceEventsActive = false;
     unawaited(_audioDeviceChangeController.stopMonitoring());
     _audio.lastDeviceSnapshot = null;
+    _audio.lastSystemAudioRoute = null;
+    _audio.systemRouteChangeHandling = false;
+    _audio.systemRouteChangePending = false;
   }
 
   /// 检查 PJSIP 设备 ID 是否被系统重排或复用了，如有必要则强制重新应用。
@@ -1735,6 +1846,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _AudioDeviceSnapshot snapshot,
     String reason,
   ) {
+    if (_uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic) {
+      return false;
+    }
     if (!_shouldKeepSoundDeviceOpen) return false;
 
     final captureId = snapshot.currentCaptureId;
@@ -3041,16 +3155,8 @@ class PjsipAudioDevicePolicy {
     required bool hasAnyCall,
     required bool allowInCallAutomaticSwitch,
   }) {
-    // 先分别为输入/输出计算自动模式下的最佳兜底设备。
-    // 自动选择不是简单选第一个，而是：明确耳机 > 同名外接设备 > 系统默认 > 列表首项。
-    final fallbackCapture = _bestAutomaticDevice(
-      primaryDevices: captureDevices,
-      peerDevices: playbackDevices,
-    );
-    final fallbackPlayback = _bestAutomaticDevice(
-      primaryDevices: playbackDevices,
-      peerDevices: captureDevices,
-    );
+    final fallbackCapture = _systemDefaultDevice(captureDevices);
+    final fallbackPlayback = _systemDefaultDevice(playbackDevices);
     final captureAvailable = _isAvailable(captureDevices, currentCaptureId);
     final playbackAvailable = _isAvailable(playbackDevices, currentPlaybackId);
 
@@ -3089,54 +3195,18 @@ class PjsipAudioDevicePolicy {
       );
     }
 
-    // 通话中默认不因为新耳机插入而抢切。大厂软电话通常会避免通话中突然切走
-    // 声音；只有当前设备不可用时才自动回退。实验开关打开后允许自动切新设备。
-    if (hasAnyCall &&
-        !allowInCallAutomaticSwitch &&
-        captureAvailable &&
-        playbackAvailable) {
-      return PjsipAudioDeviceChoice(
-        captureDeviceId: currentCaptureId ?? fallbackCapture.id,
-        playbackDeviceId: currentPlaybackId ?? fallbackPlayback.id,
-        shouldSwitch: false,
-        status: '通话中保持当前设备；设备丢失时自动回退',
-      );
-    }
-
-    final keepCurrentInCall =
-        hasAnyCall &&
-        !allowInCallAutomaticSwitch &&
-        captureAvailable &&
-        playbackAvailable;
-    final nextCaptureId = keepCurrentInCall
-        ? currentCaptureId!
-        : fallbackCapture.id;
-    final nextPlaybackId = keepCurrentInCall
-        ? currentPlaybackId!
-        : fallbackPlayback.id;
+    // 跟随系统模式只使用 PJSIP 默认设备，不再根据名称、通道数或设备类型选择
+    // 具体端点。系统路由变化由原生 API 返回的稳定端点 ID 驱动。
+    final nextCaptureId = fallbackCapture.id;
+    final nextPlaybackId = fallbackPlayback.id;
     final shouldSwitch =
         nextCaptureId != currentCaptureId ||
         nextPlaybackId != currentPlaybackId;
-    // status 只是 UI/日志文案，不参与选择逻辑。这里根据最终 fallback 的类型给用户
-    // 一个容易理解的解释。
-    final usingExternal =
-        fallbackCapture.looksLikeHeadset ||
-        fallbackPlayback.looksLikeHeadset ||
-        _looksLikePairedExternalDevice(fallbackCapture, playbackDevices) ||
-        _looksLikePairedExternalDevice(fallbackPlayback, captureDevices);
-    final usingBuiltIn =
-        fallbackCapture.looksLikeBuiltInDevice ||
-        fallbackPlayback.looksLikeBuiltInDevice;
-
     return PjsipAudioDeviceChoice(
       captureDeviceId: nextCaptureId,
       playbackDeviceId: nextPlaybackId,
       shouldSwitch: shouldSwitch,
-      status: usingExternal
-          ? '跟随系统设备：已优先使用耳机/蓝牙设备'
-          : usingBuiltIn
-          ? '跟随系统设备：已切到内置麦克风/扬声器'
-          : '跟随系统输入/输出',
+      status: '跟随系统输入/输出',
     );
   }
 
@@ -3148,30 +3218,11 @@ class PjsipAudioDevicePolicy {
     return devices.any((device) => device.id == id);
   }
 
-  static PjsipAudioDevice _bestAutomaticDevice({
-    required List<PjsipAudioDevice> primaryDevices,
-    required List<PjsipAudioDevice> peerDevices,
-  }) {
-    // primaryDevices 是当前要选择的一侧：选择输入时它是麦克风列表，选择输出时
-    // 它是扬声器列表。peerDevices 是另一侧，用来判断“同名输入+输出”。
-    //
-    // 这个函数会被调用两次：一次选麦克风，一次选扬声器。
-
-    // 优先选择名称明确带耳机/蓝牙/USB 语义的设备。
-    for (final device in primaryDevices) {
-      if (device.looksLikeHeadset) return device;
-    }
-    // 其次选择“同名输入 + 输出”的外接设备。很多蓝牙耳机在 CoreAudio 里只显示
-    // 用户命名（例如 gaoyuan），不带 bluetooth/headset 关键词。
-    for (final device in primaryDevices) {
-      if (_looksLikePairedExternalDevice(device, peerDevices)) return device;
-    }
-    // 最后回到系统默认，让 macOS 自己决定路由。通话中蓝牙断开后，实测
-    // pjsua_set_snd_dev(-1/-2) 比显式切 MacBook 具体 ID 更接近用户手动恢复路径。
-    for (final device in primaryDevices) {
+  static PjsipAudioDevice _systemDefaultDevice(List<PjsipAudioDevice> devices) {
+    for (final device in devices) {
       if (device.isSystemDefault) return device;
     }
-    return primaryDevices.first;
+    return devices.first;
   }
 
   static bool _looksLikePairedExternalDevice(

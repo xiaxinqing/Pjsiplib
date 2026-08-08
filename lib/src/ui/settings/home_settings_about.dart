@@ -2,6 +2,7 @@ part of '../../../main.dart';
 
 extension _HomeSettingsAboutTab on _MyHomePageState {
   Widget _buildAboutSettingsTab(PjsipUIState uiState) {
+    final l10n = context.l10n;
     return ListView(
       padding: const EdgeInsets.fromLTRB(18, 18, 18, 22),
       children: [
@@ -11,7 +12,7 @@ extension _HomeSettingsAboutTab on _MyHomePageState {
             builder: (context, snapshot) {
               final info = snapshot.data;
               final versionText = info == null
-                  ? '读取中'
+                  ? l10n.aboutLoading
                   : '${info.version}+${info.buildNumber}';
               final packageName = info?.packageName ?? appBundleIdentifier;
               return Column(
@@ -39,7 +40,7 @@ extension _HomeSettingsAboutTab on _MyHomePageState {
                             ),
                             const SizedBox(height: 3),
                             Text(
-                              'VeServe 桌面软电话',
+                              l10n.aboutTagline,
                               style: Theme.of(context).textTheme.bodyMedium
                                   ?.copyWith(color: _textSecondary),
                             ),
@@ -49,19 +50,21 @@ extension _HomeSettingsAboutTab on _MyHomePageState {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _buildAboutInfoRow('版本', versionText),
+                  _buildAboutInfoRow(l10n.aboutVersion, versionText),
                   _buildSettingDivider(),
-                  _buildAboutInfoRow('运行环境', _aboutRuntimeText()),
+                  _buildAboutInfoRow(l10n.aboutRuntime, _aboutRuntimeText()),
                   _buildSettingDivider(),
-                  _buildAboutInfoRow('应用标识', packageName),
+                  _buildAboutInfoRow(l10n.aboutAppId, packageName),
                   _buildSettingDivider(),
-                  _buildAboutInfoRow('公司', appCompanyName),
+                  _buildAboutInfoRow(l10n.aboutCompany, appCompanyName),
                   _buildSettingDivider(),
-                  _buildAboutContactRow('联系我们', appSupportEmail),
+                  _buildAboutContactRow(l10n.aboutContact, appSupportEmail),
                   _buildSettingDivider(),
                   _buildAboutInfoRow(
-                    '电话服务',
-                    uiState.isInitialized ? '已启动' : '未启动',
+                    l10n.aboutPhoneService,
+                    uiState.isInitialized
+                        ? l10n.aboutServiceRunning
+                        : l10n.aboutServiceStopped,
                   ),
                 ],
               );
@@ -166,7 +169,8 @@ extension _HomeSettingsAboutTab on _MyHomePageState {
   }
 
   Future<void> _copyAboutEmail(String email) async {
+    final copiedMessage = context.l10n.aboutEmailCopied;
     await Clipboard.setData(ClipboardData(text: email));
-    ToastUtil.showSuccess('邮箱已复制');
+    ToastUtil.showSuccess(copiedMessage);
   }
 }

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:io' show Platform, Process;
+import 'dart:io' show Platform, Process, ProcessStartMode;
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';

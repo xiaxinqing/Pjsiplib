@@ -39,6 +39,10 @@ final class AudioDeviceChangeMonitor {
             case "stopMonitoring":
                 self.stopMonitoring()
                 result(nil)
+            case "getCurrentAudioRoute":
+                // 首次注册可能发生在系统音频服务尚未稳定时；查询路由时顺便重试。
+                _ = self.startMonitoring()
+                result(self.currentAudioRoute())
             default:
                 result(FlutterMethodNotImplemented)
             }
@@ -106,6 +110,78 @@ final class AudioDeviceChangeMonitor {
             mScope: kAudioObjectPropertyScopeGlobal,
             mElement: kAudioObjectPropertyElementMain
         )
+    }
+
+    /// 返回当前系统默认输入和输出端点。
+    ///
+    /// PJSIP 在 VPIO 模式下不会可靠保留具体设备 ID，因此 UI 展示直接以
+    /// CoreAudio 的系统路由为准，不从 PJSIP 枚举结果反推。
+    private func currentAudioRoute() -> [String: Any] {
+        var route: [String: Any] = [:]
+        if let input = defaultEndpoint(
+            selector: kAudioHardwarePropertyDefaultInputDevice
+        ) {
+            route["input"] = input
+        }
+        if let output = defaultEndpoint(
+            selector: kAudioHardwarePropertyDefaultOutputDevice
+        ) {
+            route["output"] = output
+        }
+        return route
+    }
+
+    private func defaultEndpoint(
+        selector: AudioObjectPropertySelector
+    ) -> [String: String]? {
+        var address = propertyAddress(for: selector)
+        var deviceID = AudioDeviceID(kAudioObjectUnknown)
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        let status = AudioObjectGetPropertyData(
+            systemObject,
+            &address,
+            0,
+            nil,
+            &size,
+            &deviceID
+        )
+        guard status == noErr, deviceID != kAudioObjectUnknown else {
+            return nil
+        }
+
+        let uid = stringProperty(
+            deviceID: deviceID,
+            selector: kAudioDevicePropertyDeviceUID
+        ) ?? String(deviceID)
+        let name = stringProperty(
+            deviceID: deviceID,
+            selector: kAudioObjectPropertyName
+        ) ?? uid
+        return ["id": uid, "name": name]
+    }
+
+    private func stringProperty(
+        deviceID: AudioDeviceID,
+        selector: AudioObjectPropertySelector
+    ) -> String? {
+        var address = AudioObjectPropertyAddress(
+            mSelector: selector,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var value: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        let status = AudioObjectGetPropertyData(
+            deviceID,
+            &address,
+            0,
+            nil,
+            &size,
+            &value
+        )
+        guard status == noErr, let value else { return nil }
+        let text = value.takeUnretainedValue() as String
+        return text.isEmpty ? nil : text
     }
 
     deinit {
