@@ -31,6 +31,9 @@ extension _HistoryList on _MyHomePageState {
   /// 右侧操作区宽度，包含回拨和删除两个图标按钮。
   static const double _historyActionColumnWidth = 78;
 
+  /// 列表低于该宽度时，右侧详情已能展示时长，列表优先保留线路、状态和操作。
+  static const double _historyDurationColumnBreakpoint = 500;
+
   Widget _buildHistoryList(
     List<_HistoryItem> items,
     PjsipService service, {
@@ -41,46 +44,60 @@ extension _HistoryList on _MyHomePageState {
     required bool isLoadingMore,
   }) {
     final entries = _flattenHistoryItems(items);
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: entries.length + 2,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildHistoryColumnHeader(showDetailInline: showDetailInline);
-        }
-        final entryIndex = index - 1;
-        if (entryIndex == entries.length) {
-          return _buildHistoryLoadMoreFooter(
-            hasMorePersistedEntries: hasMorePersistedEntries,
-            persistedEntryCount: persistedEntryCount,
-            isLoadingMore: isLoadingMore,
-          );
-        }
-        final entry = entries[entryIndex];
-        final item = entry.item;
-        if (item != null) {
-          return _buildHistoryRow(
-            item,
-            service: service,
-            selectedKey: selectedKey,
-            showDetailInline: showDetailInline,
-          );
-        }
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
-          child: Text(
-            entry.label!,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: _textSecondary,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final showDurationColumn =
+            !showDetailInline ||
+            constraints.maxWidth >= _historyDurationColumnBreakpoint;
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          itemCount: entries.length + 2,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return _buildHistoryColumnHeader(
+                showDetailInline: showDetailInline,
+                showDurationColumn: showDurationColumn,
+              );
+            }
+            final entryIndex = index - 1;
+            if (entryIndex == entries.length) {
+              return _buildHistoryLoadMoreFooter(
+                hasMorePersistedEntries: hasMorePersistedEntries,
+                persistedEntryCount: persistedEntryCount,
+                isLoadingMore: isLoadingMore,
+              );
+            }
+            final entry = entries[entryIndex];
+            final item = entry.item;
+            if (item != null) {
+              return _buildHistoryRow(
+                item,
+                service: service,
+                selectedKey: selectedKey,
+                showDetailInline: showDetailInline,
+                showDurationColumn: showDurationColumn,
+              );
+            }
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
+              child: Text(
+                entry.label!,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: _textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildHistoryColumnHeader({required bool showDetailInline}) {
+  Widget _buildHistoryColumnHeader({
+    required bool showDetailInline,
+    required bool showDurationColumn,
+  }) {
     final accountMaxWidth = showDetailInline
         ? _historyAccountInlineMaxWidth
         : _historyAccountSingleMaxWidth;
@@ -122,15 +139,17 @@ extension _HistoryList on _MyHomePageState {
             width: _historyStatusColumnWidth,
             child: Text(context.l10n.historyColumnStatus, style: style),
           ),
-          const SizedBox(width: 14),
-          SizedBox(
-            width: _historyDurationColumnWidth,
-            child: Text(
-              context.l10n.historyColumnDuration,
-              textAlign: TextAlign.right,
-              style: style,
+          if (showDurationColumn) ...[
+            const SizedBox(width: 14),
+            SizedBox(
+              width: _historyDurationColumnWidth,
+              child: Text(
+                context.l10n.historyColumnDuration,
+                textAlign: TextAlign.right,
+                style: style,
+              ),
             ),
-          ),
+          ],
           const SizedBox(width: 12),
           SizedBox(
             width: _historyTimeColumnWidth,
@@ -160,6 +179,7 @@ extension _HistoryList on _MyHomePageState {
     required PjsipService service,
     required String? selectedKey,
     required bool showDetailInline,
+    required bool showDurationColumn,
   }) {
     final statusColor = _historyItemColor(item);
     final primary = item.displayName?.trim().isNotEmpty == true
@@ -296,17 +316,19 @@ extension _HistoryList on _MyHomePageState {
                   child: _buildHistoryStatusChip(item),
                 ),
               ),
-              const SizedBox(width: 14),
-              SizedBox(
-                width: _historyDurationColumnWidth,
-                child: Text(
-                  _formatHistoryDuration(item),
-                  textAlign: TextAlign.right,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
+              if (showDurationColumn) ...[
+                const SizedBox(width: 14),
+                SizedBox(
+                  width: _historyDurationColumnWidth,
+                  child: Text(
+                    _formatHistoryDuration(item),
+                    textAlign: TextAlign.right,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
                   ),
                 ),
-              ),
+              ],
               const SizedBox(width: 12),
               SizedBox(
                 width: _historyTimeColumnWidth,
