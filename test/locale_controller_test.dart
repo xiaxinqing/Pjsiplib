@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:veserve_vphone/src/localization/locale_controller.dart';
 
@@ -48,6 +49,24 @@ void main() {
   });
 
   group('语言偏好持久化', () {
+    test('启动预读取结果会直接成为控制器首个状态', () {
+      final container = ProviderContainer(
+        overrides: [
+          localeControllerProvider.overrideWith(
+            () => LocaleController(
+              initialPreference: AppLocalePreference.english,
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      expect(
+        container.read(localeControllerProvider),
+        AppLocalePreference.english,
+      );
+    });
+
     test('读取当前简繁体存储值', () {
       expect(
         AppLocalePreferenceValue.fromStorage('zh'),

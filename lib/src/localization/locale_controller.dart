@@ -42,15 +42,30 @@ extension AppLocalePreferenceValue on AppLocalePreference {
 
 /// 读取、切换并持久化应用显示语言。
 class LocaleController extends Notifier<AppLocalePreference> {
+  LocaleController({this.initialPreference});
+
   static const _storageKey = 'app_locale_preference';
   static final _storage = SharedPreferencesAsync();
 
+  final AppLocalePreference? initialPreference;
   bool _changedByUser = false;
 
   @override
   AppLocalePreference build() {
+    final preference = initialPreference;
+    if (preference != null) return preference;
     unawaited(_restore());
     return AppLocalePreference.system;
+  }
+
+  /// 在应用首帧之前读取已保存语言，避免先按系统语言渲染再异步切换。
+  static Future<AppLocalePreference> loadInitialPreference() async {
+    try {
+      final stored = await _storage.getString(_storageKey);
+      return AppLocalePreferenceValue.fromStorage(stored);
+    } catch (_) {
+      return AppLocalePreference.system;
+    }
   }
 
   /// 保存用户选择；跟随系统时删除显式配置，避免保存无意义的默认值。
@@ -69,14 +84,8 @@ class LocaleController extends Notifier<AppLocalePreference> {
   }
 
   Future<void> _restore() async {
-    try {
-      final stored = await _storage.getString(_storageKey);
-      if (!_changedByUser) {
-        state = AppLocalePreferenceValue.fromStorage(stored);
-      }
-    } catch (_) {
-      // 语言偏好读取失败不应影响电话服务启动，继续跟随系统语言。
-    }
+    final preference = await loadInitialPreference();
+    if (!_changedByUser) state = preference;
   }
 }
 

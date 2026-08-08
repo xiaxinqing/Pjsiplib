@@ -73,7 +73,7 @@ class MainFlutterWindow: NSWindow {
         )
         titleLabel.alignment = .center
 
-        let subtitleLabel = NSTextField(labelWithString: "数据准备中…")
+        let subtitleLabel = NSTextField(labelWithString: "loading…")
         subtitleLabel.font = NSFont.systemFont(ofSize: 13, weight: .regular)
         subtitleLabel.textColor = NSColor(
             calibratedRed: 105.0 / 255.0,

@@ -91,8 +91,19 @@ part 'src/ui/settings/home_settings_about.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final initialLocalePreference =
+      await LocaleController.loadInitialPreference();
   await AppWindowController.initializeMainWindow();
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      overrides: [
+        localeControllerProvider.overrideWith(
+          () => LocaleController(initialPreference: initialLocalePreference),
+        ),
+      ],
+      child: const MyApp(),
+    ),
+  );
   AppLaunchSplashController.hideAfterFirstFrame();
   unawaited(AppTrayController.instance.initialize());
 }

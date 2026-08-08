@@ -2,13 +2,7 @@ import 'dart:ui';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart'
-    show
-        CompositedTransformTarget,
-        Dialog,
-        FilledButton,
-        SegmentedButton,
-        SizedBox,
-        TextField;
+    show CompositedTransformTarget, Dialog, FilledButton, SizedBox, TextField;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
@@ -517,7 +511,7 @@ void main() {
     });
   }
 
-  testWidgets('英文通话记录窄宽度使用方向下拉且宽屏恢复分段按钮', (WidgetTester tester) async {
+  testWidgets('英文通话记录在窄屏和宽屏都使用方向下拉', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(900, 740);
     tester.view.devicePixelRatio = 1;
     tester.binding.platformDispatcher.localesTestValue = const [Locale('en')];
@@ -548,11 +542,7 @@ void main() {
           widget is TextField &&
           widget.decoration?.hintText == l10n.historySearchPlaceholder,
     );
-    final segmentedFilter = find.byWidgetPredicate(
-      (widget) => widget is SegmentedButton,
-    );
     expect(searchField, findsOneWidget);
-    expect(segmentedFilter, findsNothing);
     expect(tester.getSize(searchField).width, greaterThanOrEqualTo(100));
     expect(tester.takeException(), isNull);
 
@@ -569,7 +559,58 @@ void main() {
     tester.view.physicalSize = const Size(1454, 740);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    expect(segmentedFilter, findsOneWidget);
+    expect(find.text(l10n.historyFilterOutbound), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('未读操作出现和清零时方向筛选保持下拉', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1079, 710);
+    tester.view.devicePixelRatio = 1;
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+
+    final database = CallHistoryDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+    final startedAt = DateTime.now().subtract(const Duration(minutes: 2));
+    await database.recordCall(
+      callId: 102,
+      direction: CallHistoryDirection.inbound,
+      status: CallHistoryStatus.missed,
+      remoteUri: 'sip:6545@pbx.example.com',
+      phoneNumber: '6545',
+      startedAt: startedAt,
+      endedAt: startedAt.add(const Duration(seconds: 5)),
+    );
+    final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          pjsipServiceProvider.overrideWith(FakePjsipService.new),
+          callHistoryDatabaseProvider.overrideWithValue(database),
+        ],
+        child: const MyApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(l10n.navCallHistory).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text(l10n.historyMarkAllReadCount(1)), findsOneWidget);
+    expect(find.text(l10n.historyFilterAll), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await database.markAllMissedCallsRead();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text(l10n.historyMarkAllReadCount(1)), findsNothing);
+    expect(find.text(l10n.historyFilterAll), findsOneWidget);
     expect(tester.takeException(), isNull);
 
     await tester.pumpWidget(const SizedBox.shrink());
