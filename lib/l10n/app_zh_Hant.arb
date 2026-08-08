@@ -510,7 +510,7 @@
   "activeCallViewing": "查看中",
   "activeCallRemoteAudioMuted": "聲音已關閉",
   "activeCallDtmfWaiting": "等待輸入",
-  "activeCallDtmfTitle": "DTMF 鍵盤",
+  "activeCallDtmfTitle": "通話鍵盤",
   "activeCallDtmfClose": "關閉鍵盤",
   "activeCallDtmfSending": "正在傳送 {digit}",
   "activeCallDtmfSent": "已傳送 {digit}",

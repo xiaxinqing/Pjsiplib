@@ -636,7 +636,7 @@
   "activeCallViewing": "查看中",
   "activeCallRemoteAudioMuted": "声音已关闭",
   "activeCallDtmfWaiting": "等待输入",
-  "activeCallDtmfTitle": "DTMF 键盘",
+  "activeCallDtmfTitle": "通话键盘",
   "activeCallDtmfClose": "关闭键盘",
   "activeCallDtmfSending": "正在发送 {digit}",
   "@activeCallDtmfSending": {"placeholders": {"digit": {"type": "String"}}},

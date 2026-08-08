@@ -3060,7 +3060,7 @@ abstract class AppLocalizations {
   /// No description provided for @activeCallDtmfTitle.
   ///
   /// In zh, this message translates to:
-  /// **'DTMF 键盘'**
+  /// **'通话键盘'**
   String get activeCallDtmfTitle;
 
   /// No description provided for @activeCallDtmfClose.

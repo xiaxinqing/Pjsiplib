@@ -510,7 +510,7 @@
   "activeCallViewing": "Viewing",
   "activeCallRemoteAudioMuted": "Audio muted",
   "activeCallDtmfWaiting": "Waiting for input",
-  "activeCallDtmfTitle": "DTMF keypad",
+  "activeCallDtmfTitle": "Keypad",
   "activeCallDtmfClose": "Close keypad",
   "activeCallDtmfSending": "Sending {digit}",
   "activeCallDtmfSent": "Sent {digit}",

@@ -1,4 +1,5 @@
 import Cocoa
+import Darwin
 import FlutterMacOS
 
 final class DockMenuCommandBridge {
@@ -23,6 +24,13 @@ final class DockMenuCommandBridge {
         DispatchQueue.main.async {
           NSApp.terminate(nil)
         }
+      case "applicationTerminationReady":
+        // Flutter has completed PJSIP/database cleanup. This explicit signal
+        // prevents AppKit from remaining indefinitely in terminateLater when
+        // the result callback of the native-to-Flutter call is delayed/lost.
+        result(nil)
+        (NSApp.delegate as? AppDelegate)?
+          .completeFlutterTerminationPreparation(source: "Flutter ready signal")
       default:
         result(FlutterMethodNotImplemented)
       }
@@ -36,8 +44,14 @@ final class DockMenuCommandBridge {
 
 @main
 class AppDelegate: FlutterAppDelegate {
+  private static let terminationPreparationTimeout: TimeInterval = 15
+  private static let terminationCompletionGracePeriod: TimeInterval = 3
+
   private var isPreparingTermination = false
   private var isReadyToTerminate = false
+  private var terminationApplication: NSApplication?
+  private var preparationTimeoutTimer: Timer?
+  private var completionFallbackTimer: Timer?
 
   override func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
     let menu = NSMenu()
@@ -117,20 +131,82 @@ class AppDelegate: FlutterAppDelegate {
     }
 
     isPreparingTermination = true
+    terminationApplication = sender
+    scheduleTerminationPreparationTimeout()
     NSLog("VPhone waiting for Flutter shutdown preparation.")
     DockMenuCommandBridge.shared.invoke("prepareToTerminate") {
       [weak self] _ in
-      DispatchQueue.main.async {
-        guard let self, self.isPreparingTermination else {
-          return
-        }
-        self.isPreparingTermination = false
-        self.isReadyToTerminate = true
-        NSLog("VPhone Flutter shutdown preparation completed.")
-        sender.reply(toApplicationShouldTerminate: true)
-      }
+      self?.completeFlutterTerminationPreparation(
+        source: "Flutter method result"
+      )
     }
     return .terminateLater
+  }
+
+  /// Completes AppKit's terminateLater negotiation exactly once.
+  ///
+  /// Both the explicit Flutter ready signal and the original method result
+  /// callback enter here. Whichever arrives first wins; the other is ignored.
+  func completeFlutterTerminationPreparation(source: String) {
+    if !Thread.isMainThread {
+      RunLoop.main.perform(inModes: [.common]) { [weak self] in
+        self?.completeFlutterTerminationPreparation(source: source)
+      }
+      return
+    }
+    guard isPreparingTermination else {
+      return
+    }
+
+    preparationTimeoutTimer?.invalidate()
+    preparationTimeoutTimer = nil
+    isPreparingTermination = false
+    isReadyToTerminate = true
+
+    let application = terminationApplication ?? NSApp
+    terminationApplication = nil
+    NSLog("VPhone Flutter shutdown preparation completed via %@.", source)
+    application?.reply(toApplicationShouldTerminate: true)
+    scheduleTerminationCompletionFallback()
+  }
+
+  /// Cancels a stuck preparation instead of keeping every later Quit request
+  /// trapped in terminateLater. A later request can safely retry because the
+  /// Flutter shutdown coordinator is idempotent.
+  private func scheduleTerminationPreparationTimeout() {
+    preparationTimeoutTimer?.invalidate()
+    let timer = Timer(timeInterval: Self.terminationPreparationTimeout, repeats: false) {
+      [weak self] _ in
+      guard let self, self.isPreparingTermination else {
+        return
+      }
+
+      let application = self.terminationApplication ?? NSApp
+      self.isPreparingTermination = false
+      self.isReadyToTerminate = false
+      self.terminationApplication = nil
+      self.preparationTimeoutTimer = nil
+      NSLog("VPhone Flutter shutdown preparation timed out; cancelling this termination request.")
+      application?.reply(toApplicationShouldTerminate: false)
+    }
+    preparationTimeoutTimer = timer
+    RunLoop.main.add(timer, forMode: .common)
+  }
+
+  /// Cleanup is already complete at this point. If AppKit still leaves the
+  /// process alive, terminate it as a final safeguard against a zombie app.
+  private func scheduleTerminationCompletionFallback() {
+    completionFallbackTimer?.invalidate()
+    let timer = Timer(timeInterval: Self.terminationCompletionGracePeriod, repeats: false) {
+      [weak self] _ in
+      guard let self, self.isReadyToTerminate else {
+        return
+      }
+      NSLog("VPhone AppKit termination did not finish; forcing clean process exit.")
+      Darwin.exit(EXIT_SUCCESS)
+    }
+    completionFallbackTimer = timer
+    RunLoop.main.add(timer, forMode: .common)
   }
 
   override func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {

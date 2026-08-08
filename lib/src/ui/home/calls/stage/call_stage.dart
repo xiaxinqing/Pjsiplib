@@ -29,142 +29,150 @@ extension _HomeCallStage on _MyHomePageState {
     final statusColor = _callStatusColor(primary);
     final contactMatch = _callContactMatch(primary);
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: _panelBackground,
-        borderRadius: BorderRadius.circular(_radiusSm),
-        border: Border.all(color: _softBorder),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxHeight < 620;
-          final avatarSize = compact ? 104.0 : 132.0;
-          final topInset = compact ? 20.0 : 44.0;
-          return SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(28, topInset, 28, 28),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                minHeight: constraints.maxHeight > topInset + 28
-                    ? constraints.maxHeight - topInset - 28
-                    : 0,
-              ),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildFocusedCallBanner(primary, uiState),
-                      if (uiState.isConferencePaused &&
-                          !uiState.isInConference(primary.callId)) ...[
-                        const SizedBox(height: 8),
-                        _buildConferenceInterruptedBanner(uiState),
-                      ],
-                      SizedBox(height: compact ? 14 : 18),
-                      if (showConferenceStage)
-                        _buildConferenceHero(
-                          conferenceCalls,
-                          uiState,
-                          avatarSize: avatarSize,
-                        )
-                      else
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            _CallAvatar(
-                              label:
-                                  contactMatch?.contact.initials ??
-                                  _avatarText(primary.remoteUri),
-                              isIncoming: isIncoming,
-                              size: avatarSize,
-                            ),
-                            SizedBox(width: compact ? 16 : 22),
-                            Expanded(
-                              child: _buildPrimaryCallSummary(
-                                primary,
-                                account,
-                                contactMatch: contactMatch,
+    return OverlayPortal(
+      controller: _inCallDialpadOverlayController,
+      overlayChildBuilder: (context) =>
+          _buildInCallDtmfOverlay(primary, service),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _panelBackground,
+          borderRadius: BorderRadius.circular(_radiusSm),
+          border: Border.all(color: _softBorder),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxHeight < 620;
+            final avatarSize = compact ? 104.0 : 132.0;
+            final topInset = compact ? 20.0 : 44.0;
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(28, topInset, 28, 28),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight > topInset + 28
+                      ? constraints.maxHeight - topInset - 28
+                      : 0,
+                ),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildFocusedCallBanner(primary, uiState),
+                        if (uiState.isConferencePaused &&
+                            !uiState.isInConference(primary.callId)) ...[
+                          const SizedBox(height: 8),
+                          _buildConferenceInterruptedBanner(uiState),
+                        ],
+                        SizedBox(height: compact ? 14 : 18),
+                        if (showConferenceStage)
+                          _buildConferenceHero(
+                            conferenceCalls,
+                            uiState,
+                            avatarSize: avatarSize,
+                          )
+                        else
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              _CallAvatar(
+                                label:
+                                    contactMatch?.contact.initials ??
+                                    _avatarText(primary.remoteUri),
                                 isIncoming: isIncoming,
+                                size: avatarSize,
+                              ),
+                              SizedBox(width: compact ? 16 : 22),
+                              Expanded(
+                                child: _buildPrimaryCallSummary(
+                                  primary,
+                                  account,
+                                  contactMatch: contactMatch,
+                                  isIncoming: isIncoming,
+                                ),
+                              ),
+                            ],
+                          ),
+                        SizedBox(height: compact ? 18 : 24),
+                        if (showConferenceStage)
+                          _buildConferenceStatePanel(conferenceCalls, uiState)
+                        else
+                          _buildCallStatePanel(primary, statusColor),
+                        if (uiState.hasAudioDeviceIssue) ...[
+                          SizedBox(height: compact ? 12 : 14),
+                          _buildCallAudioIssueBanner(uiState),
+                        ],
+                        if (_shouldShowCallAudioMeters(primary, uiState)) ...[
+                          SizedBox(height: compact ? 12 : 14),
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: _subtlePanel,
+                              borderRadius: BorderRadius.circular(_radiusSm),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              child: _buildCallAudioMeters(
+                                uiState,
+                                service,
+                                microphoneMuted: showConferenceStage
+                                    ? uiState.isConferenceMicrophoneMuted
+                                    : uiState.isMicrophoneMutedForCall(
+                                        primary.callId,
+                                      ),
+                                compact: compact,
                               ),
                             ),
-                          ],
-                        ),
-                      SizedBox(height: compact ? 18 : 24),
-                      if (showConferenceStage)
-                        _buildConferenceStatePanel(conferenceCalls, uiState)
-                      else
-                        _buildCallStatePanel(primary, statusColor),
-                      if (uiState.hasAudioDeviceIssue) ...[
-                        SizedBox(height: compact ? 12 : 14),
-                        _buildCallAudioIssueBanner(uiState),
-                      ],
-                      if (_shouldShowCallAudioMeters(primary, uiState)) ...[
-                        SizedBox(height: compact ? 12 : 14),
-                        DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: _subtlePanel,
-                            borderRadius: BorderRadius.circular(_radiusSm),
                           ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 12,
-                            ),
-                            child: _buildCallAudioMeters(
-                              uiState,
-                              service,
-                              microphoneMuted: showConferenceStage
-                                  ? uiState.isConferenceMicrophoneMuted
-                                  : uiState.isMicrophoneMutedForCall(
-                                      primary.callId,
-                                    ),
-                              compact: compact,
+                        ],
+                        if (showConferenceStage) ...[
+                          SizedBox(height: compact ? 12 : 14),
+                          _buildConferenceMemberPreview(
+                            conferenceCalls,
+                            uiState,
+                          ),
+                        ] else if (isConferenceMember) ...[
+                          SizedBox(height: compact ? 12 : 14),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Chip(
+                              avatar: Icon(
+                                isConferencePaused
+                                    ? AppIcons.pause
+                                    : AppIcons.contacts,
+                              ),
+                              label: Text(
+                                isConferencePaused
+                                    ? context.l10n.activeCallConferencePaused
+                                    : context.l10n.activeCallConferenceTitle,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                        SizedBox(height: compact ? 18 : 24),
+                        showConferenceStage
+                            ? _buildConferenceControls(
+                                primary,
+                                conferenceCalls,
+                                uiState,
+                                service,
+                              )
+                            : _buildPrimaryCallControls(
+                                primary,
+                                uiState,
+                                service,
+                              ),
                       ],
-                      if (showConferenceStage) ...[
-                        SizedBox(height: compact ? 12 : 14),
-                        _buildConferenceMemberPreview(conferenceCalls, uiState),
-                      ] else if (isConferenceMember) ...[
-                        SizedBox(height: compact ? 12 : 14),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Chip(
-                            avatar: Icon(
-                              isConferencePaused
-                                  ? AppIcons.pause
-                                  : AppIcons.contacts,
-                            ),
-                            label: Text(
-                              isConferencePaused
-                                  ? context.l10n.activeCallConferencePaused
-                                  : context.l10n.activeCallConferenceTitle,
-                            ),
-                          ),
-                        ),
-                      ],
-                      SizedBox(height: compact ? 18 : 24),
-                      showConferenceStage
-                          ? _buildConferenceControls(
-                              primary,
-                              conferenceCalls,
-                              uiState,
-                              service,
-                            )
-                          : _buildPrimaryCallControls(
-                              primary,
-                              uiState,
-                              service,
-                            ),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
@@ -515,14 +523,7 @@ extension _HomeCallStage on _MyHomePageState {
               ? null
               : () => service.setConferenceMicrophoneMuted(!microphoneMuted),
         ),
-        _roundCallButton(
-          icon: AppIcons.dialpad,
-          label: context.l10n.activeCallKeypad,
-          color: _showInCallDialpad
-              ? _brandGreen
-              : Theme.of(context).colorScheme.surfaceContainerHigh,
-          onPressed: primary.isConnected ? () => _toggleInCallDialpad() : null,
-        ),
+        _buildInCallDialpadControl(primary),
         _roundCallButton(
           icon: uiState.isConferencePaused ? AppIcons.play : AppIcons.split,
           label: uiState.isConferencePaused
@@ -561,7 +562,7 @@ extension _HomeCallStage on _MyHomePageState {
         ),
       ],
     );
-    return _buildCallControlsWithDtmfPad(primary, service, controls);
+    return controls;
   }
 
   String _callParticipantLabel(CallInfo call) {

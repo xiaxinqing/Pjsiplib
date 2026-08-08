@@ -50,14 +50,7 @@ extension _CallStageControls on _MyHomePageState {
                   !microphoneMuted,
                 ),
         ),
-        _roundCallButton(
-          icon: AppIcons.dialpad,
-          label: context.l10n.activeCallKeypad,
-          color: _showInCallDialpad
-              ? _brandGreen
-              : Theme.of(context).colorScheme.surfaceContainerHigh,
-          onPressed: call.isConnected ? () => _toggleInCallDialpad() : null,
-        ),
+        _buildInCallDialpadControl(call),
         _roundCallButton(
           icon: call.isOnHold ? AppIcons.play : AppIcons.pause,
           label: call.isOnHold
@@ -127,7 +120,7 @@ extension _CallStageControls on _MyHomePageState {
       runSpacing: 14,
       children: controls,
     );
-    return _buildCallControlsWithDtmfPad(call, service, controlsWrap);
+    return controlsWrap;
   }
 
   Future<void> _showBlindTransferDialog(

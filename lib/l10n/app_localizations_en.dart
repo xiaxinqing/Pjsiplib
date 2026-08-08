@@ -1687,7 +1687,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activeCallDtmfWaiting => 'Waiting for input';
 
   @override
-  String get activeCallDtmfTitle => 'DTMF keypad';
+  String get activeCallDtmfTitle => 'Keypad';
 
   @override
   String get activeCallDtmfClose => 'Close keypad';

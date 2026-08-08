@@ -161,6 +161,12 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
   bool _showDiagnosticLogs = true;
   bool _exportingDiagnosticLogs = false;
 
+  // DTMF 键盘使用独立浮层，避免展开时推动主舞台内容和操作按钮。
+  final OverlayPortalController _inCallDialpadOverlayController =
+      OverlayPortalController(debugLabel: 'in-call-dtmf');
+  final LayerLink _inCallDialpadAnchor = LayerLink();
+  final Object _inCallDialpadTapRegionGroup = Object();
+
   // 拨号输入清洗、鼠标反馈和键盘联动状态。
   late String _lastDialpadValue;
   bool _normalizingDialpadNumber = false;

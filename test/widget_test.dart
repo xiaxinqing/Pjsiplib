@@ -1,8 +1,10 @@
 import 'dart:ui';
 
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart' show Dialog, FilledButton;
+import 'package:flutter/material.dart'
+    show CompositedTransformTarget, Dialog, FilledButton;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:veserve_vphone/l10n/app_localizations.dart';
 import 'package:veserve_vphone/main.dart';
@@ -13,6 +15,26 @@ import 'package:veserve_vphone/src/services/pjsip_service.dart';
 class FakePjsipService extends PjsipService {
   @override
   PjsipUIState build() => PjsipUIState(logs: []);
+}
+
+class FakeActiveCallPjsipService extends PjsipService {
+  @override
+  PjsipUIState build() {
+    final connectedAt = DateTime.now().subtract(const Duration(seconds: 20));
+    return PjsipUIState(
+      logs: [],
+      isInitialized: true,
+      calls: {
+        1: CallInfo(
+          callId: 1,
+          state: 5,
+          remoteUri: 'sip:6545@example.com',
+          connectedAt: connectedAt,
+          mediaConnectedAt: connectedAt,
+        ),
+      },
+    );
+  }
 }
 
 void main() {
@@ -488,6 +510,69 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets('通话中键盘以浮层显示且不推动主舞台操作区', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1200, 740);
+    tester.view.devicePixelRatio = 1;
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+    final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          pjsipServiceProvider.overrideWith(FakeActiveCallPjsipService.new),
+        ],
+        child: const MyApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.text(l10n.navCurrentCalls).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final hangUpLabel = find.text(l10n.activeCallHangUp).first;
+    final hangUpPosition = tester.getTopLeft(hangUpLabel);
+    final keypadControl = find.ancestor(
+      of: find.text(l10n.activeCallKeypad),
+      matching: find.byType(CompositedTransformTarget),
+    );
+    await tester.tap(
+      find.descendant(
+        of: keypadControl,
+        matching: find.byIcon(AppIcons.dialpad),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+
+    expect(find.text(l10n.activeCallDtmfTitle), findsOneWidget);
+    expect(tester.getTopLeft(hangUpLabel), hangUpPosition);
+    final popoverRect = tester.getRect(find.text(l10n.activeCallDtmfTitle));
+    expect(popoverRect.top, greaterThanOrEqualTo(64));
+    expect(popoverRect.right, lessThanOrEqualTo(1200));
+    expect(popoverRect.bottom, lessThan(tester.getRect(keypadControl).top));
+
+    await tester.tap(find.text(l10n.activeCallPanelCurrentCalls).last);
+    await tester.pump();
+    expect(find.text(l10n.activeCallDtmfTitle), findsNothing);
+
+    await tester.tap(
+      find.descendant(
+        of: keypadControl,
+        matching: find.byIcon(AppIcons.dialpad),
+      ),
+    );
+    await tester.pump();
+    expect(find.text(l10n.activeCallDtmfTitle), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(find.text(l10n.activeCallDtmfTitle), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('VoIP 主界面在矮窗口下可以滚动布局', (WidgetTester tester) async {
     tester.view.physicalSize = const Size(900, 620);

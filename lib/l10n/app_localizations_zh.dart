@@ -1593,7 +1593,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activeCallDtmfWaiting => '等待输入';
 
   @override
-  String get activeCallDtmfTitle => 'DTMF 键盘';
+  String get activeCallDtmfTitle => '通话键盘';
 
   @override
   String get activeCallDtmfClose => '关闭键盘';
@@ -3885,7 +3885,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get activeCallDtmfWaiting => '等待輸入';
 
   @override
-  String get activeCallDtmfTitle => 'DTMF 鍵盤';
+  String get activeCallDtmfTitle => '通話鍵盤';
 
   @override
   String get activeCallDtmfClose => '關閉鍵盤';

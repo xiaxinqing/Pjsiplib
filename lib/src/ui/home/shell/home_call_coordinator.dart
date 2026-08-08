@@ -93,7 +93,22 @@ extension _HomeCallCoordinator on _MyHomePageState {
 
   /// 显示或收起通话中的 DTMF 小键盘。
   void _toggleInCallDialpad() {
-    _update(() => _showInCallDialpad = !_showInCallDialpad);
+    _setInCallDialpadVisible(!_showInCallDialpad);
+  }
+
+  void _hideInCallDialpad() {
+    _setInCallDialpadVisible(false);
+  }
+
+  void _setInCallDialpadVisible(bool visible) {
+    if (!mounted) return;
+    if (visible) {
+      _inCallDialpadOverlayController.show();
+    } else {
+      _inCallDialpadOverlayController.hide();
+    }
+    if (_showInCallDialpad == visible) return;
+    _update(() => _showInCallDialpad = visible);
   }
 
   /// 播放本地按键音并通过 PJSIP 向当前通话发送 DTMF。
@@ -138,8 +153,10 @@ extension _HomeCallCoordinator on _MyHomePageState {
   /// 切换主舞台当前查看的通话，并清理旧通话的 DTMF 临时状态。
   void _focusCallDetail(int callId) {
     if (_focusedCallDetailId == callId) return;
+    _inCallDialpadOverlayController.hide();
     _update(() {
       _focusedCallDetailId = callId;
+      _showInCallDialpad = false;
       _dtmfPadCallId = null;
       _dtmfSentPreview = '';
       _dtmfStatusText = null;
@@ -150,7 +167,11 @@ extension _HomeCallCoordinator on _MyHomePageState {
   /// 清空主舞台通话焦点，通常用于当前聚焦通话结束后回落到空态。
   void _clearFocusedCallDetail() {
     if (_focusedCallDetailId == null) return;
-    _update(() => _focusedCallDetailId = null);
+    _inCallDialpadOverlayController.hide();
+    _update(() {
+      _focusedCallDetailId = null;
+      _showInCallDialpad = false;
+    });
   }
 
   /// 先聚焦指定通话，再执行通话操作，保证用户看到自己操作的是哪一路。
@@ -302,6 +323,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
     final focusedId = _focusedCallDetailId;
     if (state.calls.isEmpty && (_showInCallDialpad || _dtmfPadCallId != null)) {
       if (!mounted) return;
+      _inCallDialpadOverlayController.hide();
       _update(() {
         _showInCallDialpad = false;
         _dtmfPadCallId = null;
@@ -313,8 +335,10 @@ extension _HomeCallCoordinator on _MyHomePageState {
     }
     if (focusedId == null || state.calls.containsKey(focusedId)) return;
     if (!mounted) return;
+    _inCallDialpadOverlayController.hide();
     _update(() {
       _focusedCallDetailId = null;
+      _showInCallDialpad = false;
       _dtmfPadCallId = null;
       _dtmfSentPreview = '';
       _dtmfStatusText = null;

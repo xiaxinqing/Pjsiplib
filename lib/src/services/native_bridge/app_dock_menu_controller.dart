@@ -77,6 +77,14 @@ class AppDockMenuController {
         await _onRestartApplication?.call();
         break;
       case 'prepareToTerminate':
+        try {
+          await _onExitApplication?.call();
+        } finally {
+          // 不只依赖原生 invokeMethod 的结果回调。清理完成后再主动通知
+          // AppDelegate，避免 macOS 永久停在 terminateLater。
+          unawaited(_notifyApplicationTerminationReady());
+        }
+        break;
       case 'exitApplication':
         await _onExitApplication?.call();
         break;
@@ -84,6 +92,16 @@ class AppDockMenuController {
         throw MissingPluginException(
           'Unknown dock menu method: ${call.method}',
         );
+    }
+  }
+
+  Future<void> _notifyApplicationTerminationReady() async {
+    try {
+      await _channel.invokeMethod<void>('applicationTerminationReady');
+    } on MissingPluginException {
+      // 原生 invokeMethod 的结果回调仍可完成退出。
+    } on PlatformException {
+      // 原生 invokeMethod 的结果回调仍可完成退出。
     }
   }
 }

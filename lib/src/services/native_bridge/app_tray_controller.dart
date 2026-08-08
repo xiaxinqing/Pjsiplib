@@ -263,7 +263,12 @@ class AppTrayController with tray.TrayListener {
     if (Platform.isMacOS) {
       final requested = await AppDockMenuController.instance
           .requestApplicationTermination();
-      if (requested) return;
+      if (requested) {
+        // 请求已交给 AppDelegate，但退出可能被系统取消或超时。macOS 原生状态机
+        // 会合并重复请求；这里解锁后，用户仍可再次从托盘发起退出。
+        _exiting = false;
+        return;
+      }
     }
 
     // Other desktop platforms do not currently expose an AppDelegate-style
