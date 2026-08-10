@@ -221,12 +221,29 @@ Duration _positiveDuration(Duration duration) {
   return duration.isNegative ? Duration.zero : duration;
 }
 
+enum CallMediaKeyingMethod {
+  dtls('DTLS'),
+  sdes('SDES');
+
+  const CallMediaKeyingMethod(this.label);
+
+  final String label;
+}
+
 class CallMediaSecurity {
   const CallMediaSecurity({
     required this.hasSrtpTransport,
+    required this.srtpActive,
     this.transportStack = const [],
+    this.keyingMethod,
   });
 
+  /// 媒体栈是否包含 SRTP 适配层；存在不代表密钥已经协商完成。
   final bool hasSrtpTransport;
+
+  /// SRTP 会话是否已经真正激活，可用于面向用户确认“通话已加密”。
+  final bool srtpActive;
+
   final List<String> transportStack;
+  final CallMediaKeyingMethod? keyingMethod;
 }

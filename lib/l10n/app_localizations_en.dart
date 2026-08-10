@@ -1426,6 +1426,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activeCallVerifyingEncryption => 'Verifying encryption';
 
   @override
+  String activeCallSecurityWithMethod(String status, String method) {
+    return '$status · $method';
+  }
+
+  @override
   String activeCallLabeledValue(String label, String value) {
     return '$label: $value';
   }

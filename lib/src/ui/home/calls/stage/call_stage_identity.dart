@@ -312,12 +312,28 @@ extension _CallStageIdentity on _MyHomePageState {
         account?.transport.label ?? context.l10n.activeCallSignalingUnknown;
     final signalingSecure = account?.transport.isSecure == true;
     final configuredMode = account?.mediaSecurity.mode;
-    final actualSrtp = call.mediaSecurity?.hasSrtpTransport;
+    final encryptionConfigured = configuredMode?.usesSrtp == true;
+    final encryptionRequired =
+        encryptionConfigured && configuredMode?.isOptional == false;
+    final actualSrtp = call.mediaSecurity?.srtpActive;
+    final configuredMethod = switch (configuredMode) {
+      MediaEncryptionMode.dtlsSrtp => 'DTLS',
+      MediaEncryptionMode.sdesSrtp => 'SDES',
+      _ => null,
+    };
+    final actualMethod = call.mediaSecurity?.keyingMethod?.label;
+    final securityMethod = switch (actualSrtp) {
+      true => actualMethod ?? configuredMethod ?? 'SRTP',
+      false when encryptionRequired => configuredMethod ?? 'SRTP',
+      false => 'RTP',
+      null => configuredMethod,
+    };
     final mediaSecurityLabel = switch (actualSrtp) {
-      true => configuredMode?.usesSrtp == true ? configuredMode!.label : 'SRTP',
+      true => securityMethod ?? 'SRTP',
+      false when encryptionRequired => configuredMethod ?? 'SRTP',
       false => 'RTP',
       null =>
-        configuredMode?.usesSrtp == true
+        encryptionConfigured
             ? context.l10n.activeCallConfiguredMode(configuredMode!.label)
             : 'RTP',
     };
@@ -326,11 +342,17 @@ extension _CallStageIdentity on _MyHomePageState {
       context.l10n,
       signalingEncrypted: signalingSecure,
       audioEncrypted: actualSrtp,
-      encryptionConfigured: configuredMode?.usesSrtp == true,
+      encryptionConfigured: encryptionConfigured,
+      encryptionRequired: encryptionRequired,
+      method: securityMethod,
     );
+    final securityVerifying =
+        mediaReady && encryptionRequired && actualSrtp != true;
     final icon = mediaReady
         ? actualSrtp == true
               ? AppIcons.security
+              : securityVerifying
+              ? AppIcons.activity
               : AppIcons.call
         : AppIcons.activity;
     final label = mediaReady ? securityLabel : mediaLabel;
@@ -343,6 +365,8 @@ extension _CallStageIdentity on _MyHomePageState {
         : signalingLabel;
     final mediaSecurityDetail = actualSrtp == true
         ? context.l10n.activeCallSrtpNegotiated
+        : call.mediaSecurity?.hasSrtpTransport == true || securityVerifying
+        ? context.l10n.activeCallMediaNegotiating
         : actualSrtp == false
         ? context.l10n.activeCallSrtpNotDetected
         : context.l10n.activeCallMediaNegotiating;
@@ -373,7 +397,7 @@ extension _CallStageIdentity on _MyHomePageState {
       label: label,
       compactLabel: compactLabel,
       tooltip: tooltip,
-      color: mediaColor,
+      color: securityVerifying ? _textSecondary : mediaColor,
       icon: icon,
     );
   }

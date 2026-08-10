@@ -1048,6 +1048,8 @@ extension PjsipCallOperations on PjsipService {
     }
     final calls = Map<int, CallInfo>.of(_uiState.calls)..remove(callId);
     _mediaConnectedCalls.remove(callId);
+    _mediaSecurityRefreshTimers.remove(callId)?.cancel();
+    _callMediaKeyingMethods.remove(callId);
     final microphoneMutedCallIds = Set<int>.of(_uiState.microphoneMutedCallIds)
       ..remove(callId);
     final remoteMutedCallIds = Set<int>.of(_uiState.remoteMutedCallIds)

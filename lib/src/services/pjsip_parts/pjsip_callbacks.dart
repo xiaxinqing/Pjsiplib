@@ -105,6 +105,18 @@ extension _PjsipNativeCallbacks on PjsipService {
     return lines.isEmpty ? '<empty>' : lines.join('\n');
   }
 
+  CallMediaKeyingMethod? _mediaKeyingMethodFromSdp(String summary) {
+    final normalized = summary.toLowerCase();
+    if (normalized.contains('a=fingerprint:') ||
+        normalized.contains('udp/tls/rtp/savp')) {
+      return CallMediaKeyingMethod.dtls;
+    }
+    if (normalized.contains('a=crypto:')) {
+      return CallMediaKeyingMethod.sdes;
+    }
+    return null;
+  }
+
   /// 调用 PJSIP 的 `pjsua_call_dump()` 输出媒体诊断。
   ///
   /// 常用于媒体 ACTIVE 后或传输错误时确认 SRTP、ICE selected pair、收发包
@@ -156,22 +168,78 @@ extension _PjsipNativeCallbacks on PjsipService {
       }
 
       var hasSrtp = false;
+      var srtpActive = false;
       final stack = <String>[];
       final count = math.min(transportInfo.ref.specific_info_cnt, 4);
       for (var index = 0; index < count; index++) {
-        final type = transportInfo.ref.spc_info[index].typeAsInt;
+        final specificInfo = transportInfo.ref.spc_info[index];
+        final type = specificInfo.typeAsInt;
         final label = _mediaTransportTypeLabel(type);
         if (label.isNotEmpty) stack.add(label);
         if (type == pjmedia_transport_type.PJMEDIA_TRANSPORT_TYPE_SRTP.value) {
           hasSrtp = true;
+          // pjmedia_srtp_info 的首字段是 pj_bool_t active。不能只根据 SRTP
+          // 适配层存在就宣称已加密，因为 DTLS 仍可能正在协商密钥。
+          final activeBytes = ByteData(ffi.sizeOf<ffi.Int>());
+          for (var byte = 0; byte < activeBytes.lengthInBytes; byte++) {
+            activeBytes.setUint8(byte, specificInfo.buffer[byte] & 0xff);
+          }
+          srtpActive = activeBytes.getInt32(0, Endian.host) != 0;
         }
       }
       return CallMediaSecurity(
         hasSrtpTransport: hasSrtp,
+        srtpActive: hasSrtp && srtpActive,
         transportStack: stack,
+        keyingMethod: _callMediaKeyingMethods[callId],
       );
     }
     return null;
+  }
+
+  void _scheduleCallMediaSecurityRefresh(int callId, {int attempt = 1}) {
+    _mediaSecurityRefreshTimers.remove(callId)?.cancel();
+    final delay = attempt == 1
+        ? const Duration(milliseconds: 1200)
+        : const Duration(milliseconds: 1500);
+    _mediaSecurityRefreshTimers[callId] = Timer(delay, () {
+      _mediaSecurityRefreshTimers.remove(callId);
+      if (!_uiState.isInitialized || !_uiState.calls.containsKey(callId)) {
+        return;
+      }
+
+      final refreshed = using((Arena arena) {
+        final info = arena<pjsua_call_info>();
+        if (_bindings.pjsua_call_get_info(callId, info) != 0) return null;
+        return _readCallMediaSecurity(
+          callId,
+          info.ref,
+          arena,
+          logFailure: true,
+        );
+      });
+      final current = _uiState.calls[callId];
+      if (current == null || refreshed == null) return;
+
+      _putCall(current.copyWith(mediaSecurity: refreshed));
+      _addLog(
+        '🔐 媒体安全状态刷新: call=$callId, '
+        'srtpTransport=${refreshed.hasSrtpTransport}, '
+        'active=${refreshed.srtpActive}, '
+        'keying=${refreshed.keyingMethod?.label ?? 'unknown'}, '
+        'attempt=$attempt',
+      );
+
+      final account = current.accountId == null
+          ? null
+          : _uiState.accounts[current.accountId];
+      final encryptionRequired =
+          account?.mediaSecurity.mode.usesSrtp == true &&
+          account?.mediaSecurity.mode.isOptional == false;
+      if (encryptionRequired && !refreshed.srtpActive && attempt < 3) {
+        _scheduleCallMediaSecurityRefresh(callId, attempt: attempt + 1);
+      }
+    });
   }
 
   String _mediaTransportTypeLabel(int type) {
@@ -268,6 +336,16 @@ extension _PjsipNativeCallbacks on PjsipService {
     ) {
       if (!_uiState.isInitialized) return;
       final summary = _sdpSummary(sdp);
+      final remoteSummary = remSdp == ffi.nullptr ? null : _sdpSummary(remSdp);
+      final keyingMethod = remoteSummary == null
+          ? _mediaKeyingMethodFromSdp(summary)
+          : _mediaKeyingMethodFromSdp(remoteSummary) ??
+                _mediaKeyingMethodFromSdp(summary);
+      if (keyingMethod != null &&
+          _callMediaKeyingMethods[callId] != keyingMethod) {
+        _callMediaKeyingMethods[callId] = keyingMethod;
+        _addLog('🔐 媒体密钥协商方式: call=$callId, ${keyingMethod.label}');
+      }
       _addLog(
         '🧾 本地 SDP 已生成: call=$callId, remoteSdp=${remSdp != ffi.nullptr}\n'
         '$summary',
@@ -281,7 +359,7 @@ extension _PjsipNativeCallbacks on PjsipService {
         );
       }
       if (remSdp != ffi.nullptr) {
-        _addLog('🧾 远端 SDP 摘要: call=$callId\n${_sdpSummary(remSdp)}');
+        _addLog('🧾 远端 SDP 摘要: call=$callId\n$remoteSummary');
       }
     });
 
@@ -859,6 +937,7 @@ extension _PjsipNativeCallbacks on PjsipService {
         if (mediaStatusInt ==
                 pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value &&
             confSlot != invalidId) {
+          _scheduleCallMediaSecurityRefresh(callId);
           // 空闲阶段只预选设备，不打开声卡；媒体真正 ACTIVE 时才按需打开，
           // 然后再连接 conference bridge，避免注册在线期间影响系统外放音量。
           if (!_ensureSoundDeviceOpen('通话媒体已激活')) return;

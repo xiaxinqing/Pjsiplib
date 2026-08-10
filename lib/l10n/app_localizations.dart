@@ -2679,6 +2679,12 @@ abstract class AppLocalizations {
   /// **'正在确认加密'**
   String get activeCallVerifyingEncryption;
 
+  /// No description provided for @activeCallSecurityWithMethod.
+  ///
+  /// In zh, this message translates to:
+  /// **'{status} · {method}'**
+  String activeCallSecurityWithMethod(String status, String method);
+
   /// No description provided for @activeCallLabeledValue.
   ///
   /// In zh, this message translates to:

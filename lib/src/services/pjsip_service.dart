@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:io' show Directory, File, Platform;
 import 'dart:math' as math;
+import 'dart:typed_data' show ByteData, Endian;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/cupertino.dart';
@@ -93,6 +94,9 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Map<int, DateTime> _lastCallControlOperationAt = <int, DateTime>{};
   final Map<int, Timer> _delayedHangupTimers = <int, Timer>{};
   final Map<int, Timer> _hangupCleanupTimers = <int, Timer>{};
+  final Map<int, Timer> _mediaSecurityRefreshTimers = <int, Timer>{};
+  final Map<int, CallMediaKeyingMethod> _callMediaKeyingMethods =
+      <int, CallMediaKeyingMethod>{};
   final Map<int, String> _blindTransferTargets = <int, String>{};
   final Map<int, String> _callNotes = <int, String>{};
   final Map<int, String> _sharedConferenceNotes = <int, String>{};
@@ -377,6 +381,11 @@ class PjsipService extends Notifier<PjsipUIState> {
       timer.cancel();
     }
     _hangupCleanupTimers.clear();
+    for (final timer in _mediaSecurityRefreshTimers.values) {
+      timer.cancel();
+    }
+    _mediaSecurityRefreshTimers.clear();
+    _callMediaKeyingMethods.clear();
     _sipTransportIds.clear();
     state = state.copyWith(
       isInitialized: false,
@@ -529,6 +538,11 @@ class PjsipService extends Notifier<PjsipUIState> {
         timer.cancel();
       }
       _hangupCleanupTimers.clear();
+      for (final timer in _mediaSecurityRefreshTimers.values) {
+        timer.cancel();
+      }
+      _mediaSecurityRefreshTimers.clear();
+      _callMediaKeyingMethods.clear();
       _sipTransportIds.clear();
     }
     _closeNativeCallablesOnce();

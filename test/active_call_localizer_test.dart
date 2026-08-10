@@ -59,8 +59,10 @@ void main() {
           signalingEncrypted: true,
           audioEncrypted: true,
           encryptionConfigured: true,
+          encryptionRequired: true,
+          method: 'DTLS',
         ),
-        '通话已加密',
+        '通话已加密 · DTLS',
       );
       expect(
         ActiveCallLocalizer.securityStatus(
@@ -68,8 +70,10 @@ void main() {
           signalingEncrypted: false,
           audioEncrypted: false,
           encryptionConfigured: false,
+          encryptionRequired: false,
+          method: 'RTP',
         ),
-        '标准通话',
+        '标准通话 · RTP',
       );
       expect(
         ActiveCallLocalizer.securityStatus(
@@ -77,8 +81,21 @@ void main() {
           signalingEncrypted: true,
           audioEncrypted: null,
           encryptionConfigured: true,
+          encryptionRequired: true,
+          method: 'DTLS',
         ),
-        '正在确认加密',
+        '正在确认加密 · DTLS',
+      );
+      expect(
+        ActiveCallLocalizer.securityStatus(
+          zh,
+          signalingEncrypted: true,
+          audioEncrypted: false,
+          encryptionConfigured: true,
+          encryptionRequired: true,
+          method: 'SDES',
+        ),
+        '正在确认加密 · SDES',
       );
     });
   });

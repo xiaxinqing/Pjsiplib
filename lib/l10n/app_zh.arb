@@ -561,6 +561,8 @@
   "activeCallEncryptedAudio": "语音已加密",
   "activeCallStandardCall": "标准通话",
   "activeCallVerifyingEncryption": "正在确认加密",
+  "activeCallSecurityWithMethod": "{status} · {method}",
+  "@activeCallSecurityWithMethod": {"placeholders": {"status": {"type": "String"}, "method": {"type": "String"}}},
   "activeCallLabeledValue": "{label}：{value}",
   "@activeCallLabeledValue": {"placeholders": {"label": {"type": "String"}, "value": {"type": "String"}}},
   "activeCallValueDetail": "{value}（{detail}）",

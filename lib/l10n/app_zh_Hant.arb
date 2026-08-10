@@ -445,6 +445,7 @@
   "activeCallEncryptedAudio": "語音已加密",
   "activeCallStandardCall": "標準通話",
   "activeCallVerifyingEncryption": "正在確認加密",
+  "activeCallSecurityWithMethod": "{status} · {method}",
   "activeCallLabeledValue": "{label}：{value}",
   "@activeCallLabeledValue": {"placeholders": {"label": {"type": "String"}, "value": {"type": "String"}}},
   "activeCallValueDetail": "{value}（{detail}）",

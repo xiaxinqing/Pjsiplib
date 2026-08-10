@@ -1380,6 +1380,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activeCallVerifyingEncryption => '正在确认加密';
 
   @override
+  String activeCallSecurityWithMethod(String status, String method) {
+    return '$status · $method';
+  }
+
+  @override
   String activeCallLabeledValue(String label, String value) {
     return '$label：$value';
   }
@@ -3908,6 +3913,11 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get activeCallVerifyingEncryption => '正在確認加密';
+
+  @override
+  String activeCallSecurityWithMethod(String status, String method) {
+    return '$status · $method';
+  }
 
   @override
   String activeCallLabeledValue(String label, String value) {

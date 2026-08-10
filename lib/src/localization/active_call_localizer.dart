@@ -52,15 +52,25 @@ abstract final class ActiveCallLocalizer {
     required bool signalingEncrypted,
     required bool? audioEncrypted,
     required bool encryptionConfigured,
+    required bool encryptionRequired,
+    String? method,
   }) {
+    final String status;
     if (audioEncrypted == true) {
-      return signalingEncrypted
+      status = signalingEncrypted
           ? l10n.activeCallEncryptedCall
           : l10n.activeCallEncryptedAudio;
+    } else if (encryptionRequired) {
+      // 强制 SRTP 的线路在握手完成前不能被误报成普通 RTP 通话。
+      status = l10n.activeCallVerifyingEncryption;
+    } else if (audioEncrypted == false || !encryptionConfigured) {
+      status = l10n.activeCallStandardCall;
+    } else {
+      status = l10n.activeCallVerifyingEncryption;
     }
-    if (audioEncrypted == false || !encryptionConfigured) {
-      return l10n.activeCallStandardCall;
-    }
-    return l10n.activeCallVerifyingEncryption;
+    final normalizedMethod = method?.trim() ?? '';
+    return normalizedMethod.isEmpty
+        ? status
+        : l10n.activeCallSecurityWithMethod(status, normalizedMethod);
   }
 }
