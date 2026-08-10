@@ -27,7 +27,7 @@
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>使用麦克风</string>
+	<string>VPhone uses the microphone for calls and audio testing.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>
