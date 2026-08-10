@@ -39,6 +39,20 @@ typedef struct vphone_call_info_snapshot {
 } vphone_call_info_snapshot;
 
 /*
+ * 跨平台媒体安全状态快照。
+ *
+ * 不把 pjmedia_transport_info 直接暴露给 Dart：该结构包含 pj_sock_t 和
+ * pj_sockaddr，在 Windows x64 与 macOS/Linux x64 上的 ABI 布局不同。
+ * Bridge 在原生侧读取 PJSIP 结构，只返回固定宽度整数。
+ */
+typedef struct vphone_media_security_snapshot {
+  int32_t valid;
+  int32_t has_srtp_transport;
+  int32_t srtp_active;
+  int32_t has_ice_transport;
+} vphone_media_security_snapshot;
+
+/*
  * 把安全的 on_call_tsx_state 快照回调挂到 pjsua_config 上。
  *
  * 必须在 pjsua_init() 之前调用。这个函数只设置 VPhone wrapper 自己的回调，
@@ -66,6 +80,15 @@ VPHONE_PJSIP_EXPORT void vphone_clear_call_info_snapshot(int call_id);
  * 引擎销毁或重新初始化前清空全部快照。
  */
 VPHONE_PJSIP_EXPORT void vphone_clear_all_call_info_snapshots(void);
+
+/*
+ * 查询指定通话媒体的真实 SRTP/ICE 状态。
+ * 返回 1 表示快照有效，0 表示通话、媒体或参数无效。
+ */
+VPHONE_PJSIP_EXPORT int vphone_get_call_media_security(
+    int call_id,
+    unsigned media_index,
+    vphone_media_security_snapshot *out_snapshot);
 
 #ifdef __cplusplus
 }

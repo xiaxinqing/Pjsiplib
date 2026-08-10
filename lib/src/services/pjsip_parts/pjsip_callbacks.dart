@@ -152,6 +152,40 @@ extension _PjsipNativeCallbacks on PjsipService {
     for (var mediaIndex = 0; mediaIndex < mediaCount; mediaIndex++) {
       final media = info.media[mediaIndex];
       if (media.typeAsInt != pjmedia_type.PJMEDIA_TYPE_AUDIO.value) continue;
+
+      if (_mediaSecurity.isAvailable) {
+        final nativeSecurity = _mediaSecurity.get(callId, media.index);
+        if (nativeSecurity == null) {
+          if (logFailure) {
+            _addLog('🔐 原生媒体安全信息获取失败: call=$callId, media=${media.index}');
+          }
+          return null;
+        }
+        return CallMediaSecurity(
+          hasSrtpTransport: nativeSecurity.hasSrtpTransport,
+          srtpActive:
+              nativeSecurity.hasSrtpTransport && nativeSecurity.srtpActive,
+          transportStack: <String>[
+            if (nativeSecurity.hasSrtpTransport) 'SRTP',
+            if (nativeSecurity.hasIceTransport) 'ICE',
+          ],
+          keyingMethod: _callMediaKeyingMethods[callId],
+        );
+      }
+
+      if (Platform.isWindows) {
+        if (logFailure) {
+          _addLog(
+            '🔐 Windows 媒体安全 Bridge 不可用，已跳过不安全的原生结构读取: '
+            'call=$callId, media=${media.index}',
+          );
+        }
+        return null;
+      }
+
+      // 兼容尚未重新打包 Bridge 的旧动态库。Windows x64 的 PJSIP 结构体
+      // 包含 64 位 pj_sock_t，而 ffigen 的 ffi.Long 在 Windows 是 32 位，
+      // 因此 Windows 不进入此分支；macOS/Linux 的旧库仍可临时兼容。
       final transportInfo = arena<pjmedia_transport_info>();
       final status = _bindings.pjsua_call_get_med_transport_info(
         callId,
@@ -197,46 +231,85 @@ extension _PjsipNativeCallbacks on PjsipService {
     return null;
   }
 
+  CallMediaSecurity? _queryCallMediaSecurity(
+    int callId, {
+    bool logFailure = false,
+  }) {
+    return using((Arena arena) {
+      final info = arena<pjsua_call_info>();
+      if (_bindings.pjsua_call_get_info(callId, info) != 0) return null;
+      return _readCallMediaSecurity(
+        callId,
+        info.ref,
+        arena,
+        logFailure: logFailure,
+      );
+    });
+  }
+
+  void _applyCallMediaSecurity(
+    int callId,
+    CallMediaSecurity refreshed, {
+    required String source,
+  }) {
+    final current = _uiState.calls[callId];
+    if (current == null) return;
+    _putCall(current.copyWith(mediaSecurity: refreshed));
+    _addLog(
+      '🔐 媒体安全状态更新: call=$callId, '
+      '存在SRTP传输=${refreshed.hasSrtpTransport}, '
+      '已激活=${refreshed.srtpActive}, '
+      '密钥方式=${refreshed.keyingMethod?.label ?? '未知'}, '
+      '来源=$source',
+    );
+    if (refreshed.srtpActive) {
+      _mediaSecurityRefreshTimers.remove(callId)?.cancel();
+    }
+  }
+
+  bool _shouldConfirmCallMediaSecurity(
+    int callId,
+    CallMediaSecurity? mediaSecurity,
+  ) {
+    final accountId = _uiState.calls[callId]?.accountId;
+    final account = accountId == null ? null : _uiState.accounts[accountId];
+    return account?.mediaSecurity.usesSrtp == true ||
+        mediaSecurity?.hasSrtpTransport == true ||
+        _callMediaKeyingMethods.containsKey(callId);
+  }
+
+  /// PJSUA 不会向应用转发 DTLS-SRTP 协商成功的精确时刻，因此只在已有媒体
+  /// 回调后按 1、3、8 秒的累计时间有限确认；成功、通话结束或第三次查询后
+  /// 立即停止，不做持续轮询。
   void _scheduleCallMediaSecurityRefresh(int callId, {int attempt = 1}) {
     _mediaSecurityRefreshTimers.remove(callId)?.cancel();
-    final delay = attempt == 1
-        ? const Duration(milliseconds: 1200)
-        : const Duration(milliseconds: 1500);
+    final delay = switch (attempt) {
+      1 => const Duration(seconds: 1),
+      2 => const Duration(seconds: 2),
+      _ => const Duration(seconds: 5),
+    };
     _mediaSecurityRefreshTimers[callId] = Timer(delay, () {
       _mediaSecurityRefreshTimers.remove(callId);
-      if (!_uiState.isInitialized || !_uiState.calls.containsKey(callId)) {
-        return;
+      if (!_uiState.isInitialized) return;
+
+      final current = _uiState.calls[callId];
+      if (current == null) return;
+      final refreshed = _queryCallMediaSecurity(callId, logFailure: true);
+      if (refreshed != null) {
+        final elapsedSeconds = switch (attempt) {
+          1 => 1,
+          2 => 3,
+          _ => 8,
+        };
+        _applyCallMediaSecurity(
+          callId,
+          refreshed,
+          source: '第 $elapsedSeconds 秒有限确认',
+        );
       }
 
-      final refreshed = using((Arena arena) {
-        final info = arena<pjsua_call_info>();
-        if (_bindings.pjsua_call_get_info(callId, info) != 0) return null;
-        return _readCallMediaSecurity(
-          callId,
-          info.ref,
-          arena,
-          logFailure: true,
-        );
-      });
-      final current = _uiState.calls[callId];
-      if (current == null || refreshed == null) return;
-
-      _putCall(current.copyWith(mediaSecurity: refreshed));
-      _addLog(
-        '🔐 媒体安全状态刷新: call=$callId, '
-        'srtpTransport=${refreshed.hasSrtpTransport}, '
-        'active=${refreshed.srtpActive}, '
-        'keying=${refreshed.keyingMethod?.label ?? 'unknown'}, '
-        'attempt=$attempt',
-      );
-
-      final account = current.accountId == null
-          ? null
-          : _uiState.accounts[current.accountId];
-      final encryptionRequired =
-          account?.mediaSecurity.mode.usesSrtp == true &&
-          account?.mediaSecurity.mode.isOptional == false;
-      if (encryptionRequired && !refreshed.srtpActive && attempt < 3) {
+      if (refreshed?.srtpActive == true || attempt >= 3) return;
+      if (_shouldConfirmCallMediaSecurity(callId, refreshed)) {
         _scheduleCallMediaSecurityRefresh(callId, attempt: attempt + 1);
       }
     });
@@ -937,7 +1010,16 @@ extension _PjsipNativeCallbacks on PjsipService {
         if (mediaStatusInt ==
                 pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value &&
             confSlot != invalidId) {
-          _scheduleCallMediaSecurityRefresh(callId);
+          if (mediaSecurity?.srtpActive == true) {
+            _mediaSecurityRefreshTimers.remove(callId)?.cancel();
+            _addLog('✅ SRTP 已通过媒体状态回调确认: call=$callId');
+          } else {
+            if (_shouldConfirmCallMediaSecurity(callId, mediaSecurity)) {
+              _scheduleCallMediaSecurityRefresh(callId);
+            } else {
+              _mediaSecurityRefreshTimers.remove(callId)?.cancel();
+            }
+          }
           // 空闲阶段只预选设备，不打开声卡；媒体真正 ACTIVE 时才按需打开，
           // 然后再连接 conference bridge，避免注册在线期间影响系统外放音量。
           if (!_ensureSoundDeviceOpen('通话媒体已激活')) return;

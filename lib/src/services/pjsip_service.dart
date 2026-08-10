@@ -53,6 +53,8 @@ part 'native_bridge/pjsip_audio_permissions.dart';
 
 part 'native_bridge/pjsip_call_snapshot_bridge.dart';
 
+part 'native_bridge/pjsip_media_security_bridge.dart';
+
 part 'native_bridge/pjsip_windows_audio_devices.dart';
 
 part 'pjsip_parts/pjsip_network.dart';
@@ -79,6 +81,8 @@ class PjsipService extends Notifier<PjsipUIState> {
   final AudioDeviceChangeController _audioDeviceChangeController =
       AudioDeviceChangeController();
   final _PjsipCallSnapshotRuntime _callSnapshots = _PjsipCallSnapshotRuntime();
+  final _PjsipMediaSecurityRuntime _mediaSecurity =
+      _PjsipMediaSecurityRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
   // 同一路通话只向 PJSIP 提交一次挂断请求，避免按钮连点或延迟任务重复挂断。
@@ -208,10 +212,16 @@ class PjsipService extends Notifier<PjsipUIState> {
     _bindings = PjsipBindings(dylib);
     _setupAudioRuntime(dylib);
     _callSnapshots.setup(dylib);
+    _mediaSecurity.setup(dylib);
     debugPrint(
       '📌 PJSIP call snapshot bridge: '
       '${_callSnapshots.isAvailable ? 'available' : 'unavailable'} '
       '(${_callSnapshots.debugStatus})',
+    );
+    debugPrint(
+      '🔐 PJSIP media security bridge: '
+      '${_mediaSecurity.isAvailable ? 'available' : 'unavailable'} '
+      '(${_mediaSecurity.debugStatus})',
     );
     _setupCallables();
     // Notifier 不会自动调用 dispose()，必须显式注册清理，否则 NativeCallable

@@ -289,3 +289,38 @@ VPHONE_PJSIP_EXPORT void vphone_clear_call_info_snapshot(int call_id) {
 VPHONE_PJSIP_EXPORT void vphone_clear_all_call_info_snapshots(void) {
   memset(g_call_snapshots, 0, sizeof(g_call_snapshots));
 }
+
+VPHONE_PJSIP_EXPORT int vphone_get_call_media_security(
+    int call_id,
+    unsigned media_index,
+    vphone_media_security_snapshot *out_snapshot) {
+  pjmedia_transport_info transport_info;
+  pj_status_t status;
+  unsigned index;
+
+  if (out_snapshot == NULL) return 0;
+  memset(out_snapshot, 0, sizeof(*out_snapshot));
+
+  status = pjsua_call_get_med_transport_info(
+      (pjsua_call_id)call_id,
+      media_index,
+      &transport_info);
+  if (status != PJ_SUCCESS) return 0;
+
+  out_snapshot->valid = 1;
+  for (index = 0; index < transport_info.specific_info_cnt; ++index) {
+    pjmedia_transport_specific_info *specific_info =
+        &transport_info.spc_info[index];
+
+    if (specific_info->type == PJMEDIA_TRANSPORT_TYPE_SRTP) {
+      pjmedia_srtp_info *srtp_info =
+          (pjmedia_srtp_info *)specific_info->buffer;
+      out_snapshot->has_srtp_transport = 1;
+      out_snapshot->srtp_active = srtp_info->active ? 1 : 0;
+    } else if (specific_info->type == PJMEDIA_TRANSPORT_TYPE_ICE) {
+      out_snapshot->has_ice_transport = 1;
+    }
+  }
+
+  return 1;
+}

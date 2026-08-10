@@ -71,3 +71,4 @@ EXPORTS
   vphone_clear_all_call_info_snapshots
   vphone_clear_call_info_snapshot
   vphone_get_call_info_snapshot
+  vphone_get_call_media_security
