@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -11,7 +13,8 @@ import '../../../core/app_colors.dart';
 class InCallDtmfPopover extends StatelessWidget {
   const InCallDtmfPopover({
     super.key,
-    required this.anchorLink,
+    required this.anchorRect,
+    required this.overlaySize,
     required this.tapRegionGroupId,
     required this.title,
     required this.closeTooltip,
@@ -38,8 +41,10 @@ class InCallDtmfPopover extends StatelessWidget {
     '#',
   ];
   static const double _popoverWidth = 284;
+  static const double _edgeInset = 12;
 
-  final LayerLink anchorLink;
+  final Rect anchorRect;
+  final Size overlaySize;
   final Object tapRegionGroupId;
   final String title;
   final String closeTooltip;
@@ -52,27 +57,32 @@ class InCallDtmfPopover extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final width = math.min(
+      _popoverWidth,
+      math.max(0.0, overlaySize.width - _edgeInset * 2),
+    ).toDouble();
+    final maxLeft = math.max(
+      _edgeInset,
+      overlaySize.width - width - _edgeInset,
+    );
+    final left = (anchorRect.center.dx - width / 2).clamp(_edgeInset, maxLeft);
+
     return Positioned(
-      width: _popoverWidth,
-      child: CompositedTransformFollower(
-        link: anchorLink,
-        showWhenUnlinked: false,
-        targetAnchor: Alignment.topCenter,
-        followerAnchor: Alignment.bottomCenter,
-        offset: const Offset(0, -12),
-        child: TapRegion(
-          groupId: tapRegionGroupId,
-          onTapOutside: (_) => onDismiss(),
-          child: CallbackShortcuts(
-            bindings: {
-              const SingleActivator(LogicalKeyboardKey.escape): onDismiss,
-            },
-            child: Focus(
-              autofocus: true,
-              child: Material(
-                type: MaterialType.transparency,
-                child: _buildPanel(context),
-              ),
+      left: left.toDouble(),
+      bottom: overlaySize.height - anchorRect.top + _edgeInset,
+      width: width,
+      child: TapRegion(
+        groupId: tapRegionGroupId,
+        onTapOutside: (_) => onDismiss(),
+        child: CallbackShortcuts(
+          bindings: {
+            const SingleActivator(LogicalKeyboardKey.escape): onDismiss,
+          },
+          child: Focus(
+            autofocus: true,
+            child: Material(
+              type: MaterialType.transparency,
+              child: _buildPanel(context),
             ),
           ),
         ),

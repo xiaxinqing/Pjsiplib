@@ -50,7 +50,7 @@ extension _CallStageControls on _MyHomePageState {
                   !microphoneMuted,
                 ),
         ),
-        _buildInCallDialpadControl(call),
+        _buildInCallDialpadControl(call, service),
         _roundCallButton(
           icon: call.isOnHold ? AppIcons.play : AppIcons.pause,
           label: call.isOnHold

@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart'
-    show CompositedTransformTarget, Dialog, FilledButton, SizedBox, TextField;
+    show Dialog, FilledButton, SizedBox, TextField;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
@@ -694,16 +694,9 @@ void main() {
 
     final hangUpLabel = find.text(l10n.activeCallHangUp).first;
     final hangUpPosition = tester.getTopLeft(hangUpLabel);
-    final keypadControl = find.ancestor(
-      of: find.text(l10n.activeCallKeypad),
-      matching: find.byType(CompositedTransformTarget),
-    );
-    await tester.tap(
-      find.descendant(
-        of: keypadControl,
-        matching: find.byIcon(AppIcons.dialpad),
-      ),
-    );
+    final keypadIcon = find.byIcon(AppIcons.dialpad).last;
+    final keypadTop = tester.getRect(keypadIcon).top;
+    await tester.tap(keypadIcon);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 160));
 
@@ -712,18 +705,13 @@ void main() {
     final popoverRect = tester.getRect(find.text(l10n.activeCallDtmfTitle));
     expect(popoverRect.top, greaterThanOrEqualTo(64));
     expect(popoverRect.right, lessThanOrEqualTo(1200));
-    expect(popoverRect.bottom, lessThan(tester.getRect(keypadControl).top));
+    expect(popoverRect.bottom, lessThan(keypadTop));
 
     await tester.tap(find.text(l10n.activeCallPanelCurrentCalls).last);
     await tester.pump();
     expect(find.text(l10n.activeCallDtmfTitle), findsNothing);
 
-    await tester.tap(
-      find.descendant(
-        of: keypadControl,
-        matching: find.byIcon(AppIcons.dialpad),
-      ),
-    );
+    await tester.tap(keypadIcon);
     await tester.pump();
     expect(find.text(l10n.activeCallDtmfTitle), findsOneWidget);
 
