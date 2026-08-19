@@ -31,91 +31,105 @@ extension _HomeHistory on _MyHomePageState {
         final hasMorePersistedEntries = _historyLoadedMoreEntries.isEmpty
             ? firstPageHasMore
             : _historyHasMoreAfterLoaded;
-        final items = _buildHistoryItems(uiState, persistedEntries);
-        final selected = _selectedHistoryItem(items);
-        if (snapshot.hasError) {
-          _traceWorkspacePageDataReady(
-            _WorkspaceSection.history,
-            summary: '查询失败=${snapshot.error}',
-          );
-        } else if (snapshot.hasData) {
-          _traceWorkspacePageDataReady(
-            _WorkspaceSection.history,
-            summary:
-                '查询返回=${rawPersistedEntries.length}, '
-                '页面条目=${items.length}, 已加载更多=${_historyLoadedMoreEntries.length}',
-          );
-        }
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: _panelBackground,
-            borderRadius: BorderRadius.circular(_radiusSm),
-            border: Border.all(color: _softBorder),
-          ),
-          child: Column(
-            children: [
-              _buildHistoryToolbar(
-                itemCount: items.length,
-                canClearHistory: persistedEntries.isNotEmpty,
-                unreadMissedCountStream: unreadMissedStream,
+        _historyRecordingIdsStream ??= database
+            .watchHistoryIdsWithAvailableRecordings();
+        return StreamBuilder<Set<int>>(
+          stream: _historyRecordingIdsStream,
+          builder: (context, recordingSnapshot) {
+            final recordingHistoryIds = recordingSnapshot.data ?? const <int>{};
+            final items = _buildHistoryItems(
+              uiState,
+              persistedEntries,
+              recordingHistoryIds: recordingHistoryIds,
+            );
+            final selected = _selectedHistoryItem(items);
+            if (snapshot.hasError) {
+              _traceWorkspacePageDataReady(
+                _WorkspaceSection.history,
+                summary: '查询失败=${snapshot.error}',
+              );
+            } else if (snapshot.hasData) {
+              _traceWorkspacePageDataReady(
+                _WorkspaceSection.history,
+                summary:
+                    '查询返回=${rawPersistedEntries.length}, '
+                    '页面条目=${items.length}, 已加载更多=${_historyLoadedMoreEntries.length}',
+              );
+            }
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: _panelBackground,
+                borderRadius: BorderRadius.circular(_radiusSm),
+                border: Border.all(color: _softBorder),
               ),
-              const Divider(height: 1),
-              Expanded(
-                child: snapshot.connectionState == ConnectionState.waiting
-                    ? const Center(child: CircularProgressIndicator())
-                    : items.isEmpty
-                    ? _buildHistoryEmptyState(
-                        icon: AppIcons.history,
-                        title: _historySearchController.text.trim().isEmpty
-                            ? context.l10n.historyEmpty
-                            : context.l10n.historyNoMatches,
-                      )
-                    : LayoutBuilder(
-                        builder: (context, constraints) {
-                          final wide =
-                              constraints.maxWidth >=
-                              _historyDetailPaneBreakpoint;
-                          if (!wide) {
-                            return _buildHistoryList(
-                              items,
-                              service,
-                              selectedKey: null,
-                              showDetailInline: false,
-                              hasMorePersistedEntries: hasMorePersistedEntries,
-                              persistedEntryCount: persistedEntries.length,
-                              isLoadingMore: _historyLoadingMore,
-                            );
-                          }
-                          return Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Expanded(
-                                flex: 6,
-                                child: _buildHistoryList(
+              child: Column(
+                children: [
+                  _buildHistoryToolbar(
+                    itemCount: items.length,
+                    canClearHistory: persistedEntries.isNotEmpty,
+                    unreadMissedCountStream: unreadMissedStream,
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: snapshot.connectionState == ConnectionState.waiting
+                        ? const Center(child: CircularProgressIndicator())
+                        : items.isEmpty
+                        ? _buildHistoryEmptyState(
+                            icon: AppIcons.history,
+                            title: _historySearchController.text.trim().isEmpty
+                                ? context.l10n.historyEmpty
+                                : context.l10n.historyNoMatches,
+                          )
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              final wide =
+                                  constraints.maxWidth >=
+                                  _historyDetailPaneBreakpoint;
+                              if (!wide) {
+                                return _buildHistoryList(
                                   items,
                                   service,
-                                  selectedKey: selected?.key,
-                                  showDetailInline: true,
+                                  selectedKey: null,
+                                  showDetailInline: false,
                                   hasMorePersistedEntries:
                                       hasMorePersistedEntries,
                                   persistedEntryCount: persistedEntries.length,
                                   isLoadingMore: _historyLoadingMore,
-                                ),
-                              ),
-                              const VerticalDivider(width: 1),
-                              Expanded(
-                                flex: 4,
-                                child: selected == null
-                                    ? const SizedBox.shrink()
-                                    : _buildHistorySummary(selected),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+                                );
+                              }
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Expanded(
+                                    flex: 6,
+                                    child: _buildHistoryList(
+                                      items,
+                                      service,
+                                      selectedKey: selected?.key,
+                                      showDetailInline: true,
+                                      hasMorePersistedEntries:
+                                          hasMorePersistedEntries,
+                                      persistedEntryCount:
+                                          persistedEntries.length,
+                                      isLoadingMore: _historyLoadingMore,
+                                    ),
+                                  ),
+                                  const VerticalDivider(width: 1),
+                                  Expanded(
+                                    flex: 4,
+                                    child: selected == null
+                                        ? const SizedBox.shrink()
+                                        : _buildHistorySummary(selected),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
@@ -170,8 +184,9 @@ extension _HomeHistory on _MyHomePageState {
 
   List<_HistoryItem> _buildHistoryItems(
     PjsipUIState uiState,
-    List<CallHistoryEntry> persistedEntries,
-  ) {
+    List<CallHistoryEntry> persistedEntries, {
+    Set<int> recordingHistoryIds = const <int>{},
+  }) {
     final contactIndex = _historyContactIndexForCurrentContacts();
     final persistedKeys = persistedEntries
         .map(
@@ -195,7 +210,11 @@ extension _HomeHistory on _MyHomePageState {
     final items = [
       ...liveItems,
       ...persistedEntries.map(
-        (entry) => _persistedHistoryItem(entry, contactIndex: contactIndex),
+        (entry) => _persistedHistoryItem(
+          entry,
+          contactIndex: contactIndex,
+          hasRecording: recordingHistoryIds.contains(entry.id),
+        ),
       ),
     ]..sort((a, b) => b.startedAt.compareTo(a.startedAt));
     return items;
@@ -215,6 +234,7 @@ extension _HomeHistory on _MyHomePageState {
   _HistoryItem _persistedHistoryItem(
     CallHistoryEntry entry, {
     Map<String, ContactEntry>? contactIndex,
+    bool hasRecording = false,
   }) {
     final status = CallHistoryStatus.fromStorage(entry.status);
     final contact = _findHistoryContact(
@@ -244,6 +264,7 @@ extension _HomeHistory on _MyHomePageState {
       sipStatusCode: entry.sipStatusCode,
       hangupReason: entry.hangupReason,
       note: entry.note,
+      hasRecording: hasRecording,
       missedReadAt: entry.missedReadAt,
       timeToRingingMs: entry.timeToRingingMs,
       ringingToAnswerMs: entry.ringingToAnswerMs,

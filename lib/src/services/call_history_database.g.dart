@@ -31,6 +31,17 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sessionKeyMeta = const VerificationMeta(
+    'sessionKey',
+  );
+  @override
+  late final GeneratedColumn<String> sessionKey = GeneratedColumn<String>(
+    'session_key',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _directionMeta = const VerificationMeta(
     'direction',
   );
@@ -311,6 +322,7 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
   List<GeneratedColumn> get $columns => [
     id,
     callId,
+    sessionKey,
     direction,
     status,
     remoteUri,
@@ -359,6 +371,12 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
       );
     } else if (isInserting) {
       context.missing(_callIdMeta);
+    }
+    if (data.containsKey('session_key')) {
+      context.handle(
+        _sessionKeyMeta,
+        sessionKey.isAcceptableOrUnknown(data['session_key']!, _sessionKeyMeta),
+      );
     }
     if (data.containsKey('direction')) {
       context.handle(
@@ -580,6 +598,10 @@ class $CallHistoryEntriesTable extends CallHistoryEntries
         DriftSqlType.int,
         data['${effectivePrefix}call_id'],
       )!,
+      sessionKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_key'],
+      ),
       direction: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}direction'],
@@ -693,6 +715,7 @@ class CallHistoryEntry extends DataClass
     implements Insertable<CallHistoryEntry> {
   final int id;
   final int callId;
+  final String? sessionKey;
   final String direction;
   final String status;
   final String remoteUri;
@@ -721,6 +744,7 @@ class CallHistoryEntry extends DataClass
   const CallHistoryEntry({
     required this.id,
     required this.callId,
+    this.sessionKey,
     required this.direction,
     required this.status,
     required this.remoteUri,
@@ -752,6 +776,9 @@ class CallHistoryEntry extends DataClass
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['call_id'] = Variable<int>(callId);
+    if (!nullToAbsent || sessionKey != null) {
+      map['session_key'] = Variable<String>(sessionKey);
+    }
     map['direction'] = Variable<String>(direction);
     map['status'] = Variable<String>(status);
     map['remote_uri'] = Variable<String>(remoteUri);
@@ -812,6 +839,9 @@ class CallHistoryEntry extends DataClass
     return CallHistoryEntriesCompanion(
       id: Value(id),
       callId: Value(callId),
+      sessionKey: sessionKey == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sessionKey),
       direction: Value(direction),
       status: Value(status),
       remoteUri: Value(remoteUri),
@@ -874,6 +904,7 @@ class CallHistoryEntry extends DataClass
     return CallHistoryEntry(
       id: serializer.fromJson<int>(json['id']),
       callId: serializer.fromJson<int>(json['callId']),
+      sessionKey: serializer.fromJson<String?>(json['sessionKey']),
       direction: serializer.fromJson<String>(json['direction']),
       status: serializer.fromJson<String>(json['status']),
       remoteUri: serializer.fromJson<String>(json['remoteUri']),
@@ -909,6 +940,7 @@ class CallHistoryEntry extends DataClass
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'callId': serializer.toJson<int>(callId),
+      'sessionKey': serializer.toJson<String?>(sessionKey),
       'direction': serializer.toJson<String>(direction),
       'status': serializer.toJson<String>(status),
       'remoteUri': serializer.toJson<String>(remoteUri),
@@ -940,6 +972,7 @@ class CallHistoryEntry extends DataClass
   CallHistoryEntry copyWith({
     int? id,
     int? callId,
+    Value<String?> sessionKey = const Value.absent(),
     String? direction,
     String? status,
     String? remoteUri,
@@ -968,6 +1001,7 @@ class CallHistoryEntry extends DataClass
   }) => CallHistoryEntry(
     id: id ?? this.id,
     callId: callId ?? this.callId,
+    sessionKey: sessionKey.present ? sessionKey.value : this.sessionKey,
     direction: direction ?? this.direction,
     status: status ?? this.status,
     remoteUri: remoteUri ?? this.remoteUri,
@@ -1008,6 +1042,9 @@ class CallHistoryEntry extends DataClass
     return CallHistoryEntry(
       id: data.id.present ? data.id.value : this.id,
       callId: data.callId.present ? data.callId.value : this.callId,
+      sessionKey: data.sessionKey.present
+          ? data.sessionKey.value
+          : this.sessionKey,
       direction: data.direction.present ? data.direction.value : this.direction,
       status: data.status.present ? data.status.value : this.status,
       remoteUri: data.remoteUri.present ? data.remoteUri.value : this.remoteUri,
@@ -1069,6 +1106,7 @@ class CallHistoryEntry extends DataClass
     return (StringBuffer('CallHistoryEntry(')
           ..write('id: $id, ')
           ..write('callId: $callId, ')
+          ..write('sessionKey: $sessionKey, ')
           ..write('direction: $direction, ')
           ..write('status: $status, ')
           ..write('remoteUri: $remoteUri, ')
@@ -1102,6 +1140,7 @@ class CallHistoryEntry extends DataClass
   int get hashCode => Object.hashAll([
     id,
     callId,
+    sessionKey,
     direction,
     status,
     remoteUri,
@@ -1134,6 +1173,7 @@ class CallHistoryEntry extends DataClass
       (other is CallHistoryEntry &&
           other.id == this.id &&
           other.callId == this.callId &&
+          other.sessionKey == this.sessionKey &&
           other.direction == this.direction &&
           other.status == this.status &&
           other.remoteUri == this.remoteUri &&
@@ -1164,6 +1204,7 @@ class CallHistoryEntry extends DataClass
 class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   final Value<int> id;
   final Value<int> callId;
+  final Value<String?> sessionKey;
   final Value<String> direction;
   final Value<String> status;
   final Value<String> remoteUri;
@@ -1192,6 +1233,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   const CallHistoryEntriesCompanion({
     this.id = const Value.absent(),
     this.callId = const Value.absent(),
+    this.sessionKey = const Value.absent(),
     this.direction = const Value.absent(),
     this.status = const Value.absent(),
     this.remoteUri = const Value.absent(),
@@ -1221,6 +1263,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   CallHistoryEntriesCompanion.insert({
     this.id = const Value.absent(),
     required int callId,
+    this.sessionKey = const Value.absent(),
     required String direction,
     required String status,
     required String remoteUri,
@@ -1257,6 +1300,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   static Insertable<CallHistoryEntry> custom({
     Expression<int>? id,
     Expression<int>? callId,
+    Expression<String>? sessionKey,
     Expression<String>? direction,
     Expression<String>? status,
     Expression<String>? remoteUri,
@@ -1286,6 +1330,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (callId != null) 'call_id': callId,
+      if (sessionKey != null) 'session_key': sessionKey,
       if (direction != null) 'direction': direction,
       if (status != null) 'status': status,
       if (remoteUri != null) 'remote_uri': remoteUri,
@@ -1317,6 +1362,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
   CallHistoryEntriesCompanion copyWith({
     Value<int>? id,
     Value<int>? callId,
+    Value<String?>? sessionKey,
     Value<String>? direction,
     Value<String>? status,
     Value<String>? remoteUri,
@@ -1346,6 +1392,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     return CallHistoryEntriesCompanion(
       id: id ?? this.id,
       callId: callId ?? this.callId,
+      sessionKey: sessionKey ?? this.sessionKey,
       direction: direction ?? this.direction,
       status: status ?? this.status,
       remoteUri: remoteUri ?? this.remoteUri,
@@ -1382,6 +1429,9 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     }
     if (callId.present) {
       map['call_id'] = Variable<int>(callId.value);
+    }
+    if (sessionKey.present) {
+      map['session_key'] = Variable<String>(sessionKey.value);
     }
     if (direction.present) {
       map['direction'] = Variable<String>(direction.value);
@@ -1466,6 +1516,7 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
     return (StringBuffer('CallHistoryEntriesCompanion(')
           ..write('id: $id, ')
           ..write('callId: $callId, ')
+          ..write('sessionKey: $sessionKey, ')
           ..write('direction: $direction, ')
           ..write('status: $status, ')
           ..write('remoteUri: $remoteUri, ')
@@ -1491,6 +1542,1257 @@ class CallHistoryEntriesCompanion extends UpdateCompanion<CallHistoryEntry> {
           ..write('note: $note, ')
           ..write('missedReadAt: $missedReadAt, ')
           ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CallRecordingsTable extends CallRecordings
+    with TableInfo<$CallRecordingsTable, CallRecording> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CallRecordingsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _historyEntryIdMeta = const VerificationMeta(
+    'historyEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> historyEntryId = GeneratedColumn<int>(
+    'history_entry_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES call_history_entries (id) ON DELETE SET NULL',
+    ),
+  );
+  static const VerificationMeta _sessionKeyMeta = const VerificationMeta(
+    'sessionKey',
+  );
+  @override
+  late final GeneratedColumn<String> sessionKey = GeneratedColumn<String>(
+    'session_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _callIdMeta = const VerificationMeta('callId');
+  @override
+  late final GeneratedColumn<int> callId = GeneratedColumn<int>(
+    'call_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('single'),
+  );
+  static const VerificationMeta _relativePathMeta = const VerificationMeta(
+    'relativePath',
+  );
+  @override
+  late final GeneratedColumn<String> relativePath = GeneratedColumn<String>(
+    'relative_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _statusMeta = const VerificationMeta('status');
+  @override
+  late final GeneratedColumn<String> status = GeneratedColumn<String>(
+    'status',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _formatMeta = const VerificationMeta('format');
+  @override
+  late final GeneratedColumn<String> format = GeneratedColumn<String>(
+    'format',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('wav'),
+  );
+  static const VerificationMeta _startedAtMeta = const VerificationMeta(
+    'startedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startedAt = GeneratedColumn<DateTime>(
+    'started_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _endedAtMeta = const VerificationMeta(
+    'endedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endedAt = GeneratedColumn<DateTime>(
+    'ended_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _fileSizeBytesMeta = const VerificationMeta(
+    'fileSizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> fileSizeBytes = GeneratedColumn<int>(
+    'file_size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _failureReasonMeta = const VerificationMeta(
+    'failureReason',
+  );
+  @override
+  late final GeneratedColumn<String> failureReason = GeneratedColumn<String>(
+    'failure_reason',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    historyEntryId,
+    sessionKey,
+    callId,
+    kind,
+    relativePath,
+    status,
+    format,
+    startedAt,
+    endedAt,
+    durationMs,
+    fileSizeBytes,
+    failureReason,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'call_recordings';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CallRecording> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('history_entry_id')) {
+      context.handle(
+        _historyEntryIdMeta,
+        historyEntryId.isAcceptableOrUnknown(
+          data['history_entry_id']!,
+          _historyEntryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('session_key')) {
+      context.handle(
+        _sessionKeyMeta,
+        sessionKey.isAcceptableOrUnknown(data['session_key']!, _sessionKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sessionKeyMeta);
+    }
+    if (data.containsKey('call_id')) {
+      context.handle(
+        _callIdMeta,
+        callId.isAcceptableOrUnknown(data['call_id']!, _callIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_callIdMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    }
+    if (data.containsKey('relative_path')) {
+      context.handle(
+        _relativePathMeta,
+        relativePath.isAcceptableOrUnknown(
+          data['relative_path']!,
+          _relativePathMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_relativePathMeta);
+    }
+    if (data.containsKey('status')) {
+      context.handle(
+        _statusMeta,
+        status.isAcceptableOrUnknown(data['status']!, _statusMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_statusMeta);
+    }
+    if (data.containsKey('format')) {
+      context.handle(
+        _formatMeta,
+        format.isAcceptableOrUnknown(data['format']!, _formatMeta),
+      );
+    }
+    if (data.containsKey('started_at')) {
+      context.handle(
+        _startedAtMeta,
+        startedAt.isAcceptableOrUnknown(data['started_at']!, _startedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_startedAtMeta);
+    }
+    if (data.containsKey('ended_at')) {
+      context.handle(
+        _endedAtMeta,
+        endedAt.isAcceptableOrUnknown(data['ended_at']!, _endedAtMeta),
+      );
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    }
+    if (data.containsKey('file_size_bytes')) {
+      context.handle(
+        _fileSizeBytesMeta,
+        fileSizeBytes.isAcceptableOrUnknown(
+          data['file_size_bytes']!,
+          _fileSizeBytesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('failure_reason')) {
+      context.handle(
+        _failureReasonMeta,
+        failureReason.isAcceptableOrUnknown(
+          data['failure_reason']!,
+          _failureReasonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  CallRecording map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CallRecording(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      historyEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}history_entry_id'],
+      ),
+      sessionKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}session_key'],
+      )!,
+      callId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}call_id'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      relativePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}relative_path'],
+      )!,
+      status: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}status'],
+      )!,
+      format: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}format'],
+      )!,
+      startedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}started_at'],
+      )!,
+      endedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}ended_at'],
+      ),
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      )!,
+      fileSizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}file_size_bytes'],
+      )!,
+      failureReason: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}failure_reason'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $CallRecordingsTable createAlias(String alias) {
+    return $CallRecordingsTable(attachedDatabase, alias);
+  }
+}
+
+class CallRecording extends DataClass implements Insertable<CallRecording> {
+  final int id;
+  final int? historyEntryId;
+  final String sessionKey;
+  final int callId;
+  final String kind;
+  final String relativePath;
+  final String status;
+  final String format;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+  final int durationMs;
+  final int fileSizeBytes;
+  final String? failureReason;
+  final DateTime createdAt;
+  const CallRecording({
+    required this.id,
+    this.historyEntryId,
+    required this.sessionKey,
+    required this.callId,
+    required this.kind,
+    required this.relativePath,
+    required this.status,
+    required this.format,
+    required this.startedAt,
+    this.endedAt,
+    required this.durationMs,
+    required this.fileSizeBytes,
+    this.failureReason,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    if (!nullToAbsent || historyEntryId != null) {
+      map['history_entry_id'] = Variable<int>(historyEntryId);
+    }
+    map['session_key'] = Variable<String>(sessionKey);
+    map['call_id'] = Variable<int>(callId);
+    map['kind'] = Variable<String>(kind);
+    map['relative_path'] = Variable<String>(relativePath);
+    map['status'] = Variable<String>(status);
+    map['format'] = Variable<String>(format);
+    map['started_at'] = Variable<DateTime>(startedAt);
+    if (!nullToAbsent || endedAt != null) {
+      map['ended_at'] = Variable<DateTime>(endedAt);
+    }
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['file_size_bytes'] = Variable<int>(fileSizeBytes);
+    if (!nullToAbsent || failureReason != null) {
+      map['failure_reason'] = Variable<String>(failureReason);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  CallRecordingsCompanion toCompanion(bool nullToAbsent) {
+    return CallRecordingsCompanion(
+      id: Value(id),
+      historyEntryId: historyEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(historyEntryId),
+      sessionKey: Value(sessionKey),
+      callId: Value(callId),
+      kind: Value(kind),
+      relativePath: Value(relativePath),
+      status: Value(status),
+      format: Value(format),
+      startedAt: Value(startedAt),
+      endedAt: endedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endedAt),
+      durationMs: Value(durationMs),
+      fileSizeBytes: Value(fileSizeBytes),
+      failureReason: failureReason == null && nullToAbsent
+          ? const Value.absent()
+          : Value(failureReason),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory CallRecording.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CallRecording(
+      id: serializer.fromJson<int>(json['id']),
+      historyEntryId: serializer.fromJson<int?>(json['historyEntryId']),
+      sessionKey: serializer.fromJson<String>(json['sessionKey']),
+      callId: serializer.fromJson<int>(json['callId']),
+      kind: serializer.fromJson<String>(json['kind']),
+      relativePath: serializer.fromJson<String>(json['relativePath']),
+      status: serializer.fromJson<String>(json['status']),
+      format: serializer.fromJson<String>(json['format']),
+      startedAt: serializer.fromJson<DateTime>(json['startedAt']),
+      endedAt: serializer.fromJson<DateTime?>(json['endedAt']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      fileSizeBytes: serializer.fromJson<int>(json['fileSizeBytes']),
+      failureReason: serializer.fromJson<String?>(json['failureReason']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'historyEntryId': serializer.toJson<int?>(historyEntryId),
+      'sessionKey': serializer.toJson<String>(sessionKey),
+      'callId': serializer.toJson<int>(callId),
+      'kind': serializer.toJson<String>(kind),
+      'relativePath': serializer.toJson<String>(relativePath),
+      'status': serializer.toJson<String>(status),
+      'format': serializer.toJson<String>(format),
+      'startedAt': serializer.toJson<DateTime>(startedAt),
+      'endedAt': serializer.toJson<DateTime?>(endedAt),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'fileSizeBytes': serializer.toJson<int>(fileSizeBytes),
+      'failureReason': serializer.toJson<String?>(failureReason),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  CallRecording copyWith({
+    int? id,
+    Value<int?> historyEntryId = const Value.absent(),
+    String? sessionKey,
+    int? callId,
+    String? kind,
+    String? relativePath,
+    String? status,
+    String? format,
+    DateTime? startedAt,
+    Value<DateTime?> endedAt = const Value.absent(),
+    int? durationMs,
+    int? fileSizeBytes,
+    Value<String?> failureReason = const Value.absent(),
+    DateTime? createdAt,
+  }) => CallRecording(
+    id: id ?? this.id,
+    historyEntryId: historyEntryId.present
+        ? historyEntryId.value
+        : this.historyEntryId,
+    sessionKey: sessionKey ?? this.sessionKey,
+    callId: callId ?? this.callId,
+    kind: kind ?? this.kind,
+    relativePath: relativePath ?? this.relativePath,
+    status: status ?? this.status,
+    format: format ?? this.format,
+    startedAt: startedAt ?? this.startedAt,
+    endedAt: endedAt.present ? endedAt.value : this.endedAt,
+    durationMs: durationMs ?? this.durationMs,
+    fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+    failureReason: failureReason.present
+        ? failureReason.value
+        : this.failureReason,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  CallRecording copyWithCompanion(CallRecordingsCompanion data) {
+    return CallRecording(
+      id: data.id.present ? data.id.value : this.id,
+      historyEntryId: data.historyEntryId.present
+          ? data.historyEntryId.value
+          : this.historyEntryId,
+      sessionKey: data.sessionKey.present
+          ? data.sessionKey.value
+          : this.sessionKey,
+      callId: data.callId.present ? data.callId.value : this.callId,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      relativePath: data.relativePath.present
+          ? data.relativePath.value
+          : this.relativePath,
+      status: data.status.present ? data.status.value : this.status,
+      format: data.format.present ? data.format.value : this.format,
+      startedAt: data.startedAt.present ? data.startedAt.value : this.startedAt,
+      endedAt: data.endedAt.present ? data.endedAt.value : this.endedAt,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      fileSizeBytes: data.fileSizeBytes.present
+          ? data.fileSizeBytes.value
+          : this.fileSizeBytes,
+      failureReason: data.failureReason.present
+          ? data.failureReason.value
+          : this.failureReason,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallRecording(')
+          ..write('id: $id, ')
+          ..write('historyEntryId: $historyEntryId, ')
+          ..write('sessionKey: $sessionKey, ')
+          ..write('callId: $callId, ')
+          ..write('kind: $kind, ')
+          ..write('relativePath: $relativePath, ')
+          ..write('status: $status, ')
+          ..write('format: $format, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('fileSizeBytes: $fileSizeBytes, ')
+          ..write('failureReason: $failureReason, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    historyEntryId,
+    sessionKey,
+    callId,
+    kind,
+    relativePath,
+    status,
+    format,
+    startedAt,
+    endedAt,
+    durationMs,
+    fileSizeBytes,
+    failureReason,
+    createdAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CallRecording &&
+          other.id == this.id &&
+          other.historyEntryId == this.historyEntryId &&
+          other.sessionKey == this.sessionKey &&
+          other.callId == this.callId &&
+          other.kind == this.kind &&
+          other.relativePath == this.relativePath &&
+          other.status == this.status &&
+          other.format == this.format &&
+          other.startedAt == this.startedAt &&
+          other.endedAt == this.endedAt &&
+          other.durationMs == this.durationMs &&
+          other.fileSizeBytes == this.fileSizeBytes &&
+          other.failureReason == this.failureReason &&
+          other.createdAt == this.createdAt);
+}
+
+class CallRecordingsCompanion extends UpdateCompanion<CallRecording> {
+  final Value<int> id;
+  final Value<int?> historyEntryId;
+  final Value<String> sessionKey;
+  final Value<int> callId;
+  final Value<String> kind;
+  final Value<String> relativePath;
+  final Value<String> status;
+  final Value<String> format;
+  final Value<DateTime> startedAt;
+  final Value<DateTime?> endedAt;
+  final Value<int> durationMs;
+  final Value<int> fileSizeBytes;
+  final Value<String?> failureReason;
+  final Value<DateTime> createdAt;
+  const CallRecordingsCompanion({
+    this.id = const Value.absent(),
+    this.historyEntryId = const Value.absent(),
+    this.sessionKey = const Value.absent(),
+    this.callId = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.relativePath = const Value.absent(),
+    this.status = const Value.absent(),
+    this.format = const Value.absent(),
+    this.startedAt = const Value.absent(),
+    this.endedAt = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.fileSizeBytes = const Value.absent(),
+    this.failureReason = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  CallRecordingsCompanion.insert({
+    this.id = const Value.absent(),
+    this.historyEntryId = const Value.absent(),
+    required String sessionKey,
+    required int callId,
+    this.kind = const Value.absent(),
+    required String relativePath,
+    required String status,
+    this.format = const Value.absent(),
+    required DateTime startedAt,
+    this.endedAt = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.fileSizeBytes = const Value.absent(),
+    this.failureReason = const Value.absent(),
+    required DateTime createdAt,
+  }) : sessionKey = Value(sessionKey),
+       callId = Value(callId),
+       relativePath = Value(relativePath),
+       status = Value(status),
+       startedAt = Value(startedAt),
+       createdAt = Value(createdAt);
+  static Insertable<CallRecording> custom({
+    Expression<int>? id,
+    Expression<int>? historyEntryId,
+    Expression<String>? sessionKey,
+    Expression<int>? callId,
+    Expression<String>? kind,
+    Expression<String>? relativePath,
+    Expression<String>? status,
+    Expression<String>? format,
+    Expression<DateTime>? startedAt,
+    Expression<DateTime>? endedAt,
+    Expression<int>? durationMs,
+    Expression<int>? fileSizeBytes,
+    Expression<String>? failureReason,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (historyEntryId != null) 'history_entry_id': historyEntryId,
+      if (sessionKey != null) 'session_key': sessionKey,
+      if (callId != null) 'call_id': callId,
+      if (kind != null) 'kind': kind,
+      if (relativePath != null) 'relative_path': relativePath,
+      if (status != null) 'status': status,
+      if (format != null) 'format': format,
+      if (startedAt != null) 'started_at': startedAt,
+      if (endedAt != null) 'ended_at': endedAt,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (fileSizeBytes != null) 'file_size_bytes': fileSizeBytes,
+      if (failureReason != null) 'failure_reason': failureReason,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  CallRecordingsCompanion copyWith({
+    Value<int>? id,
+    Value<int?>? historyEntryId,
+    Value<String>? sessionKey,
+    Value<int>? callId,
+    Value<String>? kind,
+    Value<String>? relativePath,
+    Value<String>? status,
+    Value<String>? format,
+    Value<DateTime>? startedAt,
+    Value<DateTime?>? endedAt,
+    Value<int>? durationMs,
+    Value<int>? fileSizeBytes,
+    Value<String?>? failureReason,
+    Value<DateTime>? createdAt,
+  }) {
+    return CallRecordingsCompanion(
+      id: id ?? this.id,
+      historyEntryId: historyEntryId ?? this.historyEntryId,
+      sessionKey: sessionKey ?? this.sessionKey,
+      callId: callId ?? this.callId,
+      kind: kind ?? this.kind,
+      relativePath: relativePath ?? this.relativePath,
+      status: status ?? this.status,
+      format: format ?? this.format,
+      startedAt: startedAt ?? this.startedAt,
+      endedAt: endedAt ?? this.endedAt,
+      durationMs: durationMs ?? this.durationMs,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      failureReason: failureReason ?? this.failureReason,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (historyEntryId.present) {
+      map['history_entry_id'] = Variable<int>(historyEntryId.value);
+    }
+    if (sessionKey.present) {
+      map['session_key'] = Variable<String>(sessionKey.value);
+    }
+    if (callId.present) {
+      map['call_id'] = Variable<int>(callId.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (relativePath.present) {
+      map['relative_path'] = Variable<String>(relativePath.value);
+    }
+    if (status.present) {
+      map['status'] = Variable<String>(status.value);
+    }
+    if (format.present) {
+      map['format'] = Variable<String>(format.value);
+    }
+    if (startedAt.present) {
+      map['started_at'] = Variable<DateTime>(startedAt.value);
+    }
+    if (endedAt.present) {
+      map['ended_at'] = Variable<DateTime>(endedAt.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (fileSizeBytes.present) {
+      map['file_size_bytes'] = Variable<int>(fileSizeBytes.value);
+    }
+    if (failureReason.present) {
+      map['failure_reason'] = Variable<String>(failureReason.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallRecordingsCompanion(')
+          ..write('id: $id, ')
+          ..write('historyEntryId: $historyEntryId, ')
+          ..write('sessionKey: $sessionKey, ')
+          ..write('callId: $callId, ')
+          ..write('kind: $kind, ')
+          ..write('relativePath: $relativePath, ')
+          ..write('status: $status, ')
+          ..write('format: $format, ')
+          ..write('startedAt: $startedAt, ')
+          ..write('endedAt: $endedAt, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('fileSizeBytes: $fileSizeBytes, ')
+          ..write('failureReason: $failureReason, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CallRecordingLinksTable extends CallRecordingLinks
+    with TableInfo<$CallRecordingLinksTable, CallRecordingLink> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CallRecordingLinksTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _recordingIdMeta = const VerificationMeta(
+    'recordingId',
+  );
+  @override
+  late final GeneratedColumn<int> recordingId = GeneratedColumn<int>(
+    'recording_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES call_recordings (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _callSessionKeyMeta = const VerificationMeta(
+    'callSessionKey',
+  );
+  @override
+  late final GeneratedColumn<String> callSessionKey = GeneratedColumn<String>(
+    'call_session_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _callIdMeta = const VerificationMeta('callId');
+  @override
+  late final GeneratedColumn<int> callId = GeneratedColumn<int>(
+    'call_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _historyEntryIdMeta = const VerificationMeta(
+    'historyEntryId',
+  );
+  @override
+  late final GeneratedColumn<int> historyEntryId = GeneratedColumn<int>(
+    'history_entry_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES call_history_entries (id) ON DELETE SET NULL',
+    ),
+  );
+  static const VerificationMeta _joinedAtMeta = const VerificationMeta(
+    'joinedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> joinedAt = GeneratedColumn<DateTime>(
+    'joined_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _leftAtMeta = const VerificationMeta('leftAt');
+  @override
+  late final GeneratedColumn<DateTime> leftAt = GeneratedColumn<DateTime>(
+    'left_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    recordingId,
+    callSessionKey,
+    callId,
+    historyEntryId,
+    joinedAt,
+    leftAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'call_recording_links';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<CallRecordingLink> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('recording_id')) {
+      context.handle(
+        _recordingIdMeta,
+        recordingId.isAcceptableOrUnknown(
+          data['recording_id']!,
+          _recordingIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_recordingIdMeta);
+    }
+    if (data.containsKey('call_session_key')) {
+      context.handle(
+        _callSessionKeyMeta,
+        callSessionKey.isAcceptableOrUnknown(
+          data['call_session_key']!,
+          _callSessionKeyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_callSessionKeyMeta);
+    }
+    if (data.containsKey('call_id')) {
+      context.handle(
+        _callIdMeta,
+        callId.isAcceptableOrUnknown(data['call_id']!, _callIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_callIdMeta);
+    }
+    if (data.containsKey('history_entry_id')) {
+      context.handle(
+        _historyEntryIdMeta,
+        historyEntryId.isAcceptableOrUnknown(
+          data['history_entry_id']!,
+          _historyEntryIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('joined_at')) {
+      context.handle(
+        _joinedAtMeta,
+        joinedAt.isAcceptableOrUnknown(data['joined_at']!, _joinedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_joinedAtMeta);
+    }
+    if (data.containsKey('left_at')) {
+      context.handle(
+        _leftAtMeta,
+        leftAt.isAcceptableOrUnknown(data['left_at']!, _leftAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {recordingId, callSessionKey};
+  @override
+  CallRecordingLink map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return CallRecordingLink(
+      recordingId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}recording_id'],
+      )!,
+      callSessionKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}call_session_key'],
+      )!,
+      callId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}call_id'],
+      )!,
+      historyEntryId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}history_entry_id'],
+      ),
+      joinedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}joined_at'],
+      )!,
+      leftAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}left_at'],
+      ),
+    );
+  }
+
+  @override
+  $CallRecordingLinksTable createAlias(String alias) {
+    return $CallRecordingLinksTable(attachedDatabase, alias);
+  }
+}
+
+class CallRecordingLink extends DataClass
+    implements Insertable<CallRecordingLink> {
+  final int recordingId;
+  final String callSessionKey;
+  final int callId;
+  final int? historyEntryId;
+  final DateTime joinedAt;
+  final DateTime? leftAt;
+  const CallRecordingLink({
+    required this.recordingId,
+    required this.callSessionKey,
+    required this.callId,
+    this.historyEntryId,
+    required this.joinedAt,
+    this.leftAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['recording_id'] = Variable<int>(recordingId);
+    map['call_session_key'] = Variable<String>(callSessionKey);
+    map['call_id'] = Variable<int>(callId);
+    if (!nullToAbsent || historyEntryId != null) {
+      map['history_entry_id'] = Variable<int>(historyEntryId);
+    }
+    map['joined_at'] = Variable<DateTime>(joinedAt);
+    if (!nullToAbsent || leftAt != null) {
+      map['left_at'] = Variable<DateTime>(leftAt);
+    }
+    return map;
+  }
+
+  CallRecordingLinksCompanion toCompanion(bool nullToAbsent) {
+    return CallRecordingLinksCompanion(
+      recordingId: Value(recordingId),
+      callSessionKey: Value(callSessionKey),
+      callId: Value(callId),
+      historyEntryId: historyEntryId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(historyEntryId),
+      joinedAt: Value(joinedAt),
+      leftAt: leftAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(leftAt),
+    );
+  }
+
+  factory CallRecordingLink.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return CallRecordingLink(
+      recordingId: serializer.fromJson<int>(json['recordingId']),
+      callSessionKey: serializer.fromJson<String>(json['callSessionKey']),
+      callId: serializer.fromJson<int>(json['callId']),
+      historyEntryId: serializer.fromJson<int?>(json['historyEntryId']),
+      joinedAt: serializer.fromJson<DateTime>(json['joinedAt']),
+      leftAt: serializer.fromJson<DateTime?>(json['leftAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'recordingId': serializer.toJson<int>(recordingId),
+      'callSessionKey': serializer.toJson<String>(callSessionKey),
+      'callId': serializer.toJson<int>(callId),
+      'historyEntryId': serializer.toJson<int?>(historyEntryId),
+      'joinedAt': serializer.toJson<DateTime>(joinedAt),
+      'leftAt': serializer.toJson<DateTime?>(leftAt),
+    };
+  }
+
+  CallRecordingLink copyWith({
+    int? recordingId,
+    String? callSessionKey,
+    int? callId,
+    Value<int?> historyEntryId = const Value.absent(),
+    DateTime? joinedAt,
+    Value<DateTime?> leftAt = const Value.absent(),
+  }) => CallRecordingLink(
+    recordingId: recordingId ?? this.recordingId,
+    callSessionKey: callSessionKey ?? this.callSessionKey,
+    callId: callId ?? this.callId,
+    historyEntryId: historyEntryId.present
+        ? historyEntryId.value
+        : this.historyEntryId,
+    joinedAt: joinedAt ?? this.joinedAt,
+    leftAt: leftAt.present ? leftAt.value : this.leftAt,
+  );
+  CallRecordingLink copyWithCompanion(CallRecordingLinksCompanion data) {
+    return CallRecordingLink(
+      recordingId: data.recordingId.present
+          ? data.recordingId.value
+          : this.recordingId,
+      callSessionKey: data.callSessionKey.present
+          ? data.callSessionKey.value
+          : this.callSessionKey,
+      callId: data.callId.present ? data.callId.value : this.callId,
+      historyEntryId: data.historyEntryId.present
+          ? data.historyEntryId.value
+          : this.historyEntryId,
+      joinedAt: data.joinedAt.present ? data.joinedAt.value : this.joinedAt,
+      leftAt: data.leftAt.present ? data.leftAt.value : this.leftAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallRecordingLink(')
+          ..write('recordingId: $recordingId, ')
+          ..write('callSessionKey: $callSessionKey, ')
+          ..write('callId: $callId, ')
+          ..write('historyEntryId: $historyEntryId, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('leftAt: $leftAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    recordingId,
+    callSessionKey,
+    callId,
+    historyEntryId,
+    joinedAt,
+    leftAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is CallRecordingLink &&
+          other.recordingId == this.recordingId &&
+          other.callSessionKey == this.callSessionKey &&
+          other.callId == this.callId &&
+          other.historyEntryId == this.historyEntryId &&
+          other.joinedAt == this.joinedAt &&
+          other.leftAt == this.leftAt);
+}
+
+class CallRecordingLinksCompanion extends UpdateCompanion<CallRecordingLink> {
+  final Value<int> recordingId;
+  final Value<String> callSessionKey;
+  final Value<int> callId;
+  final Value<int?> historyEntryId;
+  final Value<DateTime> joinedAt;
+  final Value<DateTime?> leftAt;
+  final Value<int> rowid;
+  const CallRecordingLinksCompanion({
+    this.recordingId = const Value.absent(),
+    this.callSessionKey = const Value.absent(),
+    this.callId = const Value.absent(),
+    this.historyEntryId = const Value.absent(),
+    this.joinedAt = const Value.absent(),
+    this.leftAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CallRecordingLinksCompanion.insert({
+    required int recordingId,
+    required String callSessionKey,
+    required int callId,
+    this.historyEntryId = const Value.absent(),
+    required DateTime joinedAt,
+    this.leftAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : recordingId = Value(recordingId),
+       callSessionKey = Value(callSessionKey),
+       callId = Value(callId),
+       joinedAt = Value(joinedAt);
+  static Insertable<CallRecordingLink> custom({
+    Expression<int>? recordingId,
+    Expression<String>? callSessionKey,
+    Expression<int>? callId,
+    Expression<int>? historyEntryId,
+    Expression<DateTime>? joinedAt,
+    Expression<DateTime>? leftAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (recordingId != null) 'recording_id': recordingId,
+      if (callSessionKey != null) 'call_session_key': callSessionKey,
+      if (callId != null) 'call_id': callId,
+      if (historyEntryId != null) 'history_entry_id': historyEntryId,
+      if (joinedAt != null) 'joined_at': joinedAt,
+      if (leftAt != null) 'left_at': leftAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CallRecordingLinksCompanion copyWith({
+    Value<int>? recordingId,
+    Value<String>? callSessionKey,
+    Value<int>? callId,
+    Value<int?>? historyEntryId,
+    Value<DateTime>? joinedAt,
+    Value<DateTime?>? leftAt,
+    Value<int>? rowid,
+  }) {
+    return CallRecordingLinksCompanion(
+      recordingId: recordingId ?? this.recordingId,
+      callSessionKey: callSessionKey ?? this.callSessionKey,
+      callId: callId ?? this.callId,
+      historyEntryId: historyEntryId ?? this.historyEntryId,
+      joinedAt: joinedAt ?? this.joinedAt,
+      leftAt: leftAt ?? this.leftAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (recordingId.present) {
+      map['recording_id'] = Variable<int>(recordingId.value);
+    }
+    if (callSessionKey.present) {
+      map['call_session_key'] = Variable<String>(callSessionKey.value);
+    }
+    if (callId.present) {
+      map['call_id'] = Variable<int>(callId.value);
+    }
+    if (historyEntryId.present) {
+      map['history_entry_id'] = Variable<int>(historyEntryId.value);
+    }
+    if (joinedAt.present) {
+      map['joined_at'] = Variable<DateTime>(joinedAt.value);
+    }
+    if (leftAt.present) {
+      map['left_at'] = Variable<DateTime>(leftAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CallRecordingLinksCompanion(')
+          ..write('recordingId: $recordingId, ')
+          ..write('callSessionKey: $callSessionKey, ')
+          ..write('callId: $callId, ')
+          ..write('historyEntryId: $historyEntryId, ')
+          ..write('joinedAt: $joinedAt, ')
+          ..write('leftAt: $leftAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2614,6 +3916,9 @@ abstract class _$CallHistoryDatabase extends GeneratedDatabase {
   $CallHistoryDatabaseManager get managers => $CallHistoryDatabaseManager(this);
   late final $CallHistoryEntriesTable callHistoryEntries =
       $CallHistoryEntriesTable(this);
+  late final $CallRecordingsTable callRecordings = $CallRecordingsTable(this);
+  late final $CallRecordingLinksTable callRecordingLinks =
+      $CallRecordingLinksTable(this);
   late final $DbContactsTable dbContacts = $DbContactsTable(this);
   late final $DbContactPhonesTable dbContactPhones = $DbContactPhonesTable(
     this,
@@ -2624,15 +3929,42 @@ abstract class _$CallHistoryDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     callHistoryEntries,
+    callRecordings,
+    callRecordingLinks,
     dbContacts,
     dbContactPhones,
   ];
+  @override
+  StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'call_history_entries',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('call_recordings', kind: UpdateKind.update)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'call_recordings',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('call_recording_links', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'call_history_entries',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('call_recording_links', kind: UpdateKind.update)],
+    ),
+  ]);
 }
 
 typedef $$CallHistoryEntriesTableCreateCompanionBuilder =
     CallHistoryEntriesCompanion Function({
       Value<int> id,
       required int callId,
+      Value<String?> sessionKey,
       required String direction,
       required String status,
       required String remoteUri,
@@ -2663,6 +3995,7 @@ typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
     CallHistoryEntriesCompanion Function({
       Value<int> id,
       Value<int> callId,
+      Value<String?> sessionKey,
       Value<String> direction,
       Value<String> status,
       Value<String> remoteUri,
@@ -2690,6 +4023,62 @@ typedef $$CallHistoryEntriesTableUpdateCompanionBuilder =
       Value<DateTime> createdAt,
     });
 
+final class $$CallHistoryEntriesTableReferences
+    extends
+        BaseReferences<
+          _$CallHistoryDatabase,
+          $CallHistoryEntriesTable,
+          CallHistoryEntry
+        > {
+  $$CallHistoryEntriesTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static MultiTypedResultKey<$CallRecordingsTable, List<CallRecording>>
+  _callRecordingsRefsTable(_$CallHistoryDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.callRecordings,
+        aliasName:
+            'call_history_entries__id__call_recordings__history_entry_id',
+      );
+
+  $$CallRecordingsTableProcessedTableManager get callRecordingsRefs {
+    final manager = $$CallRecordingsTableTableManager(
+      $_db,
+      $_db.callRecordings,
+    ).filter((f) => f.historyEntryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_callRecordingsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$CallRecordingLinksTable, List<CallRecordingLink>>
+  _callRecordingLinksRefsTable(_$CallHistoryDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.callRecordingLinks,
+        aliasName:
+            'call_history_entries__id__call_recording_links__history_entry_id',
+      );
+
+  $$CallRecordingLinksTableProcessedTableManager get callRecordingLinksRefs {
+    final manager = $$CallRecordingLinksTableTableManager(
+      $_db,
+      $_db.callRecordingLinks,
+    ).filter((f) => f.historyEntryId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _callRecordingLinksRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
 class $$CallHistoryEntriesTableFilterComposer
     extends Composer<_$CallHistoryDatabase, $CallHistoryEntriesTable> {
   $$CallHistoryEntriesTableFilterComposer({
@@ -2706,6 +4095,11 @@ class $$CallHistoryEntriesTableFilterComposer
 
   ColumnFilters<int> get callId => $composableBuilder(
     column: $table.callId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2833,6 +4227,56 @@ class $$CallHistoryEntriesTableFilterComposer
     column: $table.createdAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  Expression<bool> callRecordingsRefs(
+    Expression<bool> Function($$CallRecordingsTableFilterComposer f) f,
+  ) {
+    final $$CallRecordingsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.callRecordings,
+      getReferencedColumn: (t) => t.historyEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingsTableFilterComposer(
+            $db: $db,
+            $table: $db.callRecordings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> callRecordingLinksRefs(
+    Expression<bool> Function($$CallRecordingLinksTableFilterComposer f) f,
+  ) {
+    final $$CallRecordingLinksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.callRecordingLinks,
+      getReferencedColumn: (t) => t.historyEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingLinksTableFilterComposer(
+            $db: $db,
+            $table: $db.callRecordingLinks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$CallHistoryEntriesTableOrderingComposer
@@ -2851,6 +4295,11 @@ class $$CallHistoryEntriesTableOrderingComposer
 
   ColumnOrderings<int> get callId => $composableBuilder(
     column: $table.callId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2995,6 +4444,11 @@ class $$CallHistoryEntriesTableAnnotationComposer
   GeneratedColumn<int> get callId =>
       $composableBuilder(column: $table.callId, builder: (column) => column);
 
+  GeneratedColumn<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get direction =>
       $composableBuilder(column: $table.direction, builder: (column) => column);
 
@@ -3097,6 +4551,57 @@ class $$CallHistoryEntriesTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  Expression<T> callRecordingsRefs<T extends Object>(
+    Expression<T> Function($$CallRecordingsTableAnnotationComposer a) f,
+  ) {
+    final $$CallRecordingsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.callRecordings,
+      getReferencedColumn: (t) => t.historyEntryId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.callRecordings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> callRecordingLinksRefs<T extends Object>(
+    Expression<T> Function($$CallRecordingLinksTableAnnotationComposer a) f,
+  ) {
+    final $$CallRecordingLinksTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.callRecordingLinks,
+          getReferencedColumn: (t) => t.historyEntryId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CallRecordingLinksTableAnnotationComposer(
+                $db: $db,
+                $table: $db.callRecordingLinks,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$CallHistoryEntriesTableTableManager
@@ -3110,16 +4615,12 @@ class $$CallHistoryEntriesTableTableManager
           $$CallHistoryEntriesTableAnnotationComposer,
           $$CallHistoryEntriesTableCreateCompanionBuilder,
           $$CallHistoryEntriesTableUpdateCompanionBuilder,
-          (
-            CallHistoryEntry,
-            BaseReferences<
-              _$CallHistoryDatabase,
-              $CallHistoryEntriesTable,
-              CallHistoryEntry
-            >,
-          ),
+          (CallHistoryEntry, $$CallHistoryEntriesTableReferences),
           CallHistoryEntry,
-          PrefetchHooks Function()
+          PrefetchHooks Function({
+            bool callRecordingsRefs,
+            bool callRecordingLinksRefs,
+          })
         > {
   $$CallHistoryEntriesTableTableManager(
     _$CallHistoryDatabase db,
@@ -3141,6 +4642,7 @@ class $$CallHistoryEntriesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> callId = const Value.absent(),
+                Value<String?> sessionKey = const Value.absent(),
                 Value<String> direction = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String> remoteUri = const Value.absent(),
@@ -3169,6 +4671,7 @@ class $$CallHistoryEntriesTableTableManager
               }) => CallHistoryEntriesCompanion(
                 id: id,
                 callId: callId,
+                sessionKey: sessionKey,
                 direction: direction,
                 status: status,
                 remoteUri: remoteUri,
@@ -3199,6 +4702,7 @@ class $$CallHistoryEntriesTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required int callId,
+                Value<String?> sessionKey = const Value.absent(),
                 required String direction,
                 required String status,
                 required String remoteUri,
@@ -3227,6 +4731,7 @@ class $$CallHistoryEntriesTableTableManager
               }) => CallHistoryEntriesCompanion.insert(
                 id: id,
                 callId: callId,
+                sessionKey: sessionKey,
                 direction: direction,
                 status: status,
                 remoteUri: remoteUri,
@@ -3254,9 +4759,70 @@ class $$CallHistoryEntriesTableTableManager
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CallHistoryEntriesTableReferences(db, table, e),
+                ),
+              )
               .toList(),
-          prefetchHooksCallback: null,
+          prefetchHooksCallback:
+              ({callRecordingsRefs = false, callRecordingLinksRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (callRecordingsRefs) db.callRecordings,
+                    if (callRecordingLinksRefs) db.callRecordingLinks,
+                  ],
+                  addJoins: null,
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (callRecordingsRefs)
+                        await $_getPrefetchedData<
+                          CallHistoryEntry,
+                          $CallHistoryEntriesTable,
+                          CallRecording
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CallHistoryEntriesTableReferences
+                              ._callRecordingsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CallHistoryEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).callRecordingsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.historyEntryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (callRecordingLinksRefs)
+                        await $_getPrefetchedData<
+                          CallHistoryEntry,
+                          $CallHistoryEntriesTable,
+                          CallRecordingLink
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CallHistoryEntriesTableReferences
+                              ._callRecordingLinksRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CallHistoryEntriesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).callRecordingLinksRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.historyEntryId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
         ),
       );
 }
@@ -3271,16 +4837,1069 @@ typedef $$CallHistoryEntriesTableProcessedTableManager =
       $$CallHistoryEntriesTableAnnotationComposer,
       $$CallHistoryEntriesTableCreateCompanionBuilder,
       $$CallHistoryEntriesTableUpdateCompanionBuilder,
-      (
-        CallHistoryEntry,
+      (CallHistoryEntry, $$CallHistoryEntriesTableReferences),
+      CallHistoryEntry,
+      PrefetchHooks Function({
+        bool callRecordingsRefs,
+        bool callRecordingLinksRefs,
+      })
+    >;
+typedef $$CallRecordingsTableCreateCompanionBuilder =
+    CallRecordingsCompanion Function({
+      Value<int> id,
+      Value<int?> historyEntryId,
+      required String sessionKey,
+      required int callId,
+      Value<String> kind,
+      required String relativePath,
+      required String status,
+      Value<String> format,
+      required DateTime startedAt,
+      Value<DateTime?> endedAt,
+      Value<int> durationMs,
+      Value<int> fileSizeBytes,
+      Value<String?> failureReason,
+      required DateTime createdAt,
+    });
+typedef $$CallRecordingsTableUpdateCompanionBuilder =
+    CallRecordingsCompanion Function({
+      Value<int> id,
+      Value<int?> historyEntryId,
+      Value<String> sessionKey,
+      Value<int> callId,
+      Value<String> kind,
+      Value<String> relativePath,
+      Value<String> status,
+      Value<String> format,
+      Value<DateTime> startedAt,
+      Value<DateTime?> endedAt,
+      Value<int> durationMs,
+      Value<int> fileSizeBytes,
+      Value<String?> failureReason,
+      Value<DateTime> createdAt,
+    });
+
+final class $$CallRecordingsTableReferences
+    extends
         BaseReferences<
           _$CallHistoryDatabase,
-          $CallHistoryEntriesTable,
-          CallHistoryEntry
-        >,
-      ),
-      CallHistoryEntry,
-      PrefetchHooks Function()
+          $CallRecordingsTable,
+          CallRecording
+        > {
+  $$CallRecordingsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CallHistoryEntriesTable _historyEntryIdTable(
+    _$CallHistoryDatabase db,
+  ) => db.callHistoryEntries.createAlias(
+    'call_recordings__history_entry_id__call_history_entries__id',
+  );
+
+  $$CallHistoryEntriesTableProcessedTableManager? get historyEntryId {
+    final $_column = $_itemColumn<int>('history_entry_id');
+    if ($_column == null) return null;
+    final manager = $$CallHistoryEntriesTableTableManager(
+      $_db,
+      $_db.callHistoryEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_historyEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<$CallRecordingLinksTable, List<CallRecordingLink>>
+  _callRecordingLinksRefsTable(_$CallHistoryDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.callRecordingLinks,
+        aliasName: 'call_recordings__id__call_recording_links__recording_id',
+      );
+
+  $$CallRecordingLinksTableProcessedTableManager get callRecordingLinksRefs {
+    final manager = $$CallRecordingLinksTableTableManager(
+      $_db,
+      $_db.callRecordingLinks,
+    ).filter((f) => f.recordingId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _callRecordingLinksRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$CallRecordingsTableFilterComposer
+    extends Composer<_$CallHistoryDatabase, $CallRecordingsTable> {
+  $$CallRecordingsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get callId => $composableBuilder(
+    column: $table.callId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get format => $composableBuilder(
+    column: $table.format,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get failureReason => $composableBuilder(
+    column: $table.failureReason,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CallHistoryEntriesTableFilterComposer get historyEntryId {
+    final $$CallHistoryEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.historyEntryId,
+      referencedTable: $db.callHistoryEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallHistoryEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.callHistoryEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> callRecordingLinksRefs(
+    Expression<bool> Function($$CallRecordingLinksTableFilterComposer f) f,
+  ) {
+    final $$CallRecordingLinksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.callRecordingLinks,
+      getReferencedColumn: (t) => t.recordingId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingLinksTableFilterComposer(
+            $db: $db,
+            $table: $db.callRecordingLinks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+}
+
+class $$CallRecordingsTableOrderingComposer
+    extends Composer<_$CallHistoryDatabase, $CallRecordingsTable> {
+  $$CallRecordingsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get callId => $composableBuilder(
+    column: $table.callId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get status => $composableBuilder(
+    column: $table.status,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get format => $composableBuilder(
+    column: $table.format,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get startedAt => $composableBuilder(
+    column: $table.startedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endedAt => $composableBuilder(
+    column: $table.endedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get failureReason => $composableBuilder(
+    column: $table.failureReason,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CallHistoryEntriesTableOrderingComposer get historyEntryId {
+    final $$CallHistoryEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.historyEntryId,
+      referencedTable: $db.callHistoryEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallHistoryEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.callHistoryEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CallRecordingsTableAnnotationComposer
+    extends Composer<_$CallHistoryDatabase, $CallRecordingsTable> {
+  $$CallRecordingsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get sessionKey => $composableBuilder(
+    column: $table.sessionKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get callId =>
+      $composableBuilder(column: $table.callId, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<String> get relativePath => $composableBuilder(
+    column: $table.relativePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get status =>
+      $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<String> get format =>
+      $composableBuilder(column: $table.format, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startedAt =>
+      $composableBuilder(column: $table.startedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endedAt =>
+      $composableBuilder(column: $table.endedAt, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get fileSizeBytes => $composableBuilder(
+    column: $table.fileSizeBytes,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get failureReason => $composableBuilder(
+    column: $table.failureReason,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  $$CallHistoryEntriesTableAnnotationComposer get historyEntryId {
+    final $$CallHistoryEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.historyEntryId,
+          referencedTable: $db.callHistoryEntries,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CallHistoryEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.callHistoryEntries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  Expression<T> callRecordingLinksRefs<T extends Object>(
+    Expression<T> Function($$CallRecordingLinksTableAnnotationComposer a) f,
+  ) {
+    final $$CallRecordingLinksTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.callRecordingLinks,
+          getReferencedColumn: (t) => t.recordingId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CallRecordingLinksTableAnnotationComposer(
+                $db: $db,
+                $table: $db.callRecordingLinks,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$CallRecordingsTableTableManager
+    extends
+        RootTableManager<
+          _$CallHistoryDatabase,
+          $CallRecordingsTable,
+          CallRecording,
+          $$CallRecordingsTableFilterComposer,
+          $$CallRecordingsTableOrderingComposer,
+          $$CallRecordingsTableAnnotationComposer,
+          $$CallRecordingsTableCreateCompanionBuilder,
+          $$CallRecordingsTableUpdateCompanionBuilder,
+          (CallRecording, $$CallRecordingsTableReferences),
+          CallRecording,
+          PrefetchHooks Function({
+            bool historyEntryId,
+            bool callRecordingLinksRefs,
+          })
+        > {
+  $$CallRecordingsTableTableManager(
+    _$CallHistoryDatabase db,
+    $CallRecordingsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CallRecordingsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CallRecordingsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CallRecordingsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> historyEntryId = const Value.absent(),
+                Value<String> sessionKey = const Value.absent(),
+                Value<int> callId = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<String> relativePath = const Value.absent(),
+                Value<String> status = const Value.absent(),
+                Value<String> format = const Value.absent(),
+                Value<DateTime> startedAt = const Value.absent(),
+                Value<DateTime?> endedAt = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<int> fileSizeBytes = const Value.absent(),
+                Value<String?> failureReason = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => CallRecordingsCompanion(
+                id: id,
+                historyEntryId: historyEntryId,
+                sessionKey: sessionKey,
+                callId: callId,
+                kind: kind,
+                relativePath: relativePath,
+                status: status,
+                format: format,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                durationMs: durationMs,
+                fileSizeBytes: fileSizeBytes,
+                failureReason: failureReason,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int?> historyEntryId = const Value.absent(),
+                required String sessionKey,
+                required int callId,
+                Value<String> kind = const Value.absent(),
+                required String relativePath,
+                required String status,
+                Value<String> format = const Value.absent(),
+                required DateTime startedAt,
+                Value<DateTime?> endedAt = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<int> fileSizeBytes = const Value.absent(),
+                Value<String?> failureReason = const Value.absent(),
+                required DateTime createdAt,
+              }) => CallRecordingsCompanion.insert(
+                id: id,
+                historyEntryId: historyEntryId,
+                sessionKey: sessionKey,
+                callId: callId,
+                kind: kind,
+                relativePath: relativePath,
+                status: status,
+                format: format,
+                startedAt: startedAt,
+                endedAt: endedAt,
+                durationMs: durationMs,
+                fileSizeBytes: fileSizeBytes,
+                failureReason: failureReason,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CallRecordingsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({historyEntryId = false, callRecordingLinksRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (callRecordingLinksRefs) db.callRecordingLinks,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (historyEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.historyEntryId,
+                                    referencedTable:
+                                        $$CallRecordingsTableReferences
+                                            ._historyEntryIdTable(db),
+                                    referencedColumn:
+                                        $$CallRecordingsTableReferences
+                                            ._historyEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (callRecordingLinksRefs)
+                        await $_getPrefetchedData<
+                          CallRecording,
+                          $CallRecordingsTable,
+                          CallRecordingLink
+                        >(
+                          currentTable: table,
+                          referencedTable: $$CallRecordingsTableReferences
+                              ._callRecordingLinksRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$CallRecordingsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).callRecordingLinksRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.recordingId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$CallRecordingsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$CallHistoryDatabase,
+      $CallRecordingsTable,
+      CallRecording,
+      $$CallRecordingsTableFilterComposer,
+      $$CallRecordingsTableOrderingComposer,
+      $$CallRecordingsTableAnnotationComposer,
+      $$CallRecordingsTableCreateCompanionBuilder,
+      $$CallRecordingsTableUpdateCompanionBuilder,
+      (CallRecording, $$CallRecordingsTableReferences),
+      CallRecording,
+      PrefetchHooks Function({bool historyEntryId, bool callRecordingLinksRefs})
+    >;
+typedef $$CallRecordingLinksTableCreateCompanionBuilder =
+    CallRecordingLinksCompanion Function({
+      required int recordingId,
+      required String callSessionKey,
+      required int callId,
+      Value<int?> historyEntryId,
+      required DateTime joinedAt,
+      Value<DateTime?> leftAt,
+      Value<int> rowid,
+    });
+typedef $$CallRecordingLinksTableUpdateCompanionBuilder =
+    CallRecordingLinksCompanion Function({
+      Value<int> recordingId,
+      Value<String> callSessionKey,
+      Value<int> callId,
+      Value<int?> historyEntryId,
+      Value<DateTime> joinedAt,
+      Value<DateTime?> leftAt,
+      Value<int> rowid,
+    });
+
+final class $$CallRecordingLinksTableReferences
+    extends
+        BaseReferences<
+          _$CallHistoryDatabase,
+          $CallRecordingLinksTable,
+          CallRecordingLink
+        > {
+  $$CallRecordingLinksTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $CallRecordingsTable _recordingIdTable(_$CallHistoryDatabase db) => db
+      .callRecordings
+      .createAlias('call_recording_links__recording_id__call_recordings__id');
+
+  $$CallRecordingsTableProcessedTableManager get recordingId {
+    final $_column = $_itemColumn<int>('recording_id')!;
+
+    final manager = $$CallRecordingsTableTableManager(
+      $_db,
+      $_db.callRecordings,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_recordingIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $CallHistoryEntriesTable _historyEntryIdTable(
+    _$CallHistoryDatabase db,
+  ) => db.callHistoryEntries.createAlias(
+    'call_recording_links__history_entry_id__call_history_entries__id',
+  );
+
+  $$CallHistoryEntriesTableProcessedTableManager? get historyEntryId {
+    final $_column = $_itemColumn<int>('history_entry_id');
+    if ($_column == null) return null;
+    final manager = $$CallHistoryEntriesTableTableManager(
+      $_db,
+      $_db.callHistoryEntries,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_historyEntryIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$CallRecordingLinksTableFilterComposer
+    extends Composer<_$CallHistoryDatabase, $CallRecordingLinksTable> {
+  $$CallRecordingLinksTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get callSessionKey => $composableBuilder(
+    column: $table.callSessionKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get callId => $composableBuilder(
+    column: $table.callId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get leftAt => $composableBuilder(
+    column: $table.leftAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$CallRecordingsTableFilterComposer get recordingId {
+    final $$CallRecordingsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recordingId,
+      referencedTable: $db.callRecordings,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingsTableFilterComposer(
+            $db: $db,
+            $table: $db.callRecordings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CallHistoryEntriesTableFilterComposer get historyEntryId {
+    final $$CallHistoryEntriesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.historyEntryId,
+      referencedTable: $db.callHistoryEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallHistoryEntriesTableFilterComposer(
+            $db: $db,
+            $table: $db.callHistoryEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CallRecordingLinksTableOrderingComposer
+    extends Composer<_$CallHistoryDatabase, $CallRecordingLinksTable> {
+  $$CallRecordingLinksTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get callSessionKey => $composableBuilder(
+    column: $table.callSessionKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get callId => $composableBuilder(
+    column: $table.callId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get joinedAt => $composableBuilder(
+    column: $table.joinedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get leftAt => $composableBuilder(
+    column: $table.leftAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$CallRecordingsTableOrderingComposer get recordingId {
+    final $$CallRecordingsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recordingId,
+      referencedTable: $db.callRecordings,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingsTableOrderingComposer(
+            $db: $db,
+            $table: $db.callRecordings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CallHistoryEntriesTableOrderingComposer get historyEntryId {
+    final $$CallHistoryEntriesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.historyEntryId,
+      referencedTable: $db.callHistoryEntries,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallHistoryEntriesTableOrderingComposer(
+            $db: $db,
+            $table: $db.callHistoryEntries,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$CallRecordingLinksTableAnnotationComposer
+    extends Composer<_$CallHistoryDatabase, $CallRecordingLinksTable> {
+  $$CallRecordingLinksTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get callSessionKey => $composableBuilder(
+    column: $table.callSessionKey,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get callId =>
+      $composableBuilder(column: $table.callId, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get joinedAt =>
+      $composableBuilder(column: $table.joinedAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get leftAt =>
+      $composableBuilder(column: $table.leftAt, builder: (column) => column);
+
+  $$CallRecordingsTableAnnotationComposer get recordingId {
+    final $$CallRecordingsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.recordingId,
+      referencedTable: $db.callRecordings,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$CallRecordingsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.callRecordings,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$CallHistoryEntriesTableAnnotationComposer get historyEntryId {
+    final $$CallHistoryEntriesTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.historyEntryId,
+          referencedTable: $db.callHistoryEntries,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$CallHistoryEntriesTableAnnotationComposer(
+                $db: $db,
+                $table: $db.callHistoryEntries,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+}
+
+class $$CallRecordingLinksTableTableManager
+    extends
+        RootTableManager<
+          _$CallHistoryDatabase,
+          $CallRecordingLinksTable,
+          CallRecordingLink,
+          $$CallRecordingLinksTableFilterComposer,
+          $$CallRecordingLinksTableOrderingComposer,
+          $$CallRecordingLinksTableAnnotationComposer,
+          $$CallRecordingLinksTableCreateCompanionBuilder,
+          $$CallRecordingLinksTableUpdateCompanionBuilder,
+          (CallRecordingLink, $$CallRecordingLinksTableReferences),
+          CallRecordingLink,
+          PrefetchHooks Function({bool recordingId, bool historyEntryId})
+        > {
+  $$CallRecordingLinksTableTableManager(
+    _$CallHistoryDatabase db,
+    $CallRecordingLinksTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CallRecordingLinksTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CallRecordingLinksTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CallRecordingLinksTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> recordingId = const Value.absent(),
+                Value<String> callSessionKey = const Value.absent(),
+                Value<int> callId = const Value.absent(),
+                Value<int?> historyEntryId = const Value.absent(),
+                Value<DateTime> joinedAt = const Value.absent(),
+                Value<DateTime?> leftAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CallRecordingLinksCompanion(
+                recordingId: recordingId,
+                callSessionKey: callSessionKey,
+                callId: callId,
+                historyEntryId: historyEntryId,
+                joinedAt: joinedAt,
+                leftAt: leftAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int recordingId,
+                required String callSessionKey,
+                required int callId,
+                Value<int?> historyEntryId = const Value.absent(),
+                required DateTime joinedAt,
+                Value<DateTime?> leftAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CallRecordingLinksCompanion.insert(
+                recordingId: recordingId,
+                callSessionKey: callSessionKey,
+                callId: callId,
+                historyEntryId: historyEntryId,
+                joinedAt: joinedAt,
+                leftAt: leftAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$CallRecordingLinksTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({recordingId = false, historyEntryId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (recordingId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.recordingId,
+                                    referencedTable:
+                                        $$CallRecordingLinksTableReferences
+                                            ._recordingIdTable(db),
+                                    referencedColumn:
+                                        $$CallRecordingLinksTableReferences
+                                            ._recordingIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (historyEntryId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.historyEntryId,
+                                    referencedTable:
+                                        $$CallRecordingLinksTableReferences
+                                            ._historyEntryIdTable(db),
+                                    referencedColumn:
+                                        $$CallRecordingLinksTableReferences
+                                            ._historyEntryIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$CallRecordingLinksTableProcessedTableManager =
+    ProcessedTableManager<
+      _$CallHistoryDatabase,
+      $CallRecordingLinksTable,
+      CallRecordingLink,
+      $$CallRecordingLinksTableFilterComposer,
+      $$CallRecordingLinksTableOrderingComposer,
+      $$CallRecordingLinksTableAnnotationComposer,
+      $$CallRecordingLinksTableCreateCompanionBuilder,
+      $$CallRecordingLinksTableUpdateCompanionBuilder,
+      (CallRecordingLink, $$CallRecordingLinksTableReferences),
+      CallRecordingLink,
+      PrefetchHooks Function({bool recordingId, bool historyEntryId})
     >;
 typedef $$DbContactsTableCreateCompanionBuilder =
     DbContactsCompanion Function({
@@ -4081,6 +6700,10 @@ class $CallHistoryDatabaseManager {
   $CallHistoryDatabaseManager(this._db);
   $$CallHistoryEntriesTableTableManager get callHistoryEntries =>
       $$CallHistoryEntriesTableTableManager(_db, _db.callHistoryEntries);
+  $$CallRecordingsTableTableManager get callRecordings =>
+      $$CallRecordingsTableTableManager(_db, _db.callRecordings);
+  $$CallRecordingLinksTableTableManager get callRecordingLinks =>
+      $$CallRecordingLinksTableTableManager(_db, _db.callRecordingLinks);
   $$DbContactsTableTableManager get dbContacts =>
       $$DbContactsTableTableManager(_db, _db.dbContacts);
   $$DbContactPhonesTableTableManager get dbContactPhones =>

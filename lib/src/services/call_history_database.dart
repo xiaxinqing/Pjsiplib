@@ -48,9 +48,37 @@ enum CallHistoryStatus {
   }
 }
 
+enum CallRecordingStatus {
+  recording('recording'),
+  completed('completed'),
+  interrupted('interrupted'),
+  failed('failed');
+
+  const CallRecordingStatus(this.storageKey);
+
+  final String storageKey;
+
+  static CallRecordingStatus fromStorage(String value) {
+    return values.firstWhere(
+      (status) => status.storageKey == value,
+      orElse: () => CallRecordingStatus.failed,
+    );
+  }
+}
+
+enum CallRecordingKind {
+  single('single'),
+  conference('conference');
+
+  const CallRecordingKind(this.storageKey);
+
+  final String storageKey;
+}
+
 class CallHistoryEntries extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get callId => integer()();
+  TextColumn get sessionKey => text().nullable()();
   TextColumn get direction => text()();
   TextColumn get status => text()();
   TextColumn get remoteUri => text()();
@@ -76,6 +104,52 @@ class CallHistoryEntries extends Table {
   TextColumn get note => text().nullable()();
   DateTimeColumn get missedReadAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime()();
+}
+
+/// 本地录音独立于通话记录保存，允许一条通话记录关联多个录音片段。
+///
+/// [sessionKey] 在一次 PJSIP 通话实例内稳定，不能只使用会被复用的 callId。
+/// 文件路径保存为相对录音根目录的路径，避免应用目录迁移后绝对路径失效。
+class CallRecordings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get historyEntryId => integer().nullable().references(
+    CallHistoryEntries,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  TextColumn get sessionKey => text()();
+  IntColumn get callId => integer()();
+  TextColumn get kind => text().withDefault(const Constant('single'))();
+  TextColumn get relativePath => text()();
+  TextColumn get status => text()();
+  TextColumn get format => text().withDefault(const Constant('wav'))();
+  DateTimeColumn get startedAt => dateTime()();
+  DateTimeColumn get endedAt => dateTime().nullable()();
+  IntColumn get durationMs => integer().withDefault(const Constant(0))();
+  IntColumn get fileSizeBytes => integer().withDefault(const Constant(0))();
+  TextColumn get failureReason => text().nullable()();
+  DateTimeColumn get createdAt => dateTime()();
+}
+
+/// 一段物理录音与参与过该录音的 SIP 通话实例之间的多对多关联。
+///
+/// 会议成员可以中途加入或退出；[callSessionKey] 使用通话开始时间和 callId
+/// 组成，避免 PJSIP 复用 callId 后把录音关联到错误的历史记录。
+class CallRecordingLinks extends Table {
+  IntColumn get recordingId =>
+      integer().references(CallRecordings, #id, onDelete: KeyAction.cascade)();
+  TextColumn get callSessionKey => text()();
+  IntColumn get callId => integer()();
+  IntColumn get historyEntryId => integer().nullable().references(
+    CallHistoryEntries,
+    #id,
+    onDelete: KeyAction.setNull,
+  )();
+  DateTimeColumn get joinedAt => dateTime()();
+  DateTimeColumn get leftAt => dateTime().nullable()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {recordingId, callSessionKey};
 }
 
 class DbContacts extends Table {
@@ -143,7 +217,15 @@ class StoredContactPhoneRow {
   final bool isPrimary;
 }
 
-@DriftDatabase(tables: [CallHistoryEntries, DbContacts, DbContactPhones])
+@DriftDatabase(
+  tables: [
+    CallHistoryEntries,
+    CallRecordings,
+    CallRecordingLinks,
+    DbContacts,
+    DbContactPhones,
+  ],
+)
 class CallHistoryDatabase extends _$CallHistoryDatabase {
   CallHistoryDatabase([QueryExecutor? executor])
     : super(executor ?? _openConnection());
@@ -154,13 +236,15 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
   bool _acceptingWrites = true;
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) async {
       await migrator.createAll();
       await _createIndexes();
+      await _createRecordingIndexes();
+      await _createRecordingLinkIndexes();
       await _createContactIndexes();
     },
     onUpgrade: (migrator, from, to) async {
@@ -211,6 +295,27 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
           callHistoryEntries.missedReadAt,
         );
       }
+      if (from < 7) {
+        await migrator.addColumn(
+          callHistoryEntries,
+          callHistoryEntries.sessionKey,
+        );
+        await migrator.createTable(callRecordings);
+        await _createRecordingIndexes();
+      }
+      if (from == 7) {
+        await migrator.addColumn(callRecordings, callRecordings.kind);
+      }
+      if (from < 8) {
+        await migrator.createTable(callRecordingLinks);
+        await customStatement(
+          'INSERT OR IGNORE INTO call_recording_links '
+          '(recording_id, call_session_key, call_id, history_entry_id, joined_at, left_at) '
+          'SELECT id, session_key, call_id, history_entry_id, started_at, ended_at '
+          'FROM call_recordings',
+        );
+        await _createRecordingLinkIndexes();
+      }
     },
   );
 
@@ -249,6 +354,32 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     await customStatement(
       'CREATE INDEX IF NOT EXISTS idx_contact_phones_normalized_number '
       'ON db_contact_phones (normalized_number)',
+    );
+  }
+
+  Future<void> _createRecordingIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_call_recordings_history_entry '
+      'ON call_recordings (history_entry_id, started_at)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_call_recordings_session_key '
+      'ON call_recordings (session_key)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_call_recordings_status '
+      'ON call_recordings (status)',
+    );
+  }
+
+  Future<void> _createRecordingLinkIndexes() async {
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_call_recording_links_history '
+      'ON call_recording_links (history_entry_id, recording_id)',
+    );
+    await customStatement(
+      'CREATE INDEX IF NOT EXISTS idx_call_recording_links_session '
+      'ON call_recording_links (call_session_key)',
     );
   }
 
@@ -412,7 +543,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     );
   }
 
-  Future<void> recordCall({
+  Future<int> recordCall({
     required int callId,
     required CallHistoryDirection direction,
     required CallHistoryStatus status,
@@ -432,6 +563,7 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     int? sipStatusCode,
     String? hangupReason,
     String? note,
+    String? recordingSessionKey,
   }) {
     final durationSeconds = answeredAt == null
         ? 0
@@ -447,34 +579,308 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     final ringingEndAt = answeredAt ?? endedAt;
     final ringingToAnswerMs = _positiveMilliseconds(ringingAt, ringingEndAt);
     final answerToMediaMs = _positiveMilliseconds(answeredAt, mediaConnectedAt);
-    return addEntry(
-      CallHistoryEntriesCompanion.insert(
-        callId: callId,
-        direction: direction.storageKey,
-        status: status.storageKey,
-        remoteUri: remoteUri,
-        phoneNumber: phoneNumber,
-        displayName: Value(displayName),
-        contactId: Value(contactId),
-        accountId: Value(accountId),
-        accountLabel: Value(accountLabel),
-        startedAt: startedAt,
-        ringingAt: Value(ringingAt),
-        answeredAt: Value(answeredAt),
-        mediaConnectedAt: Value(mediaConnectedAt),
-        endedAt: endedAt,
-        durationSeconds: Value(durationSeconds),
-        ringSeconds: Value(ringSeconds),
-        timeToRingingMs: Value(timeToRingingMs),
-        ringingToAnswerMs: Value(ringingToAnswerMs),
-        answerToMediaMs: Value(answerToMediaMs),
-        holdCount: Value(holdCount.clamp(0, 1 << 31).toInt()),
-        holdSeconds: Value(holdDuration.inSeconds.clamp(0, 1 << 31).toInt()),
-        sipStatusCode: Value(sipStatusCode),
-        hangupReason: Value(hangupReason),
-        note: Value(note?.trim().isEmpty == true ? null : note?.trim()),
-        createdAt: DateTime.now(),
-      ),
+    return _trackWrite('recordCall', () async {
+      final historyId = await into(callHistoryEntries).insert(
+        CallHistoryEntriesCompanion.insert(
+          callId: callId,
+          sessionKey: Value(recordingSessionKey),
+          direction: direction.storageKey,
+          status: status.storageKey,
+          remoteUri: remoteUri,
+          phoneNumber: phoneNumber,
+          displayName: Value(displayName),
+          contactId: Value(contactId),
+          accountId: Value(accountId),
+          accountLabel: Value(accountLabel),
+          startedAt: startedAt,
+          ringingAt: Value(ringingAt),
+          answeredAt: Value(answeredAt),
+          mediaConnectedAt: Value(mediaConnectedAt),
+          endedAt: endedAt,
+          durationSeconds: Value(durationSeconds),
+          ringSeconds: Value(ringSeconds),
+          timeToRingingMs: Value(timeToRingingMs),
+          ringingToAnswerMs: Value(ringingToAnswerMs),
+          answerToMediaMs: Value(answerToMediaMs),
+          holdCount: Value(holdCount.clamp(0, 1 << 31).toInt()),
+          holdSeconds: Value(holdDuration.inSeconds.clamp(0, 1 << 31).toInt()),
+          sipStatusCode: Value(sipStatusCode),
+          hangupReason: Value(hangupReason),
+          note: Value(note?.trim().isEmpty == true ? null : note?.trim()),
+          createdAt: DateTime.now(),
+        ),
+      );
+      if (recordingSessionKey != null && recordingSessionKey.isNotEmpty) {
+        await (update(callRecordings)
+              ..where((table) => table.sessionKey.equals(recordingSessionKey)))
+            .write(CallRecordingsCompanion(historyEntryId: Value(historyId)));
+        await (update(callRecordingLinks)..where(
+              (table) => table.callSessionKey.equals(recordingSessionKey),
+            ))
+            .write(
+              CallRecordingLinksCompanion(historyEntryId: Value(historyId)),
+            );
+      }
+      return historyId;
+    });
+  }
+
+  Future<int> beginCallRecording({
+    required String sessionKey,
+    required int callId,
+    required String relativePath,
+    required DateTime startedAt,
+    String? participantSessionKey,
+  }) {
+    return _trackWrite('beginCallRecording', () async {
+      final effectiveParticipantSessionKey =
+          participantSessionKey ?? sessionKey;
+      final recordingId = await into(callRecordings).insert(
+        CallRecordingsCompanion.insert(
+          sessionKey: sessionKey,
+          callId: callId,
+          relativePath: relativePath,
+          status: CallRecordingStatus.recording.storageKey,
+          startedAt: startedAt,
+          createdAt: DateTime.now(),
+        ),
+      );
+      final history =
+          await (select(callHistoryEntries)
+                ..where(
+                  (table) =>
+                      table.sessionKey.equals(effectiveParticipantSessionKey),
+                )
+                ..limit(1))
+              .getSingleOrNull();
+      await into(callRecordingLinks).insert(
+        CallRecordingLinksCompanion.insert(
+          recordingId: recordingId,
+          callSessionKey: effectiveParticipantSessionKey,
+          callId: callId,
+          historyEntryId: Value(history?.id),
+          joinedAt: startedAt,
+        ),
+      );
+      if (history != null) {
+        await (update(callRecordings)
+              ..where((table) => table.id.equals(recordingId)))
+            .write(CallRecordingsCompanion(historyEntryId: Value(history.id)));
+      }
+      return recordingId;
+    });
+  }
+
+  Future<void> promoteCallRecordingToConference(int recordingId) {
+    return _trackWrite(
+      'promoteCallRecordingToConference',
+      () =>
+          (update(
+            callRecordings,
+          )..where((table) => table.id.equals(recordingId))).write(
+            CallRecordingsCompanion(
+              kind: Value(CallRecordingKind.conference.storageKey),
+            ),
+          ),
+    );
+  }
+
+  Future<void> addCallRecordingParticipant({
+    required int recordingId,
+    required String callSessionKey,
+    required int callId,
+    required DateTime joinedAt,
+  }) {
+    return _trackWrite('addCallRecordingParticipant', () async {
+      final history =
+          await (select(callHistoryEntries)
+                ..where((table) => table.sessionKey.equals(callSessionKey))
+                ..limit(1))
+              .getSingleOrNull();
+      await into(callRecordingLinks).insertOnConflictUpdate(
+        CallRecordingLinksCompanion.insert(
+          recordingId: recordingId,
+          callSessionKey: callSessionKey,
+          callId: callId,
+          historyEntryId: Value(history?.id),
+          joinedAt: joinedAt,
+          leftAt: const Value(null),
+        ),
+      );
+    });
+  }
+
+  Future<void> leaveCallRecordingParticipant({
+    required int recordingId,
+    required String callSessionKey,
+    required DateTime leftAt,
+  }) {
+    return _trackWrite(
+      'leaveCallRecordingParticipant',
+      () =>
+          (update(callRecordingLinks)..where(
+                (table) =>
+                    table.recordingId.equals(recordingId) &
+                    table.callSessionKey.equals(callSessionKey),
+              ))
+              .write(CallRecordingLinksCompanion(leftAt: Value(leftAt))),
+    );
+  }
+
+  Future<void> finalizeCallRecording({
+    required int id,
+    required CallRecordingStatus status,
+    required DateTime endedAt,
+    required Duration duration,
+    required int fileSizeBytes,
+    String? relativePath,
+    String? failureReason,
+  }) {
+    return _trackWrite('finalizeCallRecording', () async {
+      await (update(
+        callRecordings,
+      )..where((table) => table.id.equals(id))).write(
+        CallRecordingsCompanion(
+          status: Value(status.storageKey),
+          endedAt: Value(endedAt),
+          durationMs: Value(duration.inMilliseconds.clamp(0, 1 << 31).toInt()),
+          fileSizeBytes: Value(
+            fileSizeBytes.clamp(0, 0x7fffffffffffffff).toInt(),
+          ),
+          relativePath: relativePath == null
+              ? const Value.absent()
+              : Value(relativePath),
+          failureReason: Value(failureReason),
+        ),
+      );
+      await (update(callRecordingLinks)..where(
+            (table) => table.recordingId.equals(id) & table.leftAt.isNull(),
+          ))
+          .write(CallRecordingLinksCompanion(leftAt: Value(endedAt)));
+    });
+  }
+
+  Stream<List<CallRecording>> watchRecordingsForHistory(int historyEntryId) {
+    final query =
+        select(callRecordings).join([
+            innerJoin(
+              callRecordingLinks,
+              callRecordingLinks.recordingId.equalsExp(callRecordings.id),
+            ),
+          ])
+          ..where(callRecordingLinks.historyEntryId.equals(historyEntryId))
+          ..orderBy([OrderingTerm.asc(callRecordings.startedAt)]);
+    return query.watch().map(
+      (rows) => {
+        for (final row in rows)
+          row.readTable(callRecordings).id: row.readTable(callRecordings),
+      }.values.toList(),
+    );
+  }
+
+  /// 一次性监听所有“已有可播放录音”的通话记录 ID。
+  ///
+  /// 列表页用一条响应式查询生成 Set，避免每一行单独查询录音。
+  /// 正在录制、失败或只有 WAV 头的文件不显示“有录音”标识。
+  Stream<Set<int>> watchHistoryIdsWithAvailableRecordings() {
+    final historyId = callRecordingLinks.historyEntryId;
+    final query =
+        selectOnly(callRecordingLinks, distinct: true).join([
+            innerJoin(
+              callRecordings,
+              callRecordings.id.equalsExp(callRecordingLinks.recordingId),
+            ),
+          ])
+          ..addColumns([historyId])
+          ..where(
+            historyId.isNotNull() &
+                callRecordings.status.isIn([
+                  CallRecordingStatus.completed.storageKey,
+                  CallRecordingStatus.interrupted.storageKey,
+                ]) &
+                callRecordings.fileSizeBytes.isBiggerThanValue(44),
+          );
+    return query
+        .map((row) => row.read(historyId))
+        .watch()
+        .map((ids) => ids.whereType<int>().toSet());
+  }
+
+  Future<List<CallRecording>> listRecordingsForHistory(int historyEntryId) {
+    final query =
+        select(callRecordings).join([
+            innerJoin(
+              callRecordingLinks,
+              callRecordingLinks.recordingId.equalsExp(callRecordings.id),
+            ),
+          ])
+          ..where(callRecordingLinks.historyEntryId.equals(historyEntryId))
+          ..orderBy([OrderingTerm.asc(callRecordings.startedAt)]);
+    return query.get().then(
+      (rows) => {
+        for (final row in rows)
+          row.readTable(callRecordings).id: row.readTable(callRecordings),
+      }.values.toList(),
+    );
+  }
+
+  Future<List<CallRecordingLink>> listRecordingParticipants(int recordingId) {
+    return (select(callRecordingLinks)
+          ..where((table) => table.recordingId.equals(recordingId))
+          ..orderBy([(table) => OrderingTerm.asc(table.joinedAt)]))
+        .get();
+  }
+
+  /// 从一条历史记录解除录音关联。只有它是最后一个历史关联时才返回录音，
+  /// 调用方据此删除物理文件，避免删除会议中某一成员记录时误删共享录音。
+  Future<List<CallRecording>> unlinkRecordingsFromHistory(int historyEntryId) {
+    return _trackWrite('unlinkRecordingsFromHistory', () async {
+      final linked = await listRecordingsForHistory(historyEntryId);
+      await (update(
+        callRecordingLinks,
+      )..where((table) => table.historyEntryId.equals(historyEntryId))).write(
+        const CallRecordingLinksCompanion(historyEntryId: Value(null)),
+      );
+      final orphaned = <CallRecording>[];
+      for (final recording in linked) {
+        final remaining =
+            await (selectOnly(callRecordingLinks)
+                  ..addColumns([callRecordingLinks.recordingId.count()])
+                  ..where(
+                    callRecordingLinks.recordingId.equals(recording.id) &
+                        callRecordingLinks.historyEntryId.isNotNull(),
+                  ))
+                .map(
+                  (row) =>
+                      row.read(callRecordingLinks.recordingId.count()) ?? 0,
+                )
+                .getSingle();
+        if (remaining == 0) orphaned.add(recording);
+      }
+      return orphaned;
+    });
+  }
+
+  Future<List<CallRecording>> listAllRecordings() {
+    return (select(
+      callRecordings,
+    )..orderBy([(table) => OrderingTerm.desc(table.startedAt)])).get();
+  }
+
+  Future<List<CallRecording>> listUnfinishedRecordings() {
+    return (select(callRecordings)..where(
+          (table) =>
+              table.status.equals(CallRecordingStatus.recording.storageKey),
+        ))
+        .get();
+  }
+
+  Future<void> deleteRecording(int id) {
+    return _trackWrite(
+      'deleteRecording',
+      () => (delete(
+        callRecordings,
+      )..where((table) => table.id.equals(id))).go().then((_) {}),
     );
   }
 

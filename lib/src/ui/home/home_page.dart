@@ -126,6 +126,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> {
 
   // 当前筛选条件对应的首屏历史记录流及其缓存键。
   Stream<List<CallHistoryEntry>>? _historyEntriesStream;
+  Stream<Set<int>>? _historyRecordingIdsStream;
   String _historyStreamKeyword = '';
   _HistoryCallFilter _historyStreamCallFilter = _HistoryCallFilter.all;
   _HistoryDateFilter _historyStreamDateFilter = _HistoryDateFilter.all;

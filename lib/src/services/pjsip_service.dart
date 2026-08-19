@@ -11,12 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart'
     show MethodChannel, MissingPluginException, PlatformException, rootBundle;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../app_identity.dart';
 import '../generated/pjsip_bindings.g.dart';
 import '../localization/audio_settings_localizer.dart';
 import '../localization/app_runtime_localizer.dart';
 import '../localization/call_history_localizer.dart';
 import 'call_history_database.dart';
+import 'call_recording_storage.dart';
 import 'contact_service.dart';
 import 'diagnostic_log_exporter.dart';
 import 'native_bridge/audio_device_change_controller.dart';
@@ -44,6 +46,8 @@ part 'pjsip_parts/pjsip_callbacks.dart';
 part 'pjsip_parts/pjsip_engine.dart';
 
 part 'pjsip_parts/pjsip_calls.dart';
+
+part 'pjsip_parts/pjsip_recordings.dart';
 
 part 'pjsip_parts/pjsip_audio_devices.dart';
 
@@ -83,6 +87,7 @@ class PjsipService extends Notifier<PjsipUIState> {
   final _PjsipCallSnapshotRuntime _callSnapshots = _PjsipCallSnapshotRuntime();
   final _PjsipMediaSecurityRuntime _mediaSecurity =
       _PjsipMediaSecurityRuntime();
+  final _PjsipRecordingRuntime _recording = _PjsipRecordingRuntime();
   final Set<int> _mediaConnectedCalls = <int>{};
   final Set<int> _locallyEndedCallIds = <int>{};
   // 同一路通话只向 PJSIP 提交一次挂断请求，避免按钮连点或延迟任务重复挂断。
@@ -106,6 +111,12 @@ class PjsipService extends Notifier<PjsipUIState> {
   final Map<int, String> _sharedConferenceNotes = <int, String>{};
   final Map<SipTransport, int> _sipTransportIds = <SipTransport, int>{};
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  SharedPreferencesAsync? _localPreferencesInstance;
+
+  // 延迟到首次读写时创建，避免没有加载平台插件的单元测试/预览
+  // 仅因构造 PjsipService 就失败。
+  SharedPreferencesAsync get _localPreferences =>
+      _localPreferencesInstance ??= SharedPreferencesAsync();
 
   // 拆分文件通过这组私有访问器读写 Notifier 状态。这样既不把 state 暴露给
   // 业务层，也不会让 extension 直接访问 Riverpod 的 protected 成员。
@@ -229,6 +240,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     ref.onDispose(_cleanup);
     // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
     scheduleMicrotask(_loadAudioPreferences);
+    scheduleMicrotask(_recoverUnfinishedCallRecordings);
     scheduleMicrotask(_startConnectivityMonitoring);
     scheduleMicrotask(_startAppLifecycleMonitoring);
     _scheduleStartupWarmup();
@@ -351,6 +363,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       return;
     }
     final stopWatch = Stopwatch()..start();
+    _recording.stoppingAll = true;
+    _stopAllCallRecordings(CallRecordingStatus.interrupted);
+    _stopCallRecordingPlayback(updateUi: false);
     _stopCallTimer();
     _stopMicrophoneTestRecorder();
     _stopSpeakerTestPlayer();
@@ -421,6 +436,8 @@ class PjsipService extends Notifier<PjsipUIState> {
       microphoneMutedCallIds: const {},
       isSpeakerMuted: false,
       remoteMutedCallIds: const {},
+      recordingCallIds: const {},
+      playingRecordingId: null,
       microphoneLevel: 0,
       speakerLevel: 0,
       isMicrophoneTesting: false,
@@ -511,6 +528,9 @@ class PjsipService extends Notifier<PjsipUIState> {
     _logFlushTimer = null;
     _pendingLogs.clear();
     _stopCallTimer();
+    _recording.stoppingAll = true;
+    _stopAllCallRecordings(CallRecordingStatus.interrupted);
+    _stopCallRecordingPlayback(updateUi: false);
     _stopMicrophoneTestRecorder();
     _stopSpeakerTestPlayer();
     _stopIncomingRingtone();

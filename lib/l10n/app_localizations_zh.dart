@@ -844,6 +844,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyHasNoteTooltip => '有备注，点击记录查看';
 
   @override
+  String get historyHasRecordingTooltip => '有通话录音，点击记录查看';
+
+  @override
   String get historyLoadingMore => '正在加载更多';
 
   @override
@@ -1968,6 +1971,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get callSettingsAutoHoldDescription => '接听、外呼或恢复通话时，自动保持其他通话';
 
   @override
+  String get callSettingsRecordingSection => '本地录音';
+
+  @override
+  String get callSettingsLocalRecording => '自动录制已接通通话';
+
+  @override
+  String get callSettingsLocalRecordingDescription =>
+      '录制双方通话音频，文件仅保存在本机。请遵守当地法律并在需要时取得通话参与者同意；关闭后会结束当前录音';
+
+  @override
   String get callSettingsShortcuts => '快捷操作';
 
   @override
@@ -1981,6 +1994,68 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get callSettingsActive => '进行中';
+
+  @override
+  String get activeCallRecording => '录音中';
+
+  @override
+  String get historyRecordingTitle => '通话录音';
+
+  @override
+  String historyRecordingSegment(int index) {
+    return '录音 $index';
+  }
+
+  @override
+  String get historyConferenceRecording => '会议录音';
+
+  @override
+  String get historyRecordingCompleted => '已完成';
+
+  @override
+  String get historyRecordingInterrupted => '异常中断';
+
+  @override
+  String get historyRecordingFailed => '录制失败';
+
+  @override
+  String get historyRecordingPlay => '播放录音';
+
+  @override
+  String get historyRecordingStop => '停止播放';
+
+  @override
+  String get historyRecordingExport => '导出录音';
+
+  @override
+  String get historyRecordingReveal => '打开文件位置';
+
+  @override
+  String get historyRecordingDelete => '删除录音';
+
+  @override
+  String get historyRecordingDeleteTitle => '删除通话录音？';
+
+  @override
+  String get historyRecordingDeleteBody => '录音文件和本地记录将永久删除，此操作无法撤销。';
+
+  @override
+  String get historyRecordingDeleteConfirm => '删除录音';
+
+  @override
+  String get historyRecordingPlaybackDuringCall => '通话期间不能播放历史录音';
+
+  @override
+  String get historyRecordingFileMissing => '录音文件不存在，可能已被移动或删除';
+
+  @override
+  String get historyRecordingPlaybackFailed => '无法播放此录音';
+
+  @override
+  String get historyRecordingRevealFailed => '无法打开录音文件位置';
+
+  @override
+  String get historyRecordingDeleteFailed => '删除录音失败';
 
   @override
   String accountSettingsSummary(int total, int online) {
@@ -3379,6 +3454,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get historyHasNoteTooltip => '已有備註，按一下記錄查看';
 
   @override
+  String get historyHasRecordingTooltip => '已有通話錄音，按一下記錄查看';
+
+  @override
   String get historyLoadingMore => '正在載入更多';
 
   @override
@@ -4503,6 +4581,16 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get callSettingsAutoHoldDescription => '接聽、外撥或恢復通話時，自動保留其他通話';
 
   @override
+  String get callSettingsRecordingSection => '本機錄音';
+
+  @override
+  String get callSettingsLocalRecording => '自動錄製已接通通話';
+
+  @override
+  String get callSettingsLocalRecordingDescription =>
+      '錄製雙方通話音訊，檔案僅保存在本機。請遵守當地法律並在需要時取得通話參與者同意；關閉後會結束目前錄音';
+
+  @override
   String get callSettingsShortcuts => '快捷設定';
 
   @override
@@ -4516,6 +4604,68 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get callSettingsActive => '進行中';
+
+  @override
+  String get activeCallRecording => '錄音中';
+
+  @override
+  String get historyRecordingTitle => '通話錄音';
+
+  @override
+  String historyRecordingSegment(int index) {
+    return '錄音 $index';
+  }
+
+  @override
+  String get historyConferenceRecording => '會議錄音';
+
+  @override
+  String get historyRecordingCompleted => '已完成';
+
+  @override
+  String get historyRecordingInterrupted => '異常中斷';
+
+  @override
+  String get historyRecordingFailed => '錄製失敗';
+
+  @override
+  String get historyRecordingPlay => '播放錄音';
+
+  @override
+  String get historyRecordingStop => '停止播放';
+
+  @override
+  String get historyRecordingExport => '匯出錄音';
+
+  @override
+  String get historyRecordingReveal => '開啟檔案位置';
+
+  @override
+  String get historyRecordingDelete => '刪除錄音';
+
+  @override
+  String get historyRecordingDeleteTitle => '刪除通話錄音？';
+
+  @override
+  String get historyRecordingDeleteBody => '錄音檔案和本機記錄將永久刪除，此操作無法復原。';
+
+  @override
+  String get historyRecordingDeleteConfirm => '刪除錄音';
+
+  @override
+  String get historyRecordingPlaybackDuringCall => '通話期間不能播放歷史錄音';
+
+  @override
+  String get historyRecordingFileMissing => '錄音檔案不存在，可能已被移動或刪除';
+
+  @override
+  String get historyRecordingPlaybackFailed => '無法播放此錄音';
+
+  @override
+  String get historyRecordingRevealFailed => '無法開啟錄音檔案位置';
+
+  @override
+  String get historyRecordingDeleteFailed => '刪除錄音失敗';
 
   @override
   String accountSettingsSummary(int total, int online) {

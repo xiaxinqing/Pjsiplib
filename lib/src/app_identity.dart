@@ -9,6 +9,8 @@
 /// MacOS打包
 /// Product -> Archive ->等待打包完成 -> Window -> Organizer -> Distribute App ->等待 TestFlight 完成 -> 提交
 /// 导出.app 文件，->   tool/package_xcode_macos_dmg.sh APP路径  ->  安装器生成
+///   /Users/galaxybook/Downloads/VPhone.app
+///
 ///
 /// 多语言生成flutter gen-l10n
 ///

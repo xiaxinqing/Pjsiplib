@@ -661,6 +661,10 @@ extension PjsipCallOperations on PjsipService {
       _putCall(target.copyWith(isOnHold: false));
     }
 
+    await _promoteCallRecordingsToConference(
+      members,
+      preferredAnchorCallId: activeId,
+    );
     _rebuildConferenceBridge('合并后立即重建');
     _scheduleConferenceBridgeRebuilds('合并后等待媒体协商');
     _syncSharedConferenceNoteAcross(members);
@@ -710,6 +714,7 @@ extension PjsipCallOperations on PjsipService {
       activeCallId: keepCallId,
     );
     _connectCallToSound(keepCallId);
+    await _endConferenceRecordingForSplit(members, keepCallId);
     _addLog('👥 三方通话已拆分，继续通话: call=$keepCallId');
   }
 
@@ -974,6 +979,7 @@ extension PjsipCallOperations on PjsipService {
     }
     _mediaConnectedCalls.addAll(slots.keys);
     _applyAudioVolumeState();
+    _syncAllCallRecordingRoutes();
     if (reason.isNotEmpty) {
       _addLog(
         '👥 会议桥已重建: $reason, '
@@ -1027,6 +1033,7 @@ extension PjsipCallOperations on PjsipService {
     _hangupRequestedCallIds.remove(callId);
     final endedCall = _uiState.calls[callId];
     if (endedCall != null) {
+      _detachCallFromRecording(callId);
       final wasEndedLocally = _locallyEndedCallIds.contains(endedCall.callId);
       _notifyUnansweredCallEnded(
         endedCall,
@@ -1086,6 +1093,7 @@ extension PjsipCallOperations on PjsipService {
           : null,
       activeCallId: activeCallId,
     );
+    _syncAllCallRecordingRoutes();
     if (remainingConferenceCallId != null && !wasConferencePaused) {
       _connectCallToSound(remainingConferenceCallId);
       _addLog('👥 一名会议成员已离开，继续单路通话: call=$remainingConferenceCallId');
@@ -1335,37 +1343,38 @@ extension PjsipCallOperations on PjsipService {
       transferTarget: transferTarget,
     );
 
-    unawaited(
-      _callHistoryDatabase
-          .recordCall(
-            callId: call.callId,
-            direction: direction,
-            status: status,
-            remoteUri: call.remoteUri,
-            phoneNumber: phoneNumber,
-            startedAt: call.startedAt,
-            ringingAt: ringingAt,
-            answeredAt: call.connectedAt,
-            mediaConnectedAt: call.mediaConnectedAt,
-            endedAt: endedAt,
-            displayName: contact?.name,
-            contactId: contact?.id,
-            accountId: call.accountId,
-            accountLabel: account?.lineLabel,
-            holdCount: call.holdCount,
-            holdDuration: call.effectiveHoldDuration(endedAt),
-            sipStatusCode: sipStatusCode,
-            hangupReason: hangupReason?.trim().isEmpty == true
-                ? null
-                : hangupReason == _blindTransferLocalReleaseReason
-                ? '盲转'
-                : hangupReason,
-            note: note,
-          )
-          .catchError((Object error, StackTrace stackTrace) {
-            _addLog('⚠️ 通话记录保存失败: $error');
-          }),
-    );
+    unawaited(() async {
+      try {
+        await _callHistoryDatabase.recordCall(
+          callId: call.callId,
+          direction: direction,
+          status: status,
+          remoteUri: call.remoteUri,
+          phoneNumber: phoneNumber,
+          startedAt: call.startedAt,
+          ringingAt: ringingAt,
+          answeredAt: call.connectedAt,
+          mediaConnectedAt: call.mediaConnectedAt,
+          endedAt: endedAt,
+          displayName: contact?.name,
+          contactId: contact?.id,
+          accountId: call.accountId,
+          accountLabel: account?.lineLabel,
+          holdCount: call.holdCount,
+          holdDuration: call.effectiveHoldDuration(endedAt),
+          sipStatusCode: sipStatusCode,
+          hangupReason: hangupReason?.trim().isEmpty == true
+              ? null
+              : hangupReason == _blindTransferLocalReleaseReason
+              ? '盲转'
+              : hangupReason,
+          note: note,
+          recordingSessionKey: _callRecordingSessionKey(call),
+        );
+      } catch (error) {
+        _addLog('⚠️ 通话记录保存失败: $error');
+      }
+    }());
   }
 
   String? _composeCallHistoryNote({

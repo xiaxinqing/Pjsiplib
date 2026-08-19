@@ -869,6 +869,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyHasNoteTooltip => 'Has notes. Select to view';
 
   @override
+  String get historyHasRecordingTooltip =>
+      'Has a call recording. Select to view';
+
+  @override
   String get historyLoadingMore => 'Loading more';
 
   @override
@@ -2094,6 +2098,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Hold other calls when answering, calling, or resuming';
 
   @override
+  String get callSettingsRecordingSection => 'Local recording';
+
+  @override
+  String get callSettingsLocalRecording =>
+      'Automatically record connected calls';
+
+  @override
+  String get callSettingsLocalRecordingDescription =>
+      'Record both sides and store files only on this device. Follow local laws and obtain participants\' consent where required; turning this off stops current recordings';
+
+  @override
   String get callSettingsShortcuts => 'Quick settings';
 
   @override
@@ -2107,6 +2122,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get callSettingsActive => 'Active';
+
+  @override
+  String get activeCallRecording => 'Recording';
+
+  @override
+  String get historyRecordingTitle => 'Call recordings';
+
+  @override
+  String historyRecordingSegment(int index) {
+    return 'Recording $index';
+  }
+
+  @override
+  String get historyConferenceRecording => 'Conference recording';
+
+  @override
+  String get historyRecordingCompleted => 'Completed';
+
+  @override
+  String get historyRecordingInterrupted => 'Interrupted';
+
+  @override
+  String get historyRecordingFailed => 'Failed';
+
+  @override
+  String get historyRecordingPlay => 'Play recording';
+
+  @override
+  String get historyRecordingStop => 'Stop playback';
+
+  @override
+  String get historyRecordingExport => 'Export recording';
+
+  @override
+  String get historyRecordingReveal => 'Show in folder';
+
+  @override
+  String get historyRecordingDelete => 'Delete recording';
+
+  @override
+  String get historyRecordingDeleteTitle => 'Delete call recording?';
+
+  @override
+  String get historyRecordingDeleteBody =>
+      'The recording file and its local record will be permanently deleted. This cannot be undone.';
+
+  @override
+  String get historyRecordingDeleteConfirm => 'Delete recording';
+
+  @override
+  String get historyRecordingPlaybackDuringCall =>
+      'Recordings cannot be played during a call';
+
+  @override
+  String get historyRecordingFileMissing =>
+      'The recording file is missing or has been moved';
+
+  @override
+  String get historyRecordingPlaybackFailed =>
+      'This recording could not be played';
+
+  @override
+  String get historyRecordingRevealFailed =>
+      'The recording location could not be opened';
+
+  @override
+  String get historyRecordingDeleteFailed =>
+      'The recording could not be deleted';
 
   @override
   String accountSettingsSummary(int total, int online) {

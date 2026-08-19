@@ -103,6 +103,10 @@ extension _HistoryDetail on _MyHomePageState {
               const SizedBox(height: 12),
             ] else
               const SizedBox(height: 2),
+            if (!item.isLive && item.databaseId != null) ...[
+              _buildHistoryRecordings(item),
+              const SizedBox(height: 12),
+            ],
             _buildHistoryNoteArea(item),
           ],
         ),

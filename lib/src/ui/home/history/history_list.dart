@@ -254,39 +254,59 @@ extension _HistoryList on _MyHomePageState {
               const SizedBox(width: 12),
               SizedBox(
                 width: _historyPrimaryWidth,
-                child: Column(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            primary,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  primary,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ),
+                              if (item.isLive) ...[
+                                const SizedBox(width: 4),
+                                _buildLiveHistoryBadge(),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item.phoneNumber,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: _textSecondary,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
                           ),
-                        ),
-                        if (item.isLive) ...[
-                          const SizedBox(width: 8),
-                          _buildLiveHistoryBadge(),
                         ],
-                        if (note != null) ...[
-                          const SizedBox(width: 8),
-                          _buildHistoryNoteBadge(),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.phoneNumber,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _textSecondary,
-                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
+                    if (note != null || item.hasRecording) ...[
+                      const SizedBox(width: 4),
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (note != null) _buildHistoryNoteBadge(),
+                          if (note != null && item.hasRecording)
+                            const SizedBox(height: 2),
+                          if (item.hasRecording) _buildHistoryRecordingBadge(),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -405,7 +425,7 @@ extension _HistoryList on _MyHomePageState {
       message: context.l10n.historyHasNoteTooltip,
       waitDuration: const Duration(milliseconds: 350),
       child: SizedBox.square(
-        dimension: 22,
+        dimension: 18,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: _brandGreen.withValues(alpha: 0.08),
@@ -413,6 +433,24 @@ extension _HistoryList on _MyHomePageState {
             border: Border.all(color: _brandGreen.withValues(alpha: 0.16)),
           ),
           child: const Icon(AppIcons.note, size: _iconXs, color: _brandGreen),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryRecordingBadge() {
+    return Tooltip(
+      message: context.l10n.historyHasRecordingTooltip,
+      waitDuration: const Duration(milliseconds: 350),
+      child: SizedBox.square(
+        dimension: 18,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: _brandGreen.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(_radiusXs),
+            border: Border.all(color: _brandGreen.withValues(alpha: 0.16)),
+          ),
+          child: const Icon(AppIcons.audio, size: _iconXs, color: _brandGreen),
         ),
       ),
     );

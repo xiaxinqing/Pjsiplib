@@ -94,7 +94,7 @@ extension _HomeCallStage on _MyHomePageState {
                       if (showConferenceStage)
                         _buildConferenceStatePanel(conferenceCalls, uiState)
                       else
-                        _buildCallStatePanel(primary, statusColor),
+                        _buildCallStatePanel(primary, statusColor, uiState),
                       if (uiState.hasAudioDeviceIssue) ...[
                         SizedBox(height: compact ? 12 : 14),
                         _buildCallAudioIssueBanner(uiState),
@@ -391,6 +391,16 @@ extension _HomeCallStage on _MyHomePageState {
               label: context.l10n.activeCallMemberCount(calls.length),
               color: paused ? Colors.orange.shade700 : _brandGreen,
             ),
+            if (calls.any(
+              (call) => uiState.recordingCallIds.contains(call.callId),
+            )) ...[
+              const SizedBox(width: 8),
+              _buildCallMetaStrip(
+                icon: AppIcons.audio,
+                label: context.l10n.activeCallRecording,
+                color: _dangerRed,
+              ),
+            ],
           ],
         ),
       ),

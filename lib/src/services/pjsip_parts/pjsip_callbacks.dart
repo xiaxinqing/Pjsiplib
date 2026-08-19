@@ -904,6 +904,10 @@ extension _PjsipNativeCallbacks on PjsipService {
               ),
             );
             if (isConfirmed) {
+              // PJSIP 可能先回调媒体 ACTIVE，稍后才回调 CONFIRMED。
+              // 媒体回调中的首次尝试会因通话尚未确认而跳过，
+              // 因此在状态确认后再幂等重试。startingCallIds 会防止重复创建。
+              unawaited(_ensureCallRecordingStarted(callId));
               _scheduleBackgroundConfirmedHoldIfNeeded(callId);
             }
           }
@@ -1001,6 +1005,11 @@ extension _PjsipNativeCallbacks on PjsipService {
                   : _unset,
             ),
           );
+          if (mediaStatusInt ==
+              pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value) {
+            unawaited(_ensureCallRecordingStarted(callId));
+          }
+          _syncCallRecordingRoutesFor(callId);
           if (mediaStatusInt ==
               pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value) {
             _scheduleBackgroundConfirmedHoldIfNeeded(callId);

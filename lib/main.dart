@@ -77,6 +77,7 @@ part 'src/ui/home/home_history.dart';
 part 'src/ui/home/history/history_toolbar.dart';
 part 'src/ui/home/history/history_list.dart';
 part 'src/ui/home/history/history_detail.dart';
+part 'src/ui/home/history/history_recordings.dart';
 part 'src/ui/home/history/history_actions.dart';
 part 'src/ui/home/history/history_reason_formatter.dart';
 part 'src/ui/home/history/history_models.dart';

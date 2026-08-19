@@ -2012,6 +2012,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _audio.ringbackPlayerId != null ||
       _audio.hangupSoundStarting ||
       _audio.hangupSoundPlayerId != null ||
+      _recording.playerId != null ||
       _audio.dialpadTonegenConnected;
 
   bool _shouldRouteCallToLocalSpeaker(int callId) =>
@@ -2629,6 +2630,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   void _applyAudioMuteState() {
     if (_uiState.isConferenceActive) {
       _rebuildConferenceBridge('重新应用音频状态');
+      _syncAllCallRecordingRoutes();
       return;
     }
     for (final entry in _uiState.calls.entries) {
@@ -2653,6 +2655,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       }
     }
     _applyAudioVolumeState();
+    _syncAllCallRecordingRoutes();
   }
 
   void _applyAudioVolumeState() {

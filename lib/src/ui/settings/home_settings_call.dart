@@ -34,6 +34,26 @@ extension _HomeSettingsCallTab on _MyHomePageState {
         ),
         const SizedBox(height: 18),
         _buildSettingsSection(
+          title: l10n.callSettingsRecordingSection,
+          icon: AppIcons.audio,
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              value: uiState.localCallRecordingEnabled,
+              onChanged: service.setLocalCallRecordingEnabled,
+              secondary: Icon(
+                AppIcons.audio,
+                color: uiState.localCallRecordingEnabled
+                    ? _dangerRed
+                    : _textSecondary,
+              ),
+              title: Text(l10n.callSettingsLocalRecording),
+              subtitle: Text(l10n.callSettingsLocalRecordingDescription),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        _buildSettingsSection(
           title: l10n.callSettingsShortcuts,
           icon: AppIcons.bolt,
           children: [

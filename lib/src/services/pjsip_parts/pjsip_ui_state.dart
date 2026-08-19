@@ -43,6 +43,15 @@ class PjsipUIState {
   /// 远端之间不互连，因此客户之间不会直接听见对方。
   final bool autoHoldOtherCalls;
 
+  /// 是否自动把已接通通话录制为仅保存在本机的 WAV 文件。
+  final bool localCallRecordingEnabled;
+
+  /// 当前已经成功创建并连接录音器的 callId。
+  final Set<int> recordingCallIds;
+
+  /// 历史详情当前由 PJSIP 播放的录音数据库 ID。
+  final int? playingRecordingId;
+
   /// 系统层网络是否可用。
   final bool isNetworkAvailable;
 
@@ -172,6 +181,9 @@ class PjsipUIState {
     this.isConferencePaused = false,
     this.conferenceInterruptionCallId,
     this.autoHoldOtherCalls = false,
+    this.localCallRecordingEnabled = false,
+    this.recordingCallIds = const {},
+    this.playingRecordingId,
     this.isNetworkAvailable = true,
     this.networkState = PjsipNetworkState.idle,
     this.seatEnvironmentState = SeatEnvironmentState.checking,
@@ -218,6 +230,9 @@ class PjsipUIState {
     bool? isConferencePaused,
     Object? conferenceInterruptionCallId = _unset,
     bool? autoHoldOtherCalls,
+    bool? localCallRecordingEnabled,
+    Set<int>? recordingCallIds,
+    Object? playingRecordingId = _unset,
     bool? isNetworkAvailable,
     PjsipNetworkState? networkState,
     SeatEnvironmentState? seatEnvironmentState,
@@ -268,6 +283,12 @@ class PjsipUIState {
           ? this.conferenceInterruptionCallId
           : conferenceInterruptionCallId as int?,
       autoHoldOtherCalls: autoHoldOtherCalls ?? this.autoHoldOtherCalls,
+      localCallRecordingEnabled:
+          localCallRecordingEnabled ?? this.localCallRecordingEnabled,
+      recordingCallIds: recordingCallIds ?? this.recordingCallIds,
+      playingRecordingId: identical(playingRecordingId, _unset)
+          ? this.playingRecordingId
+          : playingRecordingId as int?,
       isNetworkAvailable: isNetworkAvailable ?? this.isNetworkAvailable,
       networkState: networkState ?? this.networkState,
       seatEnvironmentState: seatEnvironmentState ?? this.seatEnvironmentState,

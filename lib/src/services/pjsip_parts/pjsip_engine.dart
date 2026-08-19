@@ -4,6 +4,7 @@ part of '../pjsip_service.dart';
 extension PjsipEngineOperations on PjsipService {
   Future<void> init() async {
     if (_uiState.isInitialized) return;
+    _recording.stoppingAll = false;
     final status = _bindings.pjsua_create();
     if (status != 0) {
       _addLog('❌ 创建失败: $status');

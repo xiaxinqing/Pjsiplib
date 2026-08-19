@@ -97,6 +97,7 @@ class _HistoryItem {
     this.sipStatusCode,
     this.hangupReason,
     this.note,
+    this.hasRecording = false,
     this.missedReadAt,
     this.timeToRingingMs,
     this.ringingToAnswerMs,
@@ -128,6 +129,7 @@ class _HistoryItem {
   final int? sipStatusCode;
   final String? hangupReason;
   final String? note;
+  final bool hasRecording;
   final DateTime? missedReadAt;
   final int? timeToRingingMs;
   final int? ringingToAnswerMs;

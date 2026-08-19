@@ -105,6 +105,9 @@ extension _HistoryActions on _MyHomePageState {
     if (_selectedHistoryItemKey == 'history:$id') {
       _selectedHistoryItemKey = null;
     }
+    await ref
+        .read(pjsipServiceProvider.notifier)
+        .deleteCallRecordingsForHistory(id);
     await ref.read(callHistoryDatabaseProvider).deleteEntry(id);
     if (!mounted) return;
     _update(() {
@@ -346,6 +349,9 @@ extension _HistoryActions on _MyHomePageState {
               Navigator.of(context).pop();
               _update(_resetHistoryPagination);
               try {
+                await ref
+                    .read(pjsipServiceProvider.notifier)
+                    .deleteAllArchivedCallRecordings();
                 await ref.read(callHistoryDatabaseProvider).clearAll();
               } catch (error, stackTrace) {
                 debugPrint('Clear call history failed: $error');

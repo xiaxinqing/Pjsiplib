@@ -52,6 +52,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
 
     // 来电切页前清一下可能残留的拨号按键音路径，避免本地提示音抢占声卡。
     ref.read(pjsipServiceProvider.notifier).releaseDialpadKeySoundSoon();
+    _hideInCallDialpadOverlay();
     _update(() {
       _section = _WorkspaceSection.calls;
       _focusedCallDetailId = callId;
@@ -100,12 +101,20 @@ extension _HomeCallCoordinator on _MyHomePageState {
     _setInCallDialpadVisible(false);
   }
 
+  /// OverlayPortalController.hide 在控制器已脱离 Portal 且已经隐藏时不是幂等的，
+  /// 会触发 `_zOrderIndex != null` 断言。所有生命周期关闭路径统一走这里。
+  void _hideInCallDialpadOverlay() {
+    if (_inCallDialpadOverlayController.isShowing) {
+      _inCallDialpadOverlayController.hide();
+    }
+  }
+
   void _setInCallDialpadVisible(bool visible) {
     if (!mounted) return;
     if (visible) {
       _inCallDialpadOverlayController.show();
     } else {
-      _inCallDialpadOverlayController.hide();
+      _hideInCallDialpadOverlay();
     }
     if (_showInCallDialpad == visible) return;
     _update(() => _showInCallDialpad = visible);
@@ -153,7 +162,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
   /// 切换主舞台当前查看的通话，并清理旧通话的 DTMF 临时状态。
   void _focusCallDetail(int callId) {
     if (_focusedCallDetailId == callId) return;
-    _inCallDialpadOverlayController.hide();
+    _hideInCallDialpadOverlay();
     _update(() {
       _focusedCallDetailId = callId;
       _showInCallDialpad = false;
@@ -167,7 +176,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
   /// 清空主舞台通话焦点，通常用于当前聚焦通话结束后回落到空态。
   void _clearFocusedCallDetail() {
     if (_focusedCallDetailId == null) return;
-    _inCallDialpadOverlayController.hide();
+    _hideInCallDialpadOverlay();
     _update(() {
       _focusedCallDetailId = null;
       _showInCallDialpad = false;
@@ -323,7 +332,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
     final focusedId = _focusedCallDetailId;
     if (state.calls.isEmpty && (_showInCallDialpad || _dtmfPadCallId != null)) {
       if (!mounted) return;
-      _inCallDialpadOverlayController.hide();
+      _hideInCallDialpadOverlay();
       _update(() {
         _showInCallDialpad = false;
         _dtmfPadCallId = null;
@@ -335,7 +344,7 @@ extension _HomeCallCoordinator on _MyHomePageState {
     }
     if (focusedId == null || state.calls.containsKey(focusedId)) return;
     if (!mounted) return;
-    _inCallDialpadOverlayController.hide();
+    _hideInCallDialpadOverlay();
     _update(() {
       _focusedCallDetailId = null;
       _showInCallDialpad = false;

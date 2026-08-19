@@ -1,11 +1,14 @@
 part of '../pjsip_service.dart';
 
 const String _seatEnvironmentStorageKey = 'veserve_seat_environment_v1';
-const String _audioPreferencesStorageKey = 'veserve_audio_preferences_v1';
+// 音频、通话行为和录音开关都是普通本机偏好，不包含密码或令牌。
+// 使用 SharedPreferences/UserDefaults，避免 macOS Keychain 权限异常影响开关持久化。
+const String _audioPreferencesStorageKey = 'veserve_audio_preferences_v2';
 
 class _PersistedAudioPreferences {
   const _PersistedAudioPreferences({
     required this.autoHoldOtherCalls,
+    required this.localCallRecordingEnabled,
     required this.allowInCallAudioDeviceSwitch,
     required this.incomingRingtoneEnabled,
     required this.outgoingRingbackEnabled,
@@ -18,6 +21,7 @@ class _PersistedAudioPreferences {
   // 通话行为和音频偏好都是本机用户偏好，共用同一份轻量存储，
   // 避免为单个开关增加额外的存储队列和生命周期。
   final bool autoHoldOtherCalls;
+  final bool localCallRecordingEnabled;
   final bool allowInCallAudioDeviceSwitch;
   final bool incomingRingtoneEnabled;
   final bool outgoingRingbackEnabled;
@@ -30,6 +34,7 @@ class _PersistedAudioPreferences {
     return {
       'version': 1,
       'autoHoldOtherCalls': autoHoldOtherCalls,
+      'localCallRecordingEnabled': localCallRecordingEnabled,
       'allowInCallAudioDeviceSwitch': allowInCallAudioDeviceSwitch,
       'incomingRingtoneEnabled': incomingRingtoneEnabled,
       'outgoingRingbackEnabled': outgoingRingbackEnabled,
@@ -50,6 +55,8 @@ class _PersistedAudioPreferences {
 
     return _PersistedAudioPreferences(
       autoHoldOtherCalls: json['autoHoldOtherCalls'] as bool? ?? false,
+      localCallRecordingEnabled:
+          json['localCallRecordingEnabled'] as bool? ?? false,
       allowInCallAudioDeviceSwitch:
           json['allowInCallAudioDeviceSwitch'] as bool? ?? true,
       incomingRingtoneEnabled: json['incomingRingtoneEnabled'] as bool? ?? true,
@@ -241,8 +248,8 @@ class _PersistedSipLine {
 extension PjsipPersistenceOperations on PjsipService {
   Future<void> _loadAudioPreferences() async {
     try {
-      final stored = await _secureStorage.read(
-        key: _audioPreferencesStorageKey,
+      final stored = await _localPreferences.getString(
+        _audioPreferencesStorageKey,
       );
       if (_isDisposed || stored == null || stored.isEmpty) return;
       final decoded = jsonDecode(stored);
@@ -252,6 +259,7 @@ extension PjsipPersistenceOperations on PjsipService {
       );
       _uiState = _uiState.copyWith(
         autoHoldOtherCalls: preferences.autoHoldOtherCalls,
+        localCallRecordingEnabled: preferences.localCallRecordingEnabled,
         allowInCallAudioDeviceSwitch: preferences.allowInCallAudioDeviceSwitch,
         incomingRingtoneEnabled: preferences.incomingRingtoneEnabled,
         outgoingRingbackEnabled: preferences.outgoingRingbackEnabled,
@@ -273,6 +281,7 @@ extension PjsipPersistenceOperations on PjsipService {
     _audio.audioPreferencesDebounceTimer = null;
     final preferences = _PersistedAudioPreferences(
       autoHoldOtherCalls: _uiState.autoHoldOtherCalls,
+      localCallRecordingEnabled: _uiState.localCallRecordingEnabled,
       allowInCallAudioDeviceSwitch: _uiState.allowInCallAudioDeviceSwitch,
       incomingRingtoneEnabled: _uiState.incomingRingtoneEnabled,
       outgoingRingbackEnabled: _uiState.outgoingRingbackEnabled,
@@ -284,10 +293,7 @@ extension PjsipPersistenceOperations on PjsipService {
     final payload = jsonEncode(preferences.toJson());
     final previousWrite = _audio.audioPreferencesWrite ?? Future<void>.value();
     final nextWrite = previousWrite.catchError((_) {}).then((_) {
-      return _secureStorage.write(
-        key: _audioPreferencesStorageKey,
-        value: payload,
-      );
+      return _localPreferences.setString(_audioPreferencesStorageKey, payload);
     });
     _audio.audioPreferencesWrite = nextWrite;
     try {

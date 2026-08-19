@@ -35,6 +35,10 @@ class FakeActiveCallPjsipService extends PjsipService {
       },
     );
   }
+
+  void finishCallForTest() {
+    state = state.copyWith(calls: const {}, activeCallId: null);
+  }
 }
 
 void main() {
@@ -489,6 +493,7 @@ void main() {
       await tester.pump();
       expect(find.text(l10n.callSettingsControls), findsOneWidget);
       expect(find.text(l10n.callSettingsAutoHold), findsOneWidget);
+      expect(find.text(l10n.callSettingsLocalRecording), findsOneWidget);
 
       await tester.tap(
         find.descendant(
@@ -628,6 +633,7 @@ void main() {
     final database = CallHistoryDatabase(NativeDatabase.memory());
     addTearDown(database.close);
     final startedAt = DateTime.now().subtract(const Duration(minutes: 2));
+    const recordingSessionKey = 'history-recording-widget-101';
     await database.recordCall(
       callId: 101,
       direction: CallHistoryDirection.outbound,
@@ -639,6 +645,22 @@ void main() {
       startedAt: startedAt,
       answeredAt: startedAt.add(const Duration(seconds: 2)),
       endedAt: startedAt.add(const Duration(seconds: 32)),
+      recordingSessionKey: recordingSessionKey,
+      note: '已确认需要回访',
+    );
+    final recordingId = await database.beginCallRecording(
+      sessionKey: recordingSessionKey,
+      callId: 101,
+      relativePath: '2026/08/history-recording-widget-101.partial.wav',
+      startedAt: startedAt.add(const Duration(seconds: 2)),
+    );
+    await database.finalizeCallRecording(
+      id: recordingId,
+      status: CallRecordingStatus.completed,
+      endedAt: startedAt.add(const Duration(seconds: 32)),
+      duration: const Duration(seconds: 30),
+      fileSizeBytes: 480044,
+      relativePath: '2026/08/history-recording-widget-101.wav',
     );
     final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
 
@@ -655,9 +677,25 @@ void main() {
     await tester.tap(find.text(l10n.navCallHistory).first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
+    // Drift 首次发送录音查询结果后再构建一帧。
+    await tester.pump();
 
     expect(find.text(l10n.historyColumnDuration), findsNothing);
     expect(find.text(l10n.historyFieldDuration), findsOneWidget);
+    expect(find.text(l10n.historyRecordingTitle), findsOneWidget);
+    expect(find.text(l10n.historyRecordingSegment(1)), findsOneWidget);
+    final noteBadge = find.byTooltip(l10n.historyHasNoteTooltip);
+    final recordingBadge = find.byTooltip(l10n.historyHasRecordingTooltip);
+    expect(noteBadge, findsOneWidget);
+    expect(recordingBadge, findsOneWidget);
+    expect(
+      tester.getTopLeft(recordingBadge).dy,
+      greaterThan(tester.getTopLeft(noteBadge).dy),
+    );
+    expect(
+      tester.getCenter(recordingBadge).dx,
+      closeTo(tester.getCenter(noteBadge).dx, 0.1),
+    );
     expect(tester.takeException(), isNull);
 
     tester.view.physicalSize = const Size(1454, 710);
@@ -718,6 +756,20 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     expect(find.text(l10n.activeCallDtmfTitle), findsNothing);
+
+    // OverlayPortal 已关闭并因切页脱离 widget tree 后，通话结束还会触发一次
+    // 焦点清理。该路径必须保持幂等，不能重复 hide 触发 _zOrderIndex 断言。
+    await tester.tap(find.text(l10n.navContacts).first);
+    await tester.pump();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MyApp)),
+    );
+    final service =
+        container.read(pjsipServiceProvider.notifier)
+            as FakeActiveCallPjsipService;
+    service.finishCallForTest();
+    await tester.pump();
+
     expect(tester.takeException(), isNull);
   });
 

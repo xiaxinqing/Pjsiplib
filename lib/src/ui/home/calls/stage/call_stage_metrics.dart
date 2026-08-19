@@ -12,7 +12,11 @@ extension _CallStageMetrics on _MyHomePageState {
     return uiState.activeCallId == call.callId;
   }
 
-  Widget _buildCallStatePanel(CallInfo call, Color statusColor) {
+  Widget _buildCallStatePanel(
+    CallInfo call,
+    Color statusColor,
+    PjsipUIState uiState,
+  ) {
     final connected = call.isConnected;
     final held = call.isOnHold || call.isRemoteOnHold;
     final pendingLabel = _callOperationLabel(call.callId);
@@ -64,6 +68,12 @@ extension _CallStageMetrics on _MyHomePageState {
                 ],
               ),
             ),
+            if (uiState.recordingCallIds.contains(call.callId))
+              _buildCallMetaStrip(
+                icon: AppIcons.audio,
+                label: context.l10n.activeCallRecording,
+                color: _dangerRed,
+              ),
           ],
         ),
       ),

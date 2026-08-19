@@ -1671,6 +1671,12 @@ abstract class AppLocalizations {
   /// **'有备注，点击记录查看'**
   String get historyHasNoteTooltip;
 
+  /// No description provided for @historyHasRecordingTooltip.
+  ///
+  /// In zh, this message translates to:
+  /// **'有通话录音，点击记录查看'**
+  String get historyHasRecordingTooltip;
+
   /// No description provided for @historyLoadingMore.
   ///
   /// In zh, this message translates to:
@@ -3758,6 +3764,24 @@ abstract class AppLocalizations {
   /// **'接听、外呼或恢复通话时，自动保持其他通话'**
   String get callSettingsAutoHoldDescription;
 
+  /// No description provided for @callSettingsRecordingSection.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地录音'**
+  String get callSettingsRecordingSection;
+
+  /// No description provided for @callSettingsLocalRecording.
+  ///
+  /// In zh, this message translates to:
+  /// **'自动录制已接通通话'**
+  String get callSettingsLocalRecording;
+
+  /// No description provided for @callSettingsLocalRecordingDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'录制双方通话音频，文件仅保存在本机。请遵守当地法律并在需要时取得通话参与者同意；关闭后会结束当前录音'**
+  String get callSettingsLocalRecordingDescription;
+
   /// No description provided for @callSettingsShortcuts.
   ///
   /// In zh, this message translates to:
@@ -3787,6 +3811,126 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'进行中'**
   String get callSettingsActive;
+
+  /// No description provided for @activeCallRecording.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音中'**
+  String get activeCallRecording;
+
+  /// No description provided for @historyRecordingTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话录音'**
+  String get historyRecordingTitle;
+
+  /// No description provided for @historyRecordingSegment.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音 {index}'**
+  String historyRecordingSegment(int index);
+
+  /// No description provided for @historyConferenceRecording.
+  ///
+  /// In zh, this message translates to:
+  /// **'会议录音'**
+  String get historyConferenceRecording;
+
+  /// No description provided for @historyRecordingCompleted.
+  ///
+  /// In zh, this message translates to:
+  /// **'已完成'**
+  String get historyRecordingCompleted;
+
+  /// No description provided for @historyRecordingInterrupted.
+  ///
+  /// In zh, this message translates to:
+  /// **'异常中断'**
+  String get historyRecordingInterrupted;
+
+  /// No description provided for @historyRecordingFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'录制失败'**
+  String get historyRecordingFailed;
+
+  /// No description provided for @historyRecordingPlay.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放录音'**
+  String get historyRecordingPlay;
+
+  /// No description provided for @historyRecordingStop.
+  ///
+  /// In zh, this message translates to:
+  /// **'停止播放'**
+  String get historyRecordingStop;
+
+  /// No description provided for @historyRecordingExport.
+  ///
+  /// In zh, this message translates to:
+  /// **'导出录音'**
+  String get historyRecordingExport;
+
+  /// No description provided for @historyRecordingReveal.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开文件位置'**
+  String get historyRecordingReveal;
+
+  /// No description provided for @historyRecordingDelete.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除录音'**
+  String get historyRecordingDelete;
+
+  /// No description provided for @historyRecordingDeleteTitle.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除通话录音？'**
+  String get historyRecordingDeleteTitle;
+
+  /// No description provided for @historyRecordingDeleteBody.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音文件和本地记录将永久删除，此操作无法撤销。'**
+  String get historyRecordingDeleteBody;
+
+  /// No description provided for @historyRecordingDeleteConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除录音'**
+  String get historyRecordingDeleteConfirm;
+
+  /// No description provided for @historyRecordingPlaybackDuringCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话期间不能播放历史录音'**
+  String get historyRecordingPlaybackDuringCall;
+
+  /// No description provided for @historyRecordingFileMissing.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音文件不存在，可能已被移动或删除'**
+  String get historyRecordingFileMissing;
+
+  /// No description provided for @historyRecordingPlaybackFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法播放此录音'**
+  String get historyRecordingPlaybackFailed;
+
+  /// No description provided for @historyRecordingRevealFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法打开录音文件位置'**
+  String get historyRecordingRevealFailed;
+
+  /// No description provided for @historyRecordingDeleteFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'删除录音失败'**
+  String get historyRecordingDeleteFailed;
 
   /// No description provided for @accountSettingsSummary.
   ///
