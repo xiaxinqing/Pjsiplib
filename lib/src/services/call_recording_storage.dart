@@ -53,6 +53,9 @@ abstract final class CallRecordingStorage {
   static Future<PreparedCallRecordingFile> prepare({
     required String sessionKey,
     required DateTime startedAt,
+    required String directionCode,
+    required String localNumber,
+    required String remoteNumber,
   }) async {
     final root = await rootDirectory();
     final relativeDirectory = p.join(
@@ -64,12 +67,18 @@ abstract final class CallRecordingStorage {
       await directory.create(recursive: true);
     }
 
-    final safeKey = sessionKey.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final fileStem = buildFileStem(
+      sessionKey: sessionKey,
+      startedAt: startedAt,
+      directionCode: directionCode,
+      localNumber: localNumber,
+      remoteNumber: remoteNumber,
+    );
     final temporaryRelativePath = p.join(
       relativeDirectory,
-      '$safeKey.partial.wav',
+      '$fileStem.partial.wav',
     );
-    final finalRelativePath = p.join(relativeDirectory, '$safeKey.wav');
+    final finalRelativePath = p.join(relativeDirectory, '$fileStem.wav');
     final temporaryFile = File(p.join(root.path, temporaryRelativePath));
     final finalFile = File(p.join(root.path, finalRelativePath));
     if (await temporaryFile.exists()) await temporaryFile.delete();
@@ -80,6 +89,46 @@ abstract final class CallRecordingStorage {
       temporaryRelativePath: temporaryRelativePath,
       finalRelativePath: finalRelativePath,
     );
+  }
+
+  /// 录音文件名仅使用 ASCII，避免 Windows/PJSIP 在非 UTF-8 系统代码页下
+  /// 无法创建中文路径。C 后缀是 PJSIP callId，只用于避免并发通话重名。
+  static String buildFileStem({
+    required String sessionKey,
+    required DateTime startedAt,
+    required String directionCode,
+    required String localNumber,
+    required String remoteNumber,
+  }) {
+    String twoDigits(int value) => value.toString().padLeft(2, '0');
+    final timestamp =
+        '${startedAt.year.toString().padLeft(4, '0')}'
+        '${twoDigits(startedAt.month)}'
+        '${twoDigits(startedAt.day)}-'
+        '${twoDigits(startedAt.hour)}'
+        '${twoDigits(startedAt.minute)}'
+        '${twoDigits(startedAt.second)}-'
+        '${startedAt.millisecond.toString().padLeft(3, '0')}';
+    final safeDirection = directionCode.toUpperCase() == 'IN' ? 'IN' : 'OUT';
+    String safeNumber(String value) {
+      final sanitized = value
+          .trim()
+          .replaceAll(RegExp(r'[^A-Za-z0-9+_-]+'), '_')
+          .replaceAll(RegExp(r'^_+|_+$'), '');
+      return sanitized.isEmpty ? 'unknown' : sanitized;
+    }
+
+    final safeLocalNumber = safeNumber(localNumber);
+    final safeRemoteNumber = safeNumber(remoteNumber);
+    final callPath = safeDirection == 'IN'
+        ? '${safeRemoteNumber}_TO_$safeLocalNumber'
+        : '${safeLocalNumber}_TO_$safeRemoteNumber';
+    final sessionParts = sessionKey.split('-');
+    final safeCallId = sessionParts.last.replaceAll(
+      RegExp(r'[^A-Za-z0-9_-]'),
+      '_',
+    );
+    return '${timestamp}_${safeDirection}_${callPath}_C$safeCallId';
   }
 
   static Future<File> finalize(PreparedCallRecordingFile prepared) async {

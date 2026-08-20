@@ -100,11 +100,19 @@ extension PjsipRecordingOperations on PjsipService {
       }
 
       final sessionKey = participantSessionKey;
+      final startedAt = DateTime.now();
       prepared = await CallRecordingStorage.prepare(
         sessionKey: sessionKey,
-        startedAt: DateTime.now(),
+        startedAt: startedAt,
+        directionCode: initialCall.direction == PjsipCallDirection.inbound
+            ? 'IN'
+            : 'OUT',
+        localNumber: initialCall.accountId == null
+            ? ''
+            : _uiState.accounts[initialCall.accountId]?.username ?? '',
+        remoteNumber: _extractPhoneNumber(initialCall.remoteUri),
       );
-      recordingStartedAt = DateTime.now();
+      recordingStartedAt = startedAt;
       final databaseId = await _callHistoryDatabase.beginCallRecording(
         sessionKey: sessionKey,
         callId: callId,
