@@ -15,6 +15,10 @@ import 'package:veserve_vphone/src/services/pjsip_service.dart';
 class FakePjsipService extends PjsipService {
   @override
   PjsipUIState build() => PjsipUIState(logs: []);
+
+  void setPlayingRecordingIdForTest(int? recordingId) {
+    state = state.copyWith(playingRecordingId: recordingId);
+  }
 }
 
 class FakeActiveCallPjsipService extends PjsipService {
@@ -684,6 +688,7 @@ void main() {
     expect(find.text(l10n.historyFieldDuration), findsOneWidget);
     expect(find.text(l10n.historyRecordingTitle), findsOneWidget);
     expect(find.text(l10n.historyRecordingSegment(1)), findsOneWidget);
+    expect(find.text(l10n.historyRecordingCompleted), findsOneWidget);
     final noteBadge = find.byTooltip(l10n.historyHasNoteTooltip);
     final recordingBadge = find.byTooltip(l10n.historyHasRecordingTooltip);
     expect(noteBadge, findsOneWidget);
@@ -697,6 +702,19 @@ void main() {
       closeTo(tester.getCenter(noteBadge).dx, 0.1),
     );
     expect(tester.takeException(), isNull);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MyApp)),
+    );
+    final service =
+        container.read(pjsipServiceProvider.notifier) as FakePjsipService;
+    service.setPlayingRecordingIdForTest(recordingId);
+    await tester.pump();
+    expect(find.text(l10n.historyRecordingPlaying), findsOneWidget);
+    expect(find.text(l10n.historyRecordingCompleted), findsNothing);
+    service.setPlayingRecordingIdForTest(null);
+    await tester.pump();
+    expect(find.text(l10n.historyRecordingCompleted), findsOneWidget);
 
     tester.view.physicalSize = const Size(1454, 710);
     await tester.pump();

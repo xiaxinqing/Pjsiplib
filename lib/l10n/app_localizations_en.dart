@@ -2141,6 +2141,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get historyRecordingCompleted => 'Completed';
 
   @override
+  String get historyRecordingPlaying => 'Playing';
+
+  @override
   String get historyRecordingInterrupted => 'Interrupted';
 
   @override

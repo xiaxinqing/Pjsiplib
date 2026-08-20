@@ -4,6 +4,11 @@ extension _HistoryRecordings on _MyHomePageState {
   Widget _buildHistoryRecordings(_HistoryItem item) {
     final historyId = item.databaseId;
     if (historyId == null) return const SizedBox.shrink();
+    // 在 ConsumerState 的同步 build 路径订阅播放 ID，避免把 ref.watch 放进
+    // StreamBuilder 的子元素构建回调后，部分平台错过即时重建。
+    final playingRecordingId = ref.watch(
+      pjsipServiceProvider.select((state) => state.playingRecordingId),
+    );
     return StreamBuilder<List<CallRecording>>(
       stream: ref
           .read(callHistoryDatabaseProvider)
@@ -11,7 +16,6 @@ extension _HistoryRecordings on _MyHomePageState {
       builder: (context, snapshot) {
         final recordings = snapshot.data ?? const <CallRecording>[];
         if (recordings.isEmpty) return const SizedBox.shrink();
-        final uiState = ref.watch(pjsipServiceProvider);
         return DecoratedBox(
           decoration: BoxDecoration(
             color: _subtlePanel,
@@ -41,7 +45,7 @@ extension _HistoryRecordings on _MyHomePageState {
                     item,
                     recordings[index],
                     index: index,
-                    playing: uiState.playingRecordingId == recordings[index].id,
+                    playing: playingRecordingId == recordings[index].id,
                   ),
                   if (index != recordings.length - 1) const Divider(height: 1),
                 ],
@@ -68,13 +72,16 @@ extension _HistoryRecordings on _MyHomePageState {
       CallRecordingStatus.recording => _dangerRed,
       CallRecordingStatus.failed => _dangerRed,
     };
-    final statusLabel = switch (status) {
-      CallRecordingStatus.completed => context.l10n.historyRecordingCompleted,
-      CallRecordingStatus.interrupted =>
-        context.l10n.historyRecordingInterrupted,
-      CallRecordingStatus.recording => context.l10n.activeCallRecording,
-      CallRecordingStatus.failed => context.l10n.historyRecordingFailed,
-    };
+    final statusLabel = playing
+        ? context.l10n.historyRecordingPlaying
+        : switch (status) {
+            CallRecordingStatus.completed =>
+              context.l10n.historyRecordingCompleted,
+            CallRecordingStatus.interrupted =>
+              context.l10n.historyRecordingInterrupted,
+            CallRecordingStatus.recording => context.l10n.activeCallRecording,
+            CallRecordingStatus.failed => context.l10n.historyRecordingFailed,
+          };
     final details = [
       DateFormat.Hms(
         Localizations.localeOf(context).toLanguageTag(),

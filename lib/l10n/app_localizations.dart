@@ -3842,6 +3842,12 @@ abstract class AppLocalizations {
   /// **'已完成'**
   String get historyRecordingCompleted;
 
+  /// No description provided for @historyRecordingPlaying.
+  ///
+  /// In zh, this message translates to:
+  /// **'播放中'**
+  String get historyRecordingPlaying;
+
   /// No description provided for @historyRecordingInterrupted.
   ///
   /// In zh, this message translates to:

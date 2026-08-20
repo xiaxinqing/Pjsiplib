@@ -179,10 +179,13 @@ abstract final class CallRecordingStorage {
       return;
     }
     if (Platform.isWindows) {
-      final result = await Process.run('explorer.exe', ['/select,', file.path]);
-      if (result.exitCode != 0) {
-        throw FileSystemException('Unable to reveal recording', file.path);
-      }
+      // explorer.exe 通常把命令转交给已有的资源管理器进程，随后可能以 1 退出，
+      // 但文件夹仍会正常打开。等待并检查 exitCode 会产生“先报失败、后打开”的
+      // 假失败；只要进程成功启动，就认为系统已经接收了打开请求。
+      await Process.start('explorer.exe', [
+        '/select,',
+        file.path,
+      ], mode: ProcessStartMode.detached);
       return;
     }
     final result = await Process.run('xdg-open', [file.parent.path]);

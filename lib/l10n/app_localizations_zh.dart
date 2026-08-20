@@ -2013,6 +2013,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get historyRecordingCompleted => '已完成';
 
   @override
+  String get historyRecordingPlaying => '播放中';
+
+  @override
   String get historyRecordingInterrupted => '异常中断';
 
   @override
@@ -4621,6 +4624,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get historyRecordingCompleted => '已完成';
+
+  @override
+  String get historyRecordingPlaying => '播放中';
 
   @override
   String get historyRecordingInterrupted => '異常中斷';

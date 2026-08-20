@@ -641,6 +641,7 @@
   "@historyRecordingSegment": {"placeholders": {"index": {"type": "int"}}},
   "historyConferenceRecording": "Conference recording",
   "historyRecordingCompleted": "Completed",
+  "historyRecordingPlaying": "Playing",
   "historyRecordingInterrupted": "Interrupted",
   "historyRecordingFailed": "Failed",
   "historyRecordingPlay": "Play recording",

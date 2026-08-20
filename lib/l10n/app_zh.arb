@@ -778,6 +778,7 @@
   "@historyRecordingSegment": {"placeholders": {"index": {"type": "int"}}},
   "historyConferenceRecording": "会议录音",
   "historyRecordingCompleted": "已完成",
+  "historyRecordingPlaying": "播放中",
   "historyRecordingInterrupted": "异常中断",
   "historyRecordingFailed": "录制失败",
   "historyRecordingPlay": "播放录音",

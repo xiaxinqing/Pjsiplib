@@ -641,6 +641,7 @@
   "@historyRecordingSegment": {"placeholders": {"index": {"type": "int"}}},
   "historyConferenceRecording": "會議錄音",
   "historyRecordingCompleted": "已完成",
+  "historyRecordingPlaying": "播放中",
   "historyRecordingInterrupted": "異常中斷",
   "historyRecordingFailed": "錄製失敗",
   "historyRecordingPlay": "播放錄音",
