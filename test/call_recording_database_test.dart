@@ -218,6 +218,64 @@ void main() {
     });
 
     test(
+      'resumes the partially completed version 6 recording migration',
+      () async {
+        final database = CallHistoryDatabase(
+          NativeDatabase.memory(
+            setup: (raw) {
+              // 复现线上状态：ALTER session_key 和 call_recordings 已落盘，
+              // 但后续步骤失败，因此 user_version 仍停在 6。
+              raw.execute('''
+              CREATE TABLE call_history_entries (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                session_key TEXT NULL
+              )
+            ''');
+              raw.execute('''
+              CREATE TABLE call_recordings (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                history_entry_id INTEGER NULL,
+                session_key TEXT NOT NULL,
+                call_id INTEGER NOT NULL,
+                relative_path TEXT NOT NULL,
+                status TEXT NOT NULL,
+                format TEXT NOT NULL DEFAULT 'wav',
+                started_at INTEGER NOT NULL,
+                ended_at INTEGER NULL,
+                duration_ms INTEGER NOT NULL DEFAULT 0,
+                file_size_bytes INTEGER NOT NULL DEFAULT 0,
+                failure_reason TEXT NULL,
+                created_at INTEGER NOT NULL
+              )
+            ''');
+              raw.execute(
+                "INSERT INTO call_recordings "
+                "(session_key, call_id, relative_path, status, started_at, created_at) "
+                "VALUES ('partial-call', 21, 'partial.wav', 'completed', 1, 1)",
+              );
+              raw.execute('PRAGMA user_version = 6');
+            },
+          ),
+        );
+        addTearDown(database.close);
+
+        final recordings = await database.listAllRecordings();
+        final links = await database
+            .customSelect('SELECT call_session_key FROM call_recording_links')
+            .get();
+        final version = await database
+            .customSelect('PRAGMA user_version')
+            .map((row) => row.read<int>('user_version'))
+            .getSingle();
+
+        expect(version, 8);
+        expect(recordings.single.sessionKey, 'partial-call');
+        expect(recordings.single.kind, CallRecordingKind.single.storageKey);
+        expect(links.single.read<String>('call_session_key'), 'partial-call');
+      },
+    );
+
+    test(
       'preserves version 7 recordings when creating participant links',
       () async {
         final database = CallHistoryDatabase(

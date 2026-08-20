@@ -15,6 +15,9 @@ extension _HomeAppBadgeCoordinator on _MyHomePageState {
   /// 角标同步失败不应该影响主页面，只记录一次轻量日志方便排查。
   void _handleUnreadMissedAppBadgeError(Object error, StackTrace stackTrace) {
     debugPrint('监听未读未接来电角标失败: $error');
-    debugPrintStack(stackTrace: stackTrace);
+    // Drift/riverpod 的异步堆栈可能包含 package:stack_trace 插入的
+    // "asynchronous gap" 标记，debugPrintStack 在部分 Flutter 版本会因无法
+    // 解析该标记再次抛断言。错误处理器必须保持不抛异常，直接打印原始堆栈。
+    debugPrint('$stackTrace');
   }
 }

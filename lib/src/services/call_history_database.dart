@@ -296,18 +296,30 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
         );
       }
       if (from < 7) {
-        await migrator.addColumn(
-          callHistoryEntries,
-          callHistoryEntries.sessionKey,
-        );
-        await migrator.createTable(callRecordings);
-        await _createRecordingIndexes();
-      }
-      if (from == 7) {
-        await migrator.addColumn(callRecordings, callRecordings.kind);
+        if (!await _columnExists(
+          callHistoryEntries.actualTableName,
+          callHistoryEntries.sessionKey.$name,
+        )) {
+          await migrator.addColumn(
+            callHistoryEntries,
+            callHistoryEntries.sessionKey,
+          );
+        }
       }
       if (from < 8) {
-        await migrator.createTable(callRecordingLinks);
+        if (!await _tableExists(callRecordings.actualTableName)) {
+          await migrator.createTable(callRecordings);
+        }
+        await _createRecordingIndexes();
+        if (!await _columnExists(
+          callRecordings.actualTableName,
+          callRecordings.kind.$name,
+        )) {
+          await migrator.addColumn(callRecordings, callRecordings.kind);
+        }
+        if (!await _tableExists(callRecordingLinks.actualTableName)) {
+          await migrator.createTable(callRecordingLinks);
+        }
         await customStatement(
           'INSERT OR IGNORE INTO call_recording_links '
           '(recording_id, call_session_key, call_id, history_entry_id, joined_at, left_at) '
@@ -318,6 +330,26 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
       }
     },
   );
+
+  /// Drift 只依据 user_version 决定迁移步骤；如果应用在多个 DDL 之间退出，
+  /// SQLite 可能已经落下一部分结构但尚未来得及提升版本号。升级前同时检查真实
+  /// schema，才能让下一次启动从断点继续，而不是重复 ADD COLUMN 后永久打不开。
+  Future<bool> _tableExists(String tableName) async {
+    final row = await customSelect(
+      'SELECT 1 FROM sqlite_master WHERE type = ? AND name = ? LIMIT 1',
+      variables: [const Variable<String>('table'), Variable<String>(tableName)],
+    ).getSingleOrNull();
+    return row != null;
+  }
+
+  Future<bool> _columnExists(String tableName, String columnName) async {
+    // tableName 只来自 Drift 生成的 TableInfo，不接收任何外部输入。
+    final escapedTableName = tableName.replaceAll('"', '""');
+    final rows = await customSelect(
+      'PRAGMA table_info("$escapedTableName")',
+    ).get();
+    return rows.any((row) => row.read<String>('name') == columnName);
+  }
 
   Future<void> _createIndexes() async {
     await customStatement(
