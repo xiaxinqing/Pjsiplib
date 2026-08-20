@@ -4,11 +4,6 @@ extension _HistoryRecordings on _MyHomePageState {
   Widget _buildHistoryRecordings(_HistoryItem item) {
     final historyId = item.databaseId;
     if (historyId == null) return const SizedBox.shrink();
-    // 在 ConsumerState 的同步 build 路径订阅播放 ID，避免把 ref.watch 放进
-    // StreamBuilder 的子元素构建回调后，部分平台错过即时重建。
-    final playingRecordingId = ref.watch(
-      pjsipServiceProvider.select((state) => state.playingRecordingId),
-    );
     return StreamBuilder<List<CallRecording>>(
       stream: ref
           .read(callHistoryDatabaseProvider)
@@ -16,42 +11,52 @@ extension _HistoryRecordings on _MyHomePageState {
       builder: (context, snapshot) {
         final recordings = snapshot.data ?? const <CallRecording>[];
         if (recordings.isEmpty) return const SizedBox.shrink();
-        return DecoratedBox(
-          decoration: BoxDecoration(
-            color: _subtlePanel,
-            borderRadius: BorderRadius.circular(_radiusSm),
-            border: Border.all(color: _softBorder),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 11, 12, 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+        // 通话记录在窄窗口中会放入独立 Dialog。Dialog 不会随外层主页
+        // 重建，因此由录音卡片自身订阅播放状态，保证 Windows 弹窗中也能
+        // 即时切换“播放中”和播放/停止图标。
+        return Consumer(
+          builder: (context, ref, _) {
+            final playingRecordingId = ref.watch(
+              pjsipServiceProvider.select((state) => state.playingRecordingId),
+            );
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                color: _subtlePanel,
+                borderRadius: BorderRadius.circular(_radiusSm),
+                border: Border.all(color: _softBorder),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 11, 12, 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    const Icon(AppIcons.audio, size: _iconMd),
-                    const SizedBox(width: 8),
-                    Text(
-                      context.l10n.historyRecordingTitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      children: [
+                        const Icon(AppIcons.audio, size: _iconMd),
+                        const SizedBox(width: 8),
+                        Text(
+                          context.l10n.historyRecordingTitle,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 8),
+                    for (var index = 0; index < recordings.length; index++) ...[
+                      _buildHistoryRecordingRow(
+                        item,
+                        recordings[index],
+                        index: index,
+                        playing: playingRecordingId == recordings[index].id,
+                      ),
+                      if (index != recordings.length - 1)
+                        const Divider(height: 1),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 8),
-                for (var index = 0; index < recordings.length; index++) ...[
-                  _buildHistoryRecordingRow(
-                    item,
-                    recordings[index],
-                    index: index,
-                    playing: playingRecordingId == recordings[index].id,
-                  ),
-                  if (index != recordings.length - 1) const Divider(height: 1),
-                ],
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         );
       },
     );

@@ -716,6 +716,28 @@ void main() {
     await tester.pump();
     expect(find.text(l10n.historyRecordingCompleted), findsOneWidget);
 
+    // 窄窗口使用独立详情弹窗，弹窗内的录音卡片也必须自主订阅
+    // 播放状态，不能依赖弹窗外层的主页重建。
+    tester.view.physicalSize = const Size(900, 710);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text(l10n.historyRecordingTitle), findsNothing);
+    await tester.tap(find.text('风清扬').first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text(l10n.historyRecordingCompleted), findsOneWidget);
+    service.setPlayingRecordingIdForTest(recordingId);
+    await tester.pump();
+    expect(find.text(l10n.historyRecordingPlaying), findsOneWidget);
+    expect(find.text(l10n.historyRecordingCompleted), findsNothing);
+    service.setPlayingRecordingIdForTest(null);
+    await tester.pump();
+    expect(find.text(l10n.historyRecordingCompleted), findsOneWidget);
+    await tester.tap(find.text(l10n.commonClose).last);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
     tester.view.physicalSize = const Size(1454, 710);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
