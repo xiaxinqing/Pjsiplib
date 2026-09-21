@@ -3,6 +3,104 @@ import 'package:veserve_vphone/src/services/native_bridge/audio_device_change_co
 import 'package:veserve_vphone/src/services/pjsip_service.dart';
 
 void main() {
+  group('macOS 普通音频模式的系统端点映射', () {
+    const microphone = PjsipAudioDevice(
+      id: 0,
+      name: 'MacBook Pro麦克风',
+      driver: 'core audio',
+      inputCount: 1,
+      outputCount: 0,
+      defaultSampleRate: 48000,
+    );
+    const speaker = PjsipAudioDevice(
+      id: 1,
+      name: 'MacBook Pro扬声器',
+      driver: 'core audio',
+      inputCount: 0,
+      outputCount: 2,
+      defaultSampleRate: 48000,
+    );
+    const virtual = PjsipAudioDevice(
+      id: 3,
+      name: 'BlackHole 2ch',
+      driver: 'core audio',
+      inputCount: 2,
+      outputCount: 2,
+      defaultSampleRate: 48000,
+    );
+    const devices = [virtual, speaker, microphone];
+
+    test('系统扬声器和麦克风分别映射，不误选双向虚拟声卡', () {
+      expect(
+        PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: devices,
+          systemDeviceName: microphone.name,
+          capture: true,
+        ),
+        0,
+      );
+      expect(
+        PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: devices,
+          systemDeviceName: speaker.name,
+          capture: false,
+        ),
+        1,
+      );
+    });
+
+    test('允许系统明确选中的虚拟声卡', () {
+      expect(
+        PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: devices,
+          systemDeviceName: virtual.name,
+          capture: false,
+        ),
+        3,
+      );
+    });
+
+    test('端点缺失、方向错误或重名时不回退到其他声卡', () {
+      for (final name in [null, '', '已拔出的耳机', microphone.name]) {
+        expect(
+          PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+            devices: devices,
+            systemDeviceName: name,
+            capture: false,
+          ),
+          isNull,
+        );
+      }
+      expect(
+        PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: [speaker, speaker],
+          systemDeviceName: speaker.name,
+          capture: false,
+        ),
+        isNull,
+      );
+    });
+
+    test('设备重新枚举后使用新索引', () {
+      const movedSpeaker = PjsipAudioDevice(
+        id: 7,
+        name: 'MacBook Pro扬声器',
+        driver: 'core audio',
+        inputCount: 0,
+        outputCount: 2,
+        defaultSampleRate: 48000,
+      );
+      expect(
+        PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: [virtual, microphone, movedSpeaker],
+          systemDeviceName: speaker.name,
+          capture: false,
+        ),
+        7,
+      );
+    });
+  });
+
   test('系统音频路由解析输入和输出端点', () {
     final route = SystemAudioRoute.fromMap({
       'input': {'id': 'input-1', 'name': 'MacBook Pro麦克风'},

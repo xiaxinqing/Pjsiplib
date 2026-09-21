@@ -339,8 +339,7 @@ extension _HomeSettingsAudioTab on _MyHomePageState {
 
   /// 打开操作系统的声音设置页。
   ///
-  /// macOS 的 PJSIP/CoreAudio 在 VoiceProcessingIO 下可能忽略具体设备 ID，
-  /// 因此设置页给用户一个明确的系统入口，比在应用里做过多判断更可靠。
+  /// 默认音频路由跟随系统，在这里提供系统输入、输出设备的设置入口。
   Future<void> _openSystemSoundSettings() async {
     final message = context.l10n.audioOpenSystemSoundSettingsHint;
     try {

@@ -190,6 +190,9 @@ class _PjsipAudioRuntime {
   /// 最近一次为了避免空闲占用系统声卡而释放的状态，用来减少重复日志。
   bool soundDeviceReleasedForIdle = false;
 
+  /// 输入失败后的仅输出兜底可继续播放；普通提示音不要不断重试麦克风。
+  bool soundDeviceSpeakerOnlyFallback = false;
+
   /// 最近一次打开系统声卡失败后的临时熔断信息。
   ///
   /// CoreAudio/PJSIP 在默认设备异常时，单次 `pjsua_set_snd_dev` 可能在底层重试
@@ -197,6 +200,7 @@ class _PjsipAudioRuntime {
   /// 会在短时间内直接提示异常，避免重复打到 native 侧拖垮页面。
   int? failedSoundDeviceCaptureId;
   int? failedSoundDevicePlaybackId;
+  bool? failedSoundDeviceCaptureRequired;
   int? failedSoundDeviceStatus;
   DateTime? failedSoundDeviceUntil;
   DateTime? lastSoundDeviceCooldownLogAt;
@@ -538,6 +542,8 @@ extension PjsipAudioDeviceOperations on PjsipService {
         // 有些场景看起来“设备 ID 没变”，但我们仍然需要更新 UI 状态或重连音频桥。
         // 例如手动重新选择默认设备，或者 PJSIP 当前就是 -1/-2 但通话桥需要补偿恢复。
         if (!forceReapply &&
+            _bindings.pjsua_snd_is_active() != 0 &&
+            _soundDeviceMatchesCaptureMode(_requiresSoundCapture) &&
             captureId == current.captureId &&
             playbackId == current.playbackId) {
           if (Platform.isWindows) {
@@ -1065,6 +1071,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       microphoneLevel: 0,
     );
     _stopMicrophoneTestRecorder();
+    _releaseSoundCaptureIfUnused('麦克风测试录音结束');
     // PJSIP 官方 systest 在销毁 recorder 后会等待一小段时间再创建 player。
     // WAV 头和数据长度在 recorder close 时才最终写入，立刻播放可能得到
     // PJMEDIA_EWAVETOOSHORT(220182)。
@@ -1248,6 +1255,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
       return;
     }
 
+    if (Platform.isMacOS) {
+      await _syncSystemAudioRoute(reason: reason);
+    }
     await _syncMicrophonePermissionIssue(reason: reason);
     return Future<void>(() {
       // 顺序很重要：先让底层音频驱动刷新，再枚举 PJSIP 看到的设备列表。
@@ -1339,11 +1349,19 @@ extension PjsipAudioDeviceOperations on PjsipService {
     final selectedPlaybackId = _uiState.selectedPlaybackDeviceId == noDevice
         ? null
         : _uiState.selectedPlaybackDeviceId;
-    final currentCaptureId = current.captureId == noDevice
+    // macOS HAL 使用具体索引，但 UI 仍保留“跟随系统”的选择语义。
+    final followsSystem =
+        Platform.isMacOS &&
+        _uiState.audioDeviceMode == PjsipAudioDeviceMode.automatic;
+    final currentCaptureId = followsSystem
+        ? pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value
+        : current.captureId == noDevice
         ? selectedCaptureId ??
               pjsua_snd_dev_id.PJSUA_SND_DEFAULT_CAPTURE_DEV.value
         : current.captureId;
-    final currentPlaybackId = current.playbackId == noDevice
+    final currentPlaybackId = followsSystem
+        ? pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value
+        : current.playbackId == noDevice
         ? selectedPlaybackId ??
               pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value
         : current.playbackId;
@@ -1766,7 +1784,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
   Future<bool> _syncSystemAudioRoute({required String reason}) async {
     final route = await _audioDeviceChangeController.getCurrentAudioRoute();
-    if (route == null) return false;
+    if (_isDisposed || route == null) return false;
 
     final previous = _audio.lastSystemAudioRoute;
     final changed = previous != null && previous.signature != route.signature;
@@ -2015,6 +2033,45 @@ extension PjsipAudioDeviceOperations on PjsipService {
       _recording.playerId != null ||
       _audio.dialpadTonegenConnected;
 
+  // 此次仅调整 macOS HALOutput 的生命周期，其他平台保持原来的打开方式。
+  bool get _requiresSoundCapture =>
+      !Platform.isMacOS ||
+      PjsipAudioDevicePolicy.requiresCapture(
+        calls: _uiState.calls.values,
+        microphoneRecording:
+            _uiState.isMicrophoneTesting &&
+            _uiState.microphoneTestPhase == PjsipMicrophoneTestPhase.recording,
+      );
+
+  bool _soundDeviceMatchesCaptureMode(bool captureRequired) {
+    if (!Platform.isMacOS) return true;
+    return using((arena) {
+      final params = arena<pjsua_snd_dev_param>();
+      if (_bindings.pjsua_get_snd_dev2(params) != 0) return false;
+      final speakerOnly =
+          params.ref.mode &
+              pjsua_snd_dev_mode.PJSUA_SND_DEV_SPEAKER_ONLY.value !=
+          0;
+      return speakerOnly == !captureRequired;
+    });
+  }
+
+  /// 通话/测试录音结束后立即释放输入，提示音的输出仍可短暂保留。
+  void _releaseSoundCaptureIfUnused(String reason) {
+    if (!Platform.isMacOS ||
+        !_uiState.isInitialized ||
+        _requiresSoundCapture ||
+        _bindings.pjsua_snd_is_active() == 0 ||
+        _soundDeviceMatchesCaptureMode(false)) {
+      return;
+    }
+    if (_shouldKeepSoundDeviceOpen) {
+      _ensureSoundDeviceOpen(reason);
+    } else {
+      _releaseSoundDeviceIfIdle(reason);
+    }
+  }
+
   bool _shouldRouteCallToLocalSpeaker(int callId) =>
       !_uiState.isSpeakerMuted && !_uiState.remoteMutedCallIds.contains(callId);
 
@@ -2061,6 +2118,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   /// CoreAudio/系统声卡，容易出现首声卡顿。这里延迟几秒再真正释放；期间
   /// 只要有新通话或提示音开始，[_ensureSoundDeviceOpen] 会取消这次释放。
   void _scheduleSoundDeviceReleaseIfIdle(String reason) {
+    _releaseSoundCaptureIfUnused(reason);
     if (_audio.soundDeviceIdleReleaseTimer != null) return;
     if (!_uiState.isInitialized || _shouldKeepSoundDeviceOpen) return;
     _audio.soundDeviceIdleReleaseTimer = Timer(
@@ -2081,15 +2139,22 @@ extension PjsipAudioDeviceOperations on PjsipService {
   bool _ensureSoundDeviceOpen(
     String reason, {
     bool bypassOpenFailureCooldown = false,
+    bool captureRequired = false,
   }) {
     if (!_uiState.isInitialized) return false;
     _cancelScheduledSoundDeviceRelease();
     final current = using(_currentSoundDeviceIds);
-    if (!_isNoSoundDevice(current)) {
-      // PJSIP 保留着设备 ID，只能说明当前不是 no-sound 模式，不能证明真实声卡
-      // 仍然可用。来电铃声会经过这里；若直接清除异常，会让响铃期间的侧栏状态
-      // 错误地恢复为正常。异常只由设备枚举、权限检查或真实打开成功来清理。
-      unawaited(_syncMicrophonePermissionIssue(reason: reason));
+    final needsCapture = captureRequired || _requiresSoundCapture;
+    if (!_isNoSoundDevice(current) &&
+        _bindings.pjsua_snd_is_active() != 0 &&
+        (_soundDeviceMatchesCaptureMode(needsCapture) ||
+            (needsCapture && _audio.soundDeviceSpeakerOnlyFallback))) {
+      // 启动后和 PJSIP 自动关闭空闲声卡后，设备 ID 仍可能存在。只有真实
+      // 声卡已打开才能复用，否则必须先完成系统设备映射并显式打开，不能
+      // 让后面的 conf_connect 按旧编号隐式打开。这里仍不清除设备异常。
+      if (needsCapture) {
+        unawaited(_syncMicrophonePermissionIssue(reason: reason));
+      }
       _audio.soundDeviceReleasedForIdle = false;
       _startAudioLevelTimer();
       return true;
@@ -2111,7 +2176,11 @@ extension PjsipAudioDeviceOperations on PjsipService {
         selectedPlaybackId ??
         pjsua_snd_dev_id.PJSUA_SND_DEFAULT_PLAYBACK_DEV.value;
     if (!bypassOpenFailureCooldown &&
-        _isSoundDeviceOpenCoolingDown(captureId, playbackId)) {
+        _isSoundDeviceOpenCoolingDown(
+          captureId,
+          playbackId,
+          captureRequired: needsCapture,
+        )) {
       _addSoundDeviceCooldownLogIfNeeded(
         action: '打开音频设备',
         captureId: captureId,
@@ -2125,6 +2194,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
       captureId: captureId,
       playbackId: playbackId,
       action: '打开音频设备',
+      captureRequired: needsCapture,
     );
     if (!applyResult.success) {
       return false;
@@ -2138,11 +2208,14 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _rememberActiveAudioDevices(captureId, playbackId);
     _audio.soundDeviceReleasedForIdle = false;
     _startAudioLevelTimer();
-    unawaited(_syncMicrophonePermissionIssue(reason: reason));
+    if (needsCapture) {
+      unawaited(_syncMicrophonePermissionIssue(reason: reason));
+    }
     _addLog(
       applyResult.speakerOnlyFallback
           ? '⚠️ 音频设备已按需打开为仅扬声器模式: capture=$captureId, playback=$playbackId ($reason)'
-          : '🎧 音频设备已按需打开: capture=$captureId, playback=$playbackId ($reason)',
+          : '🎧 音频设备已按需打开: capture=$captureId, playback=$playbackId, '
+                'mode=${needsCapture ? '双向' : '仅输出'} ($reason)',
     );
     return true;
   }
@@ -3127,6 +3200,47 @@ class PjsipAudioDeviceChoice {
 /// `PjsipAudioDeviceChoice`。这样后续可以独立写单元测试，也更容易调整产品策略。
 class PjsipAudioDevicePolicy {
   const PjsipAudioDevicePolicy._();
+
+  /// 单纯振铃不需要输入。已接通（含保持）和已建立早期媒体的通话保留
+  /// 双向设备，避免等待音、静音或保持操作反复切换蓝牙模式。
+  static bool requiresCapture({
+    required Iterable<CallInfo> calls,
+    required bool microphoneRecording,
+  }) =>
+      microphoneRecording ||
+      calls.any(
+        (call) =>
+            call.state != pjsip_inv_state.PJSIP_INV_STATE_DISCONNECTED.value &&
+            (call.isConnected ||
+                call.mediaStatus ==
+                    pjsua_call_media_status.PJSUA_CALL_MEDIA_ACTIVE.value),
+      );
+
+  /// CoreAudio 的系统端点名称映射到当前 PJSIP 枚举索引，分别匹配输入/输出。
+  /// 不按设备顺序或“双向能力”回退，也不排除用户在系统里明确选择的虚拟设备。
+  static int? resolveSystemEndpointDeviceId({
+    required List<PjsipAudioDevice> devices,
+    required String? systemDeviceName,
+    required bool capture,
+  }) {
+    if (systemDeviceName == null || systemDeviceName.trim().isEmpty) {
+      return null;
+    }
+    // PJMEDIA 的 macOS 设备名是 64 字节 C 字符串，最多保留 63 字节。
+    final bytes = utf8.encode(systemDeviceName);
+    final nativeName = utf8
+        .decode(bytes.take(63).toList(), allowMalformed: true)
+        .trim();
+    final matches = devices.where(
+      (device) =>
+          device.id >= 0 &&
+          device.driver == 'core audio' &&
+          (capture ? device.canCapture : device.canPlayback) &&
+          device.name.trim() == nativeName,
+    );
+    // 同方向重名时拒绝猜测，交给设备异常处理提示用户。
+    return matches.length == 1 ? matches.single.id : null;
+  }
 
   /// 日志用：暴露 pairedExternal 判断，便于解释“gaoyuan 这种名字如何被识别”。
   static bool looksLikePairedExternalForLog(

@@ -497,8 +497,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       debugPrint('Wait for account persistence during shutdown failed: $error');
     }
 
-    _isDisposed = true;
-    _closeNativeCallablesOnce();
+    // 在 Ref 仍有效时完成清理；之后 Provider 的 onDispose 只需幂等返回。
+    // 清理会读取当前音频状态，不能等到 Riverpod 已销毁 Ref 时再执行。
+    _cleanup();
   }
 
   void _closeNativeCallablesOnce() {

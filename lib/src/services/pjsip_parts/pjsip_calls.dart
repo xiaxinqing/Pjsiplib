@@ -905,7 +905,7 @@ extension PjsipCallOperations on PjsipService {
   void _connectCallToSound(int callId) {
     // 恢复通话、拆分会议等路径也可能重新连接声卡；这里统一保证从 no-sound
     // 状态切回用户当前预选的输入/输出设备。
-    if (!_ensureSoundDeviceOpen('连接通话声卡')) return;
+    if (!_ensureSoundDeviceOpen('连接通话声卡', captureRequired: true)) return;
     final slot = _getConferenceSlot(callId);
     if (slot == null) return;
     if (!_shouldUseLocalAudioForCall(callId)) {
@@ -1115,6 +1115,7 @@ extension PjsipCallOperations on PjsipService {
       _stopAudioLevelTimerIfIdle();
     }
     _syncCallProgressSounds();
+    _releaseSoundCaptureIfUnused('通话结束，释放麦克风');
     _hangupSoundPlayedCallIds.remove(callId);
     _knownIncomingCallIds.remove(callId);
     _outboundRingingAtByCallId.remove(callId);

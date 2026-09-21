@@ -1031,7 +1031,7 @@ extension _PjsipNativeCallbacks on PjsipService {
           }
           // 空闲阶段只预选设备，不打开声卡；媒体真正 ACTIVE 时才按需打开，
           // 然后再连接 conference bridge，避免注册在线期间影响系统外放音量。
-          if (!_ensureSoundDeviceOpen('通话媒体已激活')) return;
+          if (!_ensureSoundDeviceOpen('通话媒体已激活', captureRequired: true)) return;
           // 会议成员不受“只能有一个 activeCallId”的限制。会议桥会把本机声卡、
           // 客户和经理三方互相连接；后续任意一路媒体重新协商完成时都会重建桥。
           if (_uiState.isConferenceActive &&

@@ -2,8 +2,20 @@ part of '../pjsip_service.dart';
 
 /// PJSIP 引擎、传输、编解码器和账号注册相关操作。
 extension PjsipEngineOperations on PjsipService {
+  // pjmedia_echo_flag.PJMEDIA_ECHO_USE_SW_ECHO，定义于 pjmedia/echo.h。
+  // 当前 FFI 头文件没有导出该枚举，保留其原生位标志值。
+  static const int _pjmediaEchoUseSoftware = 64;
+  static const int _callEchoTailMs = 20;
+
   Future<void> init() async {
-    if (_uiState.isInitialized) return;
+    if (_isDisposed || _uiState.isInitialized) return;
+    if (Platform.isMacOS) {
+      // “已初始化”会让拨号页和偏好恢复开始预热提示音。必须先等待系统
+      // 路由查询完成，不能把尚未返回的 null 缓存判为“无默认设备”。
+      await _syncSystemAudioRoute(reason: '启动前读取系统音频路由');
+      // 等待期间可能有另一调用完成初始化，或服务已被销毁。
+      if (_isDisposed || _uiState.isInitialized) return;
+    }
     _recording.stoppingAll = false;
     final status = _bindings.pjsua_create();
     if (status != 0) {
@@ -27,7 +39,13 @@ extension PjsipEngineOperations on PjsipService {
       // 编解码器的采样率计算 clock_rate，不能继续固定为 8 kHz。
       mediaCfg.ref.clock_rate = 8000;
       mediaCfg.ref.channel_count = 1;
-      mediaCfg.ref.ec_tail_len = 20;
+      mediaCfg.ref.ec_tail_len = _callEchoTailMs;
+      if (Platform.isMacOS) {
+        // 强制软件回声消除，使 CoreAudio 使用普通 HALOutput，避免设备 EC
+        // 启用 VoiceProcessingIO 后压低其他应用的媒体音量。通话保留软件
+        // 回声消除；纯播放时由声卡打开路径临时关闭 EC，避免仅输出分支启用 VPIO。
+        mediaCfg.ref.ec_options |= _pjmediaEchoUseSoftware;
+      }
 
       uaCfg.ref.cb.on_reg_state = _regStateCallable.nativeFunction;
       uaCfg.ref.cb.on_incoming_call = _incomingCallCallable.nativeFunction;
@@ -109,6 +127,7 @@ extension PjsipEngineOperations on PjsipService {
       _addLog(
         '🎚️ 媒体配置: bridge=8000Hz, channel=1, '
         'frame=${mediaCfg.ref.audio_frame_ptime}ms, ecTail=20ms, '
+        'ecOptions=${mediaCfg.ref.ec_options}, '
         'recordLatency=${mediaCfg.ref.snd_rec_latency}ms, '
         'playLatency=${mediaCfg.ref.snd_play_latency}ms',
       );
@@ -163,6 +182,9 @@ extension PjsipEngineOperations on PjsipService {
         _addLog('❌ pjsua_start 失败: pj_status=$startStatus');
         return;
       }
+      // 在发布“已初始化”之前禁用隐式声卡打开。后续刷新设备的 await
+      // 期间，拨号页预热可能开始；不能让 conf_connect 使用 PJSIP 默认设备。
+      _bindings.pjsua_set_no_snd_dev();
       _uiState = _uiState.copyWith(isInitialized: true);
       _addLog('✅ PJSIP 引擎启动成功');
 

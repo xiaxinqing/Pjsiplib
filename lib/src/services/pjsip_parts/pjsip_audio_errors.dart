@@ -25,9 +25,88 @@ extension PjsipAudioIssueOperations on PjsipService {
     required int captureId,
     required int playbackId,
     required String action,
+    bool? captureRequired,
   }) {
-    final status = _bindings.pjsua_set_snd_dev(captureId, playbackId);
+    final needsCapture = captureRequired ?? _requiresSoundCapture;
+    var nativeCaptureId = captureId;
+    var nativePlaybackId = playbackId;
+    var resolvedCapture = true;
+    var resolvedPlayback = true;
+    if (Platform.isMacOS && (captureId == -1 || playbackId == -2)) {
+      // PJMEDIA 的默认设备优先选择双向设备，可能落到 BlackHole，而不是
+      // macOS 的默认麦克风/扬声器。HALOutput 必须分别传入真实设备索引。
+      // 声卡关闭后再刷新，保证插拔后的索引有效，避免扰动正在使用的声卡。
+      if (_bindings.pjsua_snd_is_active() == 0) {
+        _audio.pjmediaAudDevRefresh?.call();
+      }
+      final devices = using((arena) => _enumerateAudioDevices(arena, 64));
+      final route = _audio.lastSystemAudioRoute;
+      if (needsCapture && captureId == -1) {
+        final id = PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: devices ?? const [],
+          systemDeviceName: route?.input?.name,
+          capture: true,
+        );
+        resolvedCapture = id != null;
+        nativeCaptureId = id ?? captureId;
+      }
+      if (playbackId == -2) {
+        final id = PjsipAudioDevicePolicy.resolveSystemEndpointDeviceId(
+          devices: devices ?? const [],
+          systemDeviceName: route?.output?.name,
+          capture: false,
+        );
+        resolvedPlayback = id != null;
+        nativePlaybackId = id ?? playbackId;
+      }
+      _addLog(
+        '🎧 macOS 系统设备映射: '
+        'input=${route?.input?.name}, capture=$nativeCaptureId, '
+        'output=${route?.output?.name}, playback=$nativePlaybackId, '
+        'resolved=$resolvedCapture/$resolvedPlayback',
+      );
+    }
+    int openDevice({required bool speakerOnly}) => using((arena) {
+      if (Platform.isMacOS) {
+        final tail = arena<ffi.UnsignedInt>();
+        final tailStatus = _bindings.pjsua_get_ec_tail(tail);
+        if (tailStatus != 0) return tailStatus;
+        final targetTail = speakerOnly
+            ? 0
+            : PjsipEngineOperations._callEchoTailMs;
+        if (tail.value != targetTail) {
+          // PJSUA 的 speaker-only 分支只复制音频基础参数，丢失 ec_options，
+          // 即使配置了软件 EC 也可能重新启用 VoiceProcessingIO。纯播放不
+          // 需要回声消除：关闭旧设备后设 tail=0，通话时恢复软件 EC。
+          // 必须先关闭，避免在活动 AudioUnit 上直接更改 EC 类型。
+          _bindings.pjsua_set_no_snd_dev();
+          final ecStatus = _bindings.pjsua_set_ec(
+            targetTail,
+            PjsipEngineOperations._pjmediaEchoUseSoftware,
+          );
+          if (ecStatus != 0) return ecStatus;
+        }
+      }
+      final params = arena<pjsua_snd_dev_param>();
+      _bindings.pjsua_snd_dev_param_default(params);
+      params.ref.capture_dev = nativeCaptureId;
+      params.ref.playback_dev = nativePlaybackId;
+      params.ref.mode = speakerOnly
+          ? pjsua_snd_dev_mode.PJSUA_SND_DEV_SPEAKER_ONLY.value
+          : 0;
+      // CoreAudio 默认参数不设置硬件音量。不要把首次打开时缓存的音量
+      // 写回当前系统设备；应用内音量仍由 conference gain 控制。
+      params.ref.use_default_settings = Platform.isMacOS ? 1 : 0;
+      return _bindings.pjsua_set_snd_dev2(params);
+    });
+
+    final status = resolvedCapture && resolvedPlayback
+        ? (Platform.isMacOS
+              ? openDevice(speakerOnly: !needsCapture)
+              : _bindings.pjsua_set_snd_dev(nativeCaptureId, nativePlaybackId))
+        : _pjmediaAudioNoDefaultDevice;
     if (status == 0) {
+      _audio.soundDeviceSpeakerOnlyFallback = false;
       _clearSoundDeviceOpenFailure();
       _clearAudioDeviceIssueAfterSuccessfulDeviceApply();
       return const _SoundDeviceApplyResult.success();
@@ -36,25 +115,22 @@ extension PjsipAudioIssueOperations on PjsipService {
     // 只对 PJSIP 明确归类的音频设备错误尝试 speaker-only。CoreAudio 这类未知
     // native 错误可能已经在底层阻塞重试过，再立即 fallback 会把一次失败放大成
     // 两轮长阻塞，所以直接记录异常并进入短暂熔断。
-    if (!_shouldTrySpeakerOnlyFallback(status)) {
+    if (!needsCapture ||
+        !resolvedPlayback ||
+        !_shouldTrySpeakerOnlyFallback(status)) {
       _recordAudioDeviceIssue(
         status: status,
         action: action,
         captureId: captureId,
         playbackId: playbackId,
+        captureRequired: needsCapture,
       );
       return _SoundDeviceApplyResult.failure(status);
     }
 
-    final fallbackStatus = using((arena) {
-      final params = arena<pjsua_snd_dev_param>();
-      _bindings.pjsua_snd_dev_param_default(params);
-      params.ref.capture_dev = captureId;
-      params.ref.playback_dev = playbackId;
-      params.ref.mode |= pjsua_snd_dev_mode.PJSUA_SND_DEV_SPEAKER_ONLY.value;
-      return _bindings.pjsua_set_snd_dev2(params);
-    });
+    final fallbackStatus = openDevice(speakerOnly: true);
     if (fallbackStatus == 0) {
+      _audio.soundDeviceSpeakerOnlyFallback = true;
       _clearSoundDeviceOpenFailure();
       _recordSpeakerOnlyFallback(
         status: status,
@@ -70,6 +146,7 @@ extension PjsipAudioIssueOperations on PjsipService {
       action: action,
       captureId: captureId,
       playbackId: playbackId,
+      captureRequired: needsCapture,
     );
     return _SoundDeviceApplyResult.failure(status);
   }
@@ -80,11 +157,13 @@ extension PjsipAudioIssueOperations on PjsipService {
     required String action,
     required int captureId,
     required int playbackId,
+    required bool captureRequired,
   }) {
     _recordSoundDeviceOpenFailure(
       captureId: captureId,
       playbackId: playbackId,
       status: status,
+      captureRequired: captureRequired,
     );
     final message = _audioDeviceIssueMessage(status, action: action);
     _uiState = _uiState.copyWith(
@@ -254,13 +333,19 @@ extension PjsipAudioIssueOperations on PjsipService {
   ///
   /// 只拦截同一组输入/输出设备，避免“系统默认失败后插上耳机”仍被挡住。设备变化、
   /// 手动修复、真实打开成功都会清理这组状态。
-  bool _isSoundDeviceOpenCoolingDown(int captureId, int playbackId) {
+  bool _isSoundDeviceOpenCoolingDown(
+    int captureId,
+    int playbackId, {
+    bool? captureRequired,
+  }) {
     final until = _audio.failedSoundDeviceUntil;
     if (until == null || DateTime.now().isAfter(until)) {
       _clearSoundDeviceOpenFailure();
       return false;
     }
-    return _audio.failedSoundDeviceCaptureId == captureId &&
+    return _audio.failedSoundDeviceCaptureRequired ==
+            (captureRequired ?? _requiresSoundCapture) &&
+        _audio.failedSoundDeviceCaptureId == captureId &&
         _audio.failedSoundDevicePlaybackId == playbackId;
   }
 
@@ -269,9 +354,11 @@ extension PjsipAudioIssueOperations on PjsipService {
     required int captureId,
     required int playbackId,
     required int status,
+    required bool captureRequired,
   }) {
     _audio.failedSoundDeviceCaptureId = captureId;
     _audio.failedSoundDevicePlaybackId = playbackId;
+    _audio.failedSoundDeviceCaptureRequired = captureRequired;
     _audio.failedSoundDeviceStatus = status;
     _audio.failedSoundDeviceUntil = DateTime.now().add(
       _soundDeviceOpenFailureCooldown,
@@ -283,6 +370,7 @@ extension PjsipAudioIssueOperations on PjsipService {
   void _clearSoundDeviceOpenFailure() {
     _audio.failedSoundDeviceCaptureId = null;
     _audio.failedSoundDevicePlaybackId = null;
+    _audio.failedSoundDeviceCaptureRequired = null;
     _audio.failedSoundDeviceStatus = null;
     _audio.failedSoundDeviceUntil = null;
     _audio.lastSoundDeviceCooldownLogAt = null;
