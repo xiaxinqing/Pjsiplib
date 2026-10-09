@@ -63,6 +63,7 @@ EXPORTS
   pjsua_set_snd_dev
   pjsua_set_snd_dev2
   pjsua_snd_dev_param_default
+  pjsua_snd_is_active
   pjsua_start
   pjsua_transport_config_default
   pjsua_transport_create

@@ -1,6 +1,8 @@
 import Cocoa
 import FlutterMacOS
 import AVFoundation
+import ServiceManagement
+import LaunchAtLogin
 
 class MainFlutterWindow: NSWindow {
     private let audioDeviceChangeMonitor = AudioDeviceChangeMonitor()
@@ -40,11 +42,100 @@ class MainFlutterWindow: NSWindow {
     configureLaunchSplashChannel(flutterViewController: flutterViewController)
         configureWindowAttentionChannel(flutterViewController: flutterViewController)
         configureAudioPermissionChannel(flutterViewController: flutterViewController)
+        configureLaunchAtStartupChannels(flutterViewController: flutterViewController)
         audioDeviceChangeMonitor.configure(
             binaryMessenger: flutterViewController.engine.binaryMessenger
         )
 
         super.awakeFromNib()
+
+        // 首次显示由 Dart 统一控制，不能等 viewWillAppear 才启动 Dart。
+        // 否则 Dart 等窗口显示、窗口又等 Dart 决定显示，两边就互相卡住了。
+        // 插件和通道都接好后直接启动引擎，之后显示窗口也不会重复启动。
+        if !flutterViewController.engine.run(withEntrypoint: nil) {
+            NSLog("VPhone failed to start the Flutter engine.")
+        }
+    }
+
+    /// Dart 插件在 macOS 上需要我们接一下线；新旧系统都从这里进来。
+    private func configureLaunchAtStartupChannels(flutterViewController: FlutterViewController) {
+        let messenger = flutterViewController.engine.binaryMessenger
+        let channel = FlutterMethodChannel(name: "launch_at_startup", binaryMessenger: messenger)
+        channel.setMethodCallHandler { call, result in
+            switch call.method {
+            case "launchAtStartupIsEnabled":
+                result(LaunchAtLogin.isEnabled)
+            case "launchAtStartupSetEnabled":
+                guard let arguments = call.arguments as? [String: Any],
+                      let enabled = arguments["setEnabledValue"] as? Bool else {
+                    result(FlutterError(code: "invalid_arguments", message: "Missing startup setting", details: nil))
+                    return
+                }
+                do {
+                    if #available(macOS 13.0, *) {
+                        let service = SMAppService.mainApp
+                        if enabled {
+                            // 等批准时不用反复注册，界面会引导用户去系统设置。
+                            if service.status != .enabled && service.status != .requiresApproval {
+                                try service.register()
+                            }
+                        } else if service.status != .notRegistered {
+                            try service.unregister()
+                        }
+                    } else {
+                        // 10.15～12 由打包进应用的 Helper 启动主程序。
+                        // 直接检查系统返回值，失败了要让 Dart 知道。
+                        guard let bundleID = Bundle.main.bundleIdentifier,
+                              SMLoginItemSetEnabled("\(bundleID)-LaunchAtLoginHelper" as CFString, enabled) else {
+                            result(FlutterError(code: "startup_failed", message: "Could not update login helper", details: nil))
+                            return
+                        }
+                    }
+                    result(nil)
+                } catch {
+                    result(FlutterError(code: "startup_failed", message: error.localizedDescription, details: nil))
+                }
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
+
+        // 插件只返回 true/false，这条补充通道告诉界面“还需要系统批准”。
+        let statusChannel = FlutterMethodChannel(
+            name: "voip_desk/launch_at_startup_status", binaryMessenger: messenger
+        )
+        statusChannel.setMethodCallHandler { call, result in
+            switch call.method {
+            case "wasLaunchedAtLogin":
+                AppLaunchOrigin.reply(result)
+            case "requiresApproval":
+                if #available(macOS 13.0, *) {
+                    result(SMAppService.mainApp.status == .requiresApproval)
+                } else {
+                    result(false)
+                }
+            case "openSystemSettings":
+                if #available(macOS 13.0, *) {
+                    SMAppService.openSystemSettingsLoginItems()
+                    result(nil)
+                } else {
+                    result(FlutterError(code: "unsupported", message: "Login item approval requires macOS 13", details: nil))
+                }
+            case "cancelPendingRegistration":
+                if #available(macOS 13.0, *) {
+                    do {
+                        try SMAppService.mainApp.unregister()
+                        result(nil)
+                    } catch {
+                        result(FlutterError(code: "startup_failed", message: error.localizedDescription, details: nil))
+                    }
+                } else {
+                    result(FlutterMethodNotImplemented)
+                }
+            default:
+                result(FlutterMethodNotImplemented)
+            }
+        }
     }
 
     private func installLaunchSplash(on parentView: NSView) {

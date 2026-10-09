@@ -7,6 +7,7 @@ import 'package:restart_app/restart_app.dart';
 import '../../../utils/toast_util.dart';
 import '../../localization/app_runtime_localizer.dart';
 import 'app_window_controller.dart';
+import 'app_launch_at_startup_controller.dart';
 
 class AppRestartController {
   const AppRestartController._();
@@ -30,13 +31,17 @@ class AppRestartController {
       return false;
     }
 
+    var restarted = false;
+    const startup = AppLaunchAtStartupController();
     try {
       debugPrint('Application restart requested.');
+      await startup.prepareForManualRestart();
       final result = await Restart.restartApp(
         mode: RestartMode.process,
         forceKill: true,
       );
       if (result.success) {
+        restarted = true;
         if (Platform.isMacOS) {
           debugPrint(
             'New macOS application instance started; terminating the cleaned '
@@ -73,6 +78,14 @@ class AppRestartController {
         ),
       );
       return false;
+    } finally {
+      if (!restarted) {
+        try {
+          await startup.cancelManualRestart();
+        } catch (error) {
+          debugPrint('Could not clear the restart marker: $error');
+        }
+      }
     }
   }
 }

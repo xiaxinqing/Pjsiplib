@@ -67,11 +67,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLaunchAtLoginDescription => 'Start VPhone at sign-in';
 
   @override
-  String get settingsStartMinimized => 'Start minimized';
+  String get settingsStartupNeedsApproval =>
+      'Allow VPhone to launch at login in System Settings';
+
+  @override
+  String get settingsStartupOpenSettings => 'Open System Settings';
+
+  @override
+  String get settingsStartupFailed =>
+      'Could not complete the operation. Please retry.';
+
+  @override
+  String get settingsStartupRetry => 'Retry';
+
+  @override
+  String get settingsStartMinimized => 'Minimize after launch at login';
 
   @override
   String get settingsStartMinimizedDescription =>
-      'Run in the background and keep phone service online';
+      'Initialize the app and phone service, then minimize to the taskbar or Dock when launched at login. Manual launches show the window.';
 
   @override
   String get settingsNotificationsSection => 'Calls & notifications';

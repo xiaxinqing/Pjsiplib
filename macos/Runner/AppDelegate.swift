@@ -2,6 +2,38 @@ import Cocoa
 import Darwin
 import FlutterMacOS
 
+// 登录来源只在启动事件到达时读一次，之后 Flutter 再来问也不会丢。
+enum AppLaunchOrigin {
+  private static var launchedAtLogin: Bool?
+  private static var waitingResults: [FlutterResult] = []
+
+  static func capture() {
+    let event = NSAppleEventManager.shared().currentAppleEvent
+    let fromSystemLogin = event?.eventID == kAEOpenApplication
+      && event?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue
+        == keyAELaunchedAsLogInItem
+    let hasStartupArgument = CommandLine.arguments.contains("--autostart")
+    let value = fromSystemLogin || hasStartupArgument
+    NSLog(
+      "VPhone launch origin: systemLogin=%@ startupArgument=%@",
+      fromSystemLogin ? "true" : "false",
+      hasStartupArgument ? "true" : "false"
+    )
+    launchedAtLogin = value
+    waitingResults.forEach { $0(value) }
+    waitingResults.removeAll()
+  }
+
+  static func reply(_ result: @escaping FlutterResult) {
+    if let value = launchedAtLogin {
+      result(value)
+    } else {
+      // Flutter 有时会先跑到 main，稍等 AppKit 的启动事件，别提前误判。
+      waitingResults.append(result)
+    }
+  }
+}
+
 final class DockMenuCommandBridge {
   static let shared = DockMenuCommandBridge()
 
@@ -60,6 +92,11 @@ final class DockMenuCommandBridge {
 
 @main
 class AppDelegate: FlutterAppDelegate {
+  override func applicationDidFinishLaunching(_ notification: Notification) {
+    AppLaunchOrigin.capture()
+    super.applicationDidFinishLaunching(notification)
+  }
+
   private static let terminationPreparationTimeout: TimeInterval = 15
   private static let terminationCompletionGracePeriod: TimeInterval = 3
 

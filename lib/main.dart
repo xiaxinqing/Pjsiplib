@@ -26,6 +26,7 @@ import 'src/services/native_bridge/native_bridge.dart';
 import 'src/services/pjsip_service.dart';
 import 'src/services/sip_call_end_reason_mapper.dart';
 import 'src/ui/core/app_colors.dart';
+import 'src/ui/settings/launch_at_startup_switch.dart';
 import 'src/ui/home/calls/stage/in_call_dtmf_popover.dart';
 import 'utils/toast_util.dart';
 
@@ -91,10 +92,15 @@ part 'src/ui/settings/home_settings_call.dart';
 part 'src/ui/settings/home_settings_diagnostics.dart';
 part 'src/ui/settings/home_settings_about.dart';
 
-Future<void> main() async {
+Future<void> main(List<String> arguments) async {
   WidgetsFlutterBinding.ensureInitialized();
+  AppLaunchAtStartupController.initialize();
+  final startMinimized = await const AppLaunchAtStartupController()
+      .shouldStartMinimized(arguments);
+  debugPrint('VPhone startup: minimizeAfterFirstFrame=$startMinimized');
   final initialLocalePreference =
       await LocaleController.loadInitialPreference();
+  // 自启动也先正常显示、构建页面，最小化只影响窗口，不跳过业务初始化。
   await AppWindowController.initializeMainWindow();
   runApp(
     ProviderScope(
@@ -108,6 +114,9 @@ Future<void> main() async {
   );
   AppLaunchSplashController.hideAfterFirstFrame();
   unawaited(AppTrayController.instance.initialize());
+  unawaited(
+    AppWindowController.completeStartup(startMinimized: startMinimized),
+  );
 }
 
 class MyApp extends ConsumerWidget {

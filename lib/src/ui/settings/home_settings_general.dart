@@ -28,18 +28,26 @@ extension _HomeSettingsGeneral on _MyHomePageState {
             title: l10n.settingsStartupSection,
             icon: AppIcons.devices,
             children: [
-              _buildSettingTile(
-                icon: AppIcons.power,
-                title: l10n.settingsLaunchAtLogin,
-                subtitle: l10n.settingsLaunchAtLoginDescription,
-                trailing: _buildPlannedStatus(),
-              ),
-              _buildSettingDivider(),
-              _buildSettingTile(
-                icon: AppIcons.devices,
-                title: l10n.settingsStartMinimized,
-                subtitle: l10n.settingsStartMinimizedDescription,
-                trailing: _buildPlannedStatus(),
+              LaunchAtStartupSwitch(
+                layoutBuilder: (startup, startMinimized) => Column(
+                  children: [
+                    _buildSettingTile(
+                      icon: AppIcons.power,
+                      title: l10n.settingsLaunchAtLogin,
+                      subtitle: l10n.settingsLaunchAtLoginDescription,
+                      trailing: startup,
+                    ),
+                    if (startMinimized != null) ...[
+                      _buildSettingDivider(),
+                      _buildSettingTile(
+                        icon: AppIcons.devices,
+                        title: l10n.settingsStartMinimized,
+                        subtitle: l10n.settingsStartMinimizedDescription,
+                        trailing: startMinimized,
+                      ),
+                    ],
+                  ],
+                ),
               ),
             ],
           ),

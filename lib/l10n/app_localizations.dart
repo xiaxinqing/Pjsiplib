@@ -213,16 +213,40 @@ abstract class AppLocalizations {
   /// **'登录系统后自动启动 VPhone'**
   String get settingsLaunchAtLoginDescription;
 
-  /// 应用启动后最小化到托盘的设置名称
+  /// No description provided for @settingsStartupNeedsApproval.
   ///
   /// In zh, this message translates to:
-  /// **'启动后最小化'**
+  /// **'请在系统设置中允许 VPhone 登录时启动'**
+  String get settingsStartupNeedsApproval;
+
+  /// No description provided for @settingsStartupOpenSettings.
+  ///
+  /// In zh, this message translates to:
+  /// **'打开系统设置'**
+  String get settingsStartupOpenSettings;
+
+  /// No description provided for @settingsStartupFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'未能完成操作，请重试'**
+  String get settingsStartupFailed;
+
+  /// No description provided for @settingsStartupRetry.
+  ///
+  /// In zh, this message translates to:
+  /// **'重试'**
+  String get settingsStartupRetry;
+
+  /// 自启动后最小化到任务栏或 Dock 的设置名称
+  ///
+  /// In zh, this message translates to:
+  /// **'自启动后最小化'**
   String get settingsStartMinimized;
 
   /// 启动后最小化设置说明
   ///
   /// In zh, this message translates to:
-  /// **'在后台启动，并保持电话服务在线'**
+  /// **'开机自启动时正常初始化页面和电话服务，再最小化到任务栏或 Dock；手动打开时正常显示'**
   String get settingsStartMinimizedDescription;
 
   /// 来电和提醒设置区块标题

@@ -541,8 +541,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
 
         // 有些场景看起来“设备 ID 没变”，但我们仍然需要更新 UI 状态或重连音频桥。
         // 例如手动重新选择默认设备，或者 PJSIP 当前就是 -1/-2 但通话桥需要补偿恢复。
+        // 活动状态检查仅用于 macOS；随包 Windows DLL 未导出 snd_is_active。
         if (!forceReapply &&
-            _bindings.pjsua_snd_is_active() != 0 &&
+            (!Platform.isMacOS || _bindings.pjsua_snd_is_active() != 0) &&
             _soundDeviceMatchesCaptureMode(_requiresSoundCapture) &&
             captureId == current.captureId &&
             playbackId == current.playbackId) {
@@ -2145,8 +2146,9 @@ extension PjsipAudioDeviceOperations on PjsipService {
     _cancelScheduledSoundDeviceRelease();
     final current = using(_currentSoundDeviceIds);
     final needsCapture = captureRequired || _requiresSoundCapture;
+    // macOS 才查询 native 活动状态，避免在旧 Windows DLL 上查找缺失的符号。
     if (!_isNoSoundDevice(current) &&
-        _bindings.pjsua_snd_is_active() != 0 &&
+        (!Platform.isMacOS || _bindings.pjsua_snd_is_active() != 0) &&
         (_soundDeviceMatchesCaptureMode(needsCapture) ||
             (needsCapture && _audio.soundDeviceSpeakerOnlyFallback))) {
       // 启动后和 PJSIP 自动关闭空闲声卡后，设备 ID 仍可能存在。只有真实

@@ -32,13 +32,7 @@ bool FlutterWindow::OnCreate() {
   ConfigureAudioDeviceChangeChannel();
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
-  });
-
-  // Flutter can complete the first frame before the "show window" callback is
-  // registered. The following call ensures a frame is pending to ensure the
-  // window is shown. It is a no-op if the first frame hasn't completed yet.
+  // 窗口由 Dart 完成尺寸等配置后统一显示，首帧完成后再按设置最小化。
   flutter_controller_->ForceRedraw();
 
   return true;

@@ -66,10 +66,30 @@ class AppWindowController with WindowListener {
     );
 
     // 等待原生窗口准备完成后再显示，可避免启动过程中出现空白窗口或闪烁。
-    await windowManager.waitUntilReadyToShow(options, () async {
-      await windowManager.show();
-      await windowManager.focus();
-    });
+    await windowManager.waitUntilReadyToShow(options);
+    await showMainWindow();
+  }
+
+  static Future<void> showMainWindow() async {
+    if (!isDesktop) return;
+    debugPrint('VPhone main window: show requested.');
+    await windowManager.show();
+    await windowManager.focus();
+  }
+
+  static Future<void> completeStartup({required bool startMinimized}) async {
+    if (!isDesktop || !startMinimized) return;
+    // 先让页面完成首帧，initState、服务创建和首帧回调都照常执行。
+    // 不等 SIP 注册成功才缩小，网络连不上也不能把启动卡在这里。
+    await WidgetsBinding.instance.endOfFrame;
+    try {
+      // 就是点标题栏“－”的效果，任务栏 / Dock 仍能恢复，服务继续运行。
+      debugPrint('VPhone startup: minimizing after first frame.');
+      await windowManager.minimize();
+    } catch (error) {
+      // 最小化失败就让窗口正常留着，不影响接打电话。
+      debugPrint('Could not minimize the startup window: $error');
+    }
   }
 
   /// 启用“点击关闭按钮时隐藏到系统托盘”的行为。

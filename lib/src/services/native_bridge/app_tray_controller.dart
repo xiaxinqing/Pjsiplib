@@ -97,6 +97,7 @@ class AppTrayController with tray.TrayListener {
   static const _exitAppKey = 'exit_app';
 
   bool _initialized = false;
+  Future<bool>? _initialization;
   bool _exiting = false;
   String? _menuSignature;
   VoidCallback? _onOpenCalls;
@@ -139,20 +140,23 @@ class AppTrayController with tray.TrayListener {
     _onIncomingRingtoneChanged = null;
   }
 
-  Future<void> initialize() async {
-    if (!AppWindowController.isDesktop || _initialized) return;
+  Future<bool> initialize() => _initialization ??= _initialize();
+
+  Future<bool> _initialize() async {
+    if (!AppWindowController.isDesktop) return false;
 
     tray.trayManager.addListener(this);
     _initialized = true;
 
-    await _safeTrayCall(() async {
+    final ready = await _safeTrayCall(() async {
       await tray.trayManager.setIcon(
         _trayIconPath,
         isTemplate: Platform.isMacOS,
         iconSize: 18,
       );
-      await tray.trayManager.setToolTip(appDisplayName);
-      await updateMenu(
+      // 提示文字失败不影响托盘入口，图标和菜单则必须真的创建成功。
+      await _safeTrayCall(() => tray.trayManager.setToolTip(appDisplayName));
+      final menuReady = await updateMenu(
         connectedLines: 0,
         totalLines: 0,
         incomingRingtoneEnabled: true,
@@ -160,8 +164,14 @@ class AppTrayController with tray.TrayListener {
         hasActiveCalls: false,
         labels: AppTrayMenuLabels.simplifiedChinese,
       );
+      if (!menuReady) throw StateError('Tray menu is unavailable.');
       debugPrint('Tray initialized.');
     });
+    if (!ready) {
+      _initialized = false;
+      tray.trayManager.removeListener(this);
+    }
+    return ready;
   }
 
   String get _trayIconPath {
@@ -170,7 +180,7 @@ class AppTrayController with tray.TrayListener {
     return 'assets/tray/tray_icon.png';
   }
 
-  Future<void> updateMenu({
+  Future<bool> updateMenu({
     required int connectedLines,
     required int totalLines,
     required bool incomingRingtoneEnabled,
@@ -178,7 +188,7 @@ class AppTrayController with tray.TrayListener {
     required bool hasActiveCalls,
     required AppTrayMenuLabels labels,
   }) async {
-    if (!AppWindowController.isDesktop || !_initialized) return;
+    if (!AppWindowController.isDesktop || !_initialized) return false;
 
     final signature = [
       connectedLines,
@@ -188,10 +198,9 @@ class AppTrayController with tray.TrayListener {
       hasActiveCalls,
       labels.signature,
     ].join('|');
-    if (_menuSignature == signature) return;
-    _menuSignature = signature;
+    if (_menuSignature == signature) return true;
 
-    await _safeTrayCall(() {
+    final ready = await _safeTrayCall(() {
       return tray.trayManager.setContextMenu(
         tray.Menu(
           items: [
@@ -228,6 +237,8 @@ class AppTrayController with tray.TrayListener {
         ),
       );
     });
+    if (ready) _menuSignature = signature;
+    return ready;
   }
 
   @override
@@ -353,14 +364,18 @@ class AppTrayController with tray.TrayListener {
     await _safeWindowCall(() => windowManager.destroy());
   }
 
-  Future<void> _safeTrayCall(Future<void> Function() action) async {
+  Future<bool> _safeTrayCall(Future<void> Function() action) async {
     try {
       await action();
+      return true;
     } on MissingPluginException {
       // Widget tests and unsupported desktop shells may not register the tray.
     } on PlatformException catch (error) {
       debugPrint('Tray manager call failed: ${error.message}');
+    } catch (error) {
+      debugPrint('Tray initialization or update failed: $error');
     }
+    return false;
   }
 
   Future<void> _safeWindowCall(Future<void> Function() action) async {

@@ -66,10 +66,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLaunchAtLoginDescription => '登录系统后自动启动 VPhone';
 
   @override
-  String get settingsStartMinimized => '启动后最小化';
+  String get settingsStartupNeedsApproval => '请在系统设置中允许 VPhone 登录时启动';
 
   @override
-  String get settingsStartMinimizedDescription => '在后台启动，并保持电话服务在线';
+  String get settingsStartupOpenSettings => '打开系统设置';
+
+  @override
+  String get settingsStartupFailed => '未能完成操作，请重试';
+
+  @override
+  String get settingsStartupRetry => '重试';
+
+  @override
+  String get settingsStartMinimized => '自启动后最小化';
+
+  @override
+  String get settingsStartMinimizedDescription =>
+      '开机自启动时正常初始化页面和电话服务，再最小化到任务栏或 Dock；手动打开时正常显示';
 
   @override
   String get settingsNotificationsSection => '来电与通知';
@@ -2679,10 +2692,23 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get settingsLaunchAtLoginDescription => '登入系統後自動啟動 VPhone';
 
   @override
-  String get settingsStartMinimized => '啟動後縮至最小';
+  String get settingsStartupNeedsApproval => '請在系統設定中允許 VPhone 登入時啟動';
 
   @override
-  String get settingsStartMinimizedDescription => '在背景啟動，並保持電話服務連線';
+  String get settingsStartupOpenSettings => '開啟系統設定';
+
+  @override
+  String get settingsStartupFailed => '未能完成操作，請重試';
+
+  @override
+  String get settingsStartupRetry => '重試';
+
+  @override
+  String get settingsStartMinimized => '自動啟動後最小化';
+
+  @override
+  String get settingsStartMinimizedDescription =>
+      '開機自動啟動時正常初始化頁面和電話服務，再最小化至工作列或 Dock；手動開啟時正常顯示';
 
   @override
   String get settingsNotificationsSection => '來電及通知';

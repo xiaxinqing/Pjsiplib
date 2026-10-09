@@ -21,6 +21,7 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		A01700010000000000000001 /* LaunchAtLogin in Frameworks */ = {isa = PBXBuildFile; productRef = A01700010000000000000002 /* LaunchAtLogin */; };
 		14F573C1301872E7002C207C /* libpjsip.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 14F573C0301872E7002C207C /* libpjsip.dylib */; };
 		14F573C2301872E7002C207C /* libpjsip.dylib in Bundle Framework */ = {isa = PBXBuildFile; fileRef = 14F573C0301872E7002C207C /* libpjsip.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		331C80D8294CF71000263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C80D7294CF71000263BE5 /* RunnerTests.swift */; };
@@ -114,6 +115,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				B42A340730B0DA3F318D3294 /* Pods_Runner.framework in Frameworks */,
+				A01700010000000000000001 /* LaunchAtLogin in Frameworks */,
 				14F573C1301872E7002C207C /* libpjsip.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -259,6 +261,7 @@
 				33CC10E92044A3C60003C045 /* Sources */,
 				33CC10EA2044A3C60003C045 /* Frameworks */,
 				33CC10EB2044A3C60003C045 /* Resources */,
+				A01700010000000000000004 /* Embed Login Helper */,
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				E21C711BD982C371447F0101 /* [CP] Embed Pods Frameworks */,
@@ -269,6 +272,9 @@
 				33CC11202044C79F0003C045 /* PBXTargetDependency */,
 			);
 			name = Runner;
+			packageProductDependencies = (
+				A01700010000000000000002 /* LaunchAtLogin */,
+			);
 			productName = Runner;
 			productReference = 33CC10ED2044A3C60003C045 /* VPhone.app */;
 			productType = "com.apple.product-type.application";
@@ -314,6 +320,9 @@
 				Base,
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
+			packageReferences = (
+				A01700010000000000000003 /* LaunchAtLogin-Legacy */,
+			);
 			productRefGroup = 33CC10EE2044A3C60003C045 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -346,6 +355,18 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A01700010000000000000004 /* Embed Login Helper */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = ();
+			inputPaths = ();
+			outputPaths = ();
+			name = "Embed Login Helper";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/bash;
+			shellScript = "/bin/bash \"${PROJECT_DIR}/../tool/embed_macos_login_helper.sh\"\n";
+		};
 		3399D490228B24CF009A79C7 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -822,6 +843,22 @@
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A01700010000000000000003 /* LaunchAtLogin-Legacy */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sindresorhus/LaunchAtLogin-Legacy";
+			requirement = { kind = exactVersion; version = 5.0.2; };
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A01700010000000000000002 /* LaunchAtLogin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A01700010000000000000003 /* LaunchAtLogin-Legacy */;
+			productName = LaunchAtLogin;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin XCConfigurationList section */
 		331C80DE294CF71000263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
