@@ -91,22 +91,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsNotificationsSection => 'Calls & notifications';
 
   @override
-  String get settingsShowWindowForIncomingCall =>
-      'Show window for incoming calls';
-
-  @override
-  String get settingsShowWindowForIncomingCallDescription =>
-      'Open Calls when a call arrives';
-
-  @override
-  String get settingsAppBadge => 'App badge';
+  String get settingsAppBadge => 'Show app badge';
 
   @override
   String get settingsAppBadgeDescription =>
-      'Show active incoming calls and unread missed calls';
-
-  @override
-  String get settingsComingSoon => 'Coming soon';
+      'Show the total number of ringing and unread missed calls on the app icon';
 
   @override
   String get settingsAccount => 'Accounts';
@@ -2782,4 +2771,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get contactNoLongerExists => 'Contact no longer exists';
+
+  @override
+  String get settingsAppBadgeUnsupported => 'Not supported on this system';
+
+  @override
+  String get settingsAppBadgeFailed =>
+      'Could not save the setting or update the badge. Please retry.';
+
+  @override
+  String get settingsStorage => 'Storage';
+
+  @override
+  String get settingsStorageDescription =>
+      'Manage call history and local recording retention';
+
+  @override
+  String get storageHistoryDays => 'Call history retention';
+
+  @override
+  String get storageRecordingDays => 'Recording retention';
+
+  @override
+  String get storageForever => 'Keep forever';
+
+  @override
+  String storageKeepDays(int days) {
+    return 'Keep for $days days';
+  }
+
+  @override
+  String get storageCustomDays => 'Custom days…';
+
+  @override
+  String get storageDaysLabel => 'Days to keep';
+
+  @override
+  String get storageDaysHelp => 'Enter a whole number between 1 and 36500';
+
+  @override
+  String get storageRules =>
+      'The two limits are independent. History uses the call end time; recordings use the start time. Changes apply at the next launch, or you can clean up now. Active recording and playback are skipped. Exported copies are unaffected. Deleted data cannot be restored.';
+
+  @override
+  String get storageViewRecordings => 'View local recordings';
+
+  @override
+  String get storageNoRecordings => 'No local recordings';
+
+  @override
+  String get storageCleanNow => 'Clean up expired data';
+
+  @override
+  String storageCleanConfirm(int history, int recordings) {
+    return 'Clean up $history call history entries and $recordings recordings? Recordings in use will be skipped. Deleted data cannot be restored.';
+  }
+
+  @override
+  String get storageNothingExpired => 'No expired data to clean up';
+
+  @override
+  String storageCleanResult(int history, int recordings, int failed) {
+    return 'Removed $history history entries and $recordings recordings. $failed items failed and will be retried next time. Recordings in use were skipped.';
+  }
+
+  @override
+  String get storageOperationFailed =>
+      'Could not complete the operation. Please try again.';
+
+  @override
+  String get storageRetention => 'Retention';
+
+  @override
+  String get storageLocalRecordings => 'Local recordings';
+
+  @override
+  String get storageHistoryHint => 'Based on when the call ended';
+
+  @override
+  String get storageRecordingHint => 'Based on when the recording started';
+
+  @override
+  String get storageCleanupNote =>
+      'Expired data is removed at the next launch. Deletion cannot be undone.';
+
+  @override
+  String get storageDataManagement => 'Data management';
+
+  @override
+  String get storageRecordingsHint =>
+      'Browse, play and export saved recordings';
+
+  @override
+  String get storageCleanHint => 'Review expired items before deleting them';
 }

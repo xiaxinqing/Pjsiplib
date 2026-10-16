@@ -255,35 +255,17 @@ abstract class AppLocalizations {
   /// **'来电与通知'**
   String get settingsNotificationsSection;
 
-  /// 收到来电时显示应用窗口的设置名称
-  ///
-  /// In zh, this message translates to:
-  /// **'来电时显示主窗口'**
-  String get settingsShowWindowForIncomingCall;
-
-  /// 来电显示窗口设置说明
-  ///
-  /// In zh, this message translates to:
-  /// **'收到来电时打开当前通话页面'**
-  String get settingsShowWindowForIncomingCallDescription;
-
   /// 显示应用未读角标的设置名称
   ///
   /// In zh, this message translates to:
-  /// **'应用角标'**
+  /// **'显示应用角标'**
   String get settingsAppBadge;
 
   /// 应用角标设置说明
   ///
   /// In zh, this message translates to:
-  /// **'显示正在来电和未读未接来电数量'**
+  /// **'在应用图标上显示正在来电和未读未接来电的总数'**
   String get settingsAppBadgeDescription;
-
-  /// 尚未接入业务逻辑的设置状态
-  ///
-  /// In zh, this message translates to:
-  /// **'即将推出'**
-  String get settingsComingSoon;
 
   /// 账号设置分组名称
   ///
@@ -4985,6 +4967,168 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'联系人已不存在'**
   String get contactNoLongerExists;
+
+  /// No description provided for @settingsAppBadgeUnsupported.
+  ///
+  /// In zh, this message translates to:
+  /// **'当前系统不支持'**
+  String get settingsAppBadgeUnsupported;
+
+  /// No description provided for @settingsAppBadgeFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'无法保存设置或更新角标，请重试'**
+  String get settingsAppBadgeFailed;
+
+  /// No description provided for @settingsStorage.
+  ///
+  /// In zh, this message translates to:
+  /// **'存储'**
+  String get settingsStorage;
+
+  /// No description provided for @settingsStorageDescription.
+  ///
+  /// In zh, this message translates to:
+  /// **'管理通话记录和本地录音的保存期限'**
+  String get settingsStorageDescription;
+
+  /// No description provided for @storageHistoryDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'通话记录保存期限'**
+  String get storageHistoryDays;
+
+  /// No description provided for @storageRecordingDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'录音保存期限'**
+  String get storageRecordingDays;
+
+  /// No description provided for @storageForever.
+  ///
+  /// In zh, this message translates to:
+  /// **'永久保存'**
+  String get storageForever;
+
+  /// No description provided for @storageKeepDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'保留近 {days} 天'**
+  String storageKeepDays(int days);
+
+  /// No description provided for @storageCustomDays.
+  ///
+  /// In zh, this message translates to:
+  /// **'自定义天数…'**
+  String get storageCustomDays;
+
+  /// No description provided for @storageDaysLabel.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存天数'**
+  String get storageDaysLabel;
+
+  /// No description provided for @storageDaysHelp.
+  ///
+  /// In zh, this message translates to:
+  /// **'请输入 1–36500 之间的整数'**
+  String get storageDaysHelp;
+
+  /// No description provided for @storageRules.
+  ///
+  /// In zh, this message translates to:
+  /// **'两项期限独立生效。通话记录按结束时间、录音按开始时间计算。更改后在下次启动时后台清理，也可立即清理。正在录制或播放的录音会跳过；已导出的副本不受影响。删除后无法恢复。'**
+  String get storageRules;
+
+  /// No description provided for @storageViewRecordings.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看本地录音'**
+  String get storageViewRecordings;
+
+  /// No description provided for @storageNoRecordings.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无本地录音'**
+  String get storageNoRecordings;
+
+  /// No description provided for @storageCleanNow.
+  ///
+  /// In zh, this message translates to:
+  /// **'清理过期数据'**
+  String get storageCleanNow;
+
+  /// No description provided for @storageCleanConfirm.
+  ///
+  /// In zh, this message translates to:
+  /// **'将清理 {history} 条通话记录和 {recordings} 条录音。正在使用的录音会跳过。删除后无法恢复，是否继续？'**
+  String storageCleanConfirm(int history, int recordings);
+
+  /// No description provided for @storageNothingExpired.
+  ///
+  /// In zh, this message translates to:
+  /// **'没有需要清理的过期数据'**
+  String get storageNothingExpired;
+
+  /// No description provided for @storageCleanResult.
+  ///
+  /// In zh, this message translates to:
+  /// **'已清理 {history} 条通话记录、{recordings} 条录音；{failed} 项失败，失败项下次重试。正在使用的录音已跳过。'**
+  String storageCleanResult(int history, int recordings, int failed);
+
+  /// No description provided for @storageOperationFailed.
+  ///
+  /// In zh, this message translates to:
+  /// **'操作未完成，请重试'**
+  String get storageOperationFailed;
+
+  /// No description provided for @storageRetention.
+  ///
+  /// In zh, this message translates to:
+  /// **'保存期限'**
+  String get storageRetention;
+
+  /// No description provided for @storageLocalRecordings.
+  ///
+  /// In zh, this message translates to:
+  /// **'本地录音'**
+  String get storageLocalRecordings;
+
+  /// No description provided for @storageHistoryHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按通话结束时间计算'**
+  String get storageHistoryHint;
+
+  /// No description provided for @storageRecordingHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按录音开始时间计算'**
+  String get storageRecordingHint;
+
+  /// No description provided for @storageCleanupNote.
+  ///
+  /// In zh, this message translates to:
+  /// **'下次启动时自动清理过期数据，删除后无法恢复。'**
+  String get storageCleanupNote;
+
+  /// No description provided for @storageDataManagement.
+  ///
+  /// In zh, this message translates to:
+  /// **'数据管理'**
+  String get storageDataManagement;
+
+  /// No description provided for @storageRecordingsHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'查看、播放和导出已保存的录音'**
+  String get storageRecordingsHint;
+
+  /// No description provided for @storageCleanHint.
+  ///
+  /// In zh, this message translates to:
+  /// **'按当前保存期限清理，操作前会确认数量'**
+  String get storageCleanHint;
 }
 
 class _AppLocalizationsDelegate

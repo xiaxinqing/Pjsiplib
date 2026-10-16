@@ -63,14 +63,16 @@ extension _HistoryRecordings on _MyHomePageState {
   }
 
   Widget _buildHistoryRecordingRow(
-    _HistoryItem item,
+    _HistoryItem? item,
     CallRecording recording, {
     required int index,
     required bool playing,
   }) {
     final status = CallRecordingStatus.fromStorage(recording.status);
     final available =
-        status != CallRecordingStatus.failed && recording.fileSizeBytes > 44;
+        status != CallRecordingStatus.failed &&
+        status != CallRecordingStatus.recording &&
+        recording.fileSizeBytes > 44;
     final statusColor = switch (status) {
       CallRecordingStatus.completed => _brandGreen,
       CallRecordingStatus.interrupted => Colors.orange.shade700,
@@ -88,7 +90,8 @@ extension _HistoryRecordings on _MyHomePageState {
             CallRecordingStatus.failed => context.l10n.historyRecordingFailed,
           };
     final details = [
-      DateFormat.Hms(
+      DateFormat(
+        item == null ? 'yyyy-MM-dd HH:mm:ss' : 'HH:mm:ss',
         Localizations.localeOf(context).toLanguageTag(),
       ).format(recording.startedAt),
       _formatRecordingDuration(recording.durationMs),
@@ -115,7 +118,11 @@ extension _HistoryRecordings on _MyHomePageState {
                   children: [
                     Flexible(
                       child: Text(
-                        context.l10n.historyRecordingSegment(index + 1),
+                        item == null
+                            ? recording.relativePath
+                                  .split(RegExp(r'[/\\]'))
+                                  .last
+                            : context.l10n.historyRecordingSegment(index + 1),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -199,6 +206,7 @@ extension _HistoryRecordings on _MyHomePageState {
               ),
               PopupMenuItem(
                 value: _RecordingAction.delete,
+                enabled: status != CallRecordingStatus.recording,
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(AppIcons.delete, color: _dangerRed),
@@ -238,16 +246,16 @@ extension _HistoryRecordings on _MyHomePageState {
   }
 
   Future<void> _handleHistoryRecordingAction(
-    _HistoryItem item,
+    _HistoryItem? item,
     CallRecording recording,
     _RecordingAction action,
   ) async {
     final service = ref.read(pjsipServiceProvider.notifier);
     switch (action) {
       case _RecordingAction.export:
-        final target = item.displayName?.trim().isNotEmpty == true
-            ? item.displayName!.trim()
-            : item.phoneNumber;
+        final target = item?.displayName?.trim().isNotEmpty == true
+            ? item!.displayName!.trim()
+            : item?.phoneNumber ?? 'recording-${recording.id}';
         final safeTarget = target.replaceAll(RegExp(r'[^\w\-]+'), '_');
         await service.exportCallRecording(
           recording,

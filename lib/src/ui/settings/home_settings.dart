@@ -5,8 +5,9 @@ const int _settingsAccountIndex = 0;
 const int _settingsGeneralIndex = 1;
 const int _settingsAudioIndex = 2;
 const int _settingsCallsIndex = 3;
-const int _settingsDiagnosticsIndex = 4;
-const int _settingsAboutIndex = 5;
+const int _settingsStorageIndex = 4;
+const int _settingsDiagnosticsIndex = 5;
+const int _settingsAboutIndex = 6;
 
 extension _HomeSettings on _MyHomePageState {
   Widget _buildSettingsDialog(
@@ -95,6 +96,13 @@ extension _HomeSettings on _MyHomePageState {
                             selectedIndex: selectedIndex,
                             icon: AppIcons.call,
                             label: l10n.settingsCalls,
+                            onSelected: onSelected,
+                          ),
+                          _buildSettingsNavItem(
+                            index: _settingsStorageIndex,
+                            selectedIndex: selectedIndex,
+                            icon: AppIcons.history,
+                            label: l10n.settingsStorage,
                             onSelected: onSelected,
                           ),
                           _buildSettingsNavItem(
@@ -236,6 +244,7 @@ extension _HomeSettings on _MyHomePageState {
       _settingsAudioIndex => l10n.settingsAudio,
       _settingsCallsIndex => l10n.settingsCalls,
       _settingsGeneralIndex => l10n.settingsGeneral,
+      _settingsStorageIndex => l10n.settingsStorage,
       _settingsDiagnosticsIndex => l10n.settingsDiagnostics,
       _settingsAboutIndex => l10n.settingsAbout,
       _ => l10n.settingsAccount,
@@ -249,6 +258,7 @@ extension _HomeSettings on _MyHomePageState {
       _settingsAudioIndex => l10n.settingsAudioDescription,
       _settingsCallsIndex => l10n.settingsCallsDescription,
       _settingsGeneralIndex => l10n.settingsGeneralDescription,
+      _settingsStorageIndex => l10n.settingsStorageDescription,
       _settingsDiagnosticsIndex => l10n.settingsDiagnosticsDescription,
       _settingsAboutIndex => l10n.settingsAboutDescription,
       _ => l10n.settingsAccountDescription,
@@ -267,6 +277,9 @@ extension _HomeSettings on _MyHomePageState {
         _settingsAudioIndex => _buildAudioSettingsTab(uiState, service),
         _settingsCallsIndex => _buildCallSettingsTab(uiState, service),
         _settingsGeneralIndex => _buildGeneralSettingsTab(),
+        _settingsStorageIndex => _StorageSettingsPage(
+          onOpenRecordings: _showLocalRecordings,
+        ),
         _settingsDiagnosticsIndex => _buildDiagnosticsTab(uiState, service),
         _settingsAboutIndex => _buildAboutSettingsTab(uiState),
         _ => _buildAccountSettingsTab(uiState, service),

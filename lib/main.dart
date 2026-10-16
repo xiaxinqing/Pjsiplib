@@ -21,12 +21,14 @@ import 'src/localization/call_history_localizer.dart';
 import 'src/localization/locale_controller.dart';
 import 'src/services/app_shutdown_coordinator.dart';
 import 'src/services/call_history_database.dart';
+import 'src/services/storage_manager.dart';
 import 'src/services/contact_service.dart';
 import 'src/services/native_bridge/native_bridge.dart';
 import 'src/services/pjsip_service.dart';
 import 'src/services/sip_call_end_reason_mapper.dart';
 import 'src/ui/core/app_colors.dart';
 import 'src/ui/settings/launch_at_startup_switch.dart';
+import 'src/ui/settings/app_badge_switch.dart';
 import 'src/ui/home/calls/stage/in_call_dtmf_popover.dart';
 import 'utils/toast_util.dart';
 
@@ -85,6 +87,7 @@ part 'src/ui/home/history/history_models.dart';
 part 'src/ui/home/home_helpers.dart';
 part 'src/ui/settings/home_settings.dart';
 part 'src/ui/settings/home_settings_general.dart';
+part 'src/ui/settings/home_settings_storage.dart';
 part 'src/ui/settings/home_settings_account.dart';
 part 'src/ui/settings/add_account_dialog.dart';
 part 'src/ui/settings/home_settings_audio.dart';
@@ -113,6 +116,7 @@ Future<void> main(List<String> arguments) async {
     ),
   );
   AppLaunchSplashController.hideAfterFirstFrame();
+  unawaited(AppBadgeController.instance.initialize());
   unawaited(AppTrayController.instance.initialize());
   unawaited(
     AppWindowController.completeStartup(startMinimized: startMinimized),

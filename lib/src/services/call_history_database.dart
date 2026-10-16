@@ -893,6 +893,51 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
     });
   }
 
+  Future<void> deleteOldHistoryEntry(int id) {
+    return _trackWrite(
+      'deleteOldHistoryEntry',
+      () => transaction(() async {
+        // 不依赖 SQLite 是否开启外键，明确解除关联，录音本身继续保留。
+        await (update(callRecordings)
+              ..where((t) => t.historyEntryId.equals(id)))
+            .write(const CallRecordingsCompanion(historyEntryId: Value(null)));
+        await (update(
+          callRecordingLinks,
+        )..where((t) => t.historyEntryId.equals(id))).write(
+          const CallRecordingLinksCompanion(historyEntryId: Value(null)),
+        );
+        await (delete(callHistoryEntries)..where((t) => t.id.equals(id))).go();
+      }),
+    );
+  }
+
+  // 用业务时间判断是否过期，不看文件的修改时间。
+  Future<List<int>> findOldHistoryIds(DateTime before) async {
+    final rows =
+        await (selectOnly(callHistoryEntries)
+              ..addColumns([callHistoryEntries.id])
+              ..where(callHistoryEntries.endedAt.isSmallerThanValue(before)))
+            .get();
+    return rows.map((row) => row.read(callHistoryEntries.id)!).toList();
+  }
+
+  Future<List<CallRecording>> findOldRecordings(DateTime before) {
+    return (select(callRecordings)..where(
+          (table) =>
+              table.startedAt.isSmallerThanValue(before) &
+              table.status
+                  .equals(CallRecordingStatus.recording.storageKey)
+                  .not(),
+        ))
+        .get();
+  }
+
+  Stream<List<CallRecording>> watchLocalRecordings() {
+    return (select(
+      callRecordings,
+    )..orderBy([(table) => OrderingTerm.desc(table.startedAt)])).watch();
+  }
+
   Future<List<CallRecording>> listAllRecordings() {
     return (select(
       callRecordings,
@@ -910,9 +955,12 @@ class CallHistoryDatabase extends _$CallHistoryDatabase {
   Future<void> deleteRecording(int id) {
     return _trackWrite(
       'deleteRecording',
-      () => (delete(
-        callRecordings,
-      )..where((table) => table.id.equals(id))).go().then((_) {}),
+      () => transaction(() async {
+        await (delete(
+          callRecordingLinks,
+        )..where((t) => t.recordingId.equals(id))).go();
+        await (delete(callRecordings)..where((t) => t.id.equals(id))).go();
+      }),
     );
   }
 

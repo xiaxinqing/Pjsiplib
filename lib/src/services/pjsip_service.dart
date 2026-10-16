@@ -19,6 +19,7 @@ import '../localization/app_runtime_localizer.dart';
 import '../localization/call_history_localizer.dart';
 import 'call_history_database.dart';
 import 'call_recording_storage.dart';
+import 'storage_manager.dart';
 import 'contact_service.dart';
 import 'diagnostic_log_exporter.dart';
 import 'native_bridge/audio_device_change_controller.dart';
@@ -126,6 +127,8 @@ class PjsipService extends Notifier<PjsipUIState> {
 
   CallHistoryDatabase get _callHistoryDatabase =>
       ref.read(callHistoryDatabaseProvider);
+
+  StorageManager get _storageManager => ref.read(storageManagerProvider);
 
   List<ContactEntry> get _contacts => ref.read(contactBookProvider).contacts;
 
@@ -240,7 +243,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     ref.onDispose(_cleanup);
     // build() 返回 state 后再启动异步检测，避免初始化完成前修改 Notifier.state。
     scheduleMicrotask(_loadAudioPreferences);
-    scheduleMicrotask(_recoverUnfinishedCallRecordings);
+    scheduleMicrotask(_prepareLocalStorage);
     scheduleMicrotask(_startConnectivityMonitoring);
     scheduleMicrotask(_startAppLifecycleMonitoring);
     _scheduleStartupWarmup();

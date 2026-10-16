@@ -57,37 +57,14 @@ extension _HomeSettingsGeneral on _MyHomePageState {
             icon: AppIcons.incoming,
             children: [
               _buildSettingTile(
-                icon: AppIcons.incoming,
-                title: l10n.settingsShowWindowForIncomingCall,
-                subtitle: l10n.settingsShowWindowForIncomingCallDescription,
-                trailing: _buildPlannedStatus(),
-              ),
-              _buildSettingDivider(),
-              _buildSettingTile(
                 icon: AppIcons.confirm,
                 title: l10n.settingsAppBadge,
                 subtitle: l10n.settingsAppBadgeDescription,
-                trailing: _buildPlannedStatus(),
+                trailing: const AppBadgeSwitch(),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  /// 未接入业务逻辑的设置统一显示为状态标签，避免伪开关造成误操作。
-  Widget _buildPlannedStatus() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: _subtlePanel,
-        borderRadius: BorderRadius.circular(_radiusXs),
-        border: Border.all(color: _softBorder),
-      ),
-      child: Text(
-        context.l10n.settingsComingSoon,
-        style: Theme.of(context).textTheme.bodySmall,
       ),
     );
   }

@@ -42,6 +42,8 @@ class _PjsipRecordingRuntime {
   int? playerPort;
   int? playingRecordingId;
   Timer? playbackTimer;
+  // 每次播放或停止都换个编号，正在等文件的旧请求就知道自己已经作废了。
+  int playbackRequest = 0;
 }
 
 extension PjsipRecordingOperations on PjsipService {
@@ -506,10 +508,37 @@ extension PjsipRecordingOperations on PjsipService {
     if (changed) _uiState = _uiState.copyWith(recordingCallIds: ids);
   }
 
+  Future<void> _prepareLocalStorage() async {
+    // 先收好上次意外退出留下的录音，再清理过期内容，不挡住页面和电话启动。
+    await _recoverUnfinishedCallRecordings();
+    try {
+      final storage = _storageManager;
+      final settings = await storage.readSettings();
+      final plan = await storage.findExpired(settings);
+      final result = await storage.cleanExpired(
+        plan,
+        isPlaying: isRecordingPlaying,
+      );
+      if (!plan.isEmpty) {
+        _addLog(
+          '🧹 存储清理：通话记录 ${result.historyCount} 条，录音 ${result.recordingCount} 条，失败 ${result.failedCount} 条',
+        );
+      }
+    } catch (error) {
+      _addLog('⚠️ 存储清理未完成，下次启动再试: $error');
+    }
+  }
+
   Future<void> _recoverUnfinishedCallRecordings() async {
     try {
       final rows = await _callHistoryDatabase.listUnfinishedRecordings();
       for (final row in rows) {
+        // 启动期间如果已经接到电话，别把这一轮刚开始的录音当成旧文件。
+        if (_recording.sessions.values.any(
+          (session) => session.databaseId == row.id,
+        )) {
+          continue;
+        }
         final recovered = await CallRecordingStorage.recoverInterrupted(
           row.relativePath,
         );
@@ -538,60 +567,80 @@ extension PjsipRecordingOperations on PjsipService {
   Future<CallRecordingPlaybackResult> toggleCallRecordingPlayback(
     CallRecording recording,
   ) async {
-    if (_recording.playingRecordingId == recording.id) {
-      _stopCallRecordingPlayback();
-      return CallRecordingPlaybackResult.stopped;
-    }
-    if (_uiState.calls.values.any((call) => call.isConnected)) {
-      return CallRecordingPlaybackResult.activeCall;
-    }
-    if (!_uiState.isInitialized) {
-      return CallRecordingPlaybackResult.engineUnavailable;
-    }
-    final file = await CallRecordingStorage.resolve(recording.relativePath);
-    if (!await file.exists()) return CallRecordingPlaybackResult.fileMissing;
-    if (!_ensureSoundDeviceOpen('播放本地通话录音')) {
-      return CallRecordingPlaybackResult.engineUnavailable;
-    }
-    _stopCallRecordingPlayback(updateUi: false);
-
-    final player = using((Arena arena) {
-      final filename = arena<pj_str_t>();
-      final nativePath = file.path.toNativeUtf8(allocator: arena);
-      _pjStr(filename.ref, nativePath);
-      final playerId = arena<pjsua_player_id>();
-      // 使用循环播放器并按数据库时长主动销毁，规避部分平台在 EOF 后销毁触发断言。
-      final status = _bindings.pjsua_player_create(filename, 0, playerId);
-      if (status != 0) return (status: status, id: -1, port: -1);
-      final port = _bindings.pjsua_player_get_conf_port(playerId.value);
-      if (port < 0) {
-        _bindings.pjsua_player_destroy(playerId.value);
-        return (status: -1, id: -1, port: -1);
-      }
-      final connectStatus = _bindings.pjsua_conf_connect(port, 0);
-      if (connectStatus != 0) {
-        _bindings.pjsua_player_destroy(playerId.value);
-        return (status: connectStatus, id: -1, port: -1);
-      }
-      return (status: 0, id: playerId.value, port: port);
-    });
-    if (player.status != 0) {
+    final storage = _storageManager;
+    if (!storage.busyRecordingIds.add(recording.id)) {
       return CallRecordingPlaybackResult.failed;
     }
-    _recording.playerId = player.id;
-    _recording.playerPort = player.port;
-    _recording.playingRecordingId = recording.id;
-    _uiState = _uiState.copyWith(playingRecordingId: recording.id);
-    final duration = Duration(
-      milliseconds: recording.durationMs.clamp(500, 1 << 31).toInt(),
-    );
-    _recording.playbackTimer = Timer(duration, _stopCallRecordingPlayback);
-    return CallRecordingPlaybackResult.started;
+    try {
+      if (_recording.playingRecordingId == recording.id) {
+        _stopCallRecordingPlayback();
+        return CallRecordingPlaybackResult.stopped;
+      }
+      if (_uiState.calls.values.any((call) => call.isConnected)) {
+        return CallRecordingPlaybackResult.activeCall;
+      }
+      if (!_uiState.isInitialized) {
+        return CallRecordingPlaybackResult.engineUnavailable;
+      }
+      final request = ++_recording.playbackRequest;
+      final file = await CallRecordingStorage.resolve(recording.relativePath);
+      final exists = await file.exists();
+      // 查文件这段时间用户可能已经关窗，或点了另一条录音，别再悄悄开始播放。
+      if (request != _recording.playbackRequest) {
+        return CallRecordingPlaybackResult.stopped;
+      }
+      if (!exists) return CallRecordingPlaybackResult.fileMissing;
+      if (_uiState.calls.values.any((call) => call.isConnected)) {
+        return CallRecordingPlaybackResult.activeCall;
+      }
+      if (!_ensureSoundDeviceOpen('播放本地通话录音')) {
+        return CallRecordingPlaybackResult.engineUnavailable;
+      }
+      _stopCallRecordingPlayback(updateUi: false);
+
+      final player = using((Arena arena) {
+        final filename = arena<pj_str_t>();
+        final nativePath = file.path.toNativeUtf8(allocator: arena);
+        _pjStr(filename.ref, nativePath);
+        final playerId = arena<pjsua_player_id>();
+        // 使用循环播放器并按数据库时长主动销毁，规避部分平台在 EOF 后销毁触发断言。
+        final status = _bindings.pjsua_player_create(filename, 0, playerId);
+        if (status != 0) return (status: status, id: -1, port: -1);
+        final port = _bindings.pjsua_player_get_conf_port(playerId.value);
+        if (port < 0) {
+          _bindings.pjsua_player_destroy(playerId.value);
+          return (status: -1, id: -1, port: -1);
+        }
+        final connectStatus = _bindings.pjsua_conf_connect(port, 0);
+        if (connectStatus != 0) {
+          _bindings.pjsua_player_destroy(playerId.value);
+          return (status: connectStatus, id: -1, port: -1);
+        }
+        return (status: 0, id: playerId.value, port: port);
+      });
+      if (player.status != 0) {
+        return CallRecordingPlaybackResult.failed;
+      }
+      _recording.playerId = player.id;
+      _recording.playerPort = player.port;
+      _recording.playingRecordingId = recording.id;
+      _uiState = _uiState.copyWith(playingRecordingId: recording.id);
+      final duration = Duration(
+        milliseconds: recording.durationMs.clamp(500, 1 << 31).toInt(),
+      );
+      _recording.playbackTimer = Timer(duration, _stopCallRecordingPlayback);
+      return CallRecordingPlaybackResult.started;
+    } finally {
+      storage.busyRecordingIds.remove(recording.id);
+    }
   }
+
+  bool isRecordingPlaying(int id) => _uiState.playingRecordingId == id;
 
   void stopCallRecordingPlayback() => _stopCallRecordingPlayback();
 
   void _stopCallRecordingPlayback({bool updateUi = true}) {
+    _recording.playbackRequest++;
     _recording.playbackTimer?.cancel();
     _recording.playbackTimer = null;
     final playerId = _recording.playerId;

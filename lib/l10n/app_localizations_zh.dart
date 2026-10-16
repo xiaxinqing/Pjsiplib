@@ -88,19 +88,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsNotificationsSection => '来电与通知';
 
   @override
-  String get settingsShowWindowForIncomingCall => '来电时显示主窗口';
+  String get settingsAppBadge => '显示应用角标';
 
   @override
-  String get settingsShowWindowForIncomingCallDescription => '收到来电时打开当前通话页面';
-
-  @override
-  String get settingsAppBadge => '应用角标';
-
-  @override
-  String get settingsAppBadgeDescription => '显示正在来电和未读未接来电数量';
-
-  @override
-  String get settingsComingSoon => '即将推出';
+  String get settingsAppBadgeDescription => '在应用图标上显示正在来电和未读未接来电的总数';
 
   @override
   String get settingsAccount => '账号';
@@ -2628,6 +2619,94 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get contactNoLongerExists => '联系人已不存在';
+
+  @override
+  String get settingsAppBadgeUnsupported => '当前系统不支持';
+
+  @override
+  String get settingsAppBadgeFailed => '无法保存设置或更新角标，请重试';
+
+  @override
+  String get settingsStorage => '存储';
+
+  @override
+  String get settingsStorageDescription => '管理通话记录和本地录音的保存期限';
+
+  @override
+  String get storageHistoryDays => '通话记录保存期限';
+
+  @override
+  String get storageRecordingDays => '录音保存期限';
+
+  @override
+  String get storageForever => '永久保存';
+
+  @override
+  String storageKeepDays(int days) {
+    return '保留近 $days 天';
+  }
+
+  @override
+  String get storageCustomDays => '自定义天数…';
+
+  @override
+  String get storageDaysLabel => '保存天数';
+
+  @override
+  String get storageDaysHelp => '请输入 1–36500 之间的整数';
+
+  @override
+  String get storageRules =>
+      '两项期限独立生效。通话记录按结束时间、录音按开始时间计算。更改后在下次启动时后台清理，也可立即清理。正在录制或播放的录音会跳过；已导出的副本不受影响。删除后无法恢复。';
+
+  @override
+  String get storageViewRecordings => '查看本地录音';
+
+  @override
+  String get storageNoRecordings => '暂无本地录音';
+
+  @override
+  String get storageCleanNow => '清理过期数据';
+
+  @override
+  String storageCleanConfirm(int history, int recordings) {
+    return '将清理 $history 条通话记录和 $recordings 条录音。正在使用的录音会跳过。删除后无法恢复，是否继续？';
+  }
+
+  @override
+  String get storageNothingExpired => '没有需要清理的过期数据';
+
+  @override
+  String storageCleanResult(int history, int recordings, int failed) {
+    return '已清理 $history 条通话记录、$recordings 条录音；$failed 项失败，失败项下次重试。正在使用的录音已跳过。';
+  }
+
+  @override
+  String get storageOperationFailed => '操作未完成，请重试';
+
+  @override
+  String get storageRetention => '保存期限';
+
+  @override
+  String get storageLocalRecordings => '本地录音';
+
+  @override
+  String get storageHistoryHint => '按通话结束时间计算';
+
+  @override
+  String get storageRecordingHint => '按录音开始时间计算';
+
+  @override
+  String get storageCleanupNote => '下次启动时自动清理过期数据，删除后无法恢复。';
+
+  @override
+  String get storageDataManagement => '数据管理';
+
+  @override
+  String get storageRecordingsHint => '查看、播放和导出已保存的录音';
+
+  @override
+  String get storageCleanHint => '按当前保存期限清理，操作前会确认数量';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -2714,19 +2793,10 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get settingsNotificationsSection => '來電及通知';
 
   @override
-  String get settingsShowWindowForIncomingCall => '來電時顯示主視窗';
+  String get settingsAppBadge => '顯示應用程式角標';
 
   @override
-  String get settingsShowWindowForIncomingCallDescription => '收到來電時開啟目前通話頁面';
-
-  @override
-  String get settingsAppBadge => 'App 圖示標記';
-
-  @override
-  String get settingsAppBadgeDescription => '顯示正在來電及未讀的未接來電數目';
-
-  @override
-  String get settingsComingSoon => '即將推出';
+  String get settingsAppBadgeDescription => '在應用程式圖示上顯示正在來電和未讀未接來電的總數';
 
   @override
   String get settingsAccount => '帳戶';
@@ -5254,4 +5324,92 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get contactNoLongerExists => '聯絡人已不存在';
+
+  @override
+  String get settingsAppBadgeUnsupported => '目前系統不支援';
+
+  @override
+  String get settingsAppBadgeFailed => '無法儲存設定或更新角標，請重試';
+
+  @override
+  String get settingsStorage => '儲存';
+
+  @override
+  String get settingsStorageDescription => '管理通話記錄和本機錄音的保存期限';
+
+  @override
+  String get storageHistoryDays => '通話記錄保存期限';
+
+  @override
+  String get storageRecordingDays => '錄音保存期限';
+
+  @override
+  String get storageForever => '永久保存';
+
+  @override
+  String storageKeepDays(int days) {
+    return '保留近 $days 天';
+  }
+
+  @override
+  String get storageCustomDays => '自訂天數…';
+
+  @override
+  String get storageDaysLabel => '保存天數';
+
+  @override
+  String get storageDaysHelp => '請輸入 1–36500 之間的整數';
+
+  @override
+  String get storageRules =>
+      '兩項期限獨立生效。通話記錄按結束時間、錄音按開始時間計算。更改後在下次啟動時背景清理，也可立即清理。正在錄製或播放的錄音會略過；已匯出的副本不受影響。刪除後無法復原。';
+
+  @override
+  String get storageViewRecordings => '查看本機錄音';
+
+  @override
+  String get storageNoRecordings => '暫無本機錄音';
+
+  @override
+  String get storageCleanNow => '清理過期資料';
+
+  @override
+  String storageCleanConfirm(int history, int recordings) {
+    return '將清理 $history 條通話記錄和 $recordings 條錄音。正在使用的錄音會略過。刪除後無法復原，是否繼續？';
+  }
+
+  @override
+  String get storageNothingExpired => '沒有需要清理的過期資料';
+
+  @override
+  String storageCleanResult(int history, int recordings, int failed) {
+    return '已清理 $history 條通話記錄、$recordings 條錄音；$failed 項失敗，失敗項下次重試。正在使用的錄音已略過。';
+  }
+
+  @override
+  String get storageOperationFailed => '操作未完成，請重試';
+
+  @override
+  String get storageRetention => '保存期限';
+
+  @override
+  String get storageLocalRecordings => '本機錄音';
+
+  @override
+  String get storageHistoryHint => '按通話結束時間計算';
+
+  @override
+  String get storageRecordingHint => '按錄音開始時間計算';
+
+  @override
+  String get storageCleanupNote => '下次啟動時自動清理過期資料，刪除後無法復原。';
+
+  @override
+  String get storageDataManagement => '資料管理';
+
+  @override
+  String get storageRecordingsHint => '查看、播放和匯出已保存的錄音';
+
+  @override
+  String get storageCleanHint => '按目前保存期限清理，操作前會確認數量';
 }
