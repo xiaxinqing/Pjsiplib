@@ -4064,11 +4064,11 @@ abstract class AppLocalizations {
   /// **'连接中'**
   String get accountStatusConnecting;
 
-  /// No description provided for @accountStatusUpdating.
+  /// No description provided for @accountStatusRestarting.
   ///
   /// In zh, this message translates to:
-  /// **'处理中'**
-  String get accountStatusUpdating;
+  /// **'重启中'**
+  String get accountStatusRestarting;
 
   /// No description provided for @accountStatusDisabled.
   ///

@@ -678,7 +678,7 @@
   "accountSettingsRestartCallWarning": "Active calls will end and all lines will disconnect.",
   "accountStatusOnline": "Online",
   "accountStatusConnecting": "Connecting",
-  "accountStatusUpdating": "Updating",
+  "accountStatusRestarting": "Restarting",
   "accountStatusDisabled": "Disabled",
   "accountStatusFailed": "Failed",
   "accountStatusOffline": "Offline",

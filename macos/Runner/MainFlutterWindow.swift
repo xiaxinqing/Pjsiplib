@@ -106,6 +106,11 @@ class MainFlutterWindow: NSWindow {
         )
         statusChannel.setMethodCallHandler { call, result in
             switch call.method {
+            case "logStartupState":
+                if let message = call.arguments as? String {
+                    NSLog("VPhone startup state: %@", message)
+                }
+                result(nil)
             case "wasLaunchedAtLogin":
                 AppLaunchOrigin.reply(result)
             case "requiresApproval":

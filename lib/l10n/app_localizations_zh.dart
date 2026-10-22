@@ -2127,7 +2127,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountStatusConnecting => '连接中';
 
   @override
-  String get accountStatusUpdating => '处理中';
+  String get accountStatusRestarting => '重启中';
 
   @override
   String get accountStatusDisabled => '已停用';
@@ -4832,7 +4832,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get accountStatusConnecting => '連線中';
 
   @override
-  String get accountStatusUpdating => '處理中';
+  String get accountStatusRestarting => '重新啟動中';
 
   @override
   String get accountStatusDisabled => '已停用';

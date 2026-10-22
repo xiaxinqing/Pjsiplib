@@ -554,19 +554,16 @@ extension _PjsipNativeCallbacks on PjsipService {
               account?.registrationActionInProgress ?? false;
           if (account != null) {
             final wasRegistered = account.isRegistered;
-            final isPauseAck =
-                wasActionInProgress &&
-                !account.registrationEnabled &&
-                sipStatus == 200;
+            final updatedAccount = account.withRegistrationResult(
+              status: sipStatus,
+              statusText: statusText,
+              expires: expires,
+            );
             final isPaused =
-                !account.registrationEnabled && (expires == 0 || isPauseAck);
+                !updatedAccount.registrationEnabled &&
+                updatedAccount.registrationExpires == 0;
             final accounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
-              ..[accId] = account.copyWith(
-                registrationStatus: isPaused ? 0 : sipStatus,
-                registrationStatusText: isPaused ? '已停用' : statusText,
-                registrationExpires: isPaused ? 0 : expires,
-                registrationActionInProgress: false,
-              );
+              ..[accId] = updatedAccount;
             _uiState = _uiState.copyWith(accounts: accounts);
             if (isPaused && wasActionInProgress) {
               ToastUtil.showSuccess(
@@ -578,6 +575,7 @@ extension _PjsipNativeCallbacks on PjsipService {
             } else if (sipStatus == 200 &&
                 expires != 0 &&
                 account.registrationEnabled &&
+                account.restartPhase != SipAccountRestartPhase.preparing &&
                 (wasActionInProgress || !wasRegistered)) {
               ToastUtil.showSuccess(
                 AppRuntimeLocalizer.resolve(
@@ -587,6 +585,7 @@ extension _PjsipNativeCallbacks on PjsipService {
               );
             } else if (sipStatus >= 300 &&
                 account.registrationEnabled &&
+                account.restartPhase != SipAccountRestartPhase.preparing &&
                 (wasActionInProgress || wasRegistered)) {
               ToastUtil.showError(
                 AppRuntimeLocalizer.resolve(

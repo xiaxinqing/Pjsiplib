@@ -1354,6 +1354,7 @@ extension PjsipEngineOperations on PjsipService {
         registrationExpires: null,
         registrationEnabled: true,
         registrationActionInProgress: true,
+        restartPhase: SipAccountRestartPhase.preparing,
       );
     _uiState = _uiState.copyWith(accounts: accounts);
     unawaited(_persistSeatEnvironment());
@@ -1428,6 +1429,7 @@ extension PjsipEngineOperations on PjsipService {
           registrationExpires: null,
           registrationEnabled: true,
           registrationActionInProgress: true,
+          restartPhase: SipAccountRestartPhase.preparing,
         );
       _uiState = _uiState.copyWith(accounts: unregisterAccounts);
       unawaited(_persistSeatEnvironment());
@@ -1453,6 +1455,7 @@ extension PjsipEngineOperations on PjsipService {
         registrationExpires: null,
         registrationEnabled: true,
         registrationActionInProgress: true,
+        restartPhase: SipAccountRestartPhase.registering,
       );
     _uiState = _uiState.copyWith(accounts: accounts);
     unawaited(_persistSeatEnvironment());
@@ -1465,6 +1468,7 @@ extension PjsipEngineOperations on PjsipService {
           ..[accId] = rollbackAccount.copyWith(
             registrationStatusText: '重连失败',
             registrationActionInProgress: false,
+            restartPhase: SipAccountRestartPhase.none,
           );
         _uiState = _uiState.copyWith(accounts: rollbackAccounts);
         unawaited(_persistSeatEnvironment());
@@ -1723,6 +1727,7 @@ extension PjsipEngineOperations on PjsipService {
         registrationStatusText: '重启中',
         registrationExpires: null,
         registrationActionInProgress: true,
+        restartPhase: SipAccountRestartPhase.preparing,
       );
       _uiState = _uiState.copyWith(
         accounts: Map<int, SipAccountInfo>.of(accounts),

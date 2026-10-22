@@ -80,19 +80,21 @@ class AppLaunchAtStartupController {
 
   Future<bool> shouldStartMinimized(List<String> arguments) async {
     try {
-      return await _shouldStartMinimized(
+      final minimized = await _shouldStartMinimized(
         arguments,
       ).timeout(const Duration(seconds: 3));
+      logStartupState('minimizeAfterFirstFrame=$minimized');
+      return minimized;
     } catch (error) {
       // 来源或偏好拿不准时就正常显示，不要卡住整个应用的启动。
-      debugPrint('Could not determine startup visibility: $error');
+      logStartupState('minimizeAfterFirstFrame=false reason=$error');
       return false;
     }
   }
 
   Future<bool> _shouldStartMinimized(List<String> arguments) async {
     final fromLogin = await wasLaunchedAtLogin(arguments);
-    debugPrint('VPhone startup origin: launchedAtLogin=$fromLogin');
+    logStartupState('launchedAtLogin=$fromLogin');
     if (!fromLogin) return false;
     final restartTime = await _storage.getInt(_manualRestartKey);
     if (restartTime != null) {
@@ -101,11 +103,32 @@ class AppLaunchAtStartupController {
       // Windows/Linux 的重启插件会原样带回 --autostart，但点“重启”是手动操作。
       // 这个标记只用一次且一分钟后失效，不能影响下一次真正的开机启动。
       if (age >= 0 && age < const Duration(minutes: 1).inMilliseconds) {
+        logStartupState('manualRestart=true');
         return false;
       }
     }
-    return await readStartMinimized() &&
-        await readStatus() == LaunchAtStartupStatus.enabled;
+    // 既然本次确实是系统自启动，就按用户的最小化偏好执行。
+    // 登录项状态管的是下次要不要自启动，不该再否决这一次的窗口行为。
+    // 也省掉开机时查询系统服务的等待，避免查询慢了就被当成“不要最小化”。
+    final minimized = await readStartMinimized();
+    logStartupState('minimizedPreference=$minimized');
+    return minimized;
+  }
+
+  /// 正式包的 Dart 输出不一定留在系统日志里，macOS 再记一份方便排查开机问题。
+  static void logStartupState(String message) {
+    debugPrint('VPhone startup: $message');
+    if (!kIsWeb && Platform.isMacOS) {
+      unawaited(_writeStartupLog(message));
+    }
+  }
+
+  static Future<void> _writeStartupLog(String message) async {
+    try {
+      await _statusChannel.invokeMethod<void>('logStartupState', message);
+    } catch (_) {
+      // 日志只是辅助，旧版 Runner 或测试没接这个通道也不影响启动。
+    }
   }
 
   Future<void> prepareForManualRestart() =>

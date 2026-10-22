@@ -142,7 +142,7 @@ void main() {
     expect(find.byKey(const Key('startMinimized')), findsNothing);
   });
 
-  test('只有自启动、已注册、子开关开启三个条件同时成立才最小化', () async {
+  test('本次确认自启动且子开关开启就最小化，手动打开和重启仍正常显示', () async {
     final controller = FakeStartupController()
       ..status = LaunchAtStartupStatus.enabled;
     expect(await controller.shouldStartMinimized(['--autostart']), isFalse);
@@ -154,9 +154,12 @@ void main() {
     // 在 macOS 上，无标记启动会查询原生通道；测试未注册通道也应该正常显示。
     expect(await controller.shouldStartMinimized([]), isFalse);
     controller.status = LaunchAtStartupStatus.disabled;
-    expect(await controller.shouldStartMinimized(['--autostart']), isFalse);
+    expect(await controller.shouldStartMinimized(['--autostart']), isTrue);
+    // 设置子开关时仍需启用系统自启动，但本次窗口行为不依赖再次查询系统。
     await expectLater(controller.setStartMinimized(true), throwsStateError);
     controller.failRead = true;
+    expect(await controller.shouldStartMinimized(['--autostart']), isTrue);
+    await controller.setStartMinimized(false);
     expect(await controller.shouldStartMinimized(['--autostart']), isFalse);
   });
 
@@ -349,23 +352,31 @@ void main() {
     var enabled = false;
     var pending = false;
     var applyWrite = true;
+    var fromLogin = false;
+    var statusReads = 0;
     final writes = <bool>[];
     var cancellations = 0;
     setUp(() {
       enabled = false;
       pending = false;
       applyWrite = true;
+      fromLogin = false;
+      statusReads = 0;
       writes.clear();
       cancellations = 0;
       AppLaunchAtStartupController.initialize();
       messenger.setMockMethodCallHandler(pluginChannel, (call) async {
-        if (call.method == 'launchAtStartupIsEnabled') return enabled;
+        if (call.method == 'launchAtStartupIsEnabled') {
+          statusReads++;
+          return enabled;
+        }
         final requested = (call.arguments as Map)['setEnabledValue'] as bool;
         writes.add(requested);
         if (applyWrite) enabled = requested;
         return null;
       });
       messenger.setMockMethodCallHandler(statusChannel, (call) async {
+        if (call.method == 'wasLaunchedAtLogin') return fromLogin;
         if (call.method == 'requiresApproval') return pending;
         if (call.method == 'cancelPendingRegistration') {
           cancellations++;
@@ -377,6 +388,22 @@ void main() {
     tearDown(() {
       messenger.setMockMethodCallHandler(pluginChannel, null);
       messenger.setMockMethodCallHandler(statusChannel, null);
+    });
+    test('macOS 没有启动参数时按原生登录事件最小化，不查询或重写登录项', () async {
+      final preferences = MemoryPreferences();
+      preferences.values['minimize_on_autostart'] = true;
+      final controller = AppLaunchAtStartupController(preferences: preferences);
+      fromLogin = true;
+      // 模拟开机时系统启动项查询暂时返回关闭，不能影响本次已经发生的自启动。
+      enabled = false;
+      expect(await controller.shouldStartMinimized([]), isTrue);
+      expect(statusReads, 0);
+      expect(writes, isEmpty);
+      fromLogin = false;
+      expect(await controller.shouldStartMinimized([]), isFalse);
+      fromLogin = true;
+      preferences.values['minimize_on_autostart'] = false;
+      expect(await controller.shouldStartMinimized([]), isFalse);
     });
     test('初始化不注册，启用与关闭都重新确认系统状态', () async {
       const controller = AppLaunchAtStartupController();

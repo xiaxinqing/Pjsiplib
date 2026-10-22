@@ -813,7 +813,7 @@
   "accountSettingsRestartCallWarning": "当前仍有通话，重启会中断通话和线路连接。",
   "accountStatusOnline": "在线",
   "accountStatusConnecting": "连接中",
-  "accountStatusUpdating": "处理中",
+  "accountStatusRestarting": "重启中",
   "accountStatusDisabled": "已停用",
   "accountStatusFailed": "连接失败",
   "accountStatusOffline": "离线",

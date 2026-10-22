@@ -678,7 +678,7 @@
   "accountSettingsRestartCallWarning": "目前仍有通話，重新啟動會中斷通話及線路連線。",
   "accountStatusOnline": "在線",
   "accountStatusConnecting": "連線中",
-  "accountStatusUpdating": "處理中",
+  "accountStatusRestarting": "重新啟動中",
   "accountStatusDisabled": "已停用",
   "accountStatusFailed": "連線失敗",
   "accountStatusOffline": "離線",

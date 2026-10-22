@@ -145,6 +145,9 @@ class TurnConfig {
   }
 }
 
+/// 重启先准备网络、注销旧注册，再等待新注册的最终结果。
+enum SipAccountRestartPhase { none, preparing, registering }
+
 /// 一条坐席可用的 SIP 线路/账号。
 ///
 /// 客服平台里，多账号更像“多线路”而不是多个独立窗口。UI 可以根据
@@ -182,6 +185,7 @@ class SipAccountInfo {
   final int? registrationExpires;
   final bool registrationEnabled;
   final bool registrationActionInProgress;
+  final SipAccountRestartPhase restartPhase;
 
   SipAccountInfo({
     required this.accId,
@@ -202,6 +206,7 @@ class SipAccountInfo {
     this.registrationExpires,
     this.registrationEnabled = true,
     this.registrationActionInProgress = false,
+    this.restartPhase = SipAccountRestartPhase.none,
   });
 
   SipAccountInfo copyWith({
@@ -223,6 +228,7 @@ class SipAccountInfo {
     Object? registrationExpires = _unset,
     bool? registrationEnabled,
     bool? registrationActionInProgress,
+    SipAccountRestartPhase? restartPhase,
   }) {
     return SipAccountInfo(
       accId: accId ?? this.accId,
@@ -249,6 +255,29 @@ class SipAccountInfo {
       registrationEnabled: registrationEnabled ?? this.registrationEnabled,
       registrationActionInProgress:
           registrationActionInProgress ?? this.registrationActionInProgress,
+      restartPhase: restartPhase ?? this.restartPhase,
+    );
+  }
+
+  /// 注销确认和临时响应不能提前结束重启；新注册成功或失败后才结束。
+  SipAccountInfo withRegistrationResult({
+    required int status,
+    required String statusText,
+    required int expires,
+  }) {
+    final isPauseAck =
+        registrationActionInProgress && !registrationEnabled && status == 200;
+    final isPaused = !registrationEnabled && (expires == 0 || isPauseAck);
+    final keepRestarting =
+        restartPhase == SipAccountRestartPhase.preparing ||
+        (restartPhase == SipAccountRestartPhase.registering &&
+            (status < 200 || (status == 200 && expires == 0)));
+    return copyWith(
+      registrationStatus: isPaused ? 0 : status,
+      registrationStatusText: isPaused ? '已停用' : statusText,
+      registrationExpires: isPaused ? 0 : expires,
+      registrationActionInProgress: keepRestarting,
+      restartPhase: keepRestarting ? restartPhase : SipAccountRestartPhase.none,
     );
   }
 

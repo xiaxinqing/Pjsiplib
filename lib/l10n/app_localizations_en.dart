@@ -2265,7 +2265,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountStatusConnecting => 'Connecting';
 
   @override
-  String get accountStatusUpdating => 'Updating';
+  String get accountStatusRestarting => 'Restarting';
 
   @override
   String get accountStatusDisabled => 'Disabled';

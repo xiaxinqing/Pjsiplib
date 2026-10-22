@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'app_launch_at_startup_controller.dart';
+
 /// 统一管理桌面端主窗口的生命周期和交互行为。
 ///
 /// 这个类主要负责三件事：
@@ -84,11 +86,16 @@ class AppWindowController with WindowListener {
     await WidgetsBinding.instance.endOfFrame;
     try {
       // 就是点标题栏“－”的效果，任务栏 / Dock 仍能恢复，服务继续运行。
-      debugPrint('VPhone startup: minimizing after first frame.');
+      AppLaunchAtStartupController.logStartupState(
+        'minimizing after first frame',
+      );
       await windowManager.minimize();
+      AppLaunchAtStartupController.logStartupState(
+        'minimize request completed',
+      );
     } catch (error) {
       // 最小化失败就让窗口正常留着，不影响接打电话。
-      debugPrint('Could not minimize the startup window: $error');
+      AppLaunchAtStartupController.logStartupState('minimize failed: $error');
     }
   }
 
@@ -113,6 +120,17 @@ class AppWindowController with WindowListener {
 
     _closeToTrayAttached = false;
     windowManager.removeListener(this);
+  }
+
+  // 记录系统真正完成的窗口动作，方便区分“没缩小”和“缩小后又恢复”。
+  @override
+  void onWindowMinimize() {
+    AppLaunchAtStartupController.logStartupState('window minimized');
+  }
+
+  @override
+  void onWindowRestore() {
+    AppLaunchAtStartupController.logStartupState('window restored');
   }
 
   /// 当用户点击系统窗口的关闭按钮时触发。

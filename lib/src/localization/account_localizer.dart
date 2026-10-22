@@ -6,8 +6,11 @@ abstract final class AccountLocalizer {
   static String status(AppLocalizations l10n, SipAccountInfo account) {
     if (account.isRestoringPlaceholder) return l10n.accountStatusRestoring;
     if (!account.registrationEnabled) return l10n.accountStatusDisabled;
+    if (account.restartPhase != SipAccountRestartPhase.none) {
+      return l10n.accountStatusRestarting;
+    }
     if (account.registrationActionInProgress) {
-      return l10n.accountStatusUpdating;
+      return l10n.accountStatusConnecting;
     }
     if (account.isRegistered) return l10n.accountStatusOnline;
     final status = account.registrationStatus;
