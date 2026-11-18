@@ -105,7 +105,17 @@ extension _HomePageCoordinator on _MyHomePageState {
     });
   }
 
-  /// 根据账号注册状态同步默认外呼线路，避免选中已不可用账号。
+  /// 试用期间保留用户选择的真实账号，不因注册状态或通话变化切回默认线路。
+  SipAccountInfo? _outgoingAccountForDialing(PjsipUIState state) {
+    final selected = state.accounts[_selectedOutgoingAccountId];
+    if (selected != null && !selected.isRestoringPlaceholder) return selected;
+    return state.bestOutgoingAccount ??
+        state.accountList
+            .where((account) => !account.isRestoringPlaceholder)
+            .firstOrNull;
+  }
+
+  /// 同步账号选择；账号尚未恢复到原生引擎时不可用于拨号。
   void _syncSelectedOutgoingAccount(PjsipUIState state) {
     if (state.accounts.isEmpty) {
       if (_selectedOutgoingAccountId != null) {
@@ -113,7 +123,7 @@ extension _HomePageCoordinator on _MyHomePageState {
       }
       return;
     }
-    final nextId = state.bestOutgoingAccount?.accId;
+    final nextId = _outgoingAccountForDialing(state)?.accId;
     if (_selectedOutgoingAccountId == nextId) {
       return;
     }

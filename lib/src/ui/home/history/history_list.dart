@@ -394,11 +394,10 @@ extension _HistoryList on _MyHomePageState {
   }
 
   Widget _buildHistoryCallButton(_HistoryItem item, PjsipService service) {
-    final canCall = !item.isLive && item.phoneNumber.trim().isNotEmpty;
+    // 临时允许同号重复拨打，最终容量统一由服务层检查。
+    final canCall = item.phoneNumber.trim().isNotEmpty;
     return _CallActionButton(
-      tooltip: item.isLive
-          ? context.l10n.historyCannotCallBackActive
-          : context.l10n.historyCallBack,
+      tooltip: context.l10n.historyCallBack,
       onPressed: canCall ? () => _callHistoryItem(item, service) : null,
     );
   }

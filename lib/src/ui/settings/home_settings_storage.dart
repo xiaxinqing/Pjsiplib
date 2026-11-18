@@ -509,6 +509,38 @@ class _StorageSettingsPageState extends ConsumerState<_StorageSettingsPage> {
   }
 }
 
+class _RecordingHistorySwitch extends ConsumerWidget {
+  const _RecordingHistorySwitch();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final (enabled, recording, connected) = ref.watch(
+      pjsipServiceProvider.select(
+        (state) => (
+          state.localCallRecordingEnabled,
+          state.recordingCallIds.isNotEmpty,
+          state.calls.values.any((call) => call.isConnected),
+        ),
+      ),
+    );
+    final l10n = context.l10n;
+    final description = [
+      l10n.storageAutoRecordingDescription,
+      if (enabled && recording) l10n.storageRecordingStopDuringCall,
+      if (!enabled && connected) l10n.storageRecordingStartDuringCall,
+    ].join('\n');
+    return SwitchListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(l10n.callSettingsLocalRecording),
+      subtitle: Text(description),
+      value: enabled,
+      onChanged: ref
+          .read(pjsipServiceProvider.notifier)
+          .setLocalCallRecordingEnabled,
+    );
+  }
+}
+
 extension _HomeStorage on _MyHomePageState {
   Future<void> _showLocalRecordings() async {
     // 直接订阅所有录音，不依赖通话记录；旧通话删掉后，这里照样能找到录音。
@@ -532,7 +564,7 @@ extension _HomeStorage on _MyHomePageState {
                     children: [
                       Expanded(
                         child: Text(
-                          context.l10n.storageViewRecordings,
+                          context.l10n.storageLocalRecordings,
                           style: Theme.of(context).textTheme.titleLarge,
                         ),
                       ),
@@ -543,6 +575,7 @@ extension _HomeStorage on _MyHomePageState {
                       ),
                     ],
                   ),
+                  const _RecordingHistorySwitch(),
                   const Divider(),
                   Expanded(
                     child: StreamBuilder<List<CallRecording>>(
@@ -560,8 +593,24 @@ extension _HomeStorage on _MyHomePageState {
                         }
                         final rows = snapshot.data!;
                         if (rows.isEmpty) {
-                          return Center(
-                            child: Text(context.l10n.storageNoRecordings),
+                          return Consumer(
+                            builder: (context, ref, _) {
+                              final enabled = ref.watch(
+                                pjsipServiceProvider.select(
+                                  (state) => state.localCallRecordingEnabled,
+                                ),
+                              );
+                              return Center(
+                                child: Text(
+                                  enabled
+                                      ? context.l10n.storageNoRecordingsEnabled
+                                      : context
+                                            .l10n
+                                            .storageNoRecordingsDisabled,
+                                  textAlign: TextAlign.center,
+                                ),
+                              );
+                            },
                           );
                         }
                         return Consumer(

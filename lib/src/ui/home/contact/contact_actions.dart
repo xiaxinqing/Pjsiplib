@@ -36,12 +36,14 @@ extension _ContactActions on _MyHomePageState {
       return context.l10n.contactNoCallableNumber;
     }
     if (uiState.accounts.isEmpty) return context.l10n.contactAddLineFirst;
+    /* 临时只按容量限制通话。
     if (!uiState.isNetworkAvailable) {
       return context.l10n.contactNetworkUnavailable;
     }
     if (uiState.hasConference) {
       return context.l10n.contactConferenceCallBlocked;
     }
+    */
     if (uiState.calls.length >= 4) {
       return context.l10n.contactCallLimitReached;
     }
@@ -52,12 +54,7 @@ extension _ContactActions on _MyHomePageState {
   }
 
   SipAccountInfo? _preferredContactCallAccount(PjsipUIState uiState) {
-    final selectedId = _selectedOutgoingAccountId;
-    if (selectedId != null) {
-      final selected = uiState.accounts[selectedId];
-      if (selected?.isRegistered == true) return selected;
-    }
-    return uiState.bestOutgoingAccount;
+    return _outgoingAccountForDialing(uiState);
   }
 
   Future<String?> _showCallContactConfirm(

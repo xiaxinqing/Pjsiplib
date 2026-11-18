@@ -8,30 +8,34 @@ extension _DialpadHelpers on _MyHomePageState {
     bool canCall,
   ) {
     final l10n = context.l10n;
+    /* 临时绕过网络状态预检。
     if (!uiState.isNetworkAvailable) {
       return _DialpadAvailabilityStatus(
         l10n.statusNetworkUnavailable,
         l10n.dialNetworkUnavailableDescription,
       );
     }
+    */
     if (uiState.accounts.isEmpty) {
       return _DialpadAvailabilityStatus(
         l10n.dialNoLinesAdded,
         l10n.dialNoLinesDescription,
       );
     }
-    if (account?.isRegistered != true) {
+    if (account == null || account.isRestoringPlaceholder) {
       return _DialpadAvailabilityStatus(
         l10n.dialNoAvailableOutgoing,
         l10n.dialNoOutgoingDescription,
       );
     }
+    /* 临时允许会议期间外呼。
     if (uiState.hasConference) {
       return _DialpadAvailabilityStatus(
         l10n.dialConferenceActive,
         l10n.dialConferenceActiveDescription,
       );
     }
+    */
     if (uiState.calls.length >= 4) {
       return _DialpadAvailabilityStatus(
         l10n.dialCapacityReached,
@@ -57,10 +61,13 @@ extension _DialpadHelpers on _MyHomePageState {
   ) {
     final l10n = context.l10n;
     if (number.isEmpty) return l10n.dialEnterNumberToCall;
-    if (!uiState.isNetworkAvailable) return l10n.statusNetworkUnavailable;
+    // if (!uiState.isNetworkAvailable) return l10n.statusNetworkUnavailable;
     if (uiState.accounts.isEmpty) return l10n.dialAddLineFirst;
-    if (account?.isRegistered != true) return l10n.dialNoAvailableLine;
-    if (uiState.hasConference) return l10n.dialUnavailableDuringConference;
+    if (account == null || account.isRestoringPlaceholder) {
+      return l10n.dialNoAvailableLine;
+    }
+    // if (account?.isRegistered != true) return l10n.dialNoAvailableLine;
+    // if (uiState.hasConference) return l10n.dialUnavailableDuringConference;
     if (uiState.calls.length >= 4) return l10n.dialCapacityReached;
     return null;
   }

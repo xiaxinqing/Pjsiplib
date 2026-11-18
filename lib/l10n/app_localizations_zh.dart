@@ -1978,7 +1978,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get callSettingsRecordingSection => '本地录音';
 
   @override
-  String get callSettingsLocalRecording => '自动录制已接通通话';
+  String get callSettingsLocalRecording => '自动录制通话';
 
   @override
   String get callSettingsLocalRecordingDescription =>
@@ -2663,7 +2663,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storageViewRecordings => '查看本地录音';
 
   @override
-  String get storageNoRecordings => '暂无本地录音';
+  String get storageAutoRecordingDescription => '通话接通后录制双方声音，文件仅保存在本机。';
+
+  @override
+  String get storageRecordingStartDuringCall => '开启后，当前已接通的通话会从音频可用时开始录制。';
+
+  @override
+  String get storageRecordingStopDuringCall => '关闭后会结束所有正在进行的录音。';
+
+  @override
+  String get storageNoRecordingsDisabled => '暂无本地录音。可在上方开启自动录制。';
+
+  @override
+  String get storageNoRecordingsEnabled => '暂无本地录音。通话录制完成后可在这里回听。';
 
   @override
   String get storageCleanNow => '清理过期数据';
@@ -2703,7 +2715,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storageDataManagement => '数据管理';
 
   @override
-  String get storageRecordingsHint => '查看、播放和导出已保存的录音';
+  String get storageRecordingsHint => '设置自动录制，查看、播放和导出本地录音';
 
   @override
   String get storageCleanHint => '按当前保存期限清理，操作前会确认数量';
@@ -4683,7 +4695,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get callSettingsRecordingSection => '本機錄音';
 
   @override
-  String get callSettingsLocalRecording => '自動錄製已接通通話';
+  String get callSettingsLocalRecording => '自動錄製通話';
 
   @override
   String get callSettingsLocalRecordingDescription =>
@@ -5368,7 +5380,19 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get storageViewRecordings => '查看本機錄音';
 
   @override
-  String get storageNoRecordings => '暫無本機錄音';
+  String get storageAutoRecordingDescription => '通話接通後錄製雙方聲音，檔案僅儲存在本機。';
+
+  @override
+  String get storageRecordingStartDuringCall => '開啟後，目前已接通的通話會從音訊可用時開始錄製。';
+
+  @override
+  String get storageRecordingStopDuringCall => '關閉後會結束所有進行中的錄音。';
+
+  @override
+  String get storageNoRecordingsDisabled => '暫無本機錄音。可在上方開啟自動錄製。';
+
+  @override
+  String get storageNoRecordingsEnabled => '暫無本機錄音。通話錄製完成後可在這裡回聽。';
 
   @override
   String get storageCleanNow => '清理過期資料';
@@ -5408,7 +5432,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get storageDataManagement => '資料管理';
 
   @override
-  String get storageRecordingsHint => '查看、播放和匯出已保存的錄音';
+  String get storageRecordingsHint => '設定自動錄製，檢視、播放及匯出本機錄音';
 
   @override
   String get storageCleanHint => '按目前保存期限清理，操作前會確認數量';

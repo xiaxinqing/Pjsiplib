@@ -5,20 +5,24 @@ extension _HistoryActions on _MyHomePageState {
   Future<void> _callHistoryItem(_HistoryItem item, PjsipService service) async {
     final l10n = context.l10n;
     unawaited(_markHistoryItemRead(item));
+    /* 临时允许从正在通话的记录再次拨打同一号码。
     if (item.isLive) {
       ToastUtil.showWarning(l10n.historyCannotRedialActive);
       return;
     }
+    */
     final number = item.phoneNumber.trim();
     if (number.isEmpty) {
       ToastUtil.showWarning(l10n.historyNoCallbackNumber);
       return;
     }
     final uiState = ref.read(pjsipServiceProvider);
+    /* 临时绕过网络预检。
     if (!uiState.isNetworkAvailable) {
       ToastUtil.showWarning(l10n.historyNetworkUnavailable);
       return;
     }
+    */
     if (uiState.accounts.isEmpty) {
       ToastUtil.showWarning(l10n.historyAddLineFirst);
       return;
@@ -27,16 +31,19 @@ extension _HistoryActions on _MyHomePageState {
       ToastUtil.showWarning(l10n.historyCallLimitReached);
       return;
     }
+    /* 临时允许会议期间外呼。
     if (uiState.hasConference) {
       ToastUtil.showWarning(l10n.historySplitConferenceFirst);
       return;
     }
+    */
     final historyAccount = item.accountId == null
         ? null
         : uiState.accounts[item.accountId];
-    final account = historyAccount?.isRegistered == true
+    final account =
+        historyAccount != null && !historyAccount.isRestoringPlaceholder
         ? historyAccount
-        : uiState.bestOutgoingAccount;
+        : _outgoingAccountForDialing(uiState);
     if (account == null) {
       ToastUtil.showWarning(l10n.historyNoRegisteredLine);
       return;

@@ -550,6 +550,8 @@ extension PjsipNetworkOperations on PjsipService {
     return remaining;
   }
 
+  // 临时绕过外呼策略后保留此方法，便于恢复。
+  // ignore: unused_element
   bool _warnIfOutgoingMediaRecoveryActive() {
     final remaining = _outgoingMediaRecoveryRemaining();
     if (remaining == null) return false;

@@ -2104,8 +2104,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get callSettingsRecordingSection => 'Local recording';
 
   @override
-  String get callSettingsLocalRecording =>
-      'Automatically record connected calls';
+  String get callSettingsLocalRecording => 'Automatically record calls';
 
   @override
   String get callSettingsLocalRecordingDescription =>
@@ -2817,7 +2816,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storageViewRecordings => 'View local recordings';
 
   @override
-  String get storageNoRecordings => 'No local recordings';
+  String get storageAutoRecordingDescription =>
+      'Record both sides of connected calls and save the audio on this device.';
+
+  @override
+  String get storageRecordingStartDuringCall =>
+      'Turning this on starts recording connected calls as soon as audio is available.';
+
+  @override
+  String get storageRecordingStopDuringCall =>
+      'Turning this off stops all recordings in progress.';
+
+  @override
+  String get storageNoRecordingsDisabled =>
+      'No local recordings yet. Turn on automatic recording above to record calls.';
+
+  @override
+  String get storageNoRecordingsEnabled =>
+      'No local recordings yet. Once a call has been recorded, you can listen to it here.';
 
   @override
   String get storageCleanNow => 'Clean up expired data';
@@ -2860,7 +2876,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get storageRecordingsHint =>
-      'Browse, play and export saved recordings';
+      'Manage automatic recording and browse, play or export local recordings';
 
   @override
   String get storageCleanHint => 'Review expired items before deleting them';

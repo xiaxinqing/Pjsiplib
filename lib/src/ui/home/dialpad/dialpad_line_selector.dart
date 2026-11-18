@@ -46,8 +46,7 @@ extension _DialpadLineSelector on _MyHomePageState {
         ),
       );
     }
-    final selectedCandidate =
-        _selectedOutgoingAccountId ?? uiState.bestOutgoingAccount?.accId;
+    final selectedCandidate = _outgoingAccountForDialing(uiState)?.accId;
     final selectedId =
         accounts.any((account) => account.accId == selectedCandidate)
         ? selectedCandidate

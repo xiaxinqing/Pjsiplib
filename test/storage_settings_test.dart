@@ -18,6 +18,20 @@ class StorageTestPhone extends PjsipService {
   void setPlayingRecording(int id) {
     state = state.copyWith(playingRecordingId: id);
   }
+
+  void setConnectedCall({required bool recording}) {
+    final call = CallInfo(
+      callId: 1,
+      state: 5,
+      mediaStatus: 1,
+      connectedAt: DateTime.now(),
+      remoteUri: 'sip:100@example.com',
+    );
+    state = state.copyWith(
+      calls: {call.callId: call},
+      recordingCallIds: recording ? {call.callId} : {},
+    );
+  }
 }
 
 Future<void> pumpPage(WidgetTester tester) async {
@@ -91,6 +105,27 @@ void main() {
       await pumpPage(tester);
       await tester.tap(find.byIcon(AppIcons.settings));
       await pumpPage(tester);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(l10n.settingsCalls),
+        ),
+      );
+      await pumpPage(tester);
+      final viewRecordings = find.text(l10n.storageViewRecordings);
+      await tester.ensureVisible(viewRecordings);
+      await tester.tap(viewRecordings);
+      await pumpPage(tester);
+      expect(find.text('retained.wav'), findsOneWidget);
+      expect(
+        ProviderScope.containerOf(tester.element(find.byType(MyApp)))
+            .read(pjsipServiceProvider)
+            .localCallRecordingEnabled,
+        isFalse,
+      );
+      await tester.tap(find.byTooltip(l10n.settingsClose).last);
+      await pumpPage(tester);
+      expect(viewRecordings, findsOneWidget);
       await tester.tap(find.text(l10n.settingsStorage));
       await pumpPage(tester);
       expect(find.text(l10n.storageForever), findsNWidgets(2));
@@ -183,6 +218,53 @@ void main() {
       await pumpPage(tester);
       expect(find.byTooltip(l10n.historyRecordingPlay), findsOneWidget);
       expect(find.byTooltip(l10n.historyRecordingStop), findsNothing);
+      final phone =
+          container.read(pjsipServiceProvider.notifier) as StorageTestPhone;
+      final toggle = find.widgetWithText(
+        SwitchListTile,
+        l10n.callSettingsLocalRecording,
+      );
+      await db.deleteRecording(recordingId);
+      await pumpPage(tester);
+      expect(find.text(l10n.storageNoRecordingsDisabled), findsOneWidget);
+      phone.setConnectedCall(recording: false);
+      await pumpPage(tester);
+      expect(
+        find.textContaining(l10n.storageRecordingStartDuringCall),
+        findsOneWidget,
+      );
+      await tester.tap(toggle);
+      await pumpPage(tester);
+      expect(find.text(l10n.storageNoRecordingsEnabled), findsOneWidget);
+      expect(
+        find.textContaining(l10n.storageRecordingStopDuringCall),
+        findsNothing,
+      );
+      phone.setConnectedCall(recording: true);
+      await pumpPage(tester);
+      expect(
+        find.textContaining(l10n.storageRecordingStopDuringCall),
+        findsOneWidget,
+      );
+      await tester.tap(find.byTooltip(l10n.settingsClose).last);
+      await pumpPage(tester);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(l10n.settingsCalls),
+        ),
+      );
+      await pumpPage(tester);
+      await tester.ensureVisible(toggle);
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
+      await tester.tap(toggle);
+      await pumpPage(tester);
+      await tester.tap(find.text(l10n.settingsStorage));
+      await pumpPage(tester);
+      await tester.tap(find.text(l10n.storageViewRecordings));
+      await pumpPage(tester);
+      expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
+      expect(find.text(l10n.storageNoRecordingsDisabled), findsOneWidget);
       await tester.tap(find.byTooltip(l10n.settingsClose).last);
       await pumpPage(tester);
       expect(tester.takeException(), isNull);

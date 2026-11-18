@@ -3779,7 +3779,7 @@ abstract class AppLocalizations {
   /// No description provided for @callSettingsLocalRecording.
   ///
   /// In zh, this message translates to:
-  /// **'自动录制已接通通话'**
+  /// **'自动录制通话'**
   String get callSettingsLocalRecording;
 
   /// No description provided for @callSettingsLocalRecordingDescription.
@@ -5046,11 +5046,35 @@ abstract class AppLocalizations {
   /// **'查看本地录音'**
   String get storageViewRecordings;
 
-  /// No description provided for @storageNoRecordings.
+  /// No description provided for @storageAutoRecordingDescription.
   ///
   /// In zh, this message translates to:
-  /// **'暂无本地录音'**
-  String get storageNoRecordings;
+  /// **'通话接通后录制双方声音，文件仅保存在本机。'**
+  String get storageAutoRecordingDescription;
+
+  /// No description provided for @storageRecordingStartDuringCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'开启后，当前已接通的通话会从音频可用时开始录制。'**
+  String get storageRecordingStartDuringCall;
+
+  /// No description provided for @storageRecordingStopDuringCall.
+  ///
+  /// In zh, this message translates to:
+  /// **'关闭后会结束所有正在进行的录音。'**
+  String get storageRecordingStopDuringCall;
+
+  /// No description provided for @storageNoRecordingsDisabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无本地录音。可在上方开启自动录制。'**
+  String get storageNoRecordingsDisabled;
+
+  /// No description provided for @storageNoRecordingsEnabled.
+  ///
+  /// In zh, this message translates to:
+  /// **'暂无本地录音。通话录制完成后可在这里回听。'**
+  String get storageNoRecordingsEnabled;
 
   /// No description provided for @storageCleanNow.
   ///
@@ -5121,7 +5145,7 @@ abstract class AppLocalizations {
   /// No description provided for @storageRecordingsHint.
   ///
   /// In zh, this message translates to:
-  /// **'查看、播放和导出已保存的录音'**
+  /// **'设置自动录制，查看、播放和导出本地录音'**
   String get storageRecordingsHint;
 
   /// No description provided for @storageCleanHint.

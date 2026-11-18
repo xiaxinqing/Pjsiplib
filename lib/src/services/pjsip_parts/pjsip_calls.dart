@@ -55,11 +55,20 @@ extension PjsipCallOperations on PjsipService {
   }
 
   Future<void> makeCall(String number) async {
-    // 默认线路掉线时仅临时使用其他在线线路，不修改用户保存的默认线路。
-    return makeCallFromAccount(number, _uiState.bestOutgoingAccount?.accId);
+    // 优先使用在线线路；试用期间没有在线线路时，也允许用已创建账号提交呼叫。
+    return makeCallFromAccount(
+      number,
+      (_uiState.bestOutgoingAccount ??
+              _uiState.accountList
+                  .where((account) => !account.isRestoringPlaceholder)
+                  .firstOrNull)
+          ?.accId,
+    );
   }
 
   Future<void> makeCallFromAccount(String number, int? accountId) async {
+    // 临时试用：只按 4 路容量限制呼叫，保留原策略以便恢复。
+    /*
     if (!_uiState.isNetworkAvailable) {
       _addLog('❌ 当前网络不可用，无法发起呼叫');
       return;
@@ -84,19 +93,23 @@ extension PjsipCallOperations on PjsipService {
       );
       return;
     }
+    */
     final account = accountId == null ? null : _uiState.accounts[accountId];
-    if (account == null) {
+    if (account == null || account.isRestoringPlaceholder) {
       _addLog('❌ 请先选择可用线路');
       return;
     }
+    /*
     if (!account.isRegistered) {
       _addLog('❌ 线路尚未注册成功，不能外呼: ${account.lineLabel}');
       return;
     }
+    */
     if (_uiState.calls.length >= 4) {
       _addLog('❌ 已达到当前最大通话数（4 路）');
       return;
     }
+    /*
     if (_uiState.hasConference) {
       _addLog('❌ 请先拆分当前三方通话，再发起新的呼叫');
       return;
@@ -117,8 +130,15 @@ extension PjsipCallOperations on PjsipService {
       _addLog('⚠️ $message');
       return;
     }
+    */
     // 开启自动保持时，发起新通话也遵循“单路激活”规则。
-    if (!await _holdActiveCallExcept(-1)) return;
+    // 试用期间保持失败也继续拨号，不把保持结果作为拦截条件。
+    await _holdActiveCallExcept(-1);
+    // 等待期间其他拨号或来电可能已占用最后一个名额，提交前再次检查。
+    if (_uiState.calls.length >= 4) {
+      _addLog('❌ 已达到当前最大通话数（4 路）');
+      return;
+    }
     using((Arena arena) {
       // 外呼必须和线路注册使用同一种传输协议，避免 dialog 中的 INVITE/BYE
       // 被 PBX 按不同 transport 路由，导致对端挂断本端收不到。
@@ -174,13 +194,21 @@ extension PjsipCallOperations on PjsipService {
   Future<void> answerCall(int callId) async {
     final call = _uiState.calls[callId];
     if (call == null || !call.isIncoming) return;
+    // 来电已经在 calls 中占用一路；总数为 4 时仍可接听现有来电。
+    if (_uiState.calls.length > 4) {
+      _addLog('❌ 已超过当前最大通话数（4 路），无法接听');
+      return;
+    }
+    /* 临时停用：接听来电不再取消其他未接通外呼。
     final pendingOutboundCallIds = _pendingOutboundCallsExcept(
       callId,
     ).map((call) => call.callId).toList();
     if (pendingOutboundCallIds.isNotEmpty) {
       _stopOutgoingRingback();
     }
-    if (!await _holdActiveCallExcept(callId)) return;
+    */
+    _stopOutgoingRingback();
+    await _holdActiveCallExcept(callId);
     final status = _bindings.pjsua_call_answer(
       callId,
       200,
@@ -190,7 +218,7 @@ extension PjsipCallOperations on PjsipService {
     if (status == 0) {
       _uiState = _uiState.copyWith(activeCallId: callId);
       _stopIncomingRingtone();
-      _schedulePendingOutboundCancelAfterAnswer(pendingOutboundCallIds);
+      // _schedulePendingOutboundCancelAfterAnswer(pendingOutboundCallIds);
       _addLog('✅ 已接听电话: call=$callId');
     } else {
       _syncCallProgressSounds();
@@ -198,6 +226,7 @@ extension PjsipCallOperations on PjsipService {
     }
   }
 
+  /* 临时停用的未接通外呼策略，保留以便恢复。
   bool _isPendingOutboundCall(CallInfo call) {
     if (call.direction != PjsipCallDirection.outbound || call.isConnected) {
       return false;
@@ -260,6 +289,8 @@ extension PjsipCallOperations on PjsipService {
       }
     }
   }
+
+  */
 
   void _scheduleBackgroundConfirmedHoldIfNeeded(int callId) {
     // 这条延迟兜底只属于“单路激活”策略。关闭自动保持后，多路普通通话
@@ -1429,6 +1460,7 @@ extension PjsipCallOperations on PjsipService {
     return raw.replaceAll(RegExp(r'[^0-9+*#]'), '');
   }
 
+  /* 临时停用：相同账号或不同账号均允许重复拨打同一号码。
   CallInfo? _findOngoingCallForDialNumber(String number) {
     final targetNumber = _normalizePhoneNumber(_extractPhoneNumber(number));
     if (targetNumber.isEmpty) return null;
@@ -1444,6 +1476,7 @@ extension PjsipCallOperations on PjsipService {
     }
     return null;
   }
+  */
 
   ContactEntry? _findContactForPhoneNumber(String phoneNumber) {
     final normalized = _normalizePhoneNumber(phoneNumber);

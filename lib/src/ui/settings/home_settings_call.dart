@@ -50,6 +50,13 @@ extension _HomeSettingsCallTab on _MyHomePageState {
               title: Text(l10n.callSettingsLocalRecording),
               subtitle: Text(l10n.callSettingsLocalRecordingDescription),
             ),
+            _buildSettingDivider(),
+            _buildSettingTile(
+              icon: AppIcons.history,
+              title: l10n.storageViewRecordings,
+              trailing: const Icon(AppIcons.next, size: _iconSm),
+              onTap: _showLocalRecordings,
+            ),
           ],
         ),
         const SizedBox(height: 18),
