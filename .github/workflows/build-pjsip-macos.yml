@@ -7,6 +7,8 @@ on:
       - ".github/workflows/build-pjsip-macos.yml"
       - "third_path/pjproject/**"
       - "tool/pjsip_bridge/**"
+      - "tool/macos_pjsip/vphone_dial_worker.*"
+      - "tool/macos_pjsip/check_dial_worker.py"
   workflow_dispatch:
 
 jobs:
@@ -125,41 +127,36 @@ jobs:
             # 过滤掉已知的重复库（例如 libpjsdp 已经包含在 libpjmedia 中）
             local all_static_libs=$(find . -name "*.a" | grep -v "libpjsdp")
             local bridge_obj="${OUTPUT_DIR}/lib/vphone_pjsip_bridge_$arch.o"
+            local worker_obj="${RUNNER_TEMP}/vphone_worker_$arch.o"
+            local bridge_flags=(
+              -arch "$arch" "-mmacosx-version-min=${MIN_MACOS_VERSION}"
+              -DPJ_AUTOCONF=1 -DPJ_IS_BIG_ENDIAN=0 -DPJ_IS_LITTLE_ENDIAN=1
+              -I"${GITHUB_WORKSPACE}/tool/pjsip_bridge"
+              -I"${PJ_ROOT}/pjlib/include" -I"${PJ_ROOT}/pjlib-util/include"
+              -I"${PJ_ROOT}/pjnath/include" -I"${PJ_ROOT}/pjmedia/include"
+              -I"${PJ_ROOT}/pjsip/include" -I"${GITHUB_WORKSPACE}/deps/$arch/include"
+            )
+            clang "${bridge_flags[@]}" -c "${GITHUB_WORKSPACE}/tool/pjsip_bridge/vphone_pjsip_bridge.c" -o "$bridge_obj"
+            clang++ -std=c++17 "${bridge_flags[@]}" -c "${GITHUB_WORKSPACE}/tool/macos_pjsip/vphone_dial_worker.cpp" -o "$worker_obj"
 
-            # VPhone 自己的轻量 wrapper：
-            # 只在 PJSIP 同步回调里复制最后一次 SIP transaction 状态码，
-            # 不保存 pjsip_transaction / pjsip_event 指针，避免 Dart 异步读取
-            # 已释放指针导致 EXC_BAD_ACCESS。
-            clang -c "${GITHUB_WORKSPACE}/tool/pjsip_bridge/vphone_pjsip_bridge.c" \
-                -o "${bridge_obj}" \
-                -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
-                -DPJ_AUTOCONF=1 \
-                -DPJ_IS_BIG_ENDIAN=0 \
-                -DPJ_IS_LITTLE_ENDIAN=1 \
-                -I"${GITHUB_WORKSPACE}/tool/pjsip_bridge" \
-                -I"${PJ_ROOT}/pjlib/include" \
-                -I"${PJ_ROOT}/pjlib-util/include" \
-                -I"${PJ_ROOT}/pjnath/include" \
-                -I"${PJ_ROOT}/pjmedia/include" \
-                -I"${PJ_ROOT}/pjsip/include" \
-                -I"${GITHUB_WORKSPACE}/deps/$arch/include"
-            
             echo "Linking dylib for $arch..."
             clang -shared -o "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" \
                 -arch $arch -mmacosx-version-min=${MIN_MACOS_VERSION} \
                 -framework AudioToolbox -framework AVFoundation -framework CoreAudio -framework CoreMedia -framework Security -framework Foundation -framework AppKit \
                 -lc++ -lobjc \
-                "${bridge_obj}" \
+                "${bridge_obj}" "${worker_obj}" \
                 -Wl,-all_load \
                 ${all_static_libs} \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libssl.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libcrypto.a" \
                 "${GITHUB_WORKSPACE}/deps/$arch/lib/libopus.a"
-            
-            # 验证符号
-            nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "pjsua_create" || (echo "Verification failed: pjsua_create missing" && exit 1)
-            nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "pjmedia_transport_srtp_dtls_get_fingerprint" || (echo "Verification failed: DTLS-SRTP symbol missing" && exit 1)
-            nm -gU "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" | grep -q "vphone_get_call_info_snapshot" || (echo "Verification failed: VPhone call snapshot symbol missing" && exit 1)
+
+            # 分别检查每个架构的原有接口和新增的拨号接口。
+            nm -gUj "${OUTPUT_DIR}/lib/libpjsip_$arch.dylib" > "${RUNNER_TEMP}/exports-$arch.txt"
+            for symbol in pjsua_create pjmedia_transport_srtp_dtls_get_fingerprint vphone_get_call_info_snapshot \
+                vphone_dial_worker_create vphone_dial_worker_submit vphone_dial_worker_destroy; do
+              grep -Fxq "_$symbol" "${RUNNER_TEMP}/exports-$arch.txt" || { echo "$arch missing $symbol"; exit 1; }
+            done
           }
 
           build_pjsip "x86_64" "x86_64-apple-darwin"
@@ -171,15 +168,24 @@ jobs:
           
           # 修改 rpath
           install_name_tool -id "@rpath/libpjsip.dylib" "${OUTPUT_DIR}/lib/libpjsip.dylib"
+          codesign --force --sign - "${OUTPUT_DIR}/lib/libpjsip.dylib"
           
+          lipo "${OUTPUT_DIR}/lib/libpjsip.dylib" -verify_arch x86_64 arm64
+
           # 整理头文件
           cd ${PJ_ROOT}
           for dir in pjlib pjlib-util pjnath pjmedia pjsip; do
               cp -R "${dir}/include/" "${OUTPUT_DIR}/include/"
           done
           
+          cp "${GITHUB_WORKSPACE}/tool/pjsip_bridge/vphone_pjsip_bridge.h" "${OUTPUT_DIR}/include/"
+          cp "${GITHUB_WORKSPACE}/tool/macos_pjsip/vphone_dial_worker.h" "${OUTPUT_DIR}/include/"
+
           # 清理临时文件
           rm "${OUTPUT_DIR}/lib/libpjsip_x86_64.dylib" "${OUTPUT_DIR}/lib/libpjsip_arm64.dylib"
+
+      - name: Smoke test dial worker on runner architecture
+        run: python3 tool/macos_pjsip/check_dial_worker.py output/lib/libpjsip.dylib
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
