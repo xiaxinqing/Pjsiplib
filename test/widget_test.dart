@@ -2,7 +2,7 @@ import 'dart:ui';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart'
-    show Dialog, FilledButton, SizedBox, TextField;
+    show Dialog, FilledButton, MenuItemButton, SizedBox, TextField, ValueKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +18,13 @@ class FakePjsipService extends PjsipService {
 
   void setPlayingRecordingIdForTest(int? recordingId) {
     state = state.copyWith(playingRecordingId: recordingId);
+  }
+
+  void setAccountsForTest(List<SipAccountInfo> accounts) {
+    state = state.copyWith(
+      accounts: {for (final account in accounts) account.accId: account},
+      defaultAccountId: accounts.first.accId,
+    );
   }
 }
 
@@ -442,6 +449,93 @@ void main() {
     expect(find.text('VPhone'), findsOneWidget);
     expect(find.text('拨号'), findsWidgets);
     expect(find.byIcon(AppIcons.settings), findsOneWidget);
+  });
+
+  testWidgets('账号线路按配置显示 STUN，更多菜单跟随线路状态', (tester) async {
+    Future<void> pumpTransition() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+    }
+
+    tester.view.physicalSize = const Size(920, 620);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('en')];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [pjsipServiceProvider.overrideWith(FakePjsipService.new)],
+        child: const MyApp(),
+      ),
+    );
+    final phone =
+        ProviderScope.containerOf(
+              tester.element(find.byType(MyApp)),
+            ).read(pjsipServiceProvider.notifier)
+            as FakePjsipService;
+    final online = SipAccountInfo(
+      accId: 1,
+      username: '100',
+      host: 'example.test',
+      registrationStatus: 200,
+    );
+    final disabled = online.copyWith(
+      accId: 2,
+      username: '101',
+      registrationEnabled: false,
+      iceConfig: const IceConfig(enabled: true, stunEnabled: false),
+    );
+    await tester.pump();
+    await tester.tap(find.byIcon(AppIcons.settings));
+    await pumpTransition();
+    phone.setAccountsForTest([online, disabled]);
+    await pumpTransition();
+    Finder inLine(int id, Finder target) => find.descendant(
+      of: find.byKey(ValueKey('settings-account-$id')),
+      matching: target,
+    );
+    expect(inLine(1, find.text(l10n.accountStatusOnline)), findsOneWidget);
+    expect(inLine(2, find.text(l10n.accountStatusDisabled)), findsOneWidget);
+    expect(inLine(1, find.textContaining('STUN')), findsOneWidget);
+    expect(inLine(2, find.textContaining('STUN')), findsNothing);
+    expect(inLine(2, find.textContaining('ICE')), findsOneWidget);
+    expect(inLine(2, find.text(l10n.sidebarEnableLine)), findsOneWidget);
+    expect(inLine(1, find.text(l10n.sidebarEditLine)), findsOneWidget);
+    expect(
+      inLine(1, find.text(l10n.accountSettingsDefaultOutgoing)),
+      findsOneWidget,
+    );
+    expect(find.text(l10n.sidebarDeleteLine), findsNothing);
+    await tester.tap(inLine(1, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    Finder action(String label) => find.widgetWithText(MenuItemButton, label);
+    expect(action(l10n.sidebarRefreshLine), findsOneWidget);
+    expect(action(l10n.sidebarDisableLine), findsOneWidget);
+    expect(action(l10n.sidebarRestartLine), findsOneWidget);
+    phone.setAccountsForTest([
+      online.copyWith(registrationActionInProgress: true),
+      disabled,
+    ]);
+    await tester.pump();
+    expect(
+      tester.widget<MenuItemButton>(action(l10n.sidebarDeleteLine)).onPressed,
+      isNull,
+    );
+    await tester.tap(inLine(1, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    await tester.tap(inLine(2, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    expect(action(l10n.sidebarRefreshLine), findsNothing);
+    await tester.tap(action(l10n.sidebarDeleteLine));
+    await pumpTransition();
+    expect(find.text(l10n.sidebarDeleteLineQuestion), findsOneWidget);
+    await tester.tap(find.text(l10n.commonCancel));
+    await pumpTransition();
+    expect(inLine(2, find.text('101')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   for (final locale in const [

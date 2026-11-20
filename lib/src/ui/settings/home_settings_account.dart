@@ -259,16 +259,17 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
       (call) => call.accountId == account.accId,
     );
     final isRestarting = uiState.isPhoneServiceRestarting;
-    final identity = account.lineName.trim().isEmpty
-        ? account.host
-        : account.lineLabel;
-    final detail =
-        '$identity · ${account.transportLabel}'
-        '${account.mediaSecurity.usesSrtp ? ' · ${_accountDialogMediaLabel(l10n, account.mediaSecurity.mode)}' : ''}'
-        ' · STUN'
-        '${account.iceConfig.enabled ? ' · ICE' : ''}'
-        '${account.turnConfig.isUsable ? ' · TURN' : ''}'
-        ' · ${AccountLocalizer.status(l10n, account)}';
+    final ready = !isRestarting && !account.registrationActionInProgress;
+    final canManage = ready && !hasActiveCalls;
+    final detail = [
+      account.lineName.trim().isEmpty ? account.host : account.lineLabel,
+      account.transportLabel,
+      if (account.mediaSecurity.usesSrtp)
+        _accountDialogMediaLabel(l10n, account.mediaSecurity.mode),
+      if (account.iceConfig.stunEnabled) 'STUN',
+      if (account.iceConfig.enabled) 'ICE',
+      if (account.turnConfig.isUsable) 'TURN',
+    ].join(' · ');
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -280,119 +281,116 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
         children: [
           Row(
             children: [
-              Icon(Icons.circle, size: 10, color: color),
-              const SizedBox(width: 10),
+              Icon(Icons.circle, size: 8, color: color),
+              const SizedBox(width: 6),
+              Text(
+                AccountLocalizer.status(l10n, account),
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(width: 12),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildTooltipText(
-                      account.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 2),
-                    _buildTooltipText(
-                      detail,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+                child: _buildTooltipText(
+                  account.displayName,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
               ),
-              _buildDefaultRouteButton(
-                account: account,
-                isDefault: isDefault,
-                isRestarting: isRestarting,
-                onSetDefault: () => service.setDefaultAccount(account.accId),
-              ),
+              if (isDefault || account.isRegistered)
+                _buildDefaultRouteButton(
+                  account: account,
+                  isDefault: isDefault,
+                  isRestarting: isRestarting,
+                  onSetDefault: () => service.setDefaultAccount(account.accId),
+                ),
               const SizedBox(width: 4),
               reorderHandle,
             ],
           ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
             children: [
-              if (account.registrationEnabled) ...[
-                TextButton.icon(
-                  onPressed:
-                      isRestarting ||
-                          account.registrationActionInProgress ||
-                          account.registrationStatus == null
-                      ? null
-                      : () =>
-                            service.setAccountRegistration(account.accId, true),
-                  icon: const Icon(AppIcons.refresh),
-                  label: Text(l10n.sidebarRefreshLine),
+              Expanded(
+                child: _buildTooltipText(
+                  detail,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              ),
+              if (!account.registrationEnabled)
                 TextButton.icon(
-                  onPressed:
-                      isRestarting ||
-                          account.registrationActionInProgress ||
-                          hasActiveCalls ||
-                          !uiState.isNetworkAvailable
-                      ? null
-                      : () async {
-                          final confirmed = await _confirmForceReconnectLine(
-                            account,
-                          );
-                          if (confirmed != true || !mounted) return;
-                          service.forceReconnectAccount(account.accId);
-                        },
-                  icon: const Icon(AppIcons.power),
-                  label: Text(l10n.sidebarRestartLine),
-                ),
-                TextButton.icon(
-                  onPressed:
-                      isRestarting ||
-                          account.registrationActionInProgress ||
-                          hasActiveCalls
-                      ? null
-                      : () => service.setAccountRegistration(
-                          account.accId,
-                          false,
-                        ),
-                  icon: const Icon(AppIcons.pause),
-                  label: Text(l10n.sidebarDisableLine),
-                ),
-              ] else
-                TextButton.icon(
-                  onPressed:
-                      isRestarting ||
-                          account.registrationActionInProgress ||
-                          !uiState.isNetworkAvailable
-                      ? null
-                      : () =>
-                            service.setAccountRegistration(account.accId, true),
+                  onPressed: ready && uiState.isNetworkAvailable
+                      ? () =>
+                            service.setAccountRegistration(account.accId, true)
+                      : null,
                   icon: const Icon(AppIcons.play),
                   label: Text(l10n.sidebarEnableLine),
                   style: TextButton.styleFrom(foregroundColor: _brandGreen),
                 ),
               TextButton.icon(
-                onPressed:
-                    isRestarting ||
-                        account.registrationActionInProgress ||
-                        hasActiveCalls
-                    ? null
-                    : () => _showEditAccountDialog(uiState, service, account),
+                onPressed: canManage
+                    ? () => _showEditAccountDialog(uiState, service, account)
+                    : null,
                 icon: const Icon(AppIcons.edit),
                 label: Text(l10n.sidebarEditLine),
               ),
-              TextButton.icon(
-                onPressed:
-                    isRestarting ||
-                        account.registrationActionInProgress ||
-                        hasActiveCalls
-                    ? null
-                    : () async {
-                        final confirmed = await _confirmDeleteLine(account);
-                        if (confirmed != true || !mounted) return;
-                        service.removeAccount(account.accId);
-                      },
-                icon: const Icon(AppIcons.delete),
-                label: Text(l10n.sidebarDeleteLine),
-                style: TextButton.styleFrom(foregroundColor: _dangerRed),
+              MenuAnchor(
+                builder: (context, controller, child) => IconButton(
+                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+                  icon: const Icon(AppIcons.more),
+                  onPressed: controller.isOpen
+                      ? controller.close
+                      : controller.open,
+                ),
+                menuChildren: [
+                  if (account.registrationEnabled) ...[
+                    MenuItemButton(
+                      onPressed: ready && account.registrationStatus != null
+                          ? () => service.setAccountRegistration(
+                              account.accId,
+                              true,
+                            )
+                          : null,
+                      leadingIcon: const Icon(AppIcons.refresh),
+                      child: Text(l10n.sidebarRefreshLine),
+                    ),
+                    MenuItemButton(
+                      onPressed: canManage && uiState.isNetworkAvailable
+                          ? () async {
+                              final confirmed =
+                                  await _confirmForceReconnectLine(account);
+                              if (confirmed == true && mounted) {
+                                service.forceReconnectAccount(account.accId);
+                              }
+                            }
+                          : null,
+                      leadingIcon: const Icon(AppIcons.power),
+                      child: Text(l10n.sidebarRestartLine),
+                    ),
+                    MenuItemButton(
+                      onPressed: canManage
+                          ? () => service.setAccountRegistration(
+                              account.accId,
+                              false,
+                            )
+                          : null,
+                      leadingIcon: const Icon(AppIcons.pause),
+                      child: Text(l10n.sidebarDisableLine),
+                    ),
+                    const Divider(height: 1),
+                  ],
+                  MenuItemButton(
+                    onPressed: canManage
+                        ? () async {
+                            final confirmed = await _confirmDeleteLine(account);
+                            if (confirmed == true && mounted) {
+                              service.removeAccount(account.accId);
+                            }
+                          }
+                        : null,
+                    style: MenuItemButton.styleFrom(
+                      foregroundColor: _dangerRed,
+                    ),
+                    leadingIcon: const Icon(AppIcons.delete),
+                    child: Text(l10n.sidebarDeleteLine),
+                  ),
+                ],
               ),
             ],
           ),
