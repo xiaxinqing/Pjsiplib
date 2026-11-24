@@ -1,5 +1,26 @@
 part of '../../../main.dart';
 
+// 卡片之间的纵向间距。拖动高亮也用这个值扣除卡片底部的空白。
+const _accountLineSpacing = 10.0;
+const _accountAccent = Color(0xff086950);
+const _accountMenuWidth = 176.0;
+const _accountMenuPadding = 5.0;
+
+class _AccountLineDragListener extends ReorderableDragStartListener {
+  const _AccountLineDragListener({
+    required super.index,
+    required super.enabled,
+    required super.child,
+  });
+
+  @override
+  DelayedMultiDragGestureRecognizer createRecognizer() =>
+      DelayedMultiDragGestureRecognizer(
+        delay: const Duration(milliseconds: 50),
+        debugOwner: this,
+      );
+}
+
 extension _HomeSettingsAccountTab on _MyHomePageState {
   Widget _buildAccountSettingsTab(PjsipUIState uiState, PjsipService service) {
     final isRestarting = uiState.isPhoneServiceRestarting;
@@ -46,6 +67,7 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                 : ReorderableListView.builder(
                     padding: EdgeInsets.zero,
                     buildDefaultDragHandles: false,
+                    proxyDecorator: _buildAccountDragPreview,
                     itemCount: accounts.length,
                     onReorderItem: (oldIndex, newIndex) => _reorderAccountLines(
                       uiState,
@@ -59,21 +81,70 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
                           uiState.defaultAccountId == account.accId;
                       final canReorder =
                           !isDefault && !isRestarting && !restartingApplication;
-                      return KeyedSubtree(
+                      final l10n = context.l10n;
+                      return MouseRegion(
                         key: ValueKey('settings-account-${account.accId}'),
-                        child: _buildAccountLineTile(
-                          uiState,
-                          service,
-                          account,
-                          reorderHandle: _buildAccountReorderHandle(
-                            index: index,
-                            isDefault: isDefault,
-                            enabled: canReorder,
+                        cursor: canReorder
+                            ? SystemMouseCursors.grab
+                            : MouseCursor.defer,
+                        child: TooltipTheme(
+                          // 可排序时将长按手势留给整行，文字和按钮仍支持鼠标悬停提示。
+                          data: canReorder
+                              ? TooltipTheme.of(context).copyWith(
+                                  triggerMode: TooltipTriggerMode.manual,
+                                )
+                              : TooltipTheme.of(context),
+                          child: Tooltip(
+                            message: isDefault
+                                ? l10n.accountSettingsDefaultPinned
+                                : canReorder
+                                ? l10n.accountSettingsDragToReorder
+                                : l10n.accountSettingsReorderUnavailable,
+                            child: _buildAccountLineTile(
+                              uiState,
+                              service,
+                              account,
+                              index: index,
+                              canReorder: canReorder,
+                            ),
                           ),
                         ),
                       );
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAccountDragPreview(
+    Widget child,
+    int index,
+    Animation<double> animation,
+  ) {
+    final scale = Tween(
+      begin: 1.0,
+      end: 0.99,
+    ).chain(CurveTween(curve: Curves.easeOut)).animate(animation);
+    return ScaleTransition(
+      scale: scale,
+      child: Stack(
+        children: [
+          Material(type: MaterialType.transparency, child: child),
+          Positioned.fill(
+            bottom: _accountLineSpacing,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _brandGreen.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(_radiusSm),
+                  border: Border.all(
+                    color: _brandGreen.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -211,56 +282,35 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
     service.reorderAccounts([for (final account in reordered) account.accId]);
   }
 
-  /// 构建线路排序手柄。默认外呼线路仅显示固定状态。
-  Widget _buildAccountReorderHandle({
-    required int index,
-    required bool isDefault,
-    required bool enabled,
-  }) {
-    final l10n = context.l10n;
-    final tooltip = isDefault
-        ? l10n.accountSettingsDefaultPinned
-        : enabled
-        ? l10n.accountSettingsDragToReorder
-        : l10n.accountSettingsReorderUnavailable;
-    final handle = Tooltip(
-      message: tooltip,
-      child: MouseRegion(
-        cursor: enabled ? SystemMouseCursors.grab : SystemMouseCursors.basic,
-        child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(
-            AppIcons.drag,
-            size: _iconMd,
-            color: enabled ? _textSecondary : _softBorder,
-          ),
-        ),
-      ),
-    );
-    if (!enabled) return handle;
-    return ReorderableDragStartListener(index: index, child: handle);
-  }
-
+  /// 线路卡片左侧分两行显示账号和服务器信息，右侧放主按钮和更多菜单。
   Widget _buildAccountLineTile(
     PjsipUIState uiState,
     PjsipService service,
     SipAccountInfo account, {
-    required Widget reorderHandle,
+    required int index,
+    required bool canReorder,
   }) {
     final l10n = context.l10n;
     final isDefault = uiState.defaultAccountId == account.accId;
-    final color = !account.registrationEnabled
-        ? _textSecondary
-        : account.isRegistered
-        ? _brandGreen
-        : Colors.orange.shade700;
-    final hasActiveCalls = uiState.calls.values.any(
-      (call) => call.accountId == account.accId,
-    );
-    final isRestarting = uiState.isPhoneServiceRestarting;
-    final ready = !isRestarting && !account.registrationActionInProgress;
-    final canManage = ready && !hasActiveCalls;
+    final status = AccountLocalizer.lineStatus(account);
+    final color = switch (status) {
+      AccountLineStatus.online => _brandGreen,
+      AccountLineStatus.disabled => _textSecondary,
+      _ => Colors.orange.shade700,
+    };
+    final ready =
+        !uiState.isPhoneServiceRestarting &&
+        !_applicationRestarting &&
+        !account.registrationActionInProgress &&
+        !account.isRestoringPlaceholder &&
+        account.restartPhase == SipAccountRestartPhase.none;
+    final canManage = ready && !uiState.hasCallOnAccount(account.accId);
+    final canRegister =
+        ready && uiState.isInitialized && uiState.isNetworkAvailable;
+    final canDisable = canManage && uiState.isInitialized;
+    final retry =
+        status == AccountLineStatus.failed ||
+        status == AccountLineStatus.offline;
     final detail = [
       account.lineName.trim().isEmpty ? account.host : account.lineLabel,
       account.transportLabel,
@@ -270,181 +320,306 @@ extension _HomeSettingsAccountTab on _MyHomePageState {
       if (account.iceConfig.enabled) 'ICE',
       if (account.turnConfig.isUsable) 'TURN',
     ].join(' · ');
+    Widget dragArea(Widget child) => _AccountLineDragListener(
+      index: index,
+      enabled: canReorder,
+      child: child,
+    );
+    final isOnline = status == AccountLineStatus.online;
+    final primaryAction = switch (status) {
+      AccountLineStatus.online ||
+      AccountLineStatus.disabled ||
+      AccountLineStatus.failed ||
+      AccountLineStatus.offline => OutlinedButton.icon(
+        onPressed: (isOnline ? canDisable : canRegister)
+            ? () => service.setAccountRegistration(account.accId, !isOnline)
+            : null,
+        icon: Icon(
+          isOnline
+              ? AppIcons.pause
+              : retry
+              ? AppIcons.refresh
+              : AppIcons.play,
+        ),
+        label: Text(
+          isOnline
+              ? l10n.sidebarDisableLine
+              : retry
+              ? l10n.settingsStartupRetry
+              : l10n.sidebarEnableLine,
+        ),
+        style:
+            OutlinedButton.styleFrom(
+              // 启用、停用和重试共用最小尺寸，较长的译文可以撑宽按钮。
+              minimumSize: const Size(82, 38),
+              iconSize: _iconXs,
+              foregroundColor: isOnline ? _textPrimary : _accountAccent,
+              backgroundColor: isOnline
+                  ? _panelBackground
+                  : const Color(0xffe6f5ee),
+              disabledForegroundColor: _textSecondary,
+              disabledBackgroundColor: _subtlePanel,
+            ).copyWith(
+              side: WidgetStateProperty.resolveWith(
+                (states) => BorderSide(
+                  color: states.contains(WidgetState.disabled)
+                      ? _softBorder
+                      : isOnline
+                      ? const Color(0xffc7ccca)
+                      : const Color(0xff8fbfae),
+                ),
+              ),
+            ),
+      ),
+      _ => SizedBox.square(
+        dimension: 16,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          semanticsLabel: status.label(l10n),
+        ),
+      ),
+    };
+    final blockedReason = switch (status) {
+      AccountLineStatus.online when uiState.hasCallOnAccount(account.accId) =>
+        l10n.runtimeLineActiveCallBlocked(l10n.runtimeActionDisable),
+      AccountLineStatus.disabled ||
+      AccountLineStatus.failed ||
+      AccountLineStatus.offline when !uiState.isNetworkAvailable =>
+        l10n.statusNetworkUnavailable,
+      _ => null,
+    };
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: _accountLineSpacing),
       decoration: BoxDecoration(
         color: _subtlePanel,
         borderRadius: BorderRadius.circular(_radiusSm),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Icon(Icons.circle, size: 8, color: color),
-              const SizedBox(width: 6),
-              Text(
-                AccountLocalizer.status(l10n, account),
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildTooltipText(
-                  account.displayName,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-              if (isDefault || account.isRegistered)
-                _buildDefaultRouteButton(
-                  account: account,
-                  isDefault: isDefault,
-                  isRestarting: isRestarting,
-                  onSetDefault: () => service.setDefaultAccount(account.accId),
-                ),
-              const SizedBox(width: 4),
-              reorderHandle,
-            ],
+          Positioned.fill(
+            child: dragArea(const ColoredBox(color: Colors.transparent)),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: _buildTooltipText(
-                  detail,
-                  style: Theme.of(context).textTheme.bodySmall,
+          Padding(
+            // vertical 控制卡片上下留白；名称与服务器之间的行距由下方 Column 单独控制。
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: dragArea(
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.circle, size: 8, color: color),
+                            const SizedBox(width: 6),
+                            Text(
+                              status.label(l10n),
+                              style: Theme.of(context).textTheme.labelMedium,
+                            ),
+                            const SizedBox(width: 4), // 状态文字与账号名之间的间距
+                            Flexible(
+                              child: _buildTooltipText(
+                                account.displayName,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w700),
+                              ),
+                            ),
+                            if (isDefault) ...[
+                              // 账号名到「默认外呼」标签的间距。
+                              const SizedBox(width: 10),
+                              _buildDefaultOutgoingBadge(l10n),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        _buildTooltipText(
+                          detail,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
-              if (!account.registrationEnabled)
-                TextButton.icon(
-                  onPressed: ready && uiState.isNetworkAvailable
-                      ? () =>
-                            service.setAccountRegistration(account.accId, true)
-                      : null,
-                  icon: const Icon(AppIcons.play),
-                  label: Text(l10n.sidebarEnableLine),
-                  style: TextButton.styleFrom(foregroundColor: _brandGreen),
-                ),
-              TextButton.icon(
-                onPressed: canManage
-                    ? () => _showEditAccountDialog(uiState, service, account)
-                    : null,
-                icon: const Icon(AppIcons.edit),
-                label: Text(l10n.sidebarEditLine),
-              ),
-              MenuAnchor(
-                builder: (context, controller, child) => IconButton(
-                  tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
-                  icon: const Icon(AppIcons.more),
-                  onPressed: controller.isOpen
-                      ? controller.close
-                      : controller.open,
-                ),
-                menuChildren: [
-                  if (account.registrationEnabled) ...[
-                    MenuItemButton(
-                      onPressed: ready && account.registrationStatus != null
-                          ? () => service.setAccountRegistration(
-                              account.accId,
-                              true,
+                const SizedBox(width: 8),
+                if (blockedReason == null)
+                  primaryAction
+                else
+                  Tooltip(message: blockedReason, child: primaryAction),
+                const SizedBox(width: 6),
+                MenuAnchor(
+                  alignmentOffset: const Offset(-_accountMenuWidth, 4),
+                  style: MenuStyle(
+                    alignment: AlignmentDirectional.bottomEnd,
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.all(_accountMenuPadding),
+                    ),
+                    backgroundColor: const WidgetStatePropertyAll(
+                      _panelBackground,
+                    ),
+                    surfaceTintColor: const WidgetStatePropertyAll(
+                      Colors.transparent,
+                    ),
+                    elevation: const WidgetStatePropertyAll(8),
+                    shadowColor: const WidgetStatePropertyAll(
+                      Color(0x38000000),
+                    ),
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        side: const BorderSide(color: _softBorder),
+                      ),
+                    ),
+                  ),
+                  builder: (context, controller, child) => IconButton(
+                    tooltip: MaterialLocalizations.of(
+                      context,
+                    ).moreButtonTooltip,
+                    icon: const Icon(AppIcons.more, size: _iconSm),
+                    style: IconButton.styleFrom(
+                      backgroundColor: controller.isOpen ? _hoverPanel : null,
+                    ),
+                    onPressed: controller.isOpen
+                        ? controller.close
+                        : controller.open,
+                  ),
+                  menuChildren: [
+                    _accountMenuItem(
+                      l10n.sidebarEditLine,
+                      AppIcons.edit,
+                      onPressed: canManage
+                          ? () => _showEditAccountDialog(
+                              uiState,
+                              service,
+                              account,
                             )
                           : null,
-                      leadingIcon: const Icon(AppIcons.refresh),
-                      child: Text(l10n.sidebarRefreshLine),
                     ),
-                    MenuItemButton(
-                      onPressed: canManage && uiState.isNetworkAvailable
+                    if (!isDefault && status == AccountLineStatus.online)
+                      _accountMenuItem(
+                        l10n.accountSettingsSetDefault,
+                        AppIcons.outgoing,
+                        onPressed: ready && uiState.isInitialized
+                            ? () => service.setDefaultAccount(account.accId)
+                            : null,
+                      ),
+                    if (account.registrationEnabled) ...[
+                      if (!retry)
+                        _accountMenuItem(
+                          l10n.sidebarRefreshLine,
+                          AppIcons.refresh,
+                          onPressed:
+                              canRegister && account.registrationStatus != null
+                              ? () => service.setAccountRegistration(
+                                  account.accId,
+                                  true,
+                                )
+                              : null,
+                        ),
+                      _accountMenuItem(
+                        l10n.sidebarRestartLine,
+                        AppIcons.power,
+                        onPressed: canManage && canRegister
+                            ? () async {
+                                final confirmed =
+                                    await _confirmForceReconnectLine(account);
+                                if (confirmed == true && mounted) {
+                                  service.forceReconnectAccount(account.accId);
+                                }
+                              }
+                            : null,
+                      ),
+                      if (status != AccountLineStatus.online)
+                        _accountMenuItem(
+                          l10n.sidebarDisableLine,
+                          AppIcons.pause,
+                          onPressed: canDisable
+                              ? () => service.setAccountRegistration(
+                                  account.accId,
+                                  false,
+                                )
+                              : null,
+                        ),
+                    ],
+                    const Divider(height: 9, indent: 8, endIndent: 8),
+                    _accountMenuItem(
+                      l10n.sidebarDeleteLine,
+                      AppIcons.delete,
+                      destructive: true,
+                      onPressed: canManage
                           ? () async {
-                              final confirmed =
-                                  await _confirmForceReconnectLine(account);
+                              final confirmed = await _confirmDeleteLine(
+                                account,
+                              );
                               if (confirmed == true && mounted) {
-                                service.forceReconnectAccount(account.accId);
+                                service.removeAccount(account.accId);
                               }
                             }
                           : null,
-                      leadingIcon: const Icon(AppIcons.power),
-                      child: Text(l10n.sidebarRestartLine),
                     ),
-                    MenuItemButton(
-                      onPressed: canManage
-                          ? () => service.setAccountRegistration(
-                              account.accId,
-                              false,
-                            )
-                          : null,
-                      leadingIcon: const Icon(AppIcons.pause),
-                      child: Text(l10n.sidebarDisableLine),
-                    ),
-                    const Divider(height: 1),
                   ],
-                  MenuItemButton(
-                    onPressed: canManage
-                        ? () async {
-                            final confirmed = await _confirmDeleteLine(account);
-                            if (confirmed == true && mounted) {
-                              service.removeAccount(account.accId);
-                            }
-                          }
-                        : null,
-                    style: MenuItemButton.styleFrom(
-                      foregroundColor: _dangerRed,
-                    ),
-                    leadingIcon: const Icon(AppIcons.delete),
-                    child: Text(l10n.sidebarDeleteLine),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  /// 构建“设为默认外呼”按钮。
-  ///
-  /// 视觉规则：
-  /// - 当前默认线路：绿色、不可点击；
-  /// - 在线但非默认：深色、可点击；
-  /// - 离线或电话服务重启中：灰色、不可点击。
-  Widget _buildDefaultRouteButton({
-    required SipAccountInfo account,
-    required bool isDefault,
-    required bool isRestarting,
-    required VoidCallback onSetDefault,
+  Widget _accountMenuItem(
+    String label,
+    IconData icon, {
+    required VoidCallback? onPressed,
+    bool destructive = false,
   }) {
-    final l10n = context.l10n;
-    final canSetDefault = account.isRegistered && !isDefault && !isRestarting;
-    final foregroundColor = isDefault
-        ? _brandGreen
-        : canSetDefault
-        ? _textPrimary
-        : _textSecondary;
-    final backgroundColor = isDefault
-        ? _brandGreen.withValues(alpha: 0.1)
-        : canSetDefault
-        ? Colors.white
-        : _subtlePanel;
-    final borderColor = isDefault
-        ? _brandGreen.withValues(alpha: 0.24)
-        : canSetDefault
-        ? _textPrimary.withValues(alpha: 0.18)
-        : _softBorder;
-
-    return OutlinedButton.icon(
-      onPressed: canSetDefault ? onSetDefault : null,
-      icon: Icon(isDefault ? AppIcons.check : AppIcons.outgoing, size: _iconSm),
-      label: Text(
-        isDefault
-            ? l10n.accountSettingsDefaultOutgoing
-            : l10n.accountSettingsSetDefault,
+    return MenuItemButton(
+      onPressed: onPressed,
+      style: MenuItemButton.styleFrom(
+        minimumSize: const Size(
+          _accountMenuWidth - 2 * _accountMenuPadding,
+          36,
+        ),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        visualDensity: VisualDensity.standard,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        foregroundColor: destructive ? _dangerRed : _textPrimary,
+        iconColor: destructive ? _dangerRed : _textSecondary,
+        iconSize: _iconXs,
+        textStyle: Theme.of(
+          context,
+        ).textTheme.bodyMedium?.copyWith(fontSize: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      style: OutlinedButton.styleFrom(
-        foregroundColor: foregroundColor,
-        disabledForegroundColor: foregroundColor,
-        backgroundColor: backgroundColor,
-        disabledBackgroundColor: backgroundColor,
-        side: BorderSide(color: borderColor),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        visualDensity: VisualDensity.compact,
+      leadingIcon: Icon(icon),
+      child: Text(label),
+    );
+  }
+
+  /// 默认外呼标签：ShapeDecoration 设置底色与形状，Padding 设置标签内边距。
+  Widget _buildDefaultOutgoingBadge(AppLocalizations l10n) {
+    return DecoratedBox(
+      decoration: const ShapeDecoration(
+        color: _accountAccent,
+        shape: StadiumBorder(),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(AppIcons.defaultLine, size: 13, color: Colors.white),
+            const SizedBox(width: 5),
+            Text(
+              l10n.accountSettingsDefaultOutgoing,
+              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -131,19 +131,108 @@ extension PjsipCallOperations on PjsipService {
       return;
     }
     */
-    // 开启自动保持时，发起新通话也遵循“单路激活”规则。
-    // 试用期间保持失败也继续拨号，不把保持结果作为拦截条件。
-    await _holdActiveCallExcept(-1);
-    // 等待期间其他拨号或来电可能已占用最后一个名额，提交前再次检查。
-    if (_uiState.calls.length >= 4) {
-      _addLog('❌ 已达到当前最大通话数（4 路）');
+    if (_isDisposed ||
+        !_uiState.isInitialized ||
+        _uiState.isPhoneServiceRestarting ||
+        _applicationShutdownFuture != null) {
       return;
     }
-    using((Arena arena) {
-      // 外呼必须和线路注册使用同一种传输协议，避免 dialog 中的 INVITE/BYE
-      // 被 PBX 按不同 transport 路由，导致对端挂断本端收不到。
+    if (_uiState.pendingDial != null) {
+      ToastUtil.showWarning(
+        AppRuntimeLocalizer.resolve((l) => l.accountStatusConnecting, '连接中'),
+      );
+      return;
+    }
+    final settled = Platform.isMacOS ? Completer<bool>() : null;
+    if (settled != null) {
+      _dialSettled = settled;
+      _uiState = _uiState.copyWith(
+        pendingDial: (accountId: account.accId, number: number),
+      );
+    }
+    try {
+      await _holdActiveCallExcept(-1);
+      if (_isDisposed ||
+          !_uiState.isInitialized ||
+          _dialSettled != settled ||
+          _applicationShutdownFuture != null) {
+        return;
+      }
+      if (_uiState.calls.length >= 4) {
+        _addLog('❌ 已达到当前最大通话数（4 路）');
+        return;
+      }
       final targetUri =
           'sip:$number@${account.host};transport=${account.transport.uriParam}';
+      final started = DateTime.now();
+      _addLog(
+        '➡️ 发起 INVITE: $targetUri, acc=${account.accId}, transport=${account.transport.label}',
+      );
+      final DialResult result;
+      if (settled != null) {
+        final elapsed = Stopwatch()..start();
+        try {
+          final worker = _dialWorker ??= PjsipDialWorker(_library);
+          result = await worker.dial(
+            account.accId,
+            targetUri,
+            tls: account.transport == SipTransport.tls,
+          );
+        } on ArgumentError catch (error) {
+          _reportDialWorkerError(error);
+          return;
+        } on StateError catch (error) {
+          _reportDialWorkerError(error);
+          return;
+        }
+        if (_isDisposed || _dialSettled != settled) return;
+        _addLog(
+          '拨号工作线程返回: acc=${account.accId}, call=${result.callId}, '
+          'pj_status=${result.status}, 耗时=${elapsed.elapsedMilliseconds}ms',
+        );
+      } else {
+        result = _dialSynchronously(account, targetUri);
+      }
+      if (result.status != 0) {
+        _addLog('❌ 拨打失败: number=$number, pj_status=${result.status}');
+        ToastUtil.showError(
+          AppRuntimeLocalizer.resolve((l) => l.callStatusFailed, '呼叫失败'),
+        );
+        return;
+      }
+      _putCall(
+        CallInfo(
+          callId: result.callId,
+          state: pjsip_inv_state.PJSIP_INV_STATE_CALLING.value,
+          remoteUri: targetUri,
+          accountId: account.accId,
+          direction: PjsipCallDirection.outbound,
+          startedAt: started,
+        ),
+        makeActive: true,
+      );
+      _addLog('拨打请求已接受: number=$number, call=${result.callId}');
+    } finally {
+      if (settled != null) {
+        final current = !_isDisposed && _dialSettled == settled;
+        if (current) {
+          _dialSettled = null;
+          _uiState = _uiState.copyWith(pendingDial: null);
+        }
+        settled.complete(current);
+      }
+    }
+  }
+
+  void _reportDialWorkerError(Object error) {
+    _addLog('❌ 拨号失败: $error');
+    ToastUtil.showError(
+      AppRuntimeLocalizer.resolve((l) => l.callStatusFailed, '呼叫失败'),
+    );
+  }
+
+  DialResult _dialSynchronously(SipAccountInfo account, String targetUri) {
+    return using((Arena arena) {
       final dstUri = targetUri.toNativeUtf8(allocator: arena);
       final pjUri = arena<pj_str_t>();
       final pCallId = arena<pjsua_call_id>();
@@ -160,9 +249,6 @@ extension PjsipCallOperations on PjsipService {
         callSetting.ref.req_keyframe_method = 0; // Placeholder for future use
       }
       _pjStr(pjUri.ref, dstUri);
-      _addLog(
-        '➡️ 发起 INVITE: $targetUri, acc=${account.accId}, transport=${account.transport.label}',
-      );
       final status = _bindings.pjsua_call_make_call(
         account.accId,
         pjUri,
@@ -171,23 +257,7 @@ extension PjsipCallOperations on PjsipService {
         ffi.nullptr,
         pCallId,
       );
-      if (status == 0) {
-        final callId = pCallId.value;
-        _putCall(
-          CallInfo(
-            callId: callId,
-            state: pjsip_inv_state.PJSIP_INV_STATE_CALLING.value,
-            remoteUri: targetUri,
-            accountId: account.accId,
-            direction: PjsipCallDirection.outbound,
-            startedAt: DateTime.now(),
-          ),
-          makeActive: true,
-        );
-        _addLog('拨打请求已接受: number=$number, call=$callId');
-      } else {
-        _addLog('❌ 拨打失败: number=$number, pj_status=$status');
-      }
+      return (status: status, callId: status == 0 ? pCallId.value : -1);
     });
   }
 
@@ -473,7 +543,11 @@ extension PjsipCallOperations on PjsipService {
   }
 
   void _hangupNativeCallsIfUiIdle(String reason) {
-    if (!_uiState.isInitialized || _uiState.calls.isNotEmpty) return;
+    if (!_uiState.isInitialized ||
+        _uiState.calls.isNotEmpty ||
+        _uiState.pendingDial != null) {
+      return;
+    }
     final nativeCallCount = _bindings.pjsua_call_get_count();
     if (nativeCallCount <= 0) return;
 

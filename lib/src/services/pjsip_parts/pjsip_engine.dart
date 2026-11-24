@@ -527,9 +527,7 @@ extension PjsipEngineOperations on PjsipService {
       );
       return;
     }
-    final hasActiveCalls = _uiState.calls.values.any(
-      (call) => call.accountId == accId,
-    );
+    final hasActiveCalls = _uiState.hasCallOnAccount(accId);
     if (hasActiveCalls) {
       _addLog('⚠️ 线路仍有通话，不能编辑: ${original.lineLabel}');
       ToastUtil.showWarning(
@@ -1250,8 +1248,7 @@ extension PjsipEngineOperations on PjsipService {
       );
       return;
     }
-    if (!enabled &&
-        _uiState.calls.values.any((call) => call.accountId == accId)) {
+    if (!enabled && _uiState.hasCallOnAccount(accId)) {
       _addLog('⚠️ 线路仍有通话，不能停用: ${account.lineLabel}');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
@@ -1318,7 +1315,7 @@ extension PjsipEngineOperations on PjsipService {
       );
       return;
     }
-    if (_uiState.calls.values.any((call) => call.accountId == accId)) {
+    if (_uiState.hasCallOnAccount(accId)) {
       _addLog('⚠️ 线路仍有通话，不能重启线路: ${account.lineLabel}');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
@@ -1497,7 +1494,7 @@ extension PjsipEngineOperations on PjsipService {
       );
       return;
     }
-    if (_uiState.calls.isNotEmpty) {
+    if (_uiState.calls.isNotEmpty || _uiState.pendingDial != null) {
       _addLog('⚠️ 当前仍有通话，不能断开全部线路');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
@@ -1617,7 +1614,7 @@ extension PjsipEngineOperations on PjsipService {
       );
       return;
     }
-    if (_uiState.calls.isNotEmpty) {
+    if (_uiState.calls.isNotEmpty || _uiState.pendingDial != null) {
       _addLog('⚠️ 当前仍有通话，不能重启电话服务');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
@@ -1654,7 +1651,7 @@ extension PjsipEngineOperations on PjsipService {
     try {
       // 先保存当前“真实线路配置”。后面临时把线路标成“重启中”、
       // stop() 又会清空账号列表，如果先改状态再持久化，就会把账号错误地存成临时状态。
-      await _persistSeatEnvironmentNow();
+      await _queueSeatEnvironmentSnapshot();
       if (_isDisposed) return;
 
       final accountsSnapshot = _uiState.accounts.values
@@ -1755,9 +1752,7 @@ extension PjsipEngineOperations on PjsipService {
   void removeAccount(int accId) {
     final account = _uiState.accounts[accId];
     if (account == null || !_uiState.isInitialized) return;
-    final hasActiveCalls = _uiState.calls.values.any(
-      (call) => call.accountId == accId,
-    );
+    final hasActiveCalls = _uiState.hasCallOnAccount(accId);
     if (hasActiveCalls) {
       _addLog('⚠️ 线路仍有通话，不能删除: ${account.lineLabel}');
       ToastUtil.showWarning(
@@ -1816,7 +1811,7 @@ extension PjsipEngineOperations on PjsipService {
     if (accounts.isEmpty) {
       _resetLineRecoveryStateWithoutAccounts(reason: '已删除最后一条线路');
     }
-    unawaited(_persistSeatEnvironment());
+    unawaited(_persistSeatEnvironment(deletedLastLine: accounts.isEmpty));
     _addLog('🗑 已删除线路: ${account.lineLabel}');
     ToastUtil.showSuccess(
       AppRuntimeLocalizer.resolve((l) => l.runtimeLineDeleted, '线路已删除'),

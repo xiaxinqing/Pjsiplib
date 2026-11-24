@@ -389,55 +389,50 @@ extension PjsipPersistenceOperations on PjsipService {
     }
   }
 
-  Future<void> _persistSeatEnvironment() async {
-    // 重启电话服务时会临时注销账号并清空 UI 账号列表。此时 PJSIP 的注销回调
-    // 可能晚于 stop() 到达，不能让这些临时状态覆盖已经保存好的真实坐席配置。
+  Future<void> _persistSeatEnvironment({bool deletedLastLine = false}) {
     if (_isDisposed ||
         _seatRestoreInProgress ||
-        _uiState.isPhoneServiceRestarting) {
-      return;
+        _uiState.isPhoneServiceRestarting ||
+        _applicationShutdownFuture != null) {
+      return Future<void>.value();
     }
-    _seatPersistQueue = _seatPersistQueue.then((_) {
-      if (_isDisposed ||
-          _seatRestoreInProgress ||
-          _uiState.isPhoneServiceRestarting) {
-        return Future<void>.value();
-      }
-      return _persistSeatEnvironmentNow();
-    });
-    return _seatPersistQueue;
+    return _queueSeatEnvironmentSnapshot(deletedLastLine: deletedLastLine);
   }
 
-  Future<void> _persistSeatEnvironmentNow() async {
-    try {
-      // Map 保留线路的插入顺序。默认外呼线路在用户操作时已被移到首位，
-      // 这里直接持久化该顺序；注册状态变化不会导致线路位置跳动。
-      final accounts = _uiState.accounts.values.toList(growable: false);
-      final environment = _PersistedSeatEnvironment(
-        defaultLineKey: _preferredDefaultLineKey ?? _currentDefaultLineKey(),
-        lines: [
-          for (final account in accounts)
-            _PersistedSipLine(
-              lineName: account.lineName,
-              username: account.username,
-              authUsername: account.authUsername,
-              sipDisplayName: account.sipDisplayName,
-              outboundProxy: account.outboundProxy,
-              password: account.password,
-              host: account.host,
-              transport: account.transport,
-              mediaSecurity: account.mediaSecurity,
-              iceConfig: account.iceConfig,
-              turnConfig: account.turnConfig,
-              ipv6Enabled: account.ipv6Enabled,
-              registrationEnabled: account.registrationEnabled,
-            ),
-        ],
-      );
-      await _writeSeatEnvironmentPayload(jsonEncode(environment.toJson()));
-    } catch (error) {
-      _addLog('❌ 保存坐席环境失败: $error');
-    }
+  Future<void> _queueSeatEnvironmentSnapshot({bool deletedLastLine = false}) {
+    // stop() 会清空引擎账号。先固定本次要写的配置，队列只负责写盘顺序。
+    final accounts = _uiState.accounts.values;
+    if (accounts.isEmpty && !deletedLastLine) return _seatPersistQueue;
+    final environment = _PersistedSeatEnvironment(
+      defaultLineKey: _preferredDefaultLineKey ?? _currentDefaultLineKey(),
+      lines: [
+        for (final account in accounts)
+          _PersistedSipLine(
+            lineName: account.lineName,
+            username: account.username,
+            authUsername: account.authUsername,
+            sipDisplayName: account.sipDisplayName,
+            outboundProxy: account.outboundProxy,
+            password: account.password,
+            host: account.host,
+            transport: account.transport,
+            mediaSecurity: account.mediaSecurity,
+            iceConfig: account.iceConfig,
+            turnConfig: account.turnConfig,
+            ipv6Enabled: account.ipv6Enabled,
+            registrationEnabled: account.registrationEnabled,
+          ),
+      ],
+    );
+    final payload = jsonEncode(environment.toJson());
+    _seatPersistQueue = _seatPersistQueue.then((_) async {
+      try {
+        await _writeSeatEnvironmentPayload(payload);
+      } catch (error) {
+        _addLog('❌ 保存坐席环境失败: $error');
+      }
+    });
+    return _seatPersistQueue;
   }
 
   void _showRestoringSeatEnvironment(_PersistedSeatEnvironment environment) {
@@ -512,9 +507,6 @@ extension PjsipPersistenceOperations on PjsipService {
       await fallback.parent.create(recursive: true);
       final tempFile = File('${fallback.path}.tmp');
       await tempFile.writeAsString(value, flush: true);
-      if (fallback.existsSync()) {
-        await fallback.delete();
-      }
       await tempFile.rename(fallback.path);
       if (!_loggedMacOsFallbackWrite) {
         _loggedMacOsFallbackWrite = true;

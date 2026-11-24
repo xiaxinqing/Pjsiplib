@@ -23,6 +23,7 @@ import 'storage_manager.dart';
 import 'contact_service.dart';
 import 'diagnostic_log_exporter.dart';
 import 'native_bridge/audio_device_change_controller.dart';
+import 'native_bridge/pjsip_dial_worker.dart';
 import 'sip_call_end_reason_mapper.dart';
 import '../../utils/toast_util.dart';
 
@@ -82,6 +83,26 @@ class PjsipService extends Notifier<PjsipUIState> {
       _uiState.accounts.length >= maxAccountCount;
 
   late PjsipBindings _bindings;
+  late ffi.DynamicLibrary _library;
+  PjsipDialWorker? _dialWorker;
+  Completer<bool>? _dialSettled;
+
+  // 状态和媒体事件只带 callId，可能比 worker 返回这个 id 更早送达。
+  // 正在建立的新通话先等拨号结果写入；已知来电和现有通话照常处理。
+  Future<bool>? _waitForNewCall(int callId) {
+    if (_uiState.calls.containsKey(callId) ||
+        _knownIncomingCallIds.contains(callId)) {
+      return null;
+    }
+    return _dialSettled?.future;
+  }
+
+  void _closeDialWorker() {
+    _dialSettled = null;
+    _dialWorker?.close();
+    _dialWorker = null;
+  }
+
   final _PjsipAudioRuntime _audio = _PjsipAudioRuntime();
   final AudioDeviceChangeController _audioDeviceChangeController =
       AudioDeviceChangeController();
@@ -223,6 +244,7 @@ class PjsipService extends Notifier<PjsipUIState> {
         ? 'libpjsip.so'
         : 'libpjsip.dylib';
     final dylib = ffi.DynamicLibrary.open(libraryName);
+    _library = dylib;
     _bindings = PjsipBindings(dylib);
     _setupAudioRuntime(dylib);
     _callSnapshots.setup(dylib);
@@ -387,6 +409,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _ipChangeInProgress = false;
     _ipChangeHadError = false;
     _pendingIpChange = false;
+    _closeDialWorker();
     final destroyWatch = Stopwatch()..start();
     _bindings.pjsua_destroy();
     final destroyMs = destroyWatch.elapsedMilliseconds;
@@ -417,6 +440,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _sipTransportIds.clear();
     state = state.copyWith(
       isInitialized: false,
+      pendingDial: null,
       calls: const {},
       activeCallId: null,
       conferenceCallIds: const {},
@@ -485,6 +509,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     }
     _connectivitySubscription = null;
 
+    await _dialSettled?.future;
     if (state.isInitialized) {
       stop();
     }
@@ -553,6 +578,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _outgoingMediaRecoveryTimer?.cancel();
     _ipChangeInProgress = false;
     _pendingIpChange = false;
+    _closeDialWorker();
     if (state.isInitialized) {
       _bindings.pjsua_destroy();
       _mediaConnectedCalls.clear();

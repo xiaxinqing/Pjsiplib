@@ -2091,7 +2091,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountSettingsDefaultPinned => '默认外呼线路固定置顶';
 
   @override
-  String get accountSettingsDragToReorder => '拖动调整线路顺序';
+  String get accountSettingsDragToReorder => '长按线路后拖动排序';
 
   @override
   String get accountSettingsReorderUnavailable => '当前无法调整顺序';
@@ -2100,7 +2100,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get accountSettingsDefaultOutgoing => '默认外呼';
 
   @override
-  String get accountSettingsSetDefault => '设为默认';
+  String get accountSettingsSetDefault => '设为默认外呼';
 
   @override
   String get accountSettingsRestartDescription => '应用将关闭后自动重新打开，账号配置不会删除。';
@@ -2128,6 +2128,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get accountStatusRestarting => '重启中';
+
+  @override
+  String get accountStatusEnabling => '启用中';
+
+  @override
+  String get accountStatusDisabling => '停用中';
 
   @override
   String get accountStatusDisabled => '已停用';
@@ -4808,7 +4814,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get accountSettingsDefaultPinned => '預設外撥線路固定置頂';
 
   @override
-  String get accountSettingsDragToReorder => '拖動以調整線路次序';
+  String get accountSettingsDragToReorder => '長按線路後拖動排序';
 
   @override
   String get accountSettingsReorderUnavailable => '目前無法調整次序';
@@ -4817,7 +4823,7 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   String get accountSettingsDefaultOutgoing => '預設外撥';
 
   @override
-  String get accountSettingsSetDefault => '設為預設';
+  String get accountSettingsSetDefault => '設為預設外撥線路';
 
   @override
   String get accountSettingsRestartDescription => '應用程式將關閉後自動重新開啟，帳戶設定不會刪除。';
@@ -4845,6 +4851,12 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get accountStatusRestarting => '重新啟動中';
+
+  @override
+  String get accountStatusEnabling => '啟用中';
+
+  @override
+  String get accountStatusDisabling => '停用中';
 
   @override
   String get accountStatusDisabled => '已停用';

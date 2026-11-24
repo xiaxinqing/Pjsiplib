@@ -3995,7 +3995,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountSettingsDragToReorder.
   ///
   /// In zh, this message translates to:
-  /// **'拖动调整线路顺序'**
+  /// **'长按线路后拖动排序'**
   String get accountSettingsDragToReorder;
 
   /// No description provided for @accountSettingsReorderUnavailable.
@@ -4013,7 +4013,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountSettingsSetDefault.
   ///
   /// In zh, this message translates to:
-  /// **'设为默认'**
+  /// **'设为默认外呼'**
   String get accountSettingsSetDefault;
 
   /// No description provided for @accountSettingsRestartDescription.
@@ -4069,6 +4069,18 @@ abstract class AppLocalizations {
   /// In zh, this message translates to:
   /// **'重启中'**
   String get accountStatusRestarting;
+
+  /// No description provided for @accountStatusEnabling.
+  ///
+  /// In zh, this message translates to:
+  /// **'启用中'**
+  String get accountStatusEnabling;
+
+  /// No description provided for @accountStatusDisabling.
+  ///
+  /// In zh, this message translates to:
+  /// **'停用中'**
+  String get accountStatusDisabling;
 
   /// No description provided for @accountStatusDisabled.
   ///

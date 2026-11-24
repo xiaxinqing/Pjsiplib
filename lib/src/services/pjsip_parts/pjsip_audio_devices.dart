@@ -2024,6 +2024,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   }
 
   bool get _shouldKeepSoundDeviceOpen =>
+      _uiState.pendingDial != null ||
       _uiState.calls.isNotEmpty ||
       _uiState.isMicrophoneTesting ||
       _uiState.isSpeakerTesting ||
@@ -2778,7 +2779,7 @@ extension PjsipAudioDeviceOperations on PjsipService {
   void _startAudioLevelTimer() {
     if (_audio.levelTimer != null) return;
     _audio.levelTimer = Timer.periodic(audioLevelPollInterval, (_) {
-      if (!_uiState.isInitialized) return;
+      if (!_uiState.isInitialized || _uiState.pendingDial != null) return;
       final hasConnectedCall = _uiState.calls.values.any(
         (call) => call.isConnected,
       );

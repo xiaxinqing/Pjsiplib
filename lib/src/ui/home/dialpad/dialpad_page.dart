@@ -7,7 +7,10 @@ extension _DialpadPage on _MyHomePageState {
     final selectedAccount = _outgoingAccountForDialing(uiState);
     final selectedAccountId = selectedAccount?.accId;
     // 临时只限制容量，网络和注册结果交给原生呼叫返回。
-    final canCall = selectedAccount != null && uiState.calls.length < 4;
+    final canCall =
+        selectedAccount != null &&
+        uiState.pendingDial == null &&
+        uiState.calls.length < 4;
     return LayoutBuilder(
       builder: (context, constraints) {
         final dialpadWidth = math.min(

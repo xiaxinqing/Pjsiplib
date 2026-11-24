@@ -2224,7 +2224,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'The default line stays at the top';
 
   @override
-  String get accountSettingsDragToReorder => 'Drag to reorder';
+  String get accountSettingsDragToReorder =>
+      'Press and hold a line, then drag to reorder';
 
   @override
   String get accountSettingsReorderUnavailable => 'Reordering unavailable';
@@ -2233,7 +2234,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountSettingsDefaultOutgoing => 'Default';
 
   @override
-  String get accountSettingsSetDefault => 'Set default';
+  String get accountSettingsSetDefault => 'Set as default outgoing line';
 
   @override
   String get accountSettingsRestartDescription =>
@@ -2265,6 +2266,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountStatusRestarting => 'Restarting';
+
+  @override
+  String get accountStatusEnabling => 'Enabling';
+
+  @override
+  String get accountStatusDisabling => 'Disabling';
 
   @override
   String get accountStatusDisabled => 'Disabled';

@@ -2,7 +2,17 @@ import 'dart:ui';
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart'
-    show Dialog, FilledButton, MenuItemButton, SizedBox, TextField, ValueKey;
+    show
+        Dialog,
+        FilledButton,
+        Icons,
+        Material,
+        MaterialType,
+        MenuItemButton,
+        SizedBox,
+        OutlinedButton,
+        TextField,
+        ValueKey;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
@@ -20,8 +30,17 @@ class FakePjsipService extends PjsipService {
     state = state.copyWith(playingRecordingId: recordingId);
   }
 
-  void setAccountsForTest(List<SipAccountInfo> accounts) {
+  void setAccountsForTest(
+    List<SipAccountInfo> accounts, {
+    bool network = true,
+    int? dialingAccount,
+  }) {
     state = state.copyWith(
+      isInitialized: true,
+      isNetworkAvailable: network,
+      pendingDial: dialingAccount == null
+          ? null
+          : (accountId: dialingAccount, number: "123"),
       accounts: {for (final account in accounts) account.accId: account},
       defaultAccountId: accounts.first.accId,
     );
@@ -499,11 +518,35 @@ void main() {
     );
     expect(inLine(1, find.text(l10n.accountStatusOnline)), findsOneWidget);
     expect(inLine(2, find.text(l10n.accountStatusDisabled)), findsOneWidget);
+    void expectStatusGap(int id, String label, String name) {
+      final statusRight = tester.getTopRight(inLine(id, find.text(label))).dx;
+      final nameLeft = tester.getTopLeft(inLine(id, find.text(name))).dx;
+      expect(nameLeft - statusRight, closeTo(4, 0.01));
+    }
+
+    expectStatusGap(1, l10n.accountStatusOnline, '100');
+    expectStatusGap(2, l10n.accountStatusDisabled, '101');
+    final onlineLabel = inLine(1, find.text(l10n.accountStatusOnline));
+    final disabledLabel = inLine(2, find.text(l10n.accountStatusDisabled));
+    expect(
+      tester.getSize(onlineLabel).width,
+      lessThan(tester.getSize(disabledLabel).width),
+    );
+    expect(
+      tester.getTopLeft(onlineLabel).dx,
+      tester.getTopLeft(disabledLabel).dx,
+    );
+    for (final id in [1, 2]) {
+      final dot = inLine(id, find.byIcon(Icons.circle));
+      final detail = inLine(id, find.textContaining('example.test'));
+      expect(tester.getTopLeft(dot).dx, tester.getTopLeft(detail).dx);
+    }
     expect(inLine(1, find.textContaining('STUN')), findsOneWidget);
     expect(inLine(2, find.textContaining('STUN')), findsNothing);
     expect(inLine(2, find.textContaining('ICE')), findsOneWidget);
     expect(inLine(2, find.text(l10n.sidebarEnableLine)), findsOneWidget);
-    expect(inLine(1, find.text(l10n.sidebarEditLine)), findsOneWidget);
+    expect(inLine(1, find.text(l10n.sidebarEditLine)), findsNothing);
+    expect(inLine(1, find.text(l10n.sidebarDisableLine)), findsOneWidget);
     expect(
       inLine(1, find.text(l10n.accountSettingsDefaultOutgoing)),
       findsOneWidget,
@@ -513,7 +556,9 @@ void main() {
     await pumpTransition();
     Finder action(String label) => find.widgetWithText(MenuItemButton, label);
     expect(action(l10n.sidebarRefreshLine), findsOneWidget);
-    expect(action(l10n.sidebarDisableLine), findsOneWidget);
+    expect(action(l10n.sidebarDisableLine), findsNothing);
+    expect(action(l10n.sidebarEditLine), findsOneWidget);
+    expect(action(l10n.accountSettingsSetDefault), findsNothing);
     expect(action(l10n.sidebarRestartLine), findsOneWidget);
     phone.setAccountsForTest([
       online.copyWith(registrationActionInProgress: true),
@@ -535,7 +580,163 @@ void main() {
     await tester.tap(find.text(l10n.commonCancel));
     await pumpTransition();
     expect(inLine(2, find.text('101')), findsOneWidget);
+    final failed = online.copyWith(registrationStatus: 403);
+    final other = disabled.copyWith(registrationEnabled: true);
+    phone.setAccountsForTest(
+      [failed, other],
+      network: false,
+      dialingAccount: 2,
+    );
+    await pumpTransition();
+    expect(
+      inLine(1, find.text(l10n.accountSettingsDefaultOutgoing)),
+      findsOneWidget,
+    );
+    expect(inLine(1, find.text(l10n.accountStatusFailed)), findsOneWidget);
+    expectStatusGap(1, l10n.accountStatusFailed, '100');
+    expectStatusGap(2, l10n.accountStatusOnline, '101');
+    Finder button(int id, String label) =>
+        inLine(id, find.widgetWithText(OutlinedButton, label));
+    expect(
+      tester
+          .widget<OutlinedButton>(button(1, l10n.settingsStartupRetry))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      tester
+          .widget<OutlinedButton>(button(2, l10n.sidebarDisableLine))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      inLine(
+        2,
+        find.byTooltip(
+          l10n.runtimeLineActiveCallBlocked(l10n.runtimeActionDisable),
+        ),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(inLine(1, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    expect(action(l10n.sidebarRefreshLine), findsNothing);
+    expect(action(l10n.sidebarDisableLine), findsOneWidget);
+    await tester.tap(inLine(1, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    phone.setAccountsForTest([failed, other]);
+    await pumpTransition();
+    expect(
+      tester
+          .widget<OutlinedButton>(button(1, l10n.settingsStartupRetry))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(inLine(2, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    expect(
+      tester
+          .widget<MenuItemButton>(action(l10n.accountSettingsSetDefault))
+          .onPressed,
+      isNotNull,
+    );
+    await tester.tap(inLine(2, find.byIcon(AppIcons.more)));
+    await pumpTransition();
+    phone.setAccountsForTest([
+      disabled.copyWith(accId: 1, registrationActionInProgress: true),
+      other.copyWith(
+        registrationActionInProgress: true,
+        registrationStatusText: '启用中',
+      ),
+    ]);
+    await pumpTransition();
+    expect(inLine(1, find.text(l10n.accountStatusDisabling)), findsOneWidget);
+    expect(button(1, l10n.sidebarEnableLine), findsNothing);
+    expect(inLine(2, find.text(l10n.accountStatusEnabling)), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('鼠标或触摸可长按线路名称排序，默认线路固定置顶', (tester) async {
+    tester.view.physicalSize = const Size(1000, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [pjsipServiceProvider.overrideWith(FakePjsipService.new)],
+        child: const MyApp(),
+      ),
+    );
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(MyApp)),
+    );
+    final phone =
+        container.read(pjsipServiceProvider.notifier) as FakePjsipService;
+    await tester.tap(find.byIcon(AppIcons.settings));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    phone.setAccountsForTest([
+      for (final id in [1, 2, 3])
+        SipAccountInfo(accId: id, username: 'line-$id', host: 'example.test'),
+    ]);
+    await tester.pump();
+
+    Finder name(int id) => find.descendant(
+      of: find.byKey(ValueKey('settings-account-$id')),
+      matching: find.text('line-$id'),
+    );
+    Future<void> move(int from, int to, PointerDeviceKind kind) async {
+      final start = tester.getCenter(name(from));
+      final target = tester.getCenter(name(to));
+      final gesture = await tester.startGesture(start, kind: kind);
+      await tester.pump(const Duration(milliseconds: 50));
+      if (from != 1) {
+        final surface = tester.widget<Material>(
+          find.ancestor(of: name(from), matching: find.byType(Material)).first,
+        );
+        expect(surface.type, MaterialType.transparency);
+        expect(surface.elevation, 0);
+      }
+      for (var step = 1; step <= 8; step++) {
+        await gesture.moveTo(Offset.lerp(start, target, step / 8)!);
+        await tester.pump(const Duration(milliseconds: 32));
+      }
+      await tester.pump(const Duration(milliseconds: 300));
+      await gesture.up();
+      if (kind == PointerDeviceKind.mouse) await gesture.removePointer();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    Iterable<int> order() => container.read(pjsipServiceProvider).accounts.keys;
+    // 快速滑动按实际距离模拟，避免行高变化也改变滑动速度。
+    await tester.timedDrag(
+      name(2),
+      const Offset(0, 80),
+      const Duration(milliseconds: 100),
+    );
+    await tester.pump();
+    expect(order(), [1, 2, 3]);
+    await move(2, 3, PointerDeviceKind.mouse);
+    expect(order(), [1, 3, 2]);
+    await move(2, 1, PointerDeviceKind.touch);
+    expect(order(), [1, 2, 3]);
+    await move(1, 3, PointerDeviceKind.mouse);
+    expect(order(), [1, 2, 3]);
+    final moreButton = find.descendant(
+      of: find.byKey(const ValueKey('settings-account-2')),
+      matching: find.byIcon(AppIcons.more),
+    );
+    final click = await tester.startGesture(tester.getCenter(moreButton));
+    await tester.pump(const Duration(milliseconds: 120));
+    await click.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.widgetWithIcon(MenuItemButton, AppIcons.edit));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(AddAccountDialog), findsOneWidget);
+    expect(order(), [1, 2, 3]);
   });
 
   for (final locale in const [

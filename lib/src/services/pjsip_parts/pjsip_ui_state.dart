@@ -19,6 +19,12 @@ enum PjsipMicrophonePermissionStatus {
 /// 这里故意只放“UI 需要观察的状态”。PJSIP 句柄、timer、设备轮询缓存这类运行时
 /// 对象不放进来，它们留在 service/runtime 内部。
 class PjsipUIState {
+  final ({int accountId, String number})? pendingDial;
+
+  bool hasCallOnAccount(int accountId) =>
+      pendingDial?.accountId == accountId ||
+      calls.values.any((call) => call.accountId == accountId);
+
   /// 页面日志列表。
   final List<PjsipLog> logs;
 
@@ -176,6 +182,7 @@ class PjsipUIState {
   PjsipUIState({
     required this.logs,
     this.calls = const {},
+    this.pendingDial,
     this.activeCallId,
     this.conferenceCallIds = const {},
     this.isConferencePaused = false,
@@ -225,6 +232,7 @@ class PjsipUIState {
   PjsipUIState copyWith({
     List<PjsipLog>? logs,
     Map<int, CallInfo>? calls,
+    Object? pendingDial = _unset,
     Object? activeCallId = _unset,
     Set<int>? conferenceCallIds,
     bool? isConferencePaused,
@@ -273,6 +281,9 @@ class PjsipUIState {
     return PjsipUIState(
       logs: logs ?? this.logs,
       calls: calls ?? this.calls,
+      pendingDial: identical(pendingDial, _unset)
+          ? this.pendingDial
+          : pendingDial as ({int accountId, String number})?,
       activeCallId: identical(activeCallId, _unset)
           ? this.activeCallId
           : activeCallId as int?,

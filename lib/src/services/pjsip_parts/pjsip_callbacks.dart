@@ -680,8 +680,10 @@ extension _PjsipNativeCallbacks on PjsipService {
     _callStateCallable = ffi.NativeCallable.listener((
       int callId,
       ffi.Pointer<pjsip_event> e,
-    ) {
-      if (!_uiState.isInitialized) return;
+    ) async {
+      if (_isDisposed || !_uiState.isInitialized) return;
+      final ready = _waitForNewCall(callId);
+      if (ready != null && !await ready) return;
       // [T2 enqueue] on_call_state 闭包入口。
       // 如果对方挂断时你在控制台看到了 [T1 native] BYE，但这里【没有】T2，
       // 说明是 NativeCallable 层把回调吞了；若 T2 出现了，问题就在下面的处理。
@@ -927,8 +929,10 @@ extension _PjsipNativeCallbacks on PjsipService {
     // 注意：
     // - 这里是“真正接声卡”的入口。注册在线、空闲设备检测都不应提前打开声卡，
     //   否则 macOS 会压低系统其他声音。
-    _callMediaStateCallable = ffi.NativeCallable.listener((int callId) {
-      if (!_uiState.isInitialized) return;
+    _callMediaStateCallable = ffi.NativeCallable.listener((int callId) async {
+      if (_isDisposed || !_uiState.isInitialized) return;
+      final ready = _waitForNewCall(callId);
+      if (ready != null && !await ready) return;
       // [T2 enqueue] on_call_media_state 闭包入口
       _printLog('T2 enqueue', 'on_call_media_state: call=$callId');
       using((Arena arena) {
