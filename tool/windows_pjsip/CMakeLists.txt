@@ -30,8 +30,10 @@ add_subdirectory("${PJPROJECT_ROOT}" pjproject-build EXCLUDE_FROM_ALL)
 add_library(pjsip_ffi SHARED
   pjsip_ffi_stub.c
   ../pjsip_bridge/vphone_pjsip_bridge.c
+  ../macos_pjsip/vphone_dial_worker.cpp
   pjsip_ffi.def
 )
+target_compile_features(pjsip_ffi PRIVATE cxx_std_17)
 target_include_directories(pjsip_ffi PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/../pjsip_bridge"
   # pjsua-lib 会把 pjlib 的 PUBLIC 编译宏传给 pjsip_ffi，其中包含

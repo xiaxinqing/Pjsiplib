@@ -12,6 +12,9 @@ on:
       - ".github/workflows/build-pjsip-linux.yml"
       - "tool/linux_pjsip/**"
       - "tool/windows_pjsip/pjsip_ffi_stub.c"
+      - "tool/windows_pjsip/pjsip_ffi.def"
+      - "tool/macos_pjsip/vphone_dial_worker.*"
+      - "tool/macos_pjsip/check_dial_worker.py"
       - "tool/pjsip_bridge/**"
       - "third_path/pjproject/**"
 
@@ -109,7 +112,7 @@ jobs:
           fi
           cp "${so_path}" "${output}/lib/libpjsip.so"
 
-          readelf -Ws "${output}/lib/libpjsip.so" | tee "${output}/exports.txt"
+          nm -D --defined-only "${output}/lib/libpjsip.so" > "${output}/exports.txt"
           required_symbols="$(awk '
             /^[[:space:]]*$/ { next }
             /^[[:space:]]*LIBRARY/ { next }
@@ -134,7 +137,7 @@ jobs:
           # the dynamic loader, or virtual kernel-provided entries.
           runtime_libs="$(ldd "${output}/lib/libpjsip.so" |
             awk '/=>/ { print $3 }' |
-            grep -E '/lib(asound|stdc\\+\\+|gcc_s)\\.so' || true)"
+            grep -E '/lib(asound|stdc\+\+|gcc_s)\.so' || true)"
           for runtime_lib in ${runtime_libs}; do
             cp -L "${runtime_lib}" "${output}/lib/"
           done
@@ -147,6 +150,8 @@ jobs:
           for dir in pjlib pjlib-util pjnath pjmedia pjsip; do
             cp -R "${pj_root}/${dir}/include/"* "${output}/include/"
           done
+          cp "${GITHUB_WORKSPACE}/tool/pjsip_bridge/vphone_pjsip_bridge.h" \
+            "${GITHUB_WORKSPACE}/tool/macos_pjsip/vphone_dial_worker.h" "${output}/include/"
           cp "${pj_root}/COPYING" "${output}/COPYING-pjproject.txt"
           cp "${GITHUB_WORKSPACE}/openssl-${OPENSSL_VERSION}/LICENSE.txt" \
             "${output}/LICENSE-OpenSSL.txt"
@@ -157,6 +162,9 @@ jobs:
           Media: audio only, ALSA audio device, G.711 enabled, bundled SRTP
           Runtime files: lib/libpjsip.so plus app-local Linux runtime libraries copied beside it
           EOF
+
+      - name: Smoke test packaged dial worker
+        run: LD_LIBRARY_PATH="$GITHUB_WORKSPACE/output/linux-x64/lib" python3 tool/macos_pjsip/check_dial_worker.py output/linux-x64/lib/libpjsip.so
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

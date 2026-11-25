@@ -11,6 +11,8 @@ on:
     paths:
       - ".github/workflows/build-pjsip-windows.yml"
       - "tool/windows_pjsip/**"
+      - "tool/macos_pjsip/vphone_dial_worker.*"
+      - "tool/macos_pjsip/check_dial_worker.py"
       - "tool/pjsip_bridge/**"
       - "third_path/pjproject/**"
 
@@ -235,6 +237,7 @@ jobs:
           Copy-Item `
             '${{ github.workspace }}/tool/pjsip_bridge/vphone_pjsip_bridge.h' `
             "$output/include/vphone_pjsip_bridge.h"
+          Copy-Item '${{ github.workspace }}/tool/macos_pjsip/vphone_dial_worker.h' "$output/include/"
           Copy-Item "$pjRoot/COPYING" "$output/COPYING-pjproject.txt"
           Copy-Item "${{ github.workspace }}/openssl-$env:OPENSSL_VERSION/LICENSE.txt" `
             "$output/LICENSE-OpenSSL.txt"
@@ -247,6 +250,10 @@ jobs:
           Runtime files: bin/pjsip.dll and any OpenSSL DLLs reported by dumpbin
           OpenSSL: $env:OPENSSL_VERSION LTS, bundled app-locally in bin/
           "@ | Set-Content "$output/BUILD-INFO.txt"
+
+      - name: Smoke test packaged dial worker
+        shell: pwsh
+        run: python tool/macos_pjsip/check_dial_worker.py output/windows-x64/bin/pjsip.dll
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

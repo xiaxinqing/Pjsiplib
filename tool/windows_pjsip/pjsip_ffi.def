@@ -71,5 +71,8 @@ EXPORTS
   vphone_apply_call_snapshot_callbacks
   vphone_clear_all_call_info_snapshots
   vphone_clear_call_info_snapshot
+  vphone_dial_worker_create
+  vphone_dial_worker_submit
+  vphone_dial_worker_destroy
   vphone_get_call_info_snapshot
   vphone_get_call_media_security
