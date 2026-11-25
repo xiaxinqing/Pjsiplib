@@ -7,6 +7,7 @@ extension _HomeCallSidePanel on _MyHomePageState {
     PjsipService service, {
     Widget? emptyContent,
   }) {
+    final pending = uiState.pendingDial;
     final calls = _sortedLiveCalls(uiState.calls.values);
     final conferenceCalls = _conferenceCalls(uiState);
     final focusedCall = _primaryCall(uiState);
@@ -74,6 +75,30 @@ extension _HomeCallSidePanel on _MyHomePageState {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (pending != null) ...[
+                            ListTile(
+                              leading: const Icon(AppIcons.call),
+                              title: Text(
+                                pending.number,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildPreparingStatus(),
+                                  Text(
+                                    _outgoingLineLabel(
+                                      uiState.accounts[pending.accountId],
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           if (uiState.hasConference) ...[
                             _buildCallPanelGroupLabel(
                               uiState.isConferencePaused

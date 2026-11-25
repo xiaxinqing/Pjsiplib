@@ -34,15 +34,31 @@ class FakePjsipService extends PjsipService {
     List<SipAccountInfo> accounts, {
     bool network = true,
     int? dialingAccount,
+    String number = "123",
   }) {
     state = state.copyWith(
       isInitialized: true,
       isNetworkAvailable: network,
       pendingDial: dialingAccount == null
           ? null
-          : (accountId: dialingAccount, number: "123"),
+          : (accountId: dialingAccount, number: number),
       accounts: {for (final account in accounts) account.accId: account},
       defaultAccountId: accounts.first.accId,
+    );
+  }
+
+  void acceptPendingDialForTest() {
+    final pending = state.pendingDial!;
+    final call = CallInfo(
+      callId: 7,
+      accountId: pending.accountId,
+      state: 1,
+      remoteUri: 'sip:${pending.number}@example.com',
+    );
+    state = state.copyWith(
+      pendingDial: null,
+      activeCallId: call.callId,
+      calls: {...state.calls, call.callId: call},
     );
   }
 }
@@ -1041,6 +1057,70 @@ void main() {
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 1));
+  });
+
+  testWidgets('拨号准备显示所选线路，第二通准备保留原主舞台', (tester) async {
+    tester.view.physicalSize = const Size(1200, 740);
+    tester.view.devicePixelRatio = 1;
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('zh')];
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+    final l10n = await AppLocalizations.delegate.load(const Locale('zh'));
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [pjsipServiceProvider.overrideWith(FakePjsipService.new)],
+        child: const MyApp(),
+      ),
+    );
+    final phone =
+        ProviderScope.containerOf(
+              tester.element(find.byType(MyApp)),
+            ).read(pjsipServiceProvider.notifier)
+            as FakePjsipService;
+    final accounts = [
+      SipAccountInfo(accId: 1, username: '6523', host: 'example.com'),
+      SipAccountInfo(accId: 2, username: '6524', host: 'example.com'),
+    ];
+    phone.setAccountsForTest(accounts, dialingAccount: 2, number: '6520');
+    await tester.pump();
+    await tester.tap(find.text(l10n.navCurrentCalls).first);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    final preparing = find.text(l10n.activeCallPreparing);
+    final hangup = find.text(l10n.activeCallHangUp);
+    expect(preparing, findsOneWidget);
+    expect(find.byTooltip('6520'), findsOneWidget);
+    expect(
+      find.text('${l10n.dialOutgoingLine} · 6524@example.com'),
+      findsOneWidget,
+    );
+    expect(hangup, findsNothing);
+
+    // 准备失败时，清除 pendingDial 应立即退出准备状态。
+    phone.setAccountsForTest(accounts);
+    await tester.pump();
+    expect(preparing, findsNothing);
+    expect(find.text(l10n.activeCallGoToDialpad), findsOneWidget);
+
+    phone.setAccountsForTest(accounts, dialingAccount: 2, number: '6520');
+    await tester.pump();
+    phone.acceptPendingDialForTest();
+    await tester.pump();
+    expect(preparing, findsNothing);
+    expect(hangup, findsWidgets);
+    final hangupPosition = tester.getTopLeft(hangup.first);
+
+    phone.setAccountsForTest(accounts, dialingAccount: 1, number: '6529');
+    await tester.pump();
+    expect(preparing, findsOneWidget);
+    expect(find.text('6529'), findsOneWidget);
+    expect(tester.getTopLeft(preparing).dx, greaterThan(hangupPosition.dx));
+    expect(tester.getTopLeft(hangup.first), hangupPosition);
+    phone.setAccountsForTest(accounts);
+    await tester.pump();
+    expect(preparing, findsNothing);
+    expect(tester.getTopLeft(hangup.first), hangupPosition);
   });
 
   testWidgets('通话中键盘以浮层显示且不推动主舞台操作区', (WidgetTester tester) async {

@@ -2481,6 +2481,12 @@ abstract class AppLocalizations {
   /// **'对方保持'**
   String get activeCallStatusRemoteHold;
 
+  /// No description provided for @activeCallPreparing.
+  ///
+  /// In zh, this message translates to:
+  /// **'正在准备呼叫'**
+  String get activeCallPreparing;
+
   /// No description provided for @activeCallStatusCalling.
   ///
   /// In zh, this message translates to:

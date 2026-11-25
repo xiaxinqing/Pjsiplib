@@ -6,11 +6,64 @@ extension _CallStageIdentity on _MyHomePageState {
     CallInfo call,
     SipAccountInfo? account, {
     _CallContactMatch? contactMatch,
-    required bool isIncoming,
   }) {
     final contact = contactMatch?.contact;
     final identity = _callDisplayIdentity(call, contactMatch);
     final quality = _callQualityView(call, account);
+    return _buildStageSummary(identity, [
+      _buildCallStatusPill(call),
+      if (!call.isOnHold && !call.isRemoteOnHold)
+        _buildCallMetaStrip(
+          icon: quality.icon,
+          label: quality.compactLabel,
+          color: quality.color,
+          tooltip: quality.tooltip,
+        ),
+      if (contact?.isFavorite == true)
+        _buildCallIconBadge(
+          icon: AppIcons.favorite,
+          color: _brandGreen,
+          tooltip: context.l10n.activeCallPriorityContact,
+        ),
+    ]);
+  }
+
+  Widget _buildStageHero({
+    required String avatarLabel,
+    required bool isIncoming,
+    required bool compact,
+    required double avatarSize,
+    required Widget summary,
+  }) {
+    return Row(
+      children: [
+        _CallAvatar(
+          label: avatarLabel,
+          isIncoming: isIncoming,
+          size: avatarSize,
+        ),
+        SizedBox(width: compact ? 16 : 22),
+        Expanded(child: summary),
+      ],
+    );
+  }
+
+  Widget _buildPreparingStatus() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const SizedBox.square(
+        dimension: 14,
+        child: CircularProgressIndicator(strokeWidth: 2),
+      ),
+      const SizedBox(width: 8),
+      Flexible(child: Text(context.l10n.activeCallPreparing)),
+    ],
+  );
+
+  Widget _buildStageSummary(
+    _CallDisplayIdentity identity,
+    List<Widget> badges,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -29,22 +82,7 @@ extension _CallStageIdentity on _MyHomePageState {
           spacing: 8,
           runSpacing: 8,
           crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            _buildCallStatusPill(call),
-            if (!call.isOnHold && !call.isRemoteOnHold)
-              _buildCallMetaStrip(
-                icon: quality.icon,
-                label: quality.compactLabel,
-                color: quality.color,
-                tooltip: quality.tooltip,
-              ),
-            if (contact?.isFavorite == true)
-              _buildCallIconBadge(
-                icon: AppIcons.favorite,
-                color: _brandGreen,
-                tooltip: context.l10n.activeCallPriorityContact,
-              ),
-          ],
+          children: badges,
         ),
       ],
     );
@@ -54,16 +92,19 @@ extension _CallStageIdentity on _MyHomePageState {
     CallInfo call, [
     _CallContactMatch? match,
   ]) {
-    final number = (match?.phone.number ?? _callDisplayNumber(call)).trim();
+    final number = _callDisplayNumber(call);
+    return _identityForNumber(number.isEmpty ? call.remoteUri : number, match);
+  }
+
+  _CallDisplayIdentity _identityForNumber(
+    String target,
+    _CallContactMatch? match,
+  ) {
+    final number = (match?.phone.number ?? target).trim();
     final contactName = match?.contact.name.trim() ?? '';
 
     if (contactName.isEmpty) {
-      final fallback = number.isNotEmpty
-          ? number
-          : _displayRemote(call.remoteUri).trim();
-      return _CallDisplayIdentity(
-        primary: fallback.isEmpty ? call.remoteUri : fallback,
-      );
+      return _CallDisplayIdentity(primary: number);
     }
 
     final hasDistinctNumber =
@@ -402,10 +443,11 @@ extension _CallStageIdentity on _MyHomePageState {
     );
   }
 
-  _CallContactMatch? _callContactMatch(CallInfo call) {
-    final normalizedNumber = normalizeContactPhoneNumber(
-      _callDisplayNumber(call),
-    );
+  _CallContactMatch? _callContactMatch(CallInfo call) =>
+      _contactMatchForNumber(_callDisplayNumber(call));
+
+  _CallContactMatch? _contactMatchForNumber(String number) {
+    final normalizedNumber = normalizeContactPhoneNumber(number);
     if (normalizedNumber.isEmpty) return null;
 
     for (final contact in ref.watch(contactBookProvider).contacts) {

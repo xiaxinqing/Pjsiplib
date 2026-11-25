@@ -520,6 +520,7 @@
   "activeCallOperationTransferring": "正在转接",
   "activeCallStatusLocalHold": "保持中",
   "activeCallStatusRemoteHold": "对方保持",
+  "activeCallPreparing": "正在准备呼叫",
   "activeCallStatusCalling": "正在呼叫",
   "activeCallStatusIncoming": "来电",
   "activeCallStatusWaitingAnswer": "等待接听",

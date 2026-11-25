@@ -25,50 +25,10 @@ const double _answerPulseEndScale = 1.13;
 extension _HomeCalls on _MyHomePageState {
   Widget _buildCallsPage(PjsipUIState uiState, PjsipService service) {
     _traceWorkspacePageBuild(_WorkspaceSection.calls);
-    final pending = uiState.pendingDial;
-    final stage = _buildPrimaryCallStage(uiState, service);
-    final line = uiState.accounts[pending?.accountId];
-    final progress = pending == null
-        ? null
-        : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const SizedBox.square(
-                dimension: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  [
-                    context.l10n.accountStatusConnecting,
-                    pending.number,
-                    if (line != null) line.lineLabel,
-                  ].join(' · '),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          flex: 5,
-          child: progress == null
-              ? stage
-              : uiState.calls.isEmpty
-              ? Center(child: progress)
-              : Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: progress,
-                    ),
-                    Expanded(child: stage),
-                  ],
-                ),
-        ),
+        Expanded(flex: 5, child: _buildPrimaryCallStage(uiState, service)),
         const SizedBox(width: 20),
         Expanded(flex: 4, child: _buildLiveCallsPanel(uiState, service)),
       ],

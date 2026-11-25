@@ -1318,6 +1318,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get activeCallStatusRemoteHold => 'Remote hold';
 
   @override
+  String get activeCallPreparing => 'Preparing call';
+
+  @override
   String get activeCallStatusCalling => 'Calling';
 
   @override

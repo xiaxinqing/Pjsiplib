@@ -412,6 +412,7 @@
   "activeCallOperationTransferring": "Transferring",
   "activeCallStatusLocalHold": "On hold",
   "activeCallStatusRemoteHold": "Remote hold",
+  "activeCallPreparing": "Preparing call",
   "activeCallStatusCalling": "Calling",
   "activeCallStatusIncoming": "Incoming call",
   "activeCallStatusWaitingAnswer": "Awaiting answer",

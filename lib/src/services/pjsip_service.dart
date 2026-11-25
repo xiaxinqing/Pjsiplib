@@ -6,7 +6,8 @@ import 'dart:math' as math;
 import 'dart:typed_data' show ByteData, Endian;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart'
     show MethodChannel, MissingPluginException, PlatformException, rootBundle;

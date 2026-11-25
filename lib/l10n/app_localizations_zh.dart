@@ -1272,6 +1272,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get activeCallStatusRemoteHold => '对方保持';
 
   @override
+  String get activeCallPreparing => '正在准备呼叫';
+
+  @override
   String get activeCallStatusCalling => '正在呼叫';
 
   @override
@@ -3993,6 +3996,9 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get activeCallStatusRemoteHold => '對方保持';
+
+  @override
+  String get activeCallPreparing => '正在準備通話';
 
   @override
   String get activeCallStatusCalling => '正在撥號';

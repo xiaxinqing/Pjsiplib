@@ -60,7 +60,7 @@ extension _DialpadHelpers on _MyHomePageState {
     String number,
   ) {
     final l10n = context.l10n;
-    if (uiState.pendingDial != null) return l10n.accountStatusConnecting;
+    if (uiState.pendingDial != null) return l10n.activeCallPreparing;
     if (number.isEmpty) return l10n.dialEnterNumberToCall;
     // if (!uiState.isNetworkAvailable) return l10n.statusNetworkUnavailable;
     if (uiState.accounts.isEmpty) return l10n.dialAddLineFirst;

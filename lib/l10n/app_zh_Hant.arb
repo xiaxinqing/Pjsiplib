@@ -412,6 +412,7 @@
   "activeCallOperationTransferring": "正在轉駁",
   "activeCallStatusLocalHold": "保持中",
   "activeCallStatusRemoteHold": "對方保持",
+  "activeCallPreparing": "正在準備通話",
   "activeCallStatusCalling": "正在撥號",
   "activeCallStatusIncoming": "來電",
   "activeCallStatusWaitingAnswer": "等待接聽",
