@@ -368,7 +368,7 @@ extension PjsipPersistenceOperations on PjsipService {
       }
 
       _applyPreferredDefaultAccount();
-      _addLog('✅ 坐席环境恢复完成');
+      if (_restoreLinesSkippedOffline == 0) _addLog('✅ 坐席环境恢复完成');
       shouldPersistAfterRestore = true;
     } catch (error) {
       _uiState = _uiState.copyWith(
@@ -377,6 +377,13 @@ extension PjsipPersistenceOperations on PjsipService {
       _addLog('❌ 恢复坐席环境失败: $error');
     } finally {
       _seatRestoreInProgress = false;
+      if (!_isDisposed && _restoreLinesSkippedOffline > 0) {
+        final trigger = _uiState.isPhoneServiceRestarting ? '重启电话服务' : '应用启动';
+        _addLog(
+          '[网络诊断] $trigger恢复缓存线路时，因应用判定离线跳过 $_restoreLinesSkippedOffline 条线路',
+        );
+      }
+      _restoreLinesSkippedOffline = 0;
       if (!_isDisposed &&
           _uiState.seatEnvironmentState != SeatEnvironmentState.ready) {
         _uiState = _uiState.copyWith(

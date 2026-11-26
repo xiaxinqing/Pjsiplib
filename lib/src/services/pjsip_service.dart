@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:ffi' as ffi;
 import 'dart:io' show Directory, File, Platform;
 import 'dart:math' as math;
-import 'dart:typed_data' show ByteData, Endian;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:ffi/ffi.dart';
 import 'package:flutter/foundation.dart';
@@ -26,6 +25,7 @@ import 'diagnostic_log_exporter.dart';
 import 'native_bridge/audio_device_change_controller.dart';
 import 'native_bridge/pjsip_dial_worker.dart';
 import 'sip_call_end_reason_mapper.dart';
+import 'windows_lan_connectivity.dart';
 import '../../utils/toast_util.dart';
 
 part 'pjsip_parts/pjsip_log_model.dart';
@@ -171,13 +171,17 @@ class PjsipService extends Notifier<PjsipUIState> {
   bool _ipChangeHadError = false;
   bool _pendingIpChange = false;
   bool _seatRestoreInProgress = false;
+  int _restoreLinesSkippedOffline = 0;
   bool _loggedMacOsFallbackRead = false;
   bool _loggedMacOsFallbackWrite = false;
   String? _preferredDefaultLineKey;
   Future<void> _seatPersistQueue = Future<void>.value();
-  final Connectivity _connectivity = Connectivity();
+  late final Connectivity _connectivity = Platform.isWindows
+      ? WindowsLanConnectivity(onDiagnostic: _recordNetworkDiagnostic)
+      : Connectivity();
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   Set<ConnectivityResult>? _lastConnectivityTypes;
+  PjsipLog? _lastNetworkDiagnostic;
   bool _connectivityMonitorStarted = false;
   bool _isDisposed = false;
   bool _cleanupCompleted = false;
@@ -331,6 +335,7 @@ class PjsipService extends Notifier<PjsipUIState> {
     _flushPendingLogs();
 
     final snapshot = state;
+    final networkDiagnostic = _lastNetworkDiagnostic;
     final uiLogLines = snapshot.logs
         .map((log) => '[${log.time.toIso8601String()}] ${log.message}')
         .toList(growable: false);
@@ -340,6 +345,9 @@ class PjsipService extends Notifier<PjsipUIState> {
       runtimeSummary: <String, String>{
         '电话服务': snapshot.isInitialized ? '已启动' : '未启动',
         '网络': snapshot.isNetworkAvailable ? '可用' : '不可用',
+        '最近一次网络判断': networkDiagnostic == null
+            ? '尚未取得检测结果'
+            : '[${networkDiagnostic.time.toIso8601String()}] ${networkDiagnostic.message}',
         '网络恢复状态': snapshot.networkState.name,
         '线路数量': '${snapshot.accounts.length}',
         '活动通话数量': '${snapshot.calls.length}',

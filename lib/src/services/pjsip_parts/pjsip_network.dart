@@ -32,22 +32,19 @@ extension PjsipNetworkOperations on PjsipService {
 
   Future<void> _handleApplicationResumed() async {
     if (_isDisposed) return;
-    _addLog('应用已回到前台，准备检查线路注册状态');
+    _addLog('[网络诊断] 应用回到前台，重新检查网络和线路注册状态');
 
-    try {
-      final results = await _connectivity.checkConnectivity();
-      if (_isDisposed) return;
-      _onConnectivityResults(results);
-    } catch (error) {
-      if (_isDisposed) return;
-      _addLog('⚠️ 前台恢复时检查网络失败，将沿用当前网络状态: $error');
-    }
+    await _checkCurrentNetwork('回到前台');
+    if (_isDisposed || !_connectivityMonitorStarted) return;
 
     if (_uiState.accounts.isEmpty) {
       _resetLineRecoveryStateWithoutAccounts(reason: '应用回到前台');
       return;
     }
-    if (!_uiState.isNetworkAvailable) return;
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('[网络诊断] 回到前台时网络仍不可用，跳过线路自动重注册');
+      return;
+    }
     // 网络类型变化时先让现有 IP Change 流程完成，完成回调会再次安排检查。
     if (_pendingIpChange ||
         _ipChangeInProgress ||
@@ -62,36 +59,73 @@ extension PjsipNetworkOperations on PjsipService {
   Future<void> _startConnectivityMonitoring() async {
     if (_connectivityMonitorStarted || _isDisposed) return;
     _connectivityMonitorStarted = true;
+    _addLog('[网络诊断] 应用启动，开始监听网络变化并查询当前网络');
 
     // 先订阅再查询当前状态，避免 checkConnectivity() 执行期间漏掉切换事件。
     _connectivitySubscription = _connectivity.onConnectivityChanged.listen(
-      _onConnectivityResults,
-      onError: (Object error, StackTrace stackTrace) {
-        if (_isDisposed) return;
-        _addLog('❌ 网络监听异常: $error');
-      },
+      (results) => _onConnectivityResults(results, source: '系统网络变化'),
+      onError: (Object error, StackTrace stackTrace) =>
+          _onConnectivityError('系统网络变化', error),
     );
 
+    await _checkCurrentNetwork('启动初查');
+  }
+
+  Future<void> _checkCurrentNetwork(String source) async {
+    final connectivity = _connectivity;
+    late final List<ConnectivityResult> results;
     try {
-      final initial = await _connectivity.checkConnectivity();
-      if (_isDisposed) return;
-      _onConnectivityResults(initial);
+      results = connectivity is WindowsLanConnectivity
+          ? await connectivity.checkConnectivity(source: source)
+          : await connectivity.checkConnectivity();
     } catch (error) {
-      if (_isDisposed) return;
-      _addLog('❌ 获取初始网络状态失败: $error');
+      _onConnectivityError(source, error);
+      return;
     }
+    _onConnectivityResults(results, source: source);
+  }
+
+  void _onConnectivityError(String source, Object error) {
+    // Windows 适配器在错误发生处记录原始读取或内网补查的具体阶段。
+    if (_connectivity is WindowsLanConnectivity) return;
+    _recordNetworkDiagnostic('$source，网络检测失败（$error），沿用当前网络状态');
+  }
+
+  void _recordNetworkDiagnostic(String detail) {
+    if (_isDisposed || !_connectivityMonitorStarted) return;
+    final previous = _lastNetworkDiagnostic;
+    _lastNetworkDiagnostic = PjsipLog(detail);
+    // 相同通知仍刷新摘要的时间，事件列表给状态变化留出空间。
+    if (previous?.message != detail) _addLog('[网络诊断] $detail');
+  }
+
+  void logAccountDialogNetwork({
+    required bool editing,
+    required bool available,
+  }) {
+    final dialog = editing ? '编辑线路' : '添加线路';
+    final result = available ? '可用，允许提交' : '不可用，禁用提交';
+    _addLog('[网络诊断] $dialog表单打开时网络$result');
   }
 
   /// 将 connectivity_plus 的多网络结果转换成 PJSIP 恢复事件。
   ///
   /// connectivity_plus 7 可能同时返回 Wi-Fi、VPN、Ethernet 等多个类型，所以
   /// 使用 Set 比较并去掉 none。首次检测只同步状态，不触发不必要的 IP Change。
-  void _onConnectivityResults(List<ConnectivityResult> results) {
-    if (_isDisposed) return;
+  void _onConnectivityResults(
+    List<ConnectivityResult> results, {
+    required String source,
+  }) {
+    if (_isDisposed || !_connectivityMonitorStarted) return;
     final currentTypes = results
         .where((result) => result != ConnectivityResult.none)
         .toSet();
     final previousTypes = _lastConnectivityTypes;
+    if (_connectivity is! WindowsLanConnectivity) {
+      final rawTypes = results.map((type) => type.name).join(',');
+      final decision = currentTypes.isEmpty ? '不可用' : '可用';
+      _recordNetworkDiagnostic('$source，插件原始类型=[$rawTypes]，判定=$decision');
+    }
 
     // checkConnectivity 与 stream 可能几乎同时返回；完全相同的结果直接去重。
     if (previousTypes != null &&
@@ -102,6 +136,9 @@ extension PjsipNetworkOperations on PjsipService {
     _lastConnectivityTypes = currentTypes;
 
     final isAvailable = currentTypes.isNotEmpty;
+    if (!isAvailable) {
+      _addLog('[网络诊断] 离线时禁用添加、启用和重启线路入口，线路设置页同时禁用刷新和重试');
+    }
     if (previousTypes == null) {
       _uiState = _uiState.copyWith(
         isNetworkAvailable: isAvailable,
@@ -156,7 +193,11 @@ extension PjsipNetworkOperations on PjsipService {
         isNetworkAvailable: false,
         networkState: PjsipNetworkState.offline,
       );
-      _addLog('🌐 网络已断开，等待恢复后重新处理 SIP 注册');
+      _addLog(
+        _pendingIpChange
+            ? '[网络诊断] 收到离线通知，推迟 SIP 注册恢复'
+            : '[网络诊断] 收到离线通知，当前没有线路需要恢复',
+      );
       return;
     }
 
@@ -180,7 +221,10 @@ extension PjsipNetworkOperations on PjsipService {
   }
 
   void _recoverAfterNetworkChange() {
-    if (!_uiState.isNetworkAvailable) return;
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('[网络诊断] 网络变化后的延时恢复：应用仍判定离线，跳过本次 SIP 恢复');
+      return;
+    }
 
     if (!_uiState.isInitialized) {
       // 引擎尚未初始化时无需调用 IP Change。登录流程取得 SIP 凭证后，正常
@@ -214,13 +258,18 @@ extension PjsipNetworkOperations on PjsipService {
     }
   }
 
+  bool _canStartSipRecovery(String trigger) {
+    if (!_uiState.isInitialized || _uiState.accounts.isEmpty) return false;
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('[网络诊断] $trigger：应用判定离线，跳过本次 SIP 恢复');
+      return false;
+    }
+    return true;
+  }
+
   /// IP/路由未变化、只是 SIP 服务器短暂不可达时，可调用此方法重新 REGISTER。
   void retrySipRegistration() {
-    if (!_uiState.isInitialized ||
-        !_uiState.isNetworkAvailable ||
-        _uiState.accounts.isEmpty) {
-      return;
-    }
+    if (!_canStartSipRecovery('手动重新注册')) return;
 
     var failed = false;
     var refreshed = 0;
@@ -276,11 +325,7 @@ extension PjsipNetworkOperations on PjsipService {
 
   /// 检查 PJSIP 原生账号状态，并只刷新“希望在线但当前异常”的线路。
   void _recoverAbnormalRegistrations(String reason) {
-    if (!_uiState.isInitialized ||
-        !_uiState.isNetworkAvailable ||
-        _uiState.accounts.isEmpty) {
-      return;
-    }
+    if (!_canStartSipRecovery('异常线路检查（$reason）')) return;
 
     if (_ipChangeInProgress || _pendingIpChange) {
       _addLog('🌐 网络恢复仍在处理中，暂缓线路状态检查: $reason');
@@ -393,11 +438,7 @@ extension PjsipNetworkOperations on PjsipService {
   }
 
   bool requestSipNetworkRecovery({required String reason}) {
-    if (!_uiState.isInitialized ||
-        !_uiState.isNetworkAvailable ||
-        _uiState.accounts.isEmpty) {
-      return false;
-    }
+    if (!_canStartSipRecovery('手动网络恢复')) return false;
 
     _networkChangeTimer?.cancel();
     _startOutgoingMediaRecoveryCooldown('手动网络恢复，等待 ICE/STUN 重建');
@@ -503,6 +544,8 @@ extension PjsipNetworkOperations on PjsipService {
       );
     } else if (_uiState.isNetworkAvailable) {
       _scheduleAutomaticRegistrationRecovery(reason: 'IP Change 完成');
+    } else {
+      _addLog('[网络诊断] IP Change 完成时应用判定离线，跳过后续 SIP 恢复检查');
     }
   }
 

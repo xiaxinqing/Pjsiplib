@@ -32,6 +32,10 @@ extension _HomeDialogs on _MyHomePageState {
       );
       return Future<void>.value();
     }
+    service.logAccountDialogNetwork(
+      editing: account != null,
+      available: uiState.isNetworkAvailable,
+    );
     return showDialog<void>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.28),

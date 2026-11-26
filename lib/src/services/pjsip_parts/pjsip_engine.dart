@@ -267,7 +267,12 @@ extension PjsipEngineOperations on PjsipService {
     bool fromRestore = false,
   }) async {
     if (!_uiState.isNetworkAvailable) {
-      _addLog('❌ 当前网络不可用，暂不发起 SIP 注册');
+      if (fromRestore && _seatRestoreInProgress) {
+        _restoreLinesSkippedOffline++;
+      } else {
+        final action = fromRestore ? '恢复线路' : '新增线路';
+        _addLog('[网络诊断] $action：应用判定离线，未提交给 PJSIP');
+      }
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
           (l10n) => l10n.runtimeNetworkUnavailable,
@@ -539,7 +544,7 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     if (original.registrationEnabled && !_uiState.isNetworkAvailable) {
-      _addLog('❌ 当前网络不可用，暂不能编辑在线线路: ${original.lineLabel}');
+      _addLog('[网络诊断] 编辑已启用的线路：应用判定离线，已阻止编辑');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
           (l10n) => l10n.runtimeNetworkUnavailable,
@@ -1279,6 +1284,9 @@ extension PjsipEngineOperations on PjsipService {
     unawaited(_persistSeatEnvironment());
 
     final status = _bindings.pjsua_acc_set_registration(accId, enabled ? 1 : 0);
+    if (!_uiState.isNetworkAvailable) {
+      _addLog('[网络诊断] $actionLabel线路：应用判定离线，仍已调用 PJSIP，pj_status=$status');
+    }
     if (status != 0) {
       final rollbackAccounts = Map<int, SipAccountInfo>.of(_uiState.accounts)
         ..[accId] = account.copyWith(registrationActionInProgress: false);
@@ -1326,7 +1334,7 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     if (!_uiState.isNetworkAvailable) {
-      _addLog('⚠️ 当前网络不可用，暂不能重启线路: ${account.lineLabel}');
+      _addLog('[网络诊断] 重启线路：应用判定离线，已阻止重连');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
           (l) => l.runtimeNetworkUnavailable,
@@ -1634,7 +1642,7 @@ extension PjsipEngineOperations on PjsipService {
       return;
     }
     if (!_uiState.isNetworkAvailable) {
-      _addLog('⚠️ 当前网络不可用，暂不能重启电话服务');
+      _addLog('[网络诊断] 重启电话服务：应用判定离线，已阻止重启');
       ToastUtil.showWarning(
         AppRuntimeLocalizer.resolve(
           (l) => l.runtimeNetworkUnavailable,

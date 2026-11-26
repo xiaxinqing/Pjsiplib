@@ -541,12 +541,20 @@ extension _PjsipNativeCallbacks on PjsipService {
           final statusText = info.ref.status_text.ptr.cast<Utf8>().toDartString(
             length: info.ref.status_text.slen,
           );
+          final previousNetworkState = _uiState.networkState;
           if (sipStatus == 200) {
             _uiState = _uiState.copyWith(networkState: PjsipNetworkState.idle);
           } else if (_isNetworkRegistrationFailure(sipStatus) &&
               _uiState.isNetworkAvailable) {
             _uiState = _uiState.copyWith(
               networkState: PjsipNetworkState.failed,
+            );
+          }
+          if (previousNetworkState != _uiState.networkState) {
+            final availability = _uiState.isNetworkAvailable ? '可用' : '离线';
+            _addLog(
+              '[网络诊断] SIP 注册状态回调返回 $sipStatus，应用网络=$availability，'
+              'SIP 恢复状态=${previousNetworkState.name} -> ${_uiState.networkState.name}',
             );
           }
           final account = _uiState.accounts[accId];
