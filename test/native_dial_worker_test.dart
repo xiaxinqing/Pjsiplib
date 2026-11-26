@@ -9,7 +9,7 @@ import 'package:veserve_vphone/src/generated/pjsip_bindings.g.dart';
 import 'package:veserve_vphone/src/services/native_bridge/pjsip_dial_worker.dart';
 
 void main() {
-  // Use the signed dylib embedded by Xcode. The peer and both lines are local.
+  // Use the packaged library for the host platform. Both lines use loopback.
   final path = Platform.environment['VPHONE_TEST_DIAL_LIBRARY'];
   test('工作线程用所选线路发送 INVITE，关闭时送达已提交请求的结果', () async {
     final library = ffi.DynamicLibrary.open(path!);
@@ -59,16 +59,21 @@ void main() {
       );
       expect(sip.pjsua_start(), 0);
       sip.pjsua_set_no_snd_dev();
-      for (final number in ['6523', '6524']) {
+      final defaultLine = arena<ffi.Int>();
+      final selectedLine = arena<ffi.Int>();
+      for (final (number, line) in [
+        ('6523', defaultLine),
+        ('6524', selectedLine),
+      ]) {
         final cfg = arena<pjsua_acc_config>();
         sip.pjsua_acc_config_default(cfg);
         final uri = 'sip:$number@127.0.0.1'.toNativeUtf8(allocator: arena);
         cfg.ref.id.ptr = uri.cast();
         cfg.ref.id.slen = uri.length;
-        expect(sip.pjsua_acc_add(cfg, number == '6523' ? 1 : 0, id), 0);
+        expect(sip.pjsua_acc_add(cfg, number == '6523' ? 1 : 0, line), 0);
       }
-      expect(sip.pjsua_acc_get_default(), isNot(id.value));
-      return id.value;
+      expect(selectedLine.value, isNot(defaultLine.value));
+      return selectedLine.value;
     });
     final worker = PjsipDialWorker(library);
     addTearDown(worker.close);
@@ -85,5 +90,5 @@ void main() {
     final rejected = await failure.timeout(const Duration(seconds: 2));
     expect(rejected.status, isNot(0));
     expect(rejected.callId, -1);
-  }, skip: !Platform.isMacOS || path == null);
+  }, skip: path == null);
 }

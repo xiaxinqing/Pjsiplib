@@ -143,7 +143,9 @@ extension PjsipCallOperations on PjsipService {
       );
       return;
     }
-    final settled = Platform.isMacOS ? Completer<bool>() : null;
+    final useDialWorker =
+        Platform.isMacOS || Platform.isWindows || Platform.isLinux;
+    final settled = useDialWorker ? Completer<bool>() : null;
     if (settled != null) {
       _dialSettled = settled;
       _uiState = _uiState.copyWith(
@@ -153,7 +155,7 @@ extension PjsipCallOperations on PjsipService {
     try {
       await _holdActiveCallExcept(-1);
       // 预览「正在准备呼叫」时，取消下面三行的注释。
-      // if (kDebugMode && Platform.isMacOS) {
+      // if (kDebugMode && useDialWorker) {
       //   await Future<void>.delayed(const Duration(seconds: 4));
       // }
       if (_isDisposed ||
