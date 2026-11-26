@@ -23,6 +23,15 @@
 /// 如果打包好的，可以直接签名
 /// powershell -ExecutionPolicy Bypass -File .\tool\package_windows_installer.ps1 -SkipBuild
 ///
+///
+///
+/// Windows 便携版（无需 Inno Setup）
+/// 完整构建并打包：
+/// `powershell -ExecutionPolicy Bypass -File .\tool\package_windows_portable.ps1`
+/// 已有 Release 时直接打包：
+/// `powershell -ExecutionPolicy Bypass -File .\tool\package_windows_portable.ps1 -SkipBuild`
+/// 产物为 `dist/VPhone-Portable-<version>-windows-x64.zip`。完整解压后运行 `VPhone.exe`。
+///
 const String appDisplayName = 'VPhone';
 const String appCompanyName = 'VeServe Company Limited';
 const String appBundleIdentifier = 'com.veserve.vphone';
